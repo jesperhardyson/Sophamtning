@@ -14,6 +14,7 @@ struct AreaPickerView: View {
     @State private var webLink: WebLink?
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
+    /// Ingen länk visas när ingen träff har en giltig https-adress.
     private var areasLink: WebLink? { hits.lazy.compactMap(\.areasUrl).compactMap(WebLink.init(url:)).first }
 
     var body: some View {

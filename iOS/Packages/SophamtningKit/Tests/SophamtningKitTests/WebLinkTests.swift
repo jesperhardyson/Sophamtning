@@ -32,4 +32,10 @@ import Testing
         let url = try #require(URL(string: "/bidra"))
         #expect(WebLink(url: url) == nil)
     }
+
+    @Test(arguments: ["https:", "https://", "https:///bidra"])
+    func utanVardGerNil(_ text: String) throws {
+        let url = try #require(URL(string: text))
+        #expect(WebLink(url: url) == nil)
+    }
 }

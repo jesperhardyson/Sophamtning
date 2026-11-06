@@ -223,7 +223,9 @@ extension SearchHit {
         detail = try c.decodeIfPresent(String.self, forKey: .detail)
         selection = try c.decodeIfPresent(String.self, forKey: .selection) ?? "address"
         notice = try c.decodeIfPresent(String.self, forKey: .notice)
-        areasUrl = try c.decodeIfPresent(URL.self, forKey: .areasUrl)
+        // Ett trasigt värde (tom sträng, fel typ) ger ingen länk. Det får inte fälla hela sökresultatet.
+        areasUrl = (try? c.decodeIfPresent(String.self, forKey: .areasUrl)).flatMap { $0 }
+            .map { $0.trimmingCharacters(in: .whitespaces) }.flatMap { $0.isEmpty ? nil : URL(string: $0) }
         url = try c.decode(URL.self, forKey: .url)
     }
 }
