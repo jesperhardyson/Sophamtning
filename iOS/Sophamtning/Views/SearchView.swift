@@ -218,6 +218,7 @@ struct SearchView: View {
 
     private func choose(_ hit: SearchHit) {
         if hit.isArea {
+            saveFailed = false
             chosenArea = HitSelection(hit: hit)
         } else {
             saveFailed = !save(hit, in: model, onSaved: onSaved)

@@ -20,10 +20,12 @@ struct PrimaryCard: View {
                     reminderRow(text)
                 }
             case .loading:
-                // Kärlet laddar i kortets yta. Texten under är dekoration, och VoiceOver läser "Hämtar schema".
-                BinLoaderView(textColor: foreground.opacity(0.9))
+                // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
+                // Texten under är dekoration, och VoiceOver läser "Hämtar schema".
+                BinLoaderView(textColor: Color.Theme.text)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 16)
+                    .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             case .noUpcoming, .failed:
                 Text(entry.summary)
                     .font(.ui(20, weight: .heavy, relativeTo: .title3))
