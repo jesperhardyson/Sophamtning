@@ -23,7 +23,10 @@ struct LiveAPITests {
         let r = try await client.search(query: "storgatan 2", source: nil)
         // Ett failed som inte är tomt godkänns, eftersom enskilda källor kan ligga nere.
         let hit = try #require(r.addresses.first)
-        let address = try await client.address(url: hit.url)
-        #expect(address.address.id == hit.id)
+        // Enskilda källor kan svara 502 även när API:t är friskt. Det är inget kontraktsbrott.
+        do {
+            let address = try await client.address(url: hit.url)
+            #expect(address.address.id == hit.id)
+        } catch APIError.sourceUnavailable {}
     }
 }

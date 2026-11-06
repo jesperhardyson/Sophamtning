@@ -109,7 +109,8 @@ let testURL = URL(string: "https://sopor.hardyson.se/api/v1/adress/uppsala/storg
             .first { $0.id == "storgatan-2_kåge-124167" })
         #expect(hit.url.absoluteString.contains("k%C3%A5ge"))
         // anropet går exakt till den sparade adressen, utan dubbel kodning
-        store.state.withLock { $0.body = (try? fixtureData("adress-orebro")) ?? Data() }
+        let kage = try fixtureData("adress-kage")
+        store.state.withLock { $0.body = kage }
         _ = try await client.address(url: hit.url)
         let requested = try #require(store.requests.last?.url)
         #expect(requested.absoluteString == hit.url.absoluteString)
@@ -188,5 +189,24 @@ let testURL = URL(string: "https://sopor.hardyson.se/api/v1/adress/uppsala/storg
         #expect(!r.sources.isEmpty)
         #expect(!r.sources.contains { $0.id == "testkalla" || $0.testData })
         #expect(r.sources.first?.kommuner.isEmpty == false)
+    }
+
+    @Test func avkodarAvvikelseOchKarl() async throws {
+        let (client, _) = try client(fixture: "adress-avvikelse")
+        let r = try await client.address(url: testURL)
+        #expect(r.events[0].deviation == Deviation(originalDate: DayDate("2026-11-10"), reason: "Flyttad på grund av helg"))
+        #expect(r.events[1].deviation == Deviation(originalDate: nil, reason: "Julhelgen"))
+        #expect(r.events[2].deviation == nil)
+        #expect(r.bins.count == 2)
+        #expect(r.bins[0] == Bin(fraction: "mat", sizeLiters: 140, pickupsPerYear: 26, frequencyText: "Varannan vecka"))
+        #expect(r.bins[1] == Bin(fraction: "karl", sizeLiters: nil, pickupsPerYear: nil, frequencyText: nil))
+    }
+
+    @Test(arguments: ["adress", "adress-avvikelse", "adress-kage"])
+    func adressHallerRundgang(fixture: String) throws {
+        let decoder = JSONDecoder()
+        let first = try decoder.decode(AddressResponse.self, from: fixtureData(fixture))
+        let again = try decoder.decode(AddressResponse.self, from: JSONEncoder().encode(first))
+        #expect(again == first)
     }
 }
