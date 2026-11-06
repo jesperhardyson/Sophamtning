@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49713674AF12521818193251 /* AreaFinderSheet.swift */; };
 		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
 		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
@@ -60,6 +61,7 @@
 		19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningWidgetBundle.swift; sourceTree = "<group>"; };
 		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
+		49713674AF12521818193251 /* AreaFinderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaFinderSheet.swift; sourceTree = "<group>"; };
 		4D5502E2E1A53F977DC24C47 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 			isa = PBXGroup;
 			children = (
 				863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */,
+				49713674AF12521818193251 /* AreaFinderSheet.swift */,
 				F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */,
 				AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */,
 				F6E97966D4E1386A76326E42 /* HomeView.swift */,
@@ -311,6 +314,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */,
+				0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */,
 				EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */,
 				A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */,
 				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,

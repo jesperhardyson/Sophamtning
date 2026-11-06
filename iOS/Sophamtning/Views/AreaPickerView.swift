@@ -6,12 +6,15 @@ import SwiftUI
 struct AreaPickerView: View {
     let model: AppModel
     let title: String
+    /// Platsen områdena hämtades för. Utan plats visas inte raden för senaste tömning.
+    let place: String?
     let hits: [SearchHit]
     let onSaved: () -> Void
 
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
     @State private var webLink: WebLink?
+    @State private var finderOpen = false
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
     /// Ingen länk visas när ingen träff har en giltig https-adress.
@@ -26,6 +29,10 @@ struct AreaPickerView: View {
                     .accessibilityAddTraits(.isHeader)
                 if let notice {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
+                        .padding(.top, 20)
+                }
+                if place != nil {
+                    finderRow
                         .padding(.top, 20)
                 }
                 if let areasLink {
@@ -72,11 +79,49 @@ struct AreaPickerView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .inAppBrowser(item: $webLink)
+        .sheet(isPresented: $finderOpen) {
+            if let place {
+                AreaFinderSheet(model: model, place: place, onSaved: onSaved, onOther: { finderOpen = false })
+            }
+        }
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
                 saveFailed = !save(hit, in: model, onSaved: onSaved)
             }, onOther: { chosen = nil })
         }
+    }
+}
+
+private extension AreaPickerView {
+    /// "Vet du inte vilket område?" Öppnar arket där senaste tömningen pekar ut området.
+    var finderRow: some View {
+        Button { finderOpen = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar.badge.magnifyingglass")
+                    .font(.system(.title2))
+                    .foregroundStyle(Color.Theme.brandText)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Vet du inte vilket område?")
+                        .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                    Text("Hitta det med din senaste tömning")
+                        .font(.ui(17, weight: .semibold, relativeTo: .body))
+                }
+                .foregroundStyle(Color.Theme.brandText)
+                .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Color.Theme.brandText)
+                    .accessibilityHidden(true)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.Theme.brandSoft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Vet du inte vilket område? Hitta det med din senaste tömning")
     }
 }

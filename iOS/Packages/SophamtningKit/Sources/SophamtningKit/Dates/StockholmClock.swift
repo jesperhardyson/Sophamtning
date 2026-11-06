@@ -2,10 +2,12 @@ import Foundation
 
 /// Tid i Europe/Stockholm. Telefonens tidszon används aldrig.
 public enum StockholmClock {
+    public static let timeZone = TimeZone(identifier: "Europe/Stockholm")!
+
     /// Gregoriansk kalender i svensk tidszon, delad av alla datumtyper.
     static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "Europe/Stockholm")!
+        calendar.timeZone = timeZone
         calendar.locale = Locale(identifier: "sv_SE")
         return calendar
     }()

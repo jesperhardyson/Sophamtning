@@ -24,6 +24,16 @@ public enum SwedishFormat {
         return capitalized ? text.prefix(1).uppercased() + text.dropFirst() : text
     }
 
+    /// "Tisdag 27 oktober 2026".
+    public static func longDateWithYear(_ day: DayDate) -> String {
+        "\(longDate(day, capitalized: true)) \(day.year)"
+    }
+
+    /// "13 okt", utan veckodag.
+    public static func dayMonth(_ day: DayDate) -> String {
+        "\(day.day) \(shortMonths[day.month - 1])"
+    }
+
     /// Veckodagen helt utskriven, "måndag".
     public static func weekdayName(_ day: DayDate) -> String {
         weekdays[weekdayIndex(day)]
