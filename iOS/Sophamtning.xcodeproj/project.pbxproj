@@ -11,8 +11,10 @@
 		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
 		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
 		350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F19D55CC253C38C359298A /* SettingsView.swift */; };
+		3FB48805DDC512F2A9B27890 /* NextPickupWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8AF412C35614825019257CF /* NextPickupWidget.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
+		6309A2EBEB0B6F32C74E2AF3 /* BackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */; };
 		6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */; };
 		70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
@@ -72,6 +74,7 @@
 		7F307C543EEA02E99659E697 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
+		A8AF412C35614825019257CF /* NextPickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPickupWidget.swift; sourceTree = "<group>"; };
 		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
 		AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowComponents.swift; sourceTree = "<group>"; };
 		B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SophamtningWidgets.entitlements; sourceTree = "<group>"; };
@@ -80,6 +83,7 @@
 		C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SophamtningWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sophamtning.entitlements; sourceTree = "<group>"; };
 		D049414B36508C1128F2BAAA /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRefresh.swift; sourceTree = "<group>"; };
 		D6B786AF21090DE7863B3899 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D6D00A6E7ADC817B366C21B8 /* SophamtningKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SophamtningKit; path = Packages/SophamtningKit; sourceTree = SOURCE_ROOT; };
 		DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppBrowser.swift; sourceTree = "<group>"; };
@@ -114,6 +118,7 @@
 		39CFD63106C71D7CE9FB8AC4 /* System */ = {
 			isa = PBXGroup;
 			children = (
+				D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */,
 				7F307C543EEA02E99659E697 /* NotificationPresenter.swift */,
 				4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */,
 			);
@@ -156,6 +161,7 @@
 			isa = PBXGroup;
 			children = (
 				FC4BE44B59AE1A33494CA69B /* Info.plist */,
+				A8AF412C35614825019257CF /* NextPickupWidget.swift */,
 				19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */,
 				B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */,
 			);
@@ -337,6 +343,7 @@
 				D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */,
 				0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */,
 				EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */,
+				6309A2EBEB0B6F32C74E2AF3 /* BackgroundRefresh.swift in Sources */,
 				A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */,
 				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,
 				70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */,
@@ -354,6 +361,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3FB48805DDC512F2A9B27890 /* NextPickupWidget.swift in Sources */,
 				D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

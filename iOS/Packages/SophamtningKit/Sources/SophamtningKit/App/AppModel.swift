@@ -26,6 +26,9 @@ public final class AppModel {
     /// Om några väntande notiser inte gick att lägga in, annars `nil`. Försöket upprepas vid nästa körning.
     public private(set) var reminderError: String?
     @ObservationIgnored private let scheduler: any NotificationScheduling
+    /// Ett tunt anrop som laddar om widgeten, till exempel `WidgetCenter.shared.reloadAllTimelines()` i appen.
+    /// Paketet känner inte till WidgetKit. Widgeten läser bara från lagringen, så den laddas om när lagringen ändrats.
+    @ObservationIgnored private let widgetReloader: @MainActor () -> Void
     /// Varför `addresses.json` eller `settings.json` inte går att läsa, annars `nil`. Då skrivs filen aldrig över och inga
     /// notiser tas bort. `corrupt`: innehållet går inte att tolka. `unavailable`: läsningen misslyckades, till exempel skyddad data.
     private enum StoreIssue { case corrupt, unavailable }
@@ -38,8 +41,9 @@ public final class AppModel {
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
     private var scheduleRevision = 0
 
-    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications()) {
+    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), widgetReloader: @escaping @MainActor () -> Void = {}) {
         self.scheduler = scheduler
+        self.widgetReloader = widgetReloader
         self.store = store
         self.now = now
         self.api = api
@@ -103,6 +107,7 @@ public final class AppModel {
             store.schedule(for: address.key).map { (address.key, $0) }
         }, uniquingKeysWith: { first, _ in first })
         scheduleRevision += 1
+        widgetReloader()
     }
 
     /// Filen som inte går att läsa, om någon. Hemskärmen visar då ett eget läge i stället för det tomma.
@@ -153,6 +158,7 @@ public final class AppModel {
             schedules = [:]
             addressesIssue = nil
             scheduleRevision += 1
+            widgetReloader()
             let own = await scheduler.pending().map(\.identifier).filter { NotificationDiff.isOwn(identifier: $0) }
             if !own.isEmpty { await scheduler.cancel(identifiers: own) }
         }
@@ -204,11 +210,14 @@ public final class AppModel {
     private func performRefresh(manual: Bool) async {
         reloadStorageIfNeeded()
         var fetchedAny = false
+        var savedAny = false
         for address in addresses {
             // En adress som tagits bort under tiden hämtas inte.
             guard addresses.contains(where: { $0.key == address.key }) else { continue }
             let outcome = await refresher.refresh(address, now: now(), manual: manual)
             if outcome == .fetched { fetchedAny = true }
+            // Både ett nytt svar och ett noterat misslyckande ändrar det widgeten visar. `skipped` ändrar inget.
+            if outcome != .skipped { savedAny = true }
             if addresses.contains(where: { $0.key == address.key }) {
                 // En schemafil som inte går att läsa ersätter inte det som redan finns i minnet.
                 var current: CachedSchedule?
@@ -232,6 +241,7 @@ public final class AppModel {
             }
             scheduleRevision += 1
         }
+        if savedAny { widgetReloader() }
         if fetchedAny { applyReminders() }
     }
 
@@ -288,7 +298,9 @@ public final class AppModel {
             isPrimary: false,
             addedAt: now()
         )
-        return saveAddresses(AddressList.add(address, to: addresses))
+        guard saveAddresses(AddressList.add(address, to: addresses)) else { return false }
+        widgetReloader()
+        return true
     }
 
     /// Tar bort adressen och dess sparade schema. Går sparandet av listan fel är allt kvar.
@@ -297,6 +309,7 @@ public final class AppModel {
         schedules[key] = nil
         scheduleRevision += 1
         removeStoredSchedule(for: key)
+        widgetReloader()
         applyReminders()
     }
 
@@ -330,11 +343,15 @@ public final class AppModel {
         guard AddressList.validName(name) != nil else { return false }
         // Notisernas text innehåller namnet.
         defer { applyReminders() }
-        return saveAddresses(AddressList.rename(key, to: name, in: addresses))
+        guard saveAddresses(AddressList.rename(key, to: name, in: addresses)) else { return false }
+        // Widgeten visar namnet.
+        widgetReloader()
+        return true
     }
 
     public func setPrimary(_ key: AddressKey) {
         guard saveAddresses(AddressList.setPrimary(key, in: addresses)) else { return }
+        widgetReloader()
         applyReminders()
     }
 
@@ -415,6 +432,7 @@ public final class AppModel {
         schedules[old] = nil
         scheduleRevision += 1
         removeStoredSchedule(for: old)
+        widgetReloader()
         applyReminders()
         return true
     }

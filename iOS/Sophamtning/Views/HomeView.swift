@@ -46,6 +46,9 @@ struct HomeView: View {
             if phase == .active {
                 model.applyReminders()
                 Task { await model.refreshAll(manual: false) }
+            } else if phase == .background {
+                // Bokar nästa bakgrundsuppdatering, tidigast om en timme.
+                BackgroundRefresh.schedule()
             }
         }
         .sheet(item: $sheet, onDismiss: { replacing = nil }) { sheet in

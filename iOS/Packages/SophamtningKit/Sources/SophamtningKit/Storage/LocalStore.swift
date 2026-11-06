@@ -134,6 +134,8 @@ public final class LocalStore: Sendable {
     private func write<T: Encodable>(_ value: T, to path: String) throws {
         let url = directory.appendingPathComponent(path)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try JSONEncoder().encode(value).write(to: url, options: .atomic)
+        // Filerna ska gå att läsa i bakgrunden och från widgeten efter första upplåsningen. Med strängare skydd ger
+        // de bakgrundsuppdateringen och widgeten tomma läsningar medan telefonen är låst.
+        try JSONEncoder().encode(value).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 }

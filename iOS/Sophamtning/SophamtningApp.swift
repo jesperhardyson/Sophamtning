@@ -11,7 +11,10 @@ struct SophamtningApp: App {
         Fonts.register()
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
-        _model = State(initialValue: AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler()))
+        let model = AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler(), widgetReloader: { WidgetReload.reloadAll() })
+        // Uppgiften måste registreras innan appen startat klart.
+        BackgroundRefresh.register(model: model)
+        _model = State(initialValue: model)
     }
 
     var body: some Scene {
