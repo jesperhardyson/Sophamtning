@@ -63,3 +63,24 @@ private func planned(_ id: String, at seconds: TimeInterval, body: String = "Tex
     #expect(!NotificationDiff.isOwn(identifier: "abc-2026-11-09"))
     #expect(!NotificationDiff.isOwn(identifier: ""))
 }
+
+@Test func behalletNotisSomLiggerFramforTasInteBort() {
+    let now = Date(timeIntervalSince1970: 1000)
+    let result = NotificationDiff.diff(desired: [], pendingIds: ["a", "b"], pendingFireDates: ["a": Date(timeIntervalSince1970: 2000), "b": Date(timeIntervalSince1970: 2000)], retain: ["a"], now: now)
+    // Bara den som ska stå kvar behålls. Den andra tas bort som vanligt.
+    #expect(result.removeIds == ["b"])
+    #expect(result.add.isEmpty)
+}
+
+@Test func behalletNotisMedPasseradTidEllerOkandTidTasBort() {
+    let now = Date(timeIntervalSince1970: 1000)
+    let result = NotificationDiff.diff(desired: [], pendingIds: ["a", "b"], pendingFireDates: ["a": Date(timeIntervalSince1970: 900)], retain: ["a", "b"], now: now)
+    #expect(result.removeIds == ["a", "b"])
+}
+
+@Test func behalletNotisErsattsNarPlanenHarEnNyTid() {
+    let now = Date(timeIntervalSince1970: 1000)
+    let result = NotificationDiff.diff(desired: [planned("a", at: 3000)], pendingIds: ["a"], pendingFireDates: ["a": Date(timeIntervalSince1970: 2000)], retain: ["a"], now: now)
+    #expect(result.add.map(\.identifier) == ["a"])
+    #expect(result.removeIds == ["a"])
+}

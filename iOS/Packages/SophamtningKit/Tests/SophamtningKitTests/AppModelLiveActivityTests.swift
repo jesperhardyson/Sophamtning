@@ -681,7 +681,7 @@ private func overdue(_ f: Fixture) {
     #expect(model.handledPickup(key: homeKey, date: monday))
 }
 
-@Test @MainActor func reserventasBortNarAktivitetenAvslutatsEfterStarten() async throws {
+@Test @MainActor func reserventKommerInteTillbakaEfterAttAktivitetenSettsPagaende() async throws {
     let f = try Fixture()
     let model = f.model()
     await apply(model)
@@ -693,6 +693,130 @@ private func overdue(_ f: Fixture) {
     f.activities.setPhase(.dismissed, id: id)
     await apply(model)
     #expect(f.notifications.notification("2026-11-09") == nil)
+}
+
+/// Reserven väntar 18:45. Klockan är sedan 18:10: ordinarie tid 18:00 har passerat, och en ny planering ger ingen vanlig notis.
+@MainActor private func withReserve(_ f: Fixture) async throws -> AppModel {
+    let model = f.model()
+    await apply(model)
+    #expect(f.notifications.isFallback("2026-11-09"))
+    f.clock.set(sundayAt(18 * 60 + 10))
+    return model
+}
+
+private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_sourceLocation) {
+    #expect(f.notifications.isFallback("2026-11-09"), sourceLocation: sourceLocation)
+    #expect(f.notifications.notification("2026-11-09")?.fireDate == sundayAt(18 * 60 + 45), sourceLocation: sourceLocation)
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"], sourceLocation: sourceLocation)
+}
+
+@Test @MainActor func reserventStarKvarNarAktivitetenForsvunnitIBakgrunden() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    f.activities.clearAll()
+    await apply(model, startingActivities: false)
+    reserveKvar(f)
+    #expect(!f.log.all.contains("notis- 2026-11-09"))
+}
+
+@Test @MainActor func reserventStarKvarNarLiveActivityStangsAv() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    await apply(model, startingActivities: false)
+    model.setLiveActivity(false)
+    await model.settleReminders()
+    #expect(f.activities.ids.isEmpty)
+    reserveKvar(f)
+}
+
+@Test @MainActor func reserventStarKvarNarAktivitetenForsvunnitOchStartenMisslyckas() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    f.activities.clearAll()
+    f.activities.setFailing(true)
+    await apply(model)
+    #expect(f.activities.ids.isEmpty)
+    reserveKvar(f)
+}
+
+@Test @MainActor func reserventStarKvarNarErsattningenMisslyckasIForgrunden() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    f.activities.setFailing(true)
+    await apply(model)
+    #expect(f.activities.ids.count == 1)
+    reserveKvar(f)
+}
+
+@Test @MainActor func ingenNyReservSkapasNarIngenVantar() async throws {
+    // Ordinarie tid har passerat och inget väntar: den som inte fick någon notis får ingen reserv heller.
+    let f = try Fixture(now: sundayAt(18 * 60 + 10))
+    f.activities.setFailing(true)
+    await apply(f.model())
+    #expect(f.notifications.notification("2026-11-09") == nil)
+    #expect(f.notifications.dates == ["2026-11-12"])
+}
+
+@Test @MainActor func avstangdaNotiserTarBortReserventAvenEfterOrdinarieTid() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    _ = await model.setNotifications(false, for: homeKey)
+    await model.settleReminders()
+    #expect(f.notifications.dates.isEmpty)
+}
+
+@Test @MainActor func utstalldTarBortReserventAvenEfterOrdinarieTid() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    try f.store.markPlacedOut(PlacedOut(key: homeKey, date: monday), today: DayDate("2026-11-06")!)
+    await apply(model)
+    #expect(f.notifications.dates == ["2026-11-12"])
+}
+
+@Test @MainActor func avslutadUtanBevisStoppasOmstartMenInteReserven() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    let id = try #require(f.activities.ids.first)
+    // Systemet har startat och avslutat aktiviteten, men appen har aldrig sett den pågå.
+    f.activities.setPhase(.dismissed, id: id)
+    await apply(model)
+    #expect(f.store.shownActivities().isEmpty)
+    #expect(f.store.endedActivities() == [PlacedOut(key: homeKey, date: monday)])
+    // Ingen omstart för måndagen, och reserven står kvar.
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
+    reserveKvar(f)
+    // Efter en omstart av appen är det fortfarande så.
+    await apply(f.model())
+    #expect(f.store.shownActivities().isEmpty)
+    reserveKvar(f)
+}
+
+@Test @MainActor func ersattAktivitetMarkerarInteTomningenSomVisadEfterOmstart() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    f.activities.keepsRemoved = true
+    model.rename(homeKey, to: "Stugan")
+    await model.settleReminders()
+    // Den nya aktiviteten är pågående direkt (starttiden har passerat), och den gamla ligger kvar som avslutad hos systemet.
+    await apply(f.model())
+    #expect(f.store.shownActivities() == [PlacedOut(key: homeKey, date: monday)])
+    f.activities.clearAll()
+    try f.store.clearShown()
+    await apply(f.model(), startingActivities: false)
+    #expect(f.store.shownActivities().isEmpty)
+}
+
+@Test @MainActor func hemkortetNamnerReserventNarDenLiggerFramfor() async throws {
+    let f = try Fixture()
+    let model = try await withReserve(f)
+    f.activities.clearAll()
+    await apply(model, startingActivities: false)
+    let home = try #require(model.addresses.first { $0.key == homeKey })
+    #expect(model.reserveNotificationDate(for: home) == sundayAt(18 * 60 + 45))
+    // "Påminnelsen har passerat" gäller inte när en reserv ligger framför.
+    #expect(model.missedReminderText(for: home) == nil)
+    let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate, remindersAllowed: true, liveActivity: nil, liveActivitiesEnabled: true, liveActivityError: nil, missedReminder: nil, reserveAt: model.reserveNotificationDate(for: home))
+    #expect(try #require(content.primary).reminderText == "Reservpåminnelse kl. 18:45")
 }
 
 @Test @MainActor func utstalltTarBortReserventVidNastaPlanering() async throws {

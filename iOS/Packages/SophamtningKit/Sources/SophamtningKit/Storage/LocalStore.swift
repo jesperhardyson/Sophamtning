@@ -16,11 +16,12 @@ public enum StoreRead<Value: Sendable>: Sendable {
 ///
 /// Varje fil skrivs om i sin helhet. Skriver två processer samtidigt till samma fil kan en uppdatering gå förlorad.
 /// `placed-out.json` skrivs också utanför appen, av knappen **Utställt**, och den läses och skrivs därför med
-/// `NSFileCoordinator`. `shown-activities.json` hanteras på samma sätt.
+/// `NSFileCoordinator`. `shown-activities.json` och `ended-activities.json` hanteras på samma sätt.
 public final class LocalStore: Sendable {
     public static let appGroup = "group.se.hardyson.sophamtning"
     private static let placedOutFile = "placed-out.json"
     private static let shownFile = "shown-activities.json"
+    private static let endedFile = "ended-activities.json"
 
     private let directory: URL
 
@@ -96,10 +97,10 @@ public final class LocalStore: Sendable {
         try updateCoordinated(Self.placedOutFile) { saved in saved.filter { $0.date >= today } }
     }
 
-    // MARK: Visade aktiviteter
+    // MARK: Visade och avslutade aktiviteter
 
-    /// Tömningar vars Live Activity har visats. En bortsvept aktivitet startas inte om för samma tömning.
-    /// Går filen inte att läsa är listan tom, och aktiviteten startas: det är den säkra riktningen.
+    /// Tömningar vars Live Activity bevisligen har visats: pågående sedd eller lyckad direktstart. Bara de släcker reservnotisen.
+    /// Går filen inte att läsa är listan tom, och reservnotisen behålls: det är den säkra riktningen.
     public func shownActivities() -> [PlacedOut] {
         if case .value(let saved) = readCoordinated(Self.shownFile) { return saved }
         return []
@@ -107,15 +108,34 @@ public final class LocalStore: Sendable {
 
     /// Lägger till poster och rensar passerade. Finns inget nytt skrivs ingenting.
     public func markShown(_ entries: [PlacedOut], today: DayDate) throws {
-        try updateCoordinated(Self.shownFile) { saved in
-            var current = saved.filter { $0.date >= today }
-            for entry in entries where entry.date >= today && !current.contains(entry) { current.append(entry) }
-            return current
-        }
+        try mark(entries, in: Self.shownFile, today: today)
     }
 
     public func clearShown() throws {
         try updateCoordinated(Self.shownFile) { _ in [] }
+    }
+
+    /// Tömningar vars aktivitet har avslutats eller svepts bort efter sin start. De startas inte om, men det är inget bevis för att
+    /// aktiviteten syntes, så reservnotisen står kvar. Går filen inte att läsa är listan tom, och aktiviteten startas.
+    public func endedActivities() -> [PlacedOut] {
+        if case .value(let saved) = readCoordinated(Self.endedFile) { return saved }
+        return []
+    }
+
+    public func markEnded(_ entries: [PlacedOut], today: DayDate) throws {
+        try mark(entries, in: Self.endedFile, today: today)
+    }
+
+    public func clearEnded() throws {
+        try updateCoordinated(Self.endedFile) { _ in [] }
+    }
+
+    private func mark(_ entries: [PlacedOut], in file: String, today: DayDate) throws {
+        try updateCoordinated(file) { saved in
+            var current = saved.filter { $0.date >= today }
+            for entry in entries where entry.date >= today && !current.contains(entry) { current.append(entry) }
+            return current
+        }
     }
 
     // MARK: Samordnade filer

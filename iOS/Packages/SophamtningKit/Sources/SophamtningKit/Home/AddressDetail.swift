@@ -74,7 +74,7 @@ public struct AddressDetail: Equatable, Sendable {
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när notiser är på och tiden redan passerat.
     public let missedReminder: String?
 
-    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false) -> AddressDetail {
+    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil) -> AddressDetail {
         let today = StockholmClock.today(now: now)
         var asPrimary = address
         asPrimary.isPrimary = true
@@ -128,17 +128,30 @@ public struct AddressDetail: Equatable, Sendable {
             rows: rows,
             fetchedText: fetched,
             webLink: response?.links.web,
-            reminderText: reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            reminderText: reserveAt.map(reserveText) ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
             liveActivityText: liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
         )
     }
 
+    /// Klockslaget för ett ögonblick i svensk tid, "18:45".
+    static func clock(of date: Date) -> String {
+        let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: date)
+        return SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+    }
+
+    /// "Söndag kl. 18:45 inför måndagens tömning, om aktiviteten inte syns." När det är reserven som gäller.
+    static func reserveText(_ reserveAt: Date) -> String {
+        let evening = StockholmClock.today(now: reserveAt)
+        let weekday = SwedishFormat.weekdayName(evening)
+        return "\(weekday.prefix(1).uppercased() + weekday.dropFirst()) kl. \(clock(of: reserveAt)) inför \(SwedishFormat.weekdayName(evening.adding(days: 1)))ens tömning, om aktiviteten inte syns."
+    }
+
     /// Texten vid valet för Live Activity.
     public static func liveActivityText(settings: ReminderSettings) -> String {
         let time = SwedishFormat.clock(minutes: settings.reminderMinutes)
-        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med. Slå på notiser också, så får du en reserv om aktiviteten inte startar."
+        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med. Med notiser på får du också en reserv om du inte bekräftar."
     }
 
     /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.

@@ -17,12 +17,14 @@ public enum NotificationDiff {
     }
 
     /// `pendingBodies` är valfri: med den ersätts även en notis vars text ändrats (till exempel ett nytt namn).
-    /// Saknas en identifierare där räknas texten som oförändrad.
+    /// Saknas en identifierare där räknas texten som oförändrad. `retain` är identifierare som får stå kvar när de ligger framför `now`.
     public static func diff(
         desired: [PlannedNotification],
         pendingIds: Set<String>,
         pendingFireDates: [String: Date],
-        pendingBodies: [String: String] = [:]
+        pendingBodies: [String: String] = [:],
+        retain: Set<String> = [],
+        now: Date = .distantFuture
     ) -> (add: [PlannedNotification], removeIds: [String]) {
         var add: [PlannedNotification] = []
         var remove: Set<String> = []
@@ -42,7 +44,9 @@ public enum NotificationDiff {
                 remove.insert(notification.identifier)
             }
         }
-        remove.formUnion(pendingIds.subtracting(desiredIds))
+        // En väntande notis som ligger framför och ska stå kvar (reserven) tas inte bort även om planen saknar den.
+        let kept = pendingIds.filter { id in retain.contains(id) && (pendingFireDates[id].map { $0 > now } ?? false) }
+        remove.formUnion(pendingIds.subtracting(desiredIds).subtracting(kept))
         return (add, remove.sorted())
     }
 }

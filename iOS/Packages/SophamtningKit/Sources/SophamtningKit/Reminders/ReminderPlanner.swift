@@ -19,11 +19,14 @@ public struct PlannerInput: Sendable {
     public let liveActivitiesAllowed: Bool
     /// Adress och datum för Live Activities som faktiskt finns hos systemet (väntande eller pågående). Saknar standardvärde med avsikt.
     public let existingActivities: Set<PlacedOut>
-    /// Adress och datum där appen vet att aktiviteten syntes (pågående eller startad). Då behövs ingen reservnotis. Saknar
+    /// Adress och datum där aktiviteten bevisligen syntes (pågående sedd eller lyckad direktstart). Då behövs ingen reservnotis. Saknar
     /// standardvärde med avsikt: glöms den skickas en onödig andra påminnelse.
     public let shownActivities: Set<PlacedOut>
+    /// Aktiviteternas egna starttider, så att reserven räknas från den start som faktiskt gäller. Saknas en post används
+    /// påminnelsetiden i inställningarna.
+    public let activityStarts: [PlacedOut: Date]
 
-    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>, shownActivities: Set<PlacedOut>) {
+    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>, shownActivities: Set<PlacedOut>, activityStarts: [PlacedOut: Date] = [:]) {
         self.addresses = addresses
         self.settings = settings
         self.placedOut = placedOut
@@ -31,6 +34,7 @@ public struct PlannerInput: Sendable {
         self.liveActivitiesAllowed = liveActivitiesAllowed
         self.existingActivities = existingActivities
         self.shownActivities = shownActivities
+        self.activityStarts = activityStarts
     }
 }
 
@@ -139,23 +143,17 @@ public enum ReminderPlanner {
 
     /// Reservnotisen kommer så här många minuter efter aktivitetens start, om aktiviteten inte syntes eller bekräftades.
     static let fallbackDelayMinutes = 45
-    /// Senaste klockslag för reservnotisen, i minuter efter midnatt: 23:45.
+    /// Senaste klockslag för reservnotisen, i minuter efter midnatt: 23:45. Påminnelsetiden stannar vid 23:00, så starten är
+    /// aldrig senare än taket.
     static let fallbackLatestMinutes = 23 * 60 + 45
-    /// Från den här starten (23:15) hinner inte 45 minuter före midnatt, och fördröjningen blir kortare.
-    static let lateStartMinutes = 23 * 60 + 15
-    static let lateFallbackDelayMinutes = 15
-    /// Senaste klockslag för reservnotisen vid sen start: 23:59, alltså fortfarande samma dag.
-    static let lateFallbackLatestMinutes = 23 * 60 + 59
 
     static let fallbackTitle = "Har du ställt ut kärlen?"
     static let ordinaryTitle = "Ställ ut kärlen"
 
-    /// Reservnotisens klockslag i minuter efter midnatt, för en start vid `startMinutes` kvällen före. Aldrig över 23:59.
-    static func fallbackMinutes(startMinutes: Int) -> Int {
-        if startMinutes >= lateStartMinutes {
-            return min(startMinutes + lateFallbackDelayMinutes, lateFallbackLatestMinutes)
-        }
-        return min(startMinutes + fallbackDelayMinutes, fallbackLatestMinutes)
+    /// Reservnotisens tid för en aktivitet som startar `start`: 45 minuter senare, högst 23:45 samma dag i svensk tid.
+    static func fallbackDate(start: Date) -> Date {
+        let latest = StockholmClock.date(on: StockholmClock.today(now: start), minutes: fallbackLatestMinutes)
+        return min(start.addingTimeInterval(TimeInterval(fallbackDelayMinutes * 60)), latest)
     }
 
     /// Ogiltig tid ger standardtiden, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
@@ -186,16 +184,15 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) { continue }
-                var minutesOfDay = minutes
+                var fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
                 var title = ordinaryTitle
                 // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse
                 // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
                 if activitiesActive, input.existingActivities.contains(id) {
                     if input.shownActivities.contains(id) { continue }
-                    minutesOfDay = fallbackMinutes(startMinutes: minutes)
+                    fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate)
                     title = fallbackTitle
                 }
-                let fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutesOfDay)
                 guard fireDate > input.now else { continue }
                 notifications.append(PlannedNotification(
                     identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date),
@@ -210,6 +207,26 @@ public enum ReminderPlanner {
         notifications.sort { ($0.fireDate, $0.identifier) < ($1.fireDate, $1.identifier) }
 
         return ReminderPlan(notifications: Array(notifications.prefix(maxNotifications)), liveActivity: liveActivity)
+    }
+
+    /// Notiser som står kvar när deras tid ligger framför även om planen inte längre innehåller dem. Gäller tömningar där den
+    /// ordinarie notistiden har passerat, tömningen finns kvar i schemat och den varken är utställd eller bevisat visad:
+    /// en väntande notis där är reserven, och tas den bort står tömningen utan påminnelse. Planeraren skapar aldrig en ny.
+    /// Adresser med notiser avstängda ingår inte, så avstängda val tar fortfarande bort sina notiser.
+    public static func retainable(_ input: PlannerInput) -> [String: PlacedOut] {
+        let today = StockholmClock.today(now: input.now)
+        let minutes = effectiveMinutes(input.settings)
+        var result: [String: PlacedOut] = [:]
+        for entry in input.addresses where entry.address.notificationsOn {
+            guard let response = entry.schedule?.response else { continue }
+            for pickup in pickups(in: response, today: today) {
+                let id = PlacedOut(key: entry.address.key, date: pickup.date)
+                if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
+                let ordinary = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date)] = id }
+            }
+        }
+        return result
     }
 
     private static func planLiveActivity(_ entries: [PlannerAddress], input: PlannerInput, today: DayDate) -> PlannedLiveActivity? {

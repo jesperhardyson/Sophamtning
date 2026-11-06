@@ -35,6 +35,10 @@ public final class AppModel {
     public private(set) var liveActivityError: String?
     /// Tömningar som redan är påminda: utställda, visade eller med en aktivitet som syns nu. Läses om av `applyReminders()`.
     private var handledPickups: Set<PlacedOut> = []
+    /// Reservnotiser som väntar framför, med sina tider. Läses om av `applyReminders()`.
+    private var reserveNotifications: [PlacedOut: Date] = [:]
+    /// Tömningar med en väntande aktivitet hos systemet. Läses om av `applyReminders()`.
+    private var pendingActivityPickups: Set<PlacedOut> = []
     /// Aktiviteter appen själv har tagit bort. Systemet listar dem en stund som avslutade, och det är inget svep.
     @ObservationIgnored private var removedActivityIds: Set<String> = []
     /// Ett tunt anrop som laddar om widgeten, till exempel `WidgetCenter.shared.reloadAllTimelines()` i appen.
@@ -418,10 +422,21 @@ public final class AppModel {
         handledPickups.contains(PlacedOut(key: key, date: date))
     }
 
-    /// "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen i morgon redan är påmind.
+    /// Tiden för adressens väntande reservnotis, annars `nil`. Reserven kommer om aktiviteten inte syns eller bekräftas.
+    public func reserveNotificationDate(for address: SavedAddress) -> Date? {
+        guard remindersOn(for: address) else { return nil }
+        let current = now()
+        return reserveNotifications.filter { $0.key.key == address.key && $0.value > current }.values.min()
+    }
+
+    /// "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen i morgon redan är påmind,
+    /// aktiviteten väntar eller en reservnotis ligger framför.
     public func missedReminderApplies(to address: SavedAddress) -> Bool {
-        let tomorrow = StockholmClock.today(now: now()).adding(days: 1)
-        return remindersOn(for: address) && !handledPickup(key: address.key, date: tomorrow)
+        let tomorrow = PlacedOut(key: address.key, date: StockholmClock.today(now: now()).adding(days: 1))
+        return remindersOn(for: address)
+            && !handledPickups.contains(tomorrow)
+            && !pendingActivityPickups.contains(tomorrow)
+            && reserveNotifications[tomorrow].map { $0 <= now() } ?? true
     }
 
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när en adress med påminnelser på har tömning i morgon
@@ -540,8 +555,9 @@ public final class AppModel {
         let existing = snapshot.filter(\.phase.countsAsExisting).map(\.activity)
         // En väntande aktivitet vars start har passerat går inte att lita på, så den ersätter ingen notis.
         let counted = existing.filter { !LiveActivityDiff.isOverdue($0, now: current) }
-        // Visad men inte längre kvar: bortsvept eller avslutad. Bara omstarten stoppas, notisen får aldrig försvinna tyst.
-        let stopped = Set(store.shownActivities()).subtracting(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
+        // Visad eller avslutad men inte längre kvar: bortsvept eller avslutad. Bara omstarten stoppas. Notisen rörs inte av det, och
+        // bara en bevisat visad aktivitet släcker reserven (`shownActivities` i planeraren).
+        let stopped = Set(store.shownActivities()).union(store.endedActivities()).subtracting(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
         let desired = reminderPlan(existing: counted, placedOut: placedOut.union(stopped), activitiesAllowed: systemAllows).liveActivity
         let todayContent = ReminderPlanner.activityContent(on: today, input: plannerInput(existing: counted, placedOut: placedOut, activitiesAllowed: systemAllows))
         var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent)
@@ -611,35 +627,46 @@ public final class AppModel {
         let actual = remainingNow.filter { !LiveActivityDiff.isOverdue($0, now: current) }
         let own = actual.filter { $0.key == primary }
         currentLiveActivity = own.first { !$0.isPending } ?? own.min { $0.start < $1.start }
+        pendingActivityPickups = Set(actual.filter(\.isPending).map { PlacedOut(key: $0.key, date: $0.pickupDate) })
         handledPickups = placedOut
             .union(store.shownActivities())
             .union(actual.filter { !$0.isPending }.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
 
+        reserveNotifications = [:]
         // Utan tillstånd rörs inga notiser: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras de igen.
         guard status == .authorized else { return }
         // En passerad väntande aktivitet är inget bevis för en visning, men reservnotisen täcker den med riktig tid.
-        let final = reminderPlan(existing: remainingNow, placedOut: placedOut, activitiesAllowed: systemAllows)
-        await applyNotifications(final.notifications, removing: true)
+        let finalInput = plannerInput(existing: remainingNow, placedOut: placedOut, activitiesAllowed: systemAllows)
+        let final = ReminderPlanner.plan(finalInput)
+        // En reserv som redan väntar och ligger framför står kvar, även när ordinarie tid har passerat och planen saknar den.
+        let retained = ReminderPlanner.retainable(finalInput)
+        let pendingFireDates = await applyNotifications(final.notifications, removing: true, retaining: Set(retained.keys))
+        var reserves: [PlacedOut: Date] = [:]
+        for notification in final.notifications where notification.title == ReminderPlanner.fallbackTitle {
+            reserves[PlacedOut(key: notification.key, date: notification.pickupDate)] = notification.fireDate
+        }
+        for (id, entry) in retained where reserves[entry] == nil {
+            if let fireDate = pendingFireDates[id], fireDate > current { reserves[entry] = fireDate }
+        }
+        reserveNotifications = reserves
     }
 
-    /// Sparar att en tömnings aktivitet har visats. Pågående är bevis, och avslutad efter starttiden också. Är valet av töms listan,
-    /// så att samma tömning kan starta när valet slås på igen. Ett skrivfel gör bara att aktiviteten kan startas igen.
+    /// Sparar vad appen vet om en tömnings aktivitet. Pågående är bevis för att den syntes (`shown`) och släcker reservnotisen.
+    /// Avslutad eller bortsvept efter starten (`ended`) stoppar bara omstarten: den kan ha tagits bort utan att någon såg den.
+    /// Är valet av töms båda listorna, så att samma tömning kan starta när valet slås på igen. Ett skrivfel gör bara att
+    /// aktiviteten kan startas igen.
     private func recordShown(_ snapshot: [SystemActivity], now: Date, today: DayDate) {
         guard settings.liveActivityOn else {
             try? store.clearShown()
+            try? store.clearEnded()
             return
         }
-        let shown = snapshot.filter { item in
-            guard !removedActivityIds.contains(item.activity.id) else { return false }
-            switch item.phase {
-            case .active: return true
-            case .ended, .dismissed: return item.activity.start <= now
-            case .pending, .stale: return false
-            }
-        }
-        let entries = shown.map { PlacedOut(key: $0.activity.key, date: $0.activity.pickupDate) }
+        let candidates = snapshot.filter { !removedActivityIds.contains($0.activity.id) }
+        let shown = candidates.filter { $0.phase == .active }
+        let ended = candidates.filter { ($0.phase == .ended || $0.phase == .dismissed) && $0.activity.start <= now }
         // Även utan nya poster, så att passerade rensas.
-        try? store.markShown(entries, today: today)
+        try? store.markShown(shown.map { PlacedOut(key: $0.activity.key, date: $0.activity.pickupDate) }, today: today)
+        try? store.markEnded(ended.map { PlacedOut(key: $0.activity.key, date: $0.activity.pickupDate) }, today: today)
     }
 
     private func plannerInput(existing: [ExistingActivity], placedOut: Set<PlacedOut>, activitiesAllowed: Bool) -> PlannerInput {
@@ -651,7 +678,8 @@ public final class AppModel {
             liveActivitiesAllowed: activitiesAllowed,
             existingActivities: Set(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) }),
             // En pågående aktivitet syns, och en tidigare visad är sparad. Då behövs ingen reservnotis.
-            shownActivities: Set(store.shownActivities()).union(existing.filter { !$0.isPending }.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
+            shownActivities: Set(store.shownActivities()).union(existing.filter { !$0.isPending }.map { PlacedOut(key: $0.key, date: $0.pickupDate) }),
+            activityStarts: Dictionary(existing.map { (PlacedOut(key: $0.key, date: $0.pickupDate), $0.start) }, uniquingKeysWith: min)
         )
     }
 
@@ -660,14 +688,18 @@ public final class AppModel {
     }
 
     /// Ändrar bara skillnaden mot de väntande notiserna. Med `removing` falskt läggs de bara in, och ingen tas bort.
-    private func applyNotifications(_ desired: [PlannedNotification], removing: Bool) async {
+    /// Svarar med de väntande notisernas tider efter ändringen, per identifierare.
+    @discardableResult
+    private func applyNotifications(_ desired: [PlannedNotification], removing: Bool, retaining: Set<String> = []) async -> [String: Date] {
         // Bara notiser som appen själv skapat räknas, även om schemaläggaren skulle lämna fler.
         let pending = await scheduler.pending().filter { NotificationDiff.isOwn(identifier: $0.identifier) }
         let changes = NotificationDiff.diff(
             desired: desired,
             pendingIds: Set(pending.map(\.identifier)),
             pendingFireDates: Dictionary(pending.compactMap { p in p.fireDate.map { (p.identifier, $0) } }, uniquingKeysWith: { first, _ in first }),
-            pendingBodies: Dictionary(pending.map { ($0.identifier, $0.body) }, uniquingKeysWith: { first, _ in first })
+            pendingBodies: Dictionary(pending.map { ($0.identifier, $0.body) }, uniquingKeysWith: { first, _ in first }),
+            retain: removing ? retaining : [],
+            now: now()
         )
         if removing {
             // En adress med påminnelser på men utan läsbart schema behåller sina väntande notiser tills ett schema finns.
@@ -681,5 +713,9 @@ public final class AppModel {
         }
         let failed = changes.add.isEmpty ? [] : await scheduler.schedule(changes.add)
         reminderError = failed.isEmpty ? nil : "Några påminnelser kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
+        var dates = Dictionary(pending.compactMap { p in p.fireDate.map { (p.identifier, $0) } }, uniquingKeysWith: { first, _ in first })
+        for id in changes.removeIds where !changes.add.contains(where: { $0.identifier == id }) { dates[id] = nil }
+        for notification in changes.add where !failed.contains(notification.identifier) { dates[notification.identifier] = notification.fireDate }
+        return dates
     }
 }

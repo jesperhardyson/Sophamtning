@@ -74,7 +74,8 @@ private func plan(
     existing: Set<PlacedOut> = [],
     shown: Set<PlacedOut> = [],
     withPrimary: Bool = true,
-    reminderMinutes: Int = 1080
+    reminderMinutes: Int = 1080,
+    starts: [PlacedOut: Date] = [:]
 ) -> ReminderPlan {
     let home = address(homeKey, name: "Hemma", primary: withPrimary && !primaryIsOther, notifications: notifications)
     let other = address(otherKey, name: "Stugan", primary: withPrimary && primaryIsOther, notifications: notifications)
@@ -88,8 +89,16 @@ private func plan(
         now: now,
         liveActivitiesAllowed: allowed,
         existingActivities: existing,
-        shownActivities: shown
+        shownActivities: shown,
+        activityStarts: starts
     ))
+}
+
+private func plannerInput(notifications: Bool, now: Date, placedOut: Set<PlacedOut> = [], shown: Set<PlacedOut> = []) -> PlannerInput {
+    PlannerInput(
+        addresses: [PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: notifications), schedule: schedule(homeKey, events: standardEvents))],
+        settings: ReminderSettings(liveActivityOn: true), placedOut: placedOut, now: now, liveActivitiesAllowed: true, existingActivities: [], shownActivities: shown
+    )
 }
 
 /// En enda adress, för tester av innehållet.
@@ -347,22 +356,42 @@ private func mondayNotification(_ p: ReminderPlan) -> PlannedNotification? {
     #expect(changes.removeIds == [fallback.identifier])
 }
 
-/// (start, reserv) som klockslag i minuter efter midnatt.
-private let fallbackCases: [[Int]] = [
-    [900, 945],     // 15:00 -> 15:45
-    [1080, 1125],   // 18:00 -> 18:45
-    [1380, 1425],   // 23:00 -> 23:45
-    [1394, 1425],   // 23:14 -> 23:45 (taket)
-    [1395, 1410],   // 23:15 -> 23:30 (15 minuter)
-    [1410, 1425],   // 23:30 -> 23:45
-    [1425, 1439],   // 23:45 -> 23:59 (taket)
-    [1430, 1439],   // 23:50 -> 23:59
-]
-
 @Test func reservnotisensTidHarTak() {
-    for pair in fallbackCases {
-        #expect(ReminderPlanner.fallbackMinutes(startMinutes: pair[0]) == pair[1], "start \(pair[0])")
-    }
+    // Start 22:59 ger 23:44, 23:00 ger 23:45 och en senare start ger aldrig mer än 23:45.
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T15:00")) == stockholm("2026-11-08T15:45"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T22:59")) == stockholm("2026-11-08T23:44"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T23:00")) == stockholm("2026-11-08T23:45"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T23:30")) == stockholm("2026-11-08T23:45"))
+}
+
+@Test func reserventRaknasFranAktivitetensEgenStart() throws {
+    // Aktiviteten väntar med start 17:00 (en äldre påminnelsetid), fast inställningen nu är 20:00.
+    let id = PlacedOut(key: homeKey, date: day("2026-11-09"))
+    let p = plan(notifications: true, live: true, existing: [id], reminderMinutes: 20 * 60, starts: [id: stockholm("2026-11-08T17:00")])
+    #expect(try #require(mondayNotification(p)).fireDate == stockholm("2026-11-08T17:45"))
+    // Utan känd start används påminnelsetiden.
+    let q = plan(notifications: true, live: true, existing: [id], reminderMinutes: 20 * 60)
+    #expect(try #require(mondayNotification(q)).fireDate == stockholm("2026-11-08T20:45"))
+}
+
+@Test func passeradOrdinarieTidUtanAktivitetGerIngenNotisMenGeRetainable() {
+    let now = stockholm("2026-11-08T18:10")
+    let p = plan(notifications: true, live: true, now: now, existing: [])
+    #expect(mondayNotification(p) == nil)
+    let input = plannerInput(notifications: true, now: now)
+    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"))
+    #expect(ReminderPlanner.retainable(input)[id] == PlacedOut(key: homeKey, date: day("2026-11-09")))
+}
+
+@Test func retainableUtelamnarUtstalldVisadOchAvstangdaNotiser() {
+    let now = stockholm("2026-11-08T18:10")
+    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"))
+    #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: now, placedOut: homeMonday))[id] == nil)
+    #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: now, shown: homeMonday))[id] == nil)
+    // Användaren har stängt av notiserna: inget behålls.
+    #expect(ReminderPlanner.retainable(plannerInput(notifications: false, now: now)).isEmpty)
+    // Före ordinarie tid planeras den vanliga notisen, och inget behöver behållas.
+    #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: stockholm("2026-11-08T17:00")))[id] == nil)
 }
 
 @Test func reservnotisenTakasKlockan2345() throws {
