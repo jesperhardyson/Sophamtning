@@ -33,27 +33,10 @@ private let events = [
     #expect(ScheduleLogic.nextByFraction(events, today: day("2027-01-10")).isEmpty)
 }
 
-@Test func dagarKvarRaknasLokaltInteFranApiet() throws {
-    let url = try #require(Bundle.module.url(forResource: "adress", withExtension: "json", subdirectory: "Fixtures"))
-    let response = try JSONDecoder().decode(AddressResponse.self, from: Data(contentsOf: url))
-    // Det sparade svarets `next` används aldrig: räkna från händelserna och från given dag.
-    let today = day("2026-11-08")
-    let result = ScheduleLogic.nextByFraction(
-        [event("2026-11-11", ["plast"])] + response.events.filter { $0.date < day("2026-11-11") },
-        today: today
-    )
-    let plast = try #require(result.first { $0.fraction == "plast" })
-    #expect(plast.daysUntil == 3)
-    #expect(!response.next.isEmpty)
-}
-
-@Test func nastaPerFraktionAnvanderInteSparatNext() {
-    // Sparat `next` pekar på ett annat datum än händelserna. Bara händelserna räknas.
-    let only = [event("2026-11-15", ["plast"])]
-    let result = ScheduleLogic.nextByFraction(only, today: day("2026-11-10"))
-    #expect(result.count == 1)
-    #expect(result[0].date == day("2026-11-15"))
-    #expect(result[0].daysUntil == 5)
+@Test func dagarKvarRaknasFranGivenDag() throws {
+    let list = [event("2026-11-11", ["plast"])]
+    #expect(try #require(ScheduleLogic.nextByFraction(list, today: day("2026-11-08")).first).daysUntil == 3)
+    #expect(try #require(ScheduleLogic.nextByFraction(list, today: day("2026-11-10")).first).daysUntil == 1)
 }
 
 @Test func nastaPerFraktionGerForstaDatumSorteratMedStabilOrdning() {

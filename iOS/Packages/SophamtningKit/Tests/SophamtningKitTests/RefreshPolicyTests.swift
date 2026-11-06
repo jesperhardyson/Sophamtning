@@ -45,3 +45,15 @@ func enGangITimmenEfterLyckadHamtning(elapsed: TimeInterval, manual: Bool, allow
     #expect(!RefreshPolicy.canFetch(schedule: schedule, now: base.addingTimeInterval(30), manual: true))
     #expect(RefreshPolicy.canFetch(schedule: schedule, now: base.addingTimeInterval(60), manual: true))
 }
+
+@Test(arguments: [false, true])
+func referensIFramtidenEfterLyckadHamtningTillaterHamtning(manual: Bool) {
+    let schedule = CachedSchedule(fetchedAt: at(600), lastAttemptAt: at(600))
+    #expect(RefreshPolicy.canFetch(schedule: schedule, now: base, manual: manual))
+}
+
+@Test(arguments: [false, true])
+func referensIFramtidenEfterMisslyckatForsokTillaterHamtning(manual: Bool) {
+    let schedule = CachedSchedule(fetchedAt: at(-7200), lastAttemptAt: at(600), lastError: .network)
+    #expect(RefreshPolicy.canFetch(schedule: schedule, now: base, manual: manual))
+}

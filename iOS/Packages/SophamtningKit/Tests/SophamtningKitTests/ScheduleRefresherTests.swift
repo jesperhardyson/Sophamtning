@@ -123,13 +123,24 @@ private func makeStore() -> (LocalStore, TempDir) {
     #expect(store.schedule(for: address.key) == before)
 }
 
+/// Ett LocalStore vars skrivningar alltid misslyckas: katalogen är en fil, så schemamappen kan inte skapas.
+private func blockedStore() throws -> (LocalStore, () -> Void) {
+    let blocker = FileManager.default.temporaryDirectory
+        .appendingPathComponent("sophamtning-blockerad-\(UUID().uuidString)")
+    try Data().write(to: blocker)
+    return (LocalStore(directory: blocker), { try? FileManager.default.removeItem(at: blocker) })
+}
+
 @Test func skrivfelGerStorageFailed() async throws {
-    // Katalogen är en fil, så det går inte att skapa schemamappen under den.
-    let temp = TempDir()
-    try Data().write(to: temp.url.deletingLastPathComponent().appendingPathComponent(temp.url.lastPathComponent + ".blockerad"))
-    let blocker = temp.url.deletingLastPathComponent().appendingPathComponent(temp.url.lastPathComponent + ".blockerad")
-    defer { try? FileManager.default.removeItem(at: blocker) }
-    let store = LocalStore(directory: blocker)
+    let (store, cleanup) = try blockedStore()
+    defer { cleanup() }
     let outcome = await ScheduleRefresher(api: StubAPI(.success(try response())), store: store).refresh(address, now: now, manual: false)
+    #expect(outcome == .storageFailed)
+}
+
+@Test func apiFelDarStorageFailedNarForsoketInteGarAttSpara() async throws {
+    let (store, cleanup) = try blockedStore()
+    defer { cleanup() }
+    let outcome = await ScheduleRefresher(api: StubAPI(.failure(APIError.network)), store: store).refresh(address, now: now, manual: false)
     #expect(outcome == .storageFailed)
 }

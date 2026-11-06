@@ -21,6 +21,8 @@ public enum RefreshPolicy {
             required = interval
         }
         guard let reference else { return true }
-        return now.timeIntervalSince(reference) >= required
+        let elapsed = now.timeIntervalSince(reference)
+        // En referenstid i framtiden är ogiltig (klockan har ställts bakåt) och får inte låsa hämtningen.
+        return elapsed < 0 || elapsed >= required
     }
 }

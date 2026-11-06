@@ -11,6 +11,7 @@ public enum RefreshOutcome: Equatable, Sendable {
     case storageFailed
 }
 
+/// Samtidiga anrop för samma adress hanteras inte här. `AppModel` serialiserar dem (uppgift 10).
 public final class ScheduleRefresher: Sendable {
     private let api: any SoporAPI
     private let store: LocalStore
@@ -40,6 +41,7 @@ public final class ScheduleRefresher: Sendable {
         } catch let apiError as APIError {
             failure = apiError
         } catch {
+            // Klienten kastar bara APIError och CancellationError. Något annat är oväntat och har ingen statuskod.
             failure = .unexpected(0)
         }
 
