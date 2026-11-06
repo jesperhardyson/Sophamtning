@@ -215,13 +215,20 @@ private struct AddressRow: View {
                     .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
             }
             Spacer(minLength: 0)
-            if case .upcoming(let pickup) = entry.status {
+            switch entry.status {
+            case .upcoming(let pickup):
                 HStack(spacing: 6) {
                     ForEach(pickup.fractions.prefix(3)) { fraction in
                         FractionIconView(id: fraction.id, info: fraction.info)
                     }
                 }
                 .accessibilityHidden(true)
+            case .loading:
+                // Ett litet kärl i stället för ikonerna. Raden läses upp av sin egen etikett.
+                BinLoaderView(width: 48, showsText: false)
+                    .accessibilityHidden(true)
+            default:
+                EmptyView()
             }
             Image(systemName: "chevron.right")
                 .foregroundStyle(Color.Theme.text2)

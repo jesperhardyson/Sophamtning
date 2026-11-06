@@ -19,7 +19,12 @@ struct PrimaryCard: View {
                 if let text = entry.reminderText {
                     reminderRow(text)
                 }
-            case .noUpcoming, .loading, .failed:
+            case .loading:
+                // Kärlet laddar i kortets yta. Texten under är dekoration, och VoiceOver läser "Hämtar schema".
+                BinLoaderView(textColor: foreground.opacity(0.9))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            case .noUpcoming, .failed:
                 Text(entry.summary)
                     .font(.ui(20, weight: .heavy, relativeTo: .title3))
                     .foregroundStyle(foreground)
