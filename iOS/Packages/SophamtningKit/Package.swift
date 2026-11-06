@@ -13,7 +13,11 @@ let package = Package(
             name: "SophamtningKit",
             resources: [.process("Kommun/Resources")]
         ),
-        .target(name: "SophamtningDesign", dependencies: ["SophamtningKit"]),
+        .target(
+            name: "SophamtningDesign",
+            dependencies: ["SophamtningKit"],
+            resources: [.process("Resources")]
+        ),
         .testTarget(
             name: "SophamtningKitTests",
             dependencies: ["SophamtningKit", "SophamtningDesign"],

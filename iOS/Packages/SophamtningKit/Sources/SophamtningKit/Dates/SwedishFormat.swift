@@ -24,6 +24,21 @@ public enum SwedishFormat {
         return capitalized ? text.prefix(1).uppercased() + text.dropFirst() : text
     }
 
+    /// Veckodagen helt utskriven, "måndag".
+    public static func weekdayName(_ day: DayDate) -> String {
+        weekdays[weekdayIndex(day)]
+    }
+
+    /// Dagens nummer i månaden, "9".
+    public static func dayNumber(_ day: DayDate) -> String {
+        String(day.day)
+    }
+
+    /// Månaden kort och i versaler, "NOV".
+    public static func monthUppercased(_ day: DayDate) -> String {
+        shortMonths[day.month - 1].uppercased()
+    }
+
     /// "Mån 9 nov".
     public static func shortDate(_ day: DayDate) -> String {
         let weekday = shortWeekdays[weekdayIndex(day)]

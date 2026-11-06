@@ -168,6 +168,17 @@ let testURL = URL(string: "https://sopor.hardyson.se/api/v1/adress/uppsala/storg
         #expect(hit.areasUrl == nil)
     }
 
+    @Test(arguments: ["\"\"", "\"   \"", "123", "{}", "\"http://exa mple\""])
+    func trasigtAreasUrlGerTraffUtanLank(_ value: String) async throws {
+        let body = Data("""
+        {"apiVersion":"1","failed":[],"addresses":[{"id":"a_b-1","street":"A","locality":"B",
+        "kommun":"C","source":"s","detail":null,"areasUrl":\(value),"url":"https://sopor.hardyson.se/api/v1/adress/s/a_b-1"}]}
+        """.utf8)
+        let (client, _) = makeClient(body: body)
+        let hit = try #require(try await client.search(query: "a", source: nil).addresses.first)
+        #expect(hit.areasUrl == nil)
+    }
+
     @Test func omradenAvkodasOchArOmraden() async throws {
         let (client, store) = try client(fixture: "omraden")
         let r = try await client.areas(place: "Avesta")
