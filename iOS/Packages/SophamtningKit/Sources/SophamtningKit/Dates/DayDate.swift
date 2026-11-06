@@ -41,19 +41,6 @@ public struct DayDate: Codable, Hashable, Comparable, Sendable {
         return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
     }
 
-    /// Dagen i en datumväljares `DateComponents`. Ger `nil` om år, månad eller dag saknas.
-    public init?(components: DateComponents) {
-        guard let year = components.year, let month = components.month, let day = components.day,
-              let value = DayDate(String(format: "%04d-%02d-%02d", year, month, day))
-        else { return nil }
-        self = value
-    }
-
-    /// År, månad och dag i gregoriansk kalender, till en `MultiDatePicker`.
-    public var components: DateComponents {
-        DateComponents(calendar: Calendar(identifier: .gregorian), year: year, month: month, day: day)
-    }
-
     public var iso: String {
         String(format: "%04d-%02d-%02d", year, month, day)
     }

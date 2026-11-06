@@ -22,29 +22,16 @@ struct AreaFinderSheet: View {
         _finder = State(initialValue: AreaFinder(api: model.api, place: place))
     }
 
-    /// Utan valt datum är inget markerat, så även dagens datum går att välja. Ett nytt tryck väljer om,
-    /// och att trycka på det valda datumet ändrar ingenting.
-    private var dateBinding: Binding<Set<DateComponents>> {
+    /// Kalendern ändrar bara utkastet. Datumväljaren och dagen läses i Europe/Stockholm.
+    private var dateBinding: Binding<Date> {
         Binding(
-            get: { Set(finder.date.map { [$0.components] } ?? []) },
-            set: { picked in
-                let current = finder.date?.components
-                guard let new = picked.first(where: { $0 != current }), let day = DayDate(components: new) else { return }
-                finder.choose(day)
-                showCalendar = false
-            }
+            get: { finder.draft.pickerDate(in: StockholmClock.timeZone) },
+            set: { finder.setDraft(DayDate.from(picked: $0, in: StockholmClock.timeZone)) }
         )
     }
 
-    private var stockholmCalendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = StockholmClock.timeZone
-        calendar.locale = Locale(identifier: "sv_SE")
-        return calendar
-    }
-
-    private var selectableRange: PartialRangeUpTo<Date> {
-        ..<StockholmClock.date(on: finder.latestSelectable, minutes: 23 * 60 + 59)
+    private var selectableRange: PartialRangeThrough<Date> {
+        ...StockholmClock.date(on: finder.latestSelectable, minutes: 23 * 60 + 59)
     }
 
     var body: some View {
@@ -66,11 +53,18 @@ struct AreaFinderSheet: View {
                 dateField
                     .padding(.top, 8)
                 if showCalendar {
-                    MultiDatePicker("Senaste tömning", selection: dateBinding, in: selectableRange)
+                    DatePicker("Senaste tömning", selection: dateBinding, in: selectableRange, displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .labelsHidden()
                         .tint(Color.Theme.primary)
-                        .environment(\.calendar, stockholmCalendar)
                         .environment(\.timeZone, StockholmClock.timeZone)
                         .environment(\.locale, Locale(identifier: "sv_SE"))
+                        .padding(.top, 8)
+                    Button {
+                        withAnimation(.snappy) { showCalendar = false }
+                        finder.find()
+                    } label: { PrimaryButtonLabel(title: "Hitta område") }
+                        .buttonStyle(.plain)
                         .padding(.top, 8)
                 }
                 result
