@@ -17,3 +17,6 @@ xcuserdata/
 *.mobileprovision
 *.provisionprofile
 AuthKey_*
+
+# Engångstest (uppgift 1), committas inte
+iOS/.spike/

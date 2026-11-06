@@ -1,0 +1,126 @@
+{
+  "apiVersion": "1",
+  "addresses": [
+    {
+      "id": "trakt-1",
+      "street": "Askön, Nyhyttan m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Måndag, udda vecka · Trakt 1",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-1"
+    },
+    {
+      "id": "trakt-2",
+      "street": "Skogsbo tätort, Rosse m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Tisdag, udda vecka · Trakt 2",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-2"
+    },
+    {
+      "id": "trakt-3",
+      "street": "Fors, Nordanö, Brogård",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Onsdag, udda vecka · Trakt 3",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-3"
+    },
+    {
+      "id": "trakt-4",
+      "street": "Krylbo stationssidan, Lejde m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Torsdag, udda vecka · Trakt 4",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-4"
+    },
+    {
+      "id": "trakt-5",
+      "street": "Krylbo västra sidan, Morshyttan m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Fredag, udda vecka · Trakt 5",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-5"
+    },
+    {
+      "id": "trakt-6",
+      "street": "Ringänget, Veddarsbo m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Måndag, jämn vecka · Trakt 6",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-6"
+    },
+    {
+      "id": "trakt-7",
+      "street": "Avesta tätort, Östanfors m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Tisdag, jämn vecka · Trakt 7",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-7"
+    },
+    {
+      "id": "trakt-8",
+      "street": "Kaplansgården, Jularbo m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Onsdag, jämn vecka · Trakt 8",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-8"
+    },
+    {
+      "id": "trakt-9",
+      "street": "Kvarnbro, Utsund m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Torsdag, jämn vecka · Trakt 9",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-9"
+    },
+    {
+      "id": "trakt-10",
+      "street": "Horndal tätort, Tyskbo m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Fredag, jämn vecka · Trakt 10",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-10"
+    }
+  ],
+  "failed": []
+}

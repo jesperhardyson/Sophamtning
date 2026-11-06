@@ -1,0 +1,587 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
+		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
+		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
+		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
+		D829D046905BD3FA5C15762E /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */; };
+		F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		217627F28970A38B4F08D3C9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67CD6820911E805EA1898514 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A55A2F89AA9C5355FB4CE698;
+			remoteInfo = SophamtningWidgets;
+		};
+		5545A6B09C3607AB78B92CAA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67CD6820911E805EA1898514 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3D39C7EFE18D0B0FA37FF958;
+			remoteInfo = Sophamtning;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		360961160F082660DFD32353 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningWidgetBundle.swift; sourceTree = "<group>"; };
+		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
+		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SophamtningWidgets.entitlements; sourceTree = "<group>"; };
+		BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SophamtningUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SophamtningWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sophamtning.entitlements; sourceTree = "<group>"; };
+		D049414B36508C1128F2BAAA /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		D6D00A6E7ADC817B366C21B8 /* SophamtningKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SophamtningKit; path = Packages/SophamtningKit; sourceTree = SOURCE_ROOT; };
+		FC4BE44B59AE1A33494CA69B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4C91FCA6B77CD2C5866AD503 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */,
+				62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		84E5D0F40E0D84E0DA9C65A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */,
+				D829D046905BD3FA5C15762E /* SophamtningDesign in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4D7DA47755D74838DFD79873 = {
+			isa = PBXGroup;
+			children = (
+				7A0FE1F3ACCC9DCB17052506 /* Packages */,
+				74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */,
+				A56B39B834D616C72AA4C4A5 /* SophamtningUITests */,
+				8695B78B42B387C7502982F5 /* SophamtningWidgets */,
+				9EA4635974972027A134D901 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */ = {
+			isa = PBXGroup;
+			children = (
+				35136FCF3CCD34E55DE2CA57 /* Info.plist */,
+				CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */,
+				431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */,
+			);
+			path = Sophamtning;
+			sourceTree = "<group>";
+		};
+		7A0FE1F3ACCC9DCB17052506 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				D6D00A6E7ADC817B366C21B8 /* SophamtningKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		8695B78B42B387C7502982F5 /* SophamtningWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				FC4BE44B59AE1A33494CA69B /* Info.plist */,
+				19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */,
+				B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */,
+			);
+			path = SophamtningWidgets;
+			sourceTree = "<group>";
+		};
+		9EA4635974972027A134D901 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				83A75D016861C31D1FFBE57A /* Sophamtning.app */,
+				BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */,
+				C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A56B39B834D616C72AA4C4A5 /* SophamtningUITests */ = {
+			isa = PBXGroup;
+			children = (
+				D049414B36508C1128F2BAAA /* .gitkeep */,
+			);
+			path = SophamtningUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3D39C7EFE18D0B0FA37FF958 /* Sophamtning */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 678906BF6A452E8D56466C13 /* Build configuration list for PBXNativeTarget "Sophamtning" */;
+			buildPhases = (
+				C95C14DB6D35E664CF303D65 /* Sources */,
+				84E5D0F40E0D84E0DA9C65A7 /* Frameworks */,
+				360961160F082660DFD32353 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E96C9281AE689F7BF13EFE22 /* PBXTargetDependency */,
+			);
+			name = Sophamtning;
+			packageProductDependencies = (
+				50F0A16DC6B86080E49E69F0 /* SophamtningKit */,
+				08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */,
+			);
+			productName = Sophamtning;
+			productReference = 83A75D016861C31D1FFBE57A /* Sophamtning.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A55A2F89AA9C5355FB4CE698 /* SophamtningWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5C9D24F2525F2C277FB652F2 /* Build configuration list for PBXNativeTarget "SophamtningWidgets" */;
+			buildPhases = (
+				FB45E9F5B0C3B47CC5EEFB74 /* Sources */,
+				4C91FCA6B77CD2C5866AD503 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SophamtningWidgets;
+			packageProductDependencies = (
+				5660BEC19750E351ACA4A617 /* SophamtningKit */,
+				1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */,
+			);
+			productName = SophamtningWidgets;
+			productReference = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B4F8223F50F21AD9215EF4FD /* SophamtningUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A96C06F54612BB47B9FCEC66 /* Build configuration list for PBXNativeTarget "SophamtningUITests" */;
+			buildPhases = (
+				4C6D7525097D4B185CCACCBB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0D84513E8E2B856700D9B391 /* PBXTargetDependency */,
+			);
+			name = SophamtningUITests;
+			packageProductDependencies = (
+			);
+			productName = SophamtningUITests;
+			productReference = BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		67CD6820911E805EA1898514 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					3D39C7EFE18D0B0FA37FF958 = {
+						DevelopmentTeam = 4WZU5V58ZG;
+						ProvisioningStyle = Automatic;
+					};
+					A55A2F89AA9C5355FB4CE698 = {
+						DevelopmentTeam = 4WZU5V58ZG;
+						ProvisioningStyle = Automatic;
+					};
+					B4F8223F50F21AD9215EF4FD = {
+						DevelopmentTeam = 4WZU5V58ZG;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 3D39C7EFE18D0B0FA37FF958;
+					};
+				};
+			};
+			buildConfigurationList = 773BC1D96DA1E8D86523BA7A /* Build configuration list for PBXProject "Sophamtning" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4D7DA47755D74838DFD79873;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6968C993BFB842501019CFEB /* XCLocalSwiftPackageReference "Packages/SophamtningKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9EA4635974972027A134D901 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3D39C7EFE18D0B0FA37FF958 /* Sophamtning */,
+				A55A2F89AA9C5355FB4CE698 /* SophamtningWidgets */,
+				B4F8223F50F21AD9215EF4FD /* SophamtningUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4C6D7525097D4B185CCACCBB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C95C14DB6D35E664CF303D65 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB45E9F5B0C3B47CC5EEFB74 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0D84513E8E2B856700D9B391 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3D39C7EFE18D0B0FA37FF958 /* Sophamtning */;
+			targetProxy = 5545A6B09C3607AB78B92CAA /* PBXContainerItemProxy */;
+		};
+		E96C9281AE689F7BF13EFE22 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A55A2F89AA9C5355FB4CE698 /* SophamtningWidgets */;
+			targetProxy = 217627F28970A38B4F08D3C9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0C495C2B92B41971974605C8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Sophamtning;
+			};
+			name = Release;
+		};
+		1D2061A55D727A9058734214 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sophamtning/Sophamtning.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Sophamtning/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		302990F0E4627A4C1E464DF4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Sophamtning;
+			};
+			name = Debug;
+		};
+		6F44A9BDCBA97A83590EB36D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SophamtningWidgets/SophamtningWidgets.entitlements;
+				INFOPLIST_FILE = SophamtningWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.widgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7AD1B9F7D5340C22D40EC2F8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 4WZU5V58ZG;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		7DDC064A458F741BD2748A7E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SophamtningWidgets/SophamtningWidgets.entitlements;
+				INFOPLIST_FILE = SophamtningWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.widgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		93AF8DCA0299E718B4030415 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 4WZU5V58ZG;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		DAEFE2C822E5E2A2BD85DF8A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sophamtning/Sophamtning.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Sophamtning/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5C9D24F2525F2C277FB652F2 /* Build configuration list for PBXNativeTarget "SophamtningWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6F44A9BDCBA97A83590EB36D /* Debug */,
+				7DDC064A458F741BD2748A7E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		678906BF6A452E8D56466C13 /* Build configuration list for PBXNativeTarget "Sophamtning" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D2061A55D727A9058734214 /* Debug */,
+				DAEFE2C822E5E2A2BD85DF8A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		773BC1D96DA1E8D86523BA7A /* Build configuration list for PBXProject "Sophamtning" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7AD1B9F7D5340C22D40EC2F8 /* Debug */,
+				93AF8DCA0299E718B4030415 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A96C06F54612BB47B9FCEC66 /* Build configuration list for PBXNativeTarget "SophamtningUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				302990F0E4627A4C1E464DF4 /* Debug */,
+				0C495C2B92B41971974605C8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		6968C993BFB842501019CFEB /* XCLocalSwiftPackageReference "Packages/SophamtningKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SophamtningKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SophamtningDesign;
+		};
+		1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SophamtningDesign;
+		};
+		50F0A16DC6B86080E49E69F0 /* SophamtningKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SophamtningKit;
+		};
+		5660BEC19750E351ACA4A617 /* SophamtningKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SophamtningKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 67CD6820911E805EA1898514 /* Project object */;
+}
