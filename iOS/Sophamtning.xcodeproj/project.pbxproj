@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
+		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
+		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -52,12 +54,14 @@
 		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
 		B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SophamtningWidgets.entitlements; sourceTree = "<group>"; };
 		BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SophamtningUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SophamtningWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sophamtning.entitlements; sourceTree = "<group>"; };
 		D049414B36508C1128F2BAAA /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		D6D00A6E7ADC817B366C21B8 /* SophamtningKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SophamtningKit; path = Packages/SophamtningKit; sourceTree = SOURCE_ROOT; };
+		F6E97966D4E1386A76326E42 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		FC4BE44B59AE1A33494CA69B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -100,6 +104,7 @@
 				35136FCF3CCD34E55DE2CA57 /* Info.plist */,
 				CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */,
 				431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */,
+				BFCFD7497233AB9A4F5792CD /* Views */,
 			);
 			path = Sophamtning;
 			sourceTree = "<group>";
@@ -138,6 +143,15 @@
 				D049414B36508C1128F2BAAA /* .gitkeep */,
 			);
 			path = SophamtningUITests;
+			sourceTree = "<group>";
+		};
+		BFCFD7497233AB9A4F5792CD /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F6E97966D4E1386A76326E42 /* HomeView.swift */,
+				A9662238FFEB7754E74086AF /* PrimaryCard.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -263,6 +277,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,
+				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
 				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
