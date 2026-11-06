@@ -123,9 +123,20 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
 }
 
-@Test func liveActivityPaGerAvenPaminnelsetext() throws {
+@Test func bastaLiveActivityPaLovarInteEnPaminnelsetid() throws {
+    // Live Activity planerar inget förrän uppgift 14, så kortet säger bara att valet är på.
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(reminderMinutes: 1050, liveActivityOn: true))
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 17:30")
+    #expect(try #require(content.primary).reminderText == "Live Activity på")
+}
+
+@Test func notisValetSomIosInteTillaterVisasSomAv() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
+    let denied = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, remindersAllowed: false)
+    #expect(try #require(denied.primary).reminderText == "Påminn mig kvällen före")
+    let liveOnly = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, remindersAllowed: false)
+    #expect(try #require(liveOnly.primary).reminderText == "Live Activity på")
 }
 
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {

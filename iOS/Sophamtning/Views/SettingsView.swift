@@ -2,7 +2,9 @@ import SophamtningDesign
 import SophamtningKit
 import SwiftUI
 
-/// Länken till integritetspolicyn. Policyn publiceras under `sopor.hardyson.se`.
+/// Länken till integritetspolicyn. Policyn publiceras under `sopor.hardyson.se`, men sidan finns inte än: adressen visar
+/// webbplatsens reservsida. Länken är dold tills sidan skapas i uppgift 15, och då ändras konstanten till `true`.
+let privacyPageExists = false
 let privacyLink = WebLink(url: URL(string: "https://sopor.hardyson.se/integritet")!)!
 
 private enum SettingsRoute: Hashable {
@@ -15,6 +17,7 @@ struct SettingsView: View {
     let onClose: () -> Void
 
     @State private var sources: [Source]?
+    @State private var sourcesLoading = true
     @State private var link: WebLink?
 
     private var sourceCount: Int? { sources.map { $0.filter { !$0.testData }.count } }
@@ -58,7 +61,7 @@ struct SettingsView: View {
                 switch route {
                 case .time: ReminderTimeView(model: model)
                 case .primary: PrimaryAddressView(model: model)
-                case .sources: SourcesView(sources: sources, onRetry: { await loadSources() })
+                case .sources: SourcesView(sources: sources, loading: sourcesLoading, onRetry: { await loadSources() })
                 }
             }
             .task { await loadSources() }
@@ -67,7 +70,9 @@ struct SettingsView: View {
     }
 
     private func loadSources() async {
+        sourcesLoading = true
         sources = await model.sourceList()
+        sourcesLoading = false
     }
 
     // MARK: Delar
@@ -107,6 +112,10 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+            if let missed = model.missedReminderText {
+                MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
+                    .padding(.top, 12)
+            }
             Text("Påminnelsetiden gäller kvällen före, mellan 15:00 och 23:00. En Live Activity försvinner senast 12 timmar efter starten, så en sen tid håller den kvar längre på morgonen. Notiser väljer du per adress.")
                 .font(.ui(16, weight: .semibold, relativeTo: .footnote))
                 .foregroundStyle(Color.Theme.text2)
@@ -121,9 +130,11 @@ struct SettingsView: View {
                 NavigationLink(value: SettingsRoute.sources) {
                     SettingsRow(title: "Datakällor", value: sourceCount.map(String.init) ?? "")
                 }
-                ResultDivider()
-                Button { link = privacyLink } label: {
-                    SettingsRow(title: "Integritet", value: "")
+                if privacyPageExists {
+                    ResultDivider()
+                    Button { link = privacyLink } label: {
+                        SettingsRow(title: "Integritet", value: "")
+                    }
                 }
                 ResultDivider()
                 SettingsRow(title: "Version", value: version, showsChevron: false)
@@ -280,6 +291,7 @@ private struct PrimaryAddressView: View {
 /// Källorna från `/kallor`, som en enkel lista, och Wikidata för ortlistan.
 private struct SourcesView: View {
     let sources: [Source]?
+    let loading: Bool
     let onRetry: () async -> Void
 
     var body: some View {
@@ -300,6 +312,17 @@ private struct SourcesView: View {
                             ResultDivider()
                             row("Wikidata (CC0)", detail: "Ortlistan för kommunfrågan")
                         }
+                    } else if loading {
+                        // Medan listan hämtas visas ingen felruta.
+                        HStack(spacing: 12) {
+                            ProgressView()
+                            Text("Hämtar källor…")
+                                .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                                .foregroundStyle(Color.Theme.text2)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     } else {
                         MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
                         Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }

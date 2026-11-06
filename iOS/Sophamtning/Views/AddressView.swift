@@ -16,6 +16,7 @@ struct AddressView: View {
     @State private var renaming = false
     @State private var newName = ""
     @State private var confirmingRemoval = false
+    @ScaledMetric(relativeTo: .headline) private var dateWidth: CGFloat = 100
 
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }
 
@@ -55,7 +56,8 @@ struct AddressView: View {
             schedule: model.schedule(for: key),
             settings: model.settings,
             sourceName: sources.map { sourceName(address.key.source, in: $0) },
-            now: model.currentDate
+            now: model.currentDate,
+            remindersOn: model.remindersOn(for: address)
         )
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -130,6 +132,21 @@ struct AddressView: View {
             VStack(spacing: 12) {
                 MessageCard(style: .warning, icon: "location.slash", title: "Adressen hittas inte längre", message: "Källan känner inte igen adressen. Sök upp den på nytt för att få schemat.")
                 Button(action: onSearchAgain) { PrimaryButtonLabel(title: "Sök igen") }
+            }
+            .padding(.bottom, 20)
+        case .badRequest:
+            // Samma anrop upprepas inte, så det finns ingen Försök igen.
+            MessageCard(
+                style: .warning,
+                icon: "exclamationmark.triangle",
+                title: "Källan godtog inte förfrågan",
+                message: "Förfrågan för den här adressen avvisades. Det betyder inte att adressen saknas, och appen försöker inte igen av sig själv."
+            )
+            .padding(.bottom, 20)
+        case .storageFailed:
+            VStack(spacing: 12) {
+                MessageCard(style: .warning, icon: "externaldrive.badge.xmark", title: "Schemat kunde inte sparas", message: "Det går inte att spara på telefonen just nu, och schemat visas först när det har sparats. Det betyder inte att adressen saknas.")
+                Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
             }
             .padding(.bottom, 20)
         case nil:
@@ -210,6 +227,14 @@ struct AddressView: View {
     @ViewBuilder
     private func reminders(_ detail: AddressDetail) -> some View {
         sectionTitle("Påminnelser")
+        if let error = model.reminderError {
+            MessageCard(style: .warning, icon: "bell.slash", title: "Påminnelser saknas", message: error)
+                .padding(.bottom, 12)
+        }
+        if let missed = detail.missedReminder {
+            MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
+                .padding(.bottom, 12)
+        }
         if model.notificationAuthorization == .denied {
             VStack(alignment: .leading, spacing: 12) {
                 MessageCard(style: .warning, icon: "bell.slash", title: "Notiser är avstängda", message: "Du har stängt av notiser för Sophämtning i iOS.")
@@ -226,7 +251,7 @@ struct AddressView: View {
                 title: "Notis kvällen före",
                 text: detail.reminderText,
                 isOn: Binding(
-                    get: { address?.notificationsOn ?? false },
+                    get: { address.map { model.remindersOn(for: $0) } ?? false },
                     set: { on in
                         model.clearStorageError()
                         Task { _ = await model.setNotifications(on, for: key) }
@@ -297,29 +322,32 @@ struct AddressView: View {
     }
 
     private func scheduleRow(_ row: AddressDetail.Row) -> some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 16) {
                 Text(row.dateText)
                     .font(.ui(18, weight: .heavy, relativeTo: .headline))
                     .foregroundStyle(Color.Theme.text)
-                if let deviation = row.deviation {
-                    Text(deviation)
-                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
-                        .foregroundStyle(Color.Theme.warn)
+                    .frame(width: dateWidth, alignment: .leading)
+                FlowLayout(spacing: 8) {
+                    ForEach(row.fractions) { fraction in
+                        FractionChip(id: fraction.id, info: fraction.info)
+                    }
                 }
-                if let warning = row.warning {
-                    Label(warning, systemImage: "exclamationmark.triangle")
-                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
-                        .foregroundStyle(Color.Theme.warn)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: 100, alignment: .leading)
-            FlowLayout(spacing: 8) {
-                ForEach(row.fractions) { fraction in
-                    FractionChip(id: fraction.id, info: fraction.info)
-                }
+            // Avvikelse och varning tar hela radens bredd, så att ingen text trängs ihop.
+            if let deviation = row.deviation {
+                Text(deviation)
+                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.warn)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            if let warning = row.warning {
+                Label(warning, systemImage: "exclamationmark.triangle")
+                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.warn)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

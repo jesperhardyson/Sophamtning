@@ -23,7 +23,12 @@ public final class AppModel {
     @ObservationIgnored private var queue: Task<Void, Never>?
     /// Systemets tillstånd för notiser, senast läst. Läses om av `applyReminders()`.
     public private(set) var notificationAuthorization: NotificationAuthorization = .notDetermined
+    /// Om några väntande notiser inte gick att lägga in, annars `nil`. Försöket upprepas vid nästa körning.
+    public private(set) var reminderError: String?
     @ObservationIgnored private let scheduler: any NotificationScheduling
+    /// Falskt när `addresses.json` finns men inte går att läsa. Då skrivs filen aldrig över och inga notiser tas bort.
+    @ObservationIgnored private var addressesReadable = true
+    @ObservationIgnored private var settingsReadable = true
     /// Den senaste köade påminnelseuppdateringen, så att två aldrig körs samtidigt.
     @ObservationIgnored private var reminderQueue: Task<Void, Never>?
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
@@ -35,12 +40,59 @@ public final class AppModel {
         self.now = now
         self.api = api
         refresher = ScheduleRefresher(api: api, store: store)
-        let addresses = store.addresses()
+        var readable = true
+        let addresses: [SavedAddress]
+        switch store.addressesState() {
+        case .value(let saved): addresses = saved
+        case .missing: addresses = []
+        case .unreadable:
+            addresses = []
+            readable = false
+        }
+        addressesReadable = readable
         self.addresses = addresses
-        settings = store.settings()
+        switch store.settingsState() {
+        case .value(let saved): settings = saved
+        case .missing: settings = ReminderSettings()
+        case .unreadable:
+            settings = ReminderSettings()
+            settingsReadable = false
+        }
         schedules = Dictionary(addresses.compactMap { address in
             store.schedule(for: address.key).map { (address.key, $0) }
         }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Läser om adresser och inställningar som inte gick att läsa vid uppstart, till exempel skyddad data efter omstart.
+    /// Först när läsningen lyckats ändras något, och dessförinnan skrivs ingen fil över.
+    private func reloadStorageIfNeeded() {
+        if !addressesReadable {
+            switch store.addressesState() {
+            case .value(let saved): adopt(saved)
+            case .missing: adopt([])
+            case .unreadable: break
+            }
+        }
+        if !settingsReadable {
+            switch store.settingsState() {
+            case .value(let saved):
+                settings = saved
+                settingsReadable = true
+            case .missing:
+                settings = ReminderSettings()
+                settingsReadable = true
+            case .unreadable: break
+            }
+        }
+    }
+
+    private func adopt(_ saved: [SavedAddress]) {
+        addresses = saved
+        addressesReadable = true
+        schedules = Dictionary(saved.compactMap { address in
+            store.schedule(for: address.key).map { (address.key, $0) }
+        }, uniquingKeysWith: { first, _ in first })
+        scheduleRevision += 1
     }
 
     /// Alla sparade scheman, för `HomeContent`. Läser `scheduleRevision`, så att vyer följer ändringar.
@@ -76,6 +128,7 @@ public final class AppModel {
     }
 
     private func performRefresh(manual: Bool) async {
+        reloadStorageIfNeeded()
         var fetchedAny = false
         for address in addresses {
             // En adress som tagits bort under tiden hämtas inte.
@@ -83,7 +136,13 @@ public final class AppModel {
             let outcome = await refresher.refresh(address, now: now(), manual: manual)
             if outcome == .fetched { fetchedAny = true }
             if addresses.contains(where: { $0.key == address.key }) {
-                var current = store.schedule(for: address.key)
+                // En schemafil som inte går att läsa ersätter inte det som redan finns i minnet.
+                var current: CachedSchedule?
+                switch store.scheduleState(for: address.key) {
+                case .value(let saved): current = saved
+                case .missing: current = nil
+                case .unreadable: current = schedules[address.key]
+                }
                 if outcome == .storageFailed {
                     lastStorageError = "Kunde inte spara schemat."
                     // Försöket gick inte att spara. Utan en markering i minnet skulle en ny adress stå kvar som "hämtar".
@@ -177,6 +236,10 @@ public final class AppModel {
 
     @discardableResult
     private func saveAddresses(_ updated: [SavedAddress]) -> Bool {
+        guard addressesReadable else {
+            lastStorageError = "Adresserna går inte att läsa just nu. Inget har ändrats."
+            return false
+        }
         do {
             try store.setAddresses(updated)
         } catch {
@@ -224,6 +287,10 @@ public final class AppModel {
 
     @discardableResult
     private func saveSettings(_ updated: ReminderSettings) -> Bool {
+        guard settingsReadable else {
+            lastStorageError = "Inställningarna går inte att läsa just nu. Inget har ändrats."
+            return false
+        }
         do {
             try store.setSettings(updated)
         } catch {
@@ -236,36 +303,79 @@ public final class AppModel {
 
     // MARK: Påminnelser
 
+    /// Notiser är på för adressen och iOS tillåter dem. `notificationsOn` är användarens val och ändras aldrig av systemets
+    /// tillstånd, så den här är det visade läget.
+    public func remindersOn(for address: SavedAddress) -> Bool {
+        address.notificationsOn && notificationAuthorization == .authorized
+    }
+
+    /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när en adress med påminnelser på har tömning i morgon
+    /// och påminnelsetiden redan passerat. Ingen ersättningsnotis skickas, eftersom varje planering annars kunde skicka en ny.
+    public var missedReminderText: String? {
+        _ = scheduleRevision
+        for address in addresses where remindersOn(for: address) {
+            if let text = AddressDetail.missedReminder(events: schedules[address.key]?.response?.events ?? [], settings: settings, now: now()) {
+                return text
+            }
+        }
+        return nil
+    }
+
+    /// Ersätter en adress som källan inte längre känner igen med en nyss sparad. Namn, huvudadress och notisval följer med,
+    /// och den gamla tas bort först när den nya är sparad. Allt sparas i ett steg, så inga dubbla notiser blir kvar.
+    @discardableResult
+    public func replace(_ old: AddressKey, with new: AddressKey) -> Bool {
+        guard old != new,
+              let oldAddress = addresses.first(where: { $0.key == old }),
+              let newAddress = addresses.first(where: { $0.key == new })
+        else { return false }
+        var merged = newAddress
+        merged.displayName = oldAddress.displayName
+        merged.isPrimary = oldAddress.isPrimary
+        merged.notificationsOn = oldAddress.notificationsOn
+        let updated = addresses.compactMap { address -> SavedAddress? in
+            if address.key == old { return nil }
+            return address.key == new ? merged : address
+        }
+        guard saveAddresses(updated) else { return false }
+        schedules[old] = nil
+        scheduleRevision += 1
+        removeStoredSchedule(for: old)
+        applyReminders()
+        return true
+    }
+
     /// Slår notiser för en adress på eller av. Frågan om tillstånd ställs först när de slås på och tillståndet
-    /// inte är avgjort. `denied` betyder att tillstånd saknas, och då är notiserna av. Att stänga av ger alltid `granted`.
-    /// Går sparandet fel är `notificationsOn` oförändrad och `lastStorageError` satt.
+    /// inte är avgjort. `denied` betyder att iOS nekar. `failed` betyder att valet inte gick att spara eller att adressen
+    /// inte finns, och då är `lastStorageError` satt. Att stänga av kräver inget tillstånd.
     public func setNotifications(_ on: Bool, for key: AddressKey) async -> PermissionResult {
         guard on else {
-            setNotificationsOn(false, for: key)
-            return .granted
+            return setNotificationsOn(false, for: key) ? .granted : .failed
         }
+        guard addresses.contains(where: { $0.key == key }) else { return .failed }
         var status = await scheduler.authorization()
         if status == .notDetermined {
             status = await scheduler.requestAuthorization() ? .authorized : .denied
         }
         notificationAuthorization = status
         guard status == .authorized else {
-            setNotificationsOn(false, for: key)
+            // Valet gick inte att göra, så det sparade valet är av. Andra adressers val rörs inte.
+            _ = setNotificationsOn(false, for: key)
             return .denied
         }
-        setNotificationsOn(true, for: key)
-        return .granted
+        return setNotificationsOn(true, for: key) ? .granted : .failed
     }
 
-    private func setNotificationsOn(_ on: Bool, for key: AddressKey) {
-        guard addresses.contains(where: { $0.key == key }) else { return }
+    private func setNotificationsOn(_ on: Bool, for key: AddressKey) -> Bool {
+        guard addresses.contains(where: { $0.key == key }) else { return false }
         let updated = addresses.map { address in
             var copy = address
             if address.key == key { copy.notificationsOn = on }
             return copy
         }
-        guard updated == addresses || saveAddresses(updated) else { return }
+        guard updated == addresses || saveAddresses(updated) else { return false }
         applyReminders()
+        return true
     }
 
     /// Läser tillståndet, kör planeraren och ändrar bara skillnaden mot det som redan är schemalagt.
@@ -284,39 +394,41 @@ public final class AppModel {
     }
 
     private func performApplyReminders() async {
+        reloadStorageIfNeeded()
+        // Går adresserna eller inställningarna inte att läsa vet appen inte vad användaren valt, så inget ändras.
+        guard addressesReadable, settingsReadable else { return }
         let status = await scheduler.authorization()
         notificationAuthorization = status
-        // Har användaren stängt av notiser i iOS Inställningar går reglagen tillbaka till av.
-        if status == .denied, addresses.contains(where: \.notificationsOn) {
-            let updated = addresses.map { address in
-                var copy = address
-                copy.notificationsOn = false
-                return copy
-            }
-            saveAddresses(updated)
-        }
-        let pending = await scheduler.pending()
-        var desired: [PlannedNotification] = []
-        if status == .authorized {
-            let input = PlannerInput(
-                addresses: addresses.map { PlannerAddress(address: $0, schedule: schedules[$0.key]) },
-                settings: settings,
-                placedOut: Set(store.placedOut()),
-                now: now(),
-                // Live Activity kopplas i uppgift 14. Tills dess är de avstängda i planeringen och inga aktiviteter
-                // finns, så att den vanliga notisen alltid skickas och ingen tömning blir utan påminnelse.
-                liveActivitiesAllowed: false,
-                existingActivities: []
-            )
-            desired = ReminderPlanner.plan(input).notifications
-        }
+        // Utan tillstånd rörs inget: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras notiserna igen.
+        guard status == .authorized else { return }
+        // Bara notiser som appen själv skapat räknas, även om schemaläggaren skulle lämna fler.
+        let pending = await scheduler.pending().filter { NotificationDiff.isOwn(identifier: $0.identifier) }
+        let input = PlannerInput(
+            addresses: addresses.map { PlannerAddress(address: $0, schedule: schedules[$0.key]) },
+            settings: settings,
+            placedOut: Set(store.placedOut()),
+            now: now(),
+            // Live Activity kopplas i uppgift 14. Tills dess är de avstängda i planeringen och inga aktiviteter
+            // finns, så att den vanliga notisen alltid skickas och ingen tömning blir utan påminnelse.
+            liveActivitiesAllowed: false,
+            existingActivities: []
+        )
+        let desired = ReminderPlanner.plan(input).notifications
         let changes = NotificationDiff.diff(
             desired: desired,
             pendingIds: Set(pending.map(\.identifier)),
             pendingFireDates: Dictionary(pending.compactMap { p in p.fireDate.map { (p.identifier, $0) } }, uniquingKeysWith: { first, _ in first }),
             pendingBodies: Dictionary(pending.map { ($0.identifier, $0.body) }, uniquingKeysWith: { first, _ in first })
         )
-        if !changes.removeIds.isEmpty { await scheduler.cancel(identifiers: changes.removeIds) }
-        if !changes.add.isEmpty { await scheduler.schedule(changes.add) }
+        // En adress med påminnelser på men utan läsbart schema behåller sina väntande notiser tills ett schema finns.
+        let protected = addresses.filter { $0.notificationsOn && schedules[$0.key]?.response == nil }.map { "\($0.key.fileName)-" }
+        // En ersatt notis läggs in med samma identifierare, som ersätter den gamla. Den tas därför inte bort först.
+        let replaced = Set(changes.add.map(\.identifier))
+        let removals = changes.removeIds.filter { id in
+            !replaced.contains(id) && !protected.contains { id.hasPrefix($0) }
+        }
+        if !removals.isEmpty { await scheduler.cancel(identifiers: removals) }
+        let failed = changes.add.isEmpty ? [] : await scheduler.schedule(changes.add)
+        reminderError = failed.isEmpty ? nil : "Några påminnelser kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
     }
 }

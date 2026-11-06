@@ -1,5 +1,13 @@
 import Foundation
 
+/// Resultatet av att läsa en fil. `missing` är en fil som inte finns, vilket är ett normalt läge. `unreadable` är en fil som
+/// finns men inte går att läsa eller tolka (skadad, eller skyddad data efter omstart). Då får appen inte skriva över den.
+public enum StoreRead<Value: Sendable>: Sendable {
+    case missing
+    case value(Value)
+    case unreadable
+}
+
 /// Lokal lagring som JSON-filer, delad mellan appen och widgeten via App Group.
 /// Skrivningar är atomiska, och en fil som saknas eller är skadad läses som saknad.
 /// Skrivfel kastas, så att anroparen kan visa dem.
@@ -30,6 +38,19 @@ public final class LocalStore: Sendable {
 
     public func addresses() -> [SavedAddress] {
         read([SavedAddress].self, from: "addresses.json") ?? []
+    }
+
+    /// Som `addresses()`, men skiljer en fil som saknas från en som inte går att läsa.
+    public func addressesState() -> StoreRead<[SavedAddress]> {
+        readState([SavedAddress].self, from: "addresses.json")
+    }
+
+    public func settingsState() -> StoreRead<ReminderSettings> {
+        readState(ReminderSettings.self, from: "settings.json")
+    }
+
+    public func scheduleState(for key: AddressKey) -> StoreRead<CachedSchedule> {
+        readState(CachedSchedule.self, from: scheduleFile(key))
     }
 
     public func setAddresses(_ addresses: [SavedAddress]) throws {
@@ -82,6 +103,13 @@ public final class LocalStore: Sendable {
 
     private func scheduleFile(_ key: AddressKey) -> String {
         "schedules/\(key.fileName).json"
+    }
+
+    private func readState<T: Decodable & Sendable>(_ type: T.Type, from path: String) -> StoreRead<T> {
+        let url = directory.appendingPathComponent(path)
+        guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
+        guard let data = try? Data(contentsOf: url), let value = try? JSONDecoder().decode(type, from: data) else { return .unreadable }
+        return .value(value)
     }
 
     private func read<T: Decodable>(_ type: T.Type, from path: String) -> T? {

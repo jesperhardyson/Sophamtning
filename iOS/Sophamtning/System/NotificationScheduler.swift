@@ -32,16 +32,18 @@ struct NotificationScheduler: NotificationScheduling {
             }
     }
 
-    func schedule(_ notifications: [PlannedNotification]) async {
+    func schedule(_ notifications: [PlannedNotification]) async -> [String] {
+        var failed: [String] = []
         for notification in notifications {
             let content = UNMutableNotificationContent()
             content.title = notification.title
             content.body = notification.body
             content.sound = .default
             let request = UNNotificationRequest(identifier: notification.identifier, content: content, trigger: Self.trigger(for: notification.fireDate))
-            // Misslyckas tillägget saknas notisen vid nästa körning, och då läggs den till igen.
-            try? await center.add(request)
+            // Ett misslyckat tillägg rapporteras, så att appen visar det och försöker igen vid nästa körning.
+            do { try await center.add(request) } catch { failed.append(notification.identifier) }
         }
+        return failed
     }
 
     func cancel(identifiers: [String]) async {

@@ -11,7 +11,10 @@ public enum NotificationAuthorization: Equatable, Sendable {
 /// Svaret när användaren slår på notiser för en adress.
 public enum PermissionResult: Equatable, Sendable {
     case granted
+    /// iOS har nekat notiser.
     case denied
+    /// Tillståndet gick bra eller behövdes inte, men valet gick inte att spara, eller adressen finns inte längre.
+    case failed
 }
 
 /// En väntande notis som appen själv har skapat.
@@ -36,7 +39,8 @@ public protocol NotificationScheduling: Sendable {
     func requestAuthorization() async -> Bool
     /// Väntande notiser som appen själv har skapat, inga andra.
     func pending() async -> [PendingNotification]
-    func schedule(_ notifications: [PlannedNotification]) async
+    /// Lägger in notiserna. En notis med samma identifierare ersätter den gamla. Svarar med identifierarna som inte gick att lägga in.
+    func schedule(_ notifications: [PlannedNotification]) async -> [String]
     func cancel(identifiers: [String]) async
 }
 
@@ -46,6 +50,6 @@ public struct DisabledNotifications: NotificationScheduling {
     public func authorization() async -> NotificationAuthorization { .denied }
     public func requestAuthorization() async -> Bool { false }
     public func pending() async -> [PendingNotification] { [] }
-    public func schedule(_ notifications: [PlannedNotification]) async {}
+    public func schedule(_ notifications: [PlannedNotification]) async -> [String] { [] }
     public func cancel(identifiers: [String]) async {}
 }

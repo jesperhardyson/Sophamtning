@@ -8,9 +8,18 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: HomeSheet?
     @State private var path: [AddressKey] = []
+    /// Adressen som ersätts när sökningen "Sök igen" sparar en ny, och adresserna som fanns innan sökningen öppnades.
+    @State private var replacing: AddressKey?
+    @State private var knownKeys: Set<AddressKey> = []
 
     private var content: HomeContent {
-        HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate)
+        HomeContent.make(
+            addresses: model.addresses,
+            schedules: model.cachedSchedules,
+            settings: model.settings,
+            now: model.currentDate,
+            remindersAllowed: model.notificationAuthorization == .authorized
+        )
     }
 
     var body: some View {
@@ -21,6 +30,8 @@ struct HomeView: View {
                 .navigationDestination(for: AddressKey.self) { key in
                     AddressView(model: model, key: key, onSearchAgain: {
                         path = []
+                        replacing = key
+                        knownKeys = Set(model.addresses.map(\.key))
                         sheet = .add
                     })
                 }
@@ -36,7 +47,7 @@ struct HomeView: View {
                 Task { await model.refreshAll(manual: false) }
             }
         }
-        .sheet(item: $sheet) { sheet in
+        .sheet(item: $sheet, onDismiss: { replacing = nil }) { sheet in
             switch sheet {
             case .settings: SettingsView(model: model, onClose: { self.sheet = nil })
             case .add: addFlow(root: .search(source: nil))
@@ -76,6 +87,10 @@ struct HomeView: View {
     /// Adressflödet. Efter en sparad adress stängs arket, och hemskärmen hämtar schemat.
     private func addFlow(root: AddRoute) -> some View {
         AddFlowView(model: model, root: root, onClose: { sheet = nil }, onSaved: {
+            // "Sök igen": den gamla adressen ersätts först nu, när den nya är sparad.
+            if let old = replacing, let new = model.addresses.first(where: { !knownKeys.contains($0.key) })?.key {
+                model.replace(old, with: new)
+            }
             sheet = nil
             Task { await model.refreshAll(manual: false) }
         })
@@ -115,7 +130,7 @@ struct HomeView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
-            PrimaryCard(entry: primary, onReminder: { path.append(primary.key) })
+            PrimaryCard(entry: primary, onOpen: { path.append(primary.key) })
             if !others.isEmpty {
                 Text("Fler adresser")
                     .font(.ui(22, weight: .heavy, relativeTo: .title2))

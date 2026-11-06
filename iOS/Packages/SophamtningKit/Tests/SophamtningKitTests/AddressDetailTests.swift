@@ -83,7 +83,7 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
 }
 
 @Test func tekniskaFelUtanSchemaSagerInteAttAdressenSaknas() {
-    for error in [APIError.sourceUnavailable, .network, .badRequest, .unexpected(500)] {
+    for error in [APIError.sourceUnavailable, .network, .unexpected(500)] {
         let result = detail(CachedSchedule(lastAttemptAt: noon, lastError: error))
         #expect(result.mode == .unavailable)
         #expect(result.notice == .sourceUnavailable)
@@ -139,4 +139,35 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
     let result = AddressDetail.make(address: address, schedule: nil, settings: ReminderSettings(reminderMinutes: 20 * 60 + 15), sourceName: nil, now: noon)
     #expect(result.reminderText == "Kvällen före varje tömning kl. 20:15.")
     #expect(result.liveActivityText.contains("från kl. 20:15"))
+}
+
+@Test func fyrahundraArVarkenNatfelEllerSaknadAdressOchHarEgenText() throws {
+    let none = detail(CachedSchedule(lastAttemptAt: noon, lastError: .badRequest))
+    #expect(none.mode == .unavailable)
+    #expect(none.notice == .badRequest)
+    let saved = detail(try schedule([event("2026-11-09", ["rest"])], error: .badRequest))
+    #expect(saved.mode == .schedule)
+    #expect(saved.notice == .badRequest)
+}
+
+@Test func sparfelSkiljsFranKallfel() throws {
+    #expect(detail(CachedSchedule(lastAttemptAt: noon, lastError: .unexpected(0))).notice == .storageFailed)
+    #expect(detail(CachedSchedule(lastAttemptAt: noon, lastError: .unexpected(503))).notice == .sourceUnavailable)
+}
+
+@Test func missadPaminnelseKravsMorgondagensTomningOchPasseradTid() throws {
+    let tomorrow = try schedule([event("2026-11-07", ["rest"])])
+    let late = StockholmClock.date(on: today, minutes: 18 * 60 + 1)
+    let early = StockholmClock.date(on: today, minutes: 17 * 60 + 59)
+    let text = "Tömning i morgon. Påminnelsen för i kväll har redan passerat."
+    func make(_ now: Date, on: Bool = true, schedule: CachedSchedule) -> AddressDetail {
+        AddressDetail.make(address: address, schedule: schedule, settings: ReminderSettings(), sourceName: nil, now: now, remindersOn: on)
+    }
+    #expect(make(late, schedule: tomorrow).missedReminder == text)
+    #expect(make(early, schedule: tomorrow).missedReminder == nil)
+    #expect(make(late, on: false, schedule: tomorrow).missedReminder == nil)
+    // Tömning först i övermorgon har ingen missad kväll.
+    #expect(make(late, schedule: try schedule([event("2026-11-08", ["rest"])])).missedReminder == nil)
+    // Exakt påminnelsetid räknas som passerad, eftersom planeraren inte schemalägger det.
+    #expect(make(StockholmClock.date(on: today, minutes: 18 * 60), schedule: tomorrow).missedReminder == text)
 }

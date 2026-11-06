@@ -1,6 +1,7 @@
 import SophamtningDesign
 import SophamtningKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct SophamtningApp: App {
@@ -8,6 +9,7 @@ struct SophamtningApp: App {
 
     init() {
         Fonts.register()
+        UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
         _model = State(initialValue: AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler()))
     }

@@ -22,6 +22,10 @@ public struct AddressDetail: Equatable, Sendable {
         case sourceUnavailable
         /// 404: källan känner inte längre igen adressen. Adressen behålls.
         case notFound
+        /// 400: källan godtog inte förfrågan. Det är varken ett nätfel eller en adress som saknas, och samma anrop upprepas inte.
+        case badRequest
+        /// Schemat hämtades men gick inte att spara på telefonen.
+        case storageFailed
     }
 
     /// Nästa hämtning per fraktion, med datum och dagar kvar.
@@ -67,8 +71,10 @@ public struct AddressDetail: Equatable, Sendable {
     public let reminderText: String
     public let liveActivityText: String
     public let isPrimary: Bool
+    /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när notiser är på och tiden redan passerat.
+    public let missedReminder: String?
 
-    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date) -> AddressDetail {
+    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false) -> AddressDetail {
         let today = StockholmClock.today(now: now)
         var asPrimary = address
         asPrimary.isPrimary = true
@@ -88,14 +94,14 @@ public struct AddressDetail: Equatable, Sendable {
 
         let fetched = fetchedText(at: schedule?.fetchedAt, sourceName: sourceName, now: now)
         let notice: Notice?
-        if schedule?.lastError == .notFound {
-            notice = .notFound
-        } else if response == nil, case .failed = entry.status {
-            notice = .sourceUnavailable
-        } else if entry.refreshFailed {
-            notice = .savedShown(fetched: fetched)
-        } else {
-            notice = nil
+        switch schedule?.lastError {
+        case .notFound: notice = .notFound
+        case .badRequest: notice = .badRequest
+        // Ett misslyckat sparande markeras av modellen med `unexpected(0)`.
+        case .unexpected(0): notice = .storageFailed
+        case .some:
+            notice = response == nil ? .sourceUnavailable : .savedShown(fetched: fetched)
+        case nil: notice = nil
         }
 
         let rows = response.map { rows(in: $0, today: today) } ?? []
@@ -125,8 +131,19 @@ public struct AddressDetail: Equatable, Sendable {
             webLink: response?.links.web,
             reminderText: reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
             liveActivityText: "Visas på låsskärmen och i Dynamic Island från kl. \(time). Starten aviseras, och den försvinner senast efter 12 timmar.",
-            isPrimary: address.isPrimary
+            isPrimary: address.isPrimary,
+            missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
         )
+    }
+
+    /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.
+    public static func missedReminder(events: [PickupEvent], settings: ReminderSettings, now: Date) -> String? {
+        let today = StockholmClock.today(now: now)
+        let minutes = ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : 1080
+        guard events.contains(where: { $0.date == today.adding(days: 1) && !$0.fractions.isEmpty }),
+              StockholmClock.date(on: today, minutes: minutes) <= now
+        else { return nil }
+        return "Tömning i morgon. Påminnelsen för i kväll har redan passerat."
     }
 
     /// "Mån 9 nov", eller "ca tors 12 nov" när datumet är beräknat.
