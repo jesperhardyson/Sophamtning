@@ -1,0 +1,357 @@
+{
+  "apiVersion": "1",
+  "today": "2026-11-06",
+  "address": {
+    "id": "storgatan-2_kåge-124167",
+    "street": "Storgatan 2",
+    "locality": "Kåge",
+    "kommun": "Skellefteå kommun",
+    "source": "skelleftea",
+    "detail": null,
+    "selection": "address",
+    "notice": null
+  },
+  "next": [
+    {
+      "fraction": "karl",
+      "name": "Kärl",
+      "color": "#526158",
+      "date": "2026-11-13",
+      "daysUntil": 7,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Kärl – om 7 dagar, fredag 13 november"
+    }
+  ],
+  "summary": "Kärl – om 7 dagar",
+  "events": [
+    {
+      "date": "2026-11-13",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2026-11-27",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2, Fyrfackskärl 4"
+      }
+    },
+    {
+      "date": "2026-12-11",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2026-12-25",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": "Infaller på juldagen – kan flyttas.",
+      "labels": {
+        "karl": "Fyrfackskärl 2, Fyrfackskärl 4"
+      }
+    },
+    {
+      "date": "2027-01-15",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-01-29",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-02-12",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-02-26",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-03-12",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-03-26",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": "Infaller på långfredagen – kan flyttas.",
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-04-09",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-04-23",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-05-07",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-05-21",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-06-04",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-06-18",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-07-02",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-07-16",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-07-30",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-08-13",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-08-27",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-09-10",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-09-24",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-10-08",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-10-22",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    },
+    {
+      "date": "2027-11-05",
+      "fractions": [
+        "karl"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {
+        "karl": "Fyrfackskärl 2"
+      }
+    }
+  ],
+  "bins": [],
+  "fractions": {
+    "karl": {
+      "name": "Kärl",
+      "short": "Kärl",
+      "color": "#526158",
+      "icon": "container"
+    }
+  },
+  "links": {
+    "ics": "https://sopor.hardyson.se/ics/skelleftea/storgatan-2_k%C3%A5ge-124167.ics",
+    "web": "https://sopor.hardyson.se/skelleftea/storgatan-2_k%C3%A5ge-124167"
+  },
+  "updatedAt": "2026-11-06"
+}

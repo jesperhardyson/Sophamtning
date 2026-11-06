@@ -13,7 +13,13 @@ let package = Package(
         .target(name: "SophamtningDesign", dependencies: ["SophamtningKit"]),
         .testTarget(
             name: "SophamtningKitTests",
-            dependencies: ["SophamtningKit", "SophamtningDesign"]
+            dependencies: ["SophamtningKit", "SophamtningDesign"],
+            resources: [.copy("Fixtures")]
+        ),
+        // Kontraktstester mot produktions-API:t. Körs bara med SOPOR_LIVE=1.
+        .testTarget(
+            name: "ContractTests",
+            dependencies: ["SophamtningKit"]
         ),
     ]
 )
