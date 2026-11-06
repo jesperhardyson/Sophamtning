@@ -480,3 +480,107 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(LocalStore(directory: temp.url).addresses().first(where: \.isPrimary)?.key == other)
     // Byte av huvudadress ändrar inga väntande notiser, eftersom de gäller per adress.
 }
+
+@Test @MainActor func trycketMedIndragetTillstandRorInteValetOchNotiserna() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    let before = scheduler.planned
+    #expect(before.count > 1)
+
+    scheduler.setStatus(.denied)
+    model.applyReminders()
+    await model.settleReminders()
+    // Ett tryck på reglaget medan tillståndet är indraget ändrar ingenting, och ingen ny fråga ställs.
+    #expect(await model.setNotifications(true, for: key) == .denied)
+    await model.settleReminders()
+    #expect(scheduler.requests == 0)
+    #expect(model.addresses[0].notificationsOn)
+    #expect(LocalStore(directory: temp.url).addresses()[0].notificationsOn)
+    #expect(scheduler.planned == before)
+
+    scheduler.setStatus(.authorized)
+    model.applyReminders()
+    await model.settleReminders()
+    #expect(scheduler.planned == before)
+    #expect(scheduler.cancelled.isEmpty)
+    #expect(model.remindersOn(for: model.addresses[0]))
+}
+
+@Test @MainActor func skadadAdressfilGerEgetLageDarForsokIgenLaserOm() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    let before = scheduler.planned
+    let file = temp.url.appendingPathComponent("addresses.json")
+    let good = try Data(contentsOf: file)
+    try Data("skräp".utf8).write(to: file)
+
+    let restarted = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(restarted.storageProblem == .addressesUnreadable)
+    restarted.retryStorage()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == .addressesUnreadable)
+    #expect(try Data(contentsOf: file) == Data("skräp".utf8))
+
+    try good.write(to: file)
+    restarted.retryStorage()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == nil)
+    #expect(restarted.addresses.count == 1)
+    #expect(scheduler.planned == before)
+}
+
+@Test @MainActor func borjaOmFlyttarSkadadFilTarBortEgnaNotiserOchLaterAnvandarenLaggaTill() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    #expect(!scheduler.planned.isEmpty)
+    let file = temp.url.appendingPathComponent("addresses.json")
+    try Data("skräp".utf8).write(to: file)
+
+    let restarted = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(restarted.storageProblem == .addressesUnreadable)
+    await restarted.startOver()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == nil)
+    #expect(restarted.addresses.isEmpty)
+    // Den skadade filen finns kvar åt sidan, och den ursprungliga platsen är ledig.
+    let files = try FileManager.default.contentsOfDirectory(atPath: temp.url.path)
+    let aside = try #require(files.first { $0.hasPrefix("addresses.json.skadad-") })
+    #expect(try Data(contentsOf: temp.url.appendingPathComponent(aside)) == Data("skräp".utf8))
+    #expect(!FileManager.default.fileExists(atPath: file.path))
+    // Appens notiser är borta, främmande notiser rördes inte.
+    #expect(scheduler.planned.isEmpty)
+    #expect(!scheduler.cancelled.contains(scheduler.foreign))
+    // Nu går det att lägga till en adress igen.
+    #expect(restarted.add(hit()))
+    #expect(restarted.addresses.count == 1)
+}
+
+@Test @MainActor func borjaOmMedSkadadeInstallningarAnvanderStandardOchBehallerAdresserna() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    #expect(model.setReminderMinutes(19 * 60))
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    let file = temp.url.appendingPathComponent("settings.json")
+    try Data("skräp".utf8).write(to: file)
+
+    let restarted = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(restarted.storageProblem == .settingsUnreadable)
+    await restarted.startOver()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == nil)
+    #expect(restarted.settings == ReminderSettings())
+    #expect(restarted.addresses.count == 1)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: temp.url.path).contains { $0.hasPrefix("settings.json.skadad-") })
+    #expect(restarted.setReminderMinutes(20 * 60))
+}

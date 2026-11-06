@@ -27,8 +27,8 @@ public final class AppModel {
     public private(set) var reminderError: String?
     @ObservationIgnored private let scheduler: any NotificationScheduling
     /// Falskt när `addresses.json` finns men inte går att läsa. Då skrivs filen aldrig över och inga notiser tas bort.
-    @ObservationIgnored private var addressesReadable = true
-    @ObservationIgnored private var settingsReadable = true
+    private var addressesReadable = true
+    private var settingsReadable = true
     /// Den senaste köade påminnelseuppdateringen, så att två aldrig körs samtidigt.
     @ObservationIgnored private var reminderQueue: Task<Void, Never>?
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
@@ -93,6 +93,57 @@ public final class AppModel {
             store.schedule(for: address.key).map { (address.key, $0) }
         }, uniquingKeysWith: { first, _ in first })
         scheduleRevision += 1
+    }
+
+    /// Filen som inte går att läsa, om någon. Hemskärmen visar då ett eget läge i stället för det tomma.
+    public enum StorageProblem: Equatable, Sendable {
+        case addressesUnreadable
+        case settingsUnreadable
+    }
+
+    public var storageProblem: StorageProblem? {
+        if !addressesReadable { return .addressesUnreadable }
+        if !settingsReadable { return .settingsUnreadable }
+        return nil
+    }
+
+    /// "Försök igen": läser om filerna som inte gick att läsa.
+    public func retryStorage() {
+        reloadStorageIfNeeded()
+        scheduleRevision += 1
+        applyReminders()
+    }
+
+    /// "Börja om", efter bekräftelse. Den skadade filen flyttas åt sidan och raderas inte. Är det adresserna börjar appen
+    /// utan sparade adresser, och appens väntande notiser tas bort. Är det inställningarna används standardinställningarna.
+    /// Går det inte att flytta filen ändras inget och `lastStorageError` är satt.
+    public func startOver() async {
+        let date = now()
+        if !addressesReadable {
+            do {
+                try store.moveAsideAddresses(at: date)
+            } catch {
+                lastStorageError = "Kunde inte flytta den skadade filen. Inget har ändrats."
+                return
+            }
+            addresses = []
+            schedules = [:]
+            addressesReadable = true
+            scheduleRevision += 1
+            let own = await scheduler.pending().map(\.identifier).filter { NotificationDiff.isOwn(identifier: $0) }
+            if !own.isEmpty { await scheduler.cancel(identifiers: own) }
+        }
+        if !settingsReadable {
+            do {
+                try store.moveAsideSettings(at: date)
+            } catch {
+                lastStorageError = "Kunde inte flytta den skadade filen. Inget har ändrats."
+                return
+            }
+            settings = ReminderSettings()
+            settingsReadable = true
+        }
+        applyReminders()
     }
 
     /// Alla sparade scheman, för `HomeContent`. Läser `scheduleRevision`, så att vyer följer ändringar.
@@ -358,11 +409,9 @@ public final class AppModel {
             status = await scheduler.requestAuthorization() ? .authorized : .denied
         }
         notificationAuthorization = status
-        guard status == .authorized else {
-            // Valet gick inte att göra, så det sparade valet är av. Andra adressers val rörs inte.
-            _ = setNotificationsOn(false, for: key)
-            return .denied
-        }
+        // Nekas tillstånd ändras aldrig `notificationsOn`. Valet är kvar och visas som av, så att notiserna planeras igen
+        // när tillståndet kommer tillbaka.
+        guard status == .authorized else { return .denied }
         return setNotificationsOn(true, for: key) ? .granted : .failed
     }
 

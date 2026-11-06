@@ -11,6 +11,7 @@ struct HomeView: View {
     /// Adressen som ersätts när sökningen "Sök igen" sparar en ny, och adresserna som fanns innan sökningen öppnades.
     @State private var replacing: AddressKey?
     @State private var knownKeys: Set<AddressKey> = []
+    @State private var confirmingStartOver = false
 
     private var content: HomeContent {
         HomeContent.make(
@@ -61,7 +62,7 @@ struct HomeView: View {
             Color.Theme.bg.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    toolbar(showsAdd: content.primary != nil)
+                    if model.storageProblem == nil { toolbar(showsAdd: content.primary != nil) }
                     if let error = model.lastStorageError {
                         // Ett felmeddelande i flödet, inte en ruta som stör mitt i användningen.
                         Button { model.clearStorageError() } label: {
@@ -70,7 +71,10 @@ struct HomeView: View {
                         .buttonStyle(.plain)
                         .padding(.top, 12)
                     }
-                    if let primary = content.primary {
+                    if let problem = model.storageProblem {
+                        // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
+                        storageProblem(problem)
+                    } else if let primary = content.primary {
                         filled(primary: primary, others: content.others)
                     } else {
                         empty
@@ -97,6 +101,41 @@ struct HomeView: View {
     }
 
     // MARK: Delar
+
+    private func storageProblem(_ problem: AppModel.StorageProblem) -> some View {
+        let addresses = problem == .addressesUnreadable
+        return VStack(alignment: .leading, spacing: 16) {
+            Text(addresses ? "Dina sparade adresser kunde inte läsas" : "Dina inställningar kunde inte läsas")
+                .font(.brand(30, relativeTo: .largeTitle))
+                .foregroundStyle(Color.Theme.text)
+                .padding(.top, 32)
+                .accessibilityAddTraits(.isHeader)
+            MessageCard(
+                style: .warning,
+                icon: "externaldrive.badge.xmark",
+                title: "Inget har raderats",
+                message: "Filen på telefonen är skadad eller går inte att nå just nu, till exempel direkt efter en omstart. Försök igen. Fungerar det inte kan du börja om."
+            )
+            Button { model.retryStorage() } label: { PrimaryButtonLabel(title: "Försök igen") }
+            Button { confirmingStartOver = true } label: {
+                Text("Börja om")
+                    .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                    .foregroundStyle(Color.Theme.primary)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+            }
+        }
+        .confirmationDialog(addresses ? "Börja om utan sparade adresser?" : "Använda standardinställningarna?", isPresented: $confirmingStartOver, titleVisibility: .visible) {
+            Button(addresses ? "Ta bort sparade adresser och börja om" : "Använd standardinställningar", role: .destructive) {
+                model.clearStorageError()
+                Task { await model.startOver() }
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text(addresses
+                ? "Dina sparade adresser tas bort från appen och appens väntande påminnelser avbryts. Den skadade filen sparas åt sidan på telefonen. Därefter kan du lägga till adresser igen."
+                : "Påminnelsetid och Live Activity återställs till standard (kl. 18:00, Live Activity av). Dina adresser behålls. Den skadade filen sparas åt sidan på telefonen.")
+        }
+    }
 
     private func toolbar(showsAdd: Bool) -> some View {
         HStack(spacing: 12) {

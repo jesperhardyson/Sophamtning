@@ -140,7 +140,7 @@ struct AddressView: View {
                 style: .warning,
                 icon: "exclamationmark.triangle",
                 title: "Källan godtog inte förfrågan",
-                message: "Förfrågan för den här adressen avvisades. Det betyder inte att adressen saknas, och appen försöker inte igen av sig själv."
+                message: "Förfrågan för den här adressen avvisades. Det betyder inte att adressen saknas. Appen hämtar schemat på nytt som vanligt, högst en gång i timmen."
             )
             .padding(.bottom, 20)
         case .storageFailed:

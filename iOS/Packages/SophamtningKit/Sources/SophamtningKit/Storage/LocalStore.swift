@@ -99,6 +99,17 @@ public final class LocalStore: Sendable {
         }
     }
 
+    /// Flyttar en fil som inte går att läsa åt sidan (`<namn>.skadad-<tid>`) i stället för att radera den.
+    public func moveAsideAddresses(at date: Date) throws { try moveAside("addresses.json", at: date) }
+    public func moveAsideSettings(at date: Date) throws { try moveAside("settings.json", at: date) }
+
+    private func moveAside(_ path: String, at date: Date) throws {
+        let source = directory.appendingPathComponent(path)
+        guard FileManager.default.fileExists(atPath: source.path) else { return }
+        let stamp = Int(date.timeIntervalSince1970)
+        try FileManager.default.moveItem(at: source, to: directory.appendingPathComponent("\(path).skadad-\(stamp)"))
+    }
+
     // MARK: Filer
 
     private func scheduleFile(_ key: AddressKey) -> String {

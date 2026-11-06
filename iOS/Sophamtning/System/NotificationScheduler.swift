@@ -12,7 +12,8 @@ struct NotificationScheduler: NotificationScheduling {
         case .notDetermined: .notDetermined
         case .authorized, .provisional, .ephemeral: .authorized
         case .denied: .denied
-        @unknown default: .denied
+        // Ett okänt tillstånd visas inte som nekat. Då rörs inga val, och tillståndet frågas om vid nästa påslag.
+        @unknown default: .notDetermined
         }
     }
 
