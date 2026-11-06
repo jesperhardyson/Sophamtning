@@ -104,7 +104,7 @@ public struct AddressDetail: Equatable, Sendable {
         case nil: notice = nil
         }
 
-        let rows = response.map { rows(in: $0, today: today) } ?? []
+        let scheduleRows = response.map { rows(in: $0, today: today) } ?? []
         let bins = response.map { response in
             ScheduleLogic.nextByFraction(response.events, today: today).map { pickup in
                 Bin(
@@ -123,9 +123,9 @@ public struct AddressDetail: Equatable, Sendable {
             mode: mode,
             notice: notice,
             next: next,
-            nextWarning: rows.first(where: { $0.date == next?.date })?.warning,
+            nextWarning: scheduleRows.first(where: { $0.date == next?.date })?.warning,
             bins: bins,
-            rows: rows,
+            rows: scheduleRows,
             fetchedText: fetched,
             webLink: response?.links.web,
             reminderText: reserveAt.map(reserveText) ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
