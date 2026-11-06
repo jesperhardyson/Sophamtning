@@ -7,6 +7,7 @@ struct HomeView: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: HomeSheet?
+    @State private var path: [AddressKey] = []
 
     private var content: HomeContent {
         HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate)
@@ -14,6 +15,37 @@ struct HomeView: View {
 
     var body: some View {
         let content = content
+        NavigationStack(path: $path) {
+            screen(content)
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: AddressKey.self) { key in
+                    AddressView(model: model, key: key, onSearchAgain: {
+                        path = []
+                        sheet = .add
+                    })
+                }
+        }
+        .task {
+            model.applyReminders()
+            await model.refreshAll(manual: false)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.
+            if phase == .active {
+                model.applyReminders()
+                Task { await model.refreshAll(manual: false) }
+            }
+        }
+        .sheet(item: $sheet) { sheet in
+            switch sheet {
+            case .settings: SettingsView(model: model, onClose: { self.sheet = nil })
+            case .add: addFlow(root: .search(source: nil))
+            case .kommun: addFlow(root: .kommun)
+            }
+        }
+    }
+
+    private func screen(_ content: HomeContent) -> some View {
         ZStack {
             Color.Theme.bg.ignoresSafeArea()
             ScrollView {
@@ -38,17 +70,6 @@ struct HomeView: View {
                 .padding(.bottom, 24)
             }
             .refreshable { await model.refreshAll(manual: true) }
-        }
-        .task { await model.refreshAll(manual: false) }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await model.refreshAll(manual: false) } }
-        }
-        .sheet(item: $sheet) { sheet in
-            switch sheet {
-            case .settings: SettingsSheet()
-            case .add: addFlow(root: .search(source: nil))
-            case .kommun: addFlow(root: .kommun)
-            }
         }
     }
 
@@ -94,8 +115,7 @@ struct HomeView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
-            // Påminnelsekortet kopplas i uppgift 12. Tills dess gör det ingenting.
-            PrimaryCard(entry: primary, onReminder: {})
+            PrimaryCard(entry: primary, onReminder: { path.append(primary.key) })
             if !others.isEmpty {
                 Text("Fler adresser")
                     .font(.ui(22, weight: .heavy, relativeTo: .title2))
@@ -105,8 +125,10 @@ struct HomeView: View {
                     .accessibilityAddTraits(.isHeader)
                 VStack(spacing: 12) {
                     ForEach(others) { entry in
-                        // Raden öppnar inget än. Adressvyn kopplas i uppgift 12.
-                        AddressRow(entry: entry)
+                        NavigationLink(value: entry.key) {
+                            AddressRow(entry: entry)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -239,30 +261,6 @@ private struct AddressRow: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.accessibilityLabel)
-    }
-}
-
-/// Inställningar i sin enklaste form tills uppgift 12 bygger skärmen. Visar bara att appen är inofficiell.
-private struct SettingsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                MessageCard(
-                    style: .neutral,
-                    icon: "info.circle",
-                    title: "Inofficiell app",
-                    message: "Appen är inte kopplad till någon kommun. Vid avvikelser gäller kommunens information."
-                )
-                Spacer()
-            }
-            .padding(24)
-            .background(Color.Theme.bg)
-            .navigationTitle("Inställningar")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Klar") { dismiss() } }
-        }
     }
 }
 

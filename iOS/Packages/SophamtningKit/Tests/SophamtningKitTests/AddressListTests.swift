@@ -61,3 +61,27 @@ private func address(_ id: String, primary: Bool = false, added: TimeInterval) -
     let list = AddressList.add(address("c", added: 3), to: [address("a", added: 2), address("b", added: 1)])
     #expect(list.filter(\.isPrimary).map(\.key.id) == ["b"])
 }
+
+@Test func namnetTrimmasOchKravsInteVaraTomt() {
+    #expect(AddressList.validName("  Stugan ") == "Stugan")
+    #expect(AddressList.validName("") == nil)
+    #expect(AddressList.validName("   \n ") == nil)
+}
+
+@Test func namnetArHogst60Tecken() {
+    #expect(AddressList.validName(String(repeating: "å", count: 60)) != nil)
+    #expect(AddressList.validName(String(repeating: "å", count: 61)) == nil)
+}
+
+@Test func nyttNamnAndrarBaraDenAdressen() {
+    let list = [address("a", primary: true, added: 1), address("b", added: 2)]
+    let result = AddressList.rename(list[1].key, to: " Stugan ", in: list)
+    #expect(result.map(\.displayName) == [list[0].displayName, "Stugan"])
+    #expect(result.map(\.isPrimary) == [true, false])
+}
+
+@Test func ogiltigtNamnEllerOkandNyckelAndrarInget() {
+    let list = [address("a", primary: true, added: 1)]
+    #expect(AddressList.rename(list[0].key, to: "  ", in: list) == list)
+    #expect(AddressList.rename(AddressKey(source: "x", id: "y"), to: "Stugan", in: list) == list)
+}

@@ -67,4 +67,9 @@ public enum SwedishFormat {
     public static func estimated(_ text: String, _ isEstimated: Bool) -> String {
         isEstimated ? "ca \(text)" : text
     }
+
+    /// Klockslaget för minuter efter midnatt, "18:00".
+    public static func clock(minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
+    }
 }

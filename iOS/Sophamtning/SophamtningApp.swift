@@ -9,7 +9,7 @@ struct SophamtningApp: App {
     init() {
         Fonts.register()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
-        _model = State(initialValue: AppModel(api: SoporClient(version: version), store: LocalStore.shared()))
+        _model = State(initialValue: AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler()))
     }
 
     var body: some Scene {

@@ -10,6 +10,7 @@
 		0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49713674AF12521818193251 /* AreaFinderSheet.swift */; };
 		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
 		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
+		350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F19D55CC253C38C359298A /* SettingsView.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
 		6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */; };
@@ -21,9 +22,11 @@
 		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
 		D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */; };
 		D829D046905BD3FA5C15762E /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */; };
+		E52B35185576088B07E7F7AA /* AddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */; };
 		EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */; };
 		EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D5502E2E1A53F977DC24C47 /* SearchView.swift */; };
 		F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */; };
+		F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,13 +65,16 @@
 		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
 		49713674AF12521818193251 /* AreaFinderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaFinderSheet.swift; sourceTree = "<group>"; };
+		4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
 		4D5502E2E1A53F977DC24C47 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressView.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
 		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
 		AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowComponents.swift; sourceTree = "<group>"; };
 		B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SophamtningWidgets.entitlements; sourceTree = "<group>"; };
 		BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SophamtningUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F19D55CC253C38C359298A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SophamtningWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sophamtning.entitlements; sourceTree = "<group>"; };
 		D049414B36508C1128F2BAAA /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
@@ -103,6 +109,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		39CFD63106C71D7CE9FB8AC4 /* System */ = {
+			isa = PBXGroup;
+			children = (
+				4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */,
+			);
+			path = System;
+			sourceTree = "<group>";
+		};
 		4D7DA47755D74838DFD79873 = {
 			isa = PBXGroup;
 			children = (
@@ -121,6 +135,7 @@
 				35136FCF3CCD34E55DE2CA57 /* Info.plist */,
 				CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */,
 				431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */,
+				39CFD63106C71D7CE9FB8AC4 /* System */,
 				BFCFD7497233AB9A4F5792CD /* Views */,
 			);
 			path = Sophamtning;
@@ -165,6 +180,7 @@
 		BFCFD7497233AB9A4F5792CD /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */,
 				863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */,
 				49713674AF12521818193251 /* AreaFinderSheet.swift */,
 				F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */,
@@ -174,6 +190,7 @@
 				E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */,
 				A9662238FFEB7754E74086AF /* PrimaryCard.swift */,
 				4D5502E2E1A53F977DC24C47 /* SearchView.swift */,
+				C2F19D55CC253C38C359298A /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -313,6 +330,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E52B35185576088B07E7F7AA /* AddressView.swift in Sources */,
 				D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */,
 				0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */,
 				EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */,
@@ -320,8 +338,10 @@
 				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,
 				70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */,
 				6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */,
+				F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */,
 				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
 				EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */,
+				350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */,
 				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

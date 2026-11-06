@@ -5,6 +5,7 @@ import SwiftUI
 /// Huvudkortet på hemskärmen: huvudadressens nästa tömning och raden för påminnelse.
 struct PrimaryCard: View {
     let entry: HomeContent.Entry
+    /// Raden för påminnelse och hela kortet öppnar adressvyn.
     let onReminder: () -> Void
 
     private var foreground: Color { Color.Theme.onPrimary }
@@ -43,6 +44,10 @@ struct PrimaryCard: View {
             LinearGradient(colors: [Color.Theme.primary, Color.Theme.brandText], startPoint: .top, endPoint: .bottom),
             in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
+        // Utan kommande hämtning finns ingen påminnelserad, och då öppnas adressen genom att trycka på kortet.
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onTapGesture(perform: onReminder)
+        .accessibilityAction(named: "Öppna adressen", onReminder)
     }
 
     private var header: some View {

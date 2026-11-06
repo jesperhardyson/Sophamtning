@@ -21,10 +21,16 @@ public final class AppModel {
     @ObservationIgnored private let now: @Sendable () -> Date
     /// Den senaste köade uppdateringen. Nästa väntar på den, så att två anrop aldrig hämtar samtidigt.
     @ObservationIgnored private var queue: Task<Void, Never>?
+    /// Systemets tillstånd för notiser, senast läst. Läses om av `applyReminders()`.
+    public private(set) var notificationAuthorization: NotificationAuthorization = .notDetermined
+    @ObservationIgnored private let scheduler: any NotificationScheduling
+    /// Den senaste köade påminnelseuppdateringen, så att två aldrig körs samtidigt.
+    @ObservationIgnored private var reminderQueue: Task<Void, Never>?
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
     private var scheduleRevision = 0
 
-    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }) {
+    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications()) {
+        self.scheduler = scheduler
         self.store = store
         self.now = now
         self.api = api
@@ -181,8 +187,136 @@ public final class AppModel {
         return true
     }
 
+    /// Byter namn. Ogiltigt namn (tomt eller över 60 tecken) eller lagringsfel ger `false` och ändrar ingenting.
+    @discardableResult
+    public func rename(_ key: AddressKey, to name: String) -> Bool {
+        guard AddressList.validName(name) != nil else { return false }
+        // Notisernas text innehåller namnet.
+        defer { applyReminders() }
+        return saveAddresses(AddressList.rename(key, to: name, in: addresses))
+    }
+
+    public func setPrimary(_ key: AddressKey) {
+        guard saveAddresses(AddressList.setPrimary(key, in: addresses)) else { return }
+        applyReminders()
+    }
+
+    // MARK: Inställningar
+
+    /// Valet sparas men planerar inget än, eftersom Live Activity kopplas i uppgift 14.
+    public func setLiveActivity(_ on: Bool) {
+        var updated = settings
+        updated.liveActivityOn = on
+        guard saveSettings(updated) else { return }
+        applyReminders()
+    }
+
+    /// Giltig tid är 15:00 till 23:00 i steg om 15 minuter. Annars, eller vid lagringsfel, är allt kvar som förut.
+    @discardableResult
+    public func setReminderMinutes(_ minutes: Int) -> Bool {
+        guard ReminderSettings.isValid(minutes: minutes) else { return false }
+        var updated = settings
+        updated.reminderMinutes = minutes
+        guard saveSettings(updated) else { return false }
+        applyReminders()
+        return true
+    }
+
+    @discardableResult
+    private func saveSettings(_ updated: ReminderSettings) -> Bool {
+        do {
+            try store.setSettings(updated)
+        } catch {
+            lastStorageError = "Kunde inte spara inställningen. Inget har ändrats."
+            return false
+        }
+        settings = updated
+        return true
+    }
+
     // MARK: Påminnelser
 
-    /// Tom tills uppgift 12 kopplar påminnelserna.
-    public func applyReminders() {}
+    /// Slår notiser för en adress på eller av. Frågan om tillstånd ställs först när de slås på och tillståndet
+    /// inte är avgjort. `denied` betyder att tillstånd saknas, och då är notiserna av. Att stänga av ger alltid `granted`.
+    /// Går sparandet fel är `notificationsOn` oförändrad och `lastStorageError` satt.
+    public func setNotifications(_ on: Bool, for key: AddressKey) async -> PermissionResult {
+        guard on else {
+            setNotificationsOn(false, for: key)
+            return .granted
+        }
+        var status = await scheduler.authorization()
+        if status == .notDetermined {
+            status = await scheduler.requestAuthorization() ? .authorized : .denied
+        }
+        notificationAuthorization = status
+        guard status == .authorized else {
+            setNotificationsOn(false, for: key)
+            return .denied
+        }
+        setNotificationsOn(true, for: key)
+        return .granted
+    }
+
+    private func setNotificationsOn(_ on: Bool, for key: AddressKey) {
+        guard addresses.contains(where: { $0.key == key }) else { return }
+        let updated = addresses.map { address in
+            var copy = address
+            if address.key == key { copy.notificationsOn = on }
+            return copy
+        }
+        guard updated == addresses || saveAddresses(updated) else { return }
+        applyReminders()
+    }
+
+    /// Läser tillståndet, kör planeraren och ändrar bara skillnaden mot det som redan är schemalagt.
+    /// Körs vid lyckad hämtning, när appen öppnas och när ett påminnelseval ändras. Uppdateringarna köas.
+    public func applyReminders() {
+        let previous = reminderQueue
+        reminderQueue = Task { @MainActor in
+            await previous?.value
+            await self.performApplyReminders()
+        }
+    }
+
+    /// Väntar tills köade påminnelseuppdateringar är klara.
+    public func settleReminders() async {
+        await reminderQueue?.value
+    }
+
+    private func performApplyReminders() async {
+        let status = await scheduler.authorization()
+        notificationAuthorization = status
+        // Har användaren stängt av notiser i iOS Inställningar går reglagen tillbaka till av.
+        if status == .denied, addresses.contains(where: \.notificationsOn) {
+            let updated = addresses.map { address in
+                var copy = address
+                copy.notificationsOn = false
+                return copy
+            }
+            saveAddresses(updated)
+        }
+        let pending = await scheduler.pending()
+        var desired: [PlannedNotification] = []
+        if status == .authorized {
+            let input = PlannerInput(
+                addresses: addresses.map { PlannerAddress(address: $0, schedule: schedules[$0.key]) },
+                settings: settings,
+                placedOut: Set(store.placedOut()),
+                now: now(),
+                // Live Activity kopplas i uppgift 14. Tills dess är de avstängda i planeringen och inga aktiviteter
+                // finns, så att den vanliga notisen alltid skickas och ingen tömning blir utan påminnelse.
+                liveActivitiesAllowed: false,
+                existingActivities: []
+            )
+            desired = ReminderPlanner.plan(input).notifications
+        }
+        let changes = NotificationDiff.diff(
+            desired: desired,
+            pendingIds: Set(pending.map(\.identifier)),
+            pendingFireDates: Dictionary(pending.compactMap { p in p.fireDate.map { (p.identifier, $0) } }, uniquingKeysWith: { first, _ in first }),
+            pendingBodies: Dictionary(pending.map { ($0.identifier, $0.body) }, uniquingKeysWith: { first, _ in first })
+        )
+        if !changes.removeIds.isEmpty { await scheduler.cancel(identifiers: changes.removeIds) }
+        if !changes.add.isEmpty { await scheduler.schedule(changes.add) }
+    }
 }
