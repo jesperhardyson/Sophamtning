@@ -29,6 +29,8 @@ public enum KommunChecker {
     static let minLength = 2
     static let maxSuggestions = 5
 
+    /// `sources: nil` betyder att källistan saknas, och då går det inte att svara om en kommun täcks.
+    /// `[]` betyder att listan finns men att inget täcks.
     public static func check(_ query: String, index: PlaceIndex, sources: [Source]?) -> KommunAnswer {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.count >= minLength else { return .empty }
@@ -46,7 +48,7 @@ public enum KommunChecker {
             guard let sources else { return .unavailable }
             let rows = rows(for: place.codes, index: index, sources: sources)
             if rows.count == 1 { return answer(rows[0], viaPlace: place.name) }
-            return .multiple(place: place.name, rows: rows)
+            return .multiple(place: place.mergedSpellings ? text : place.name, rows: rows)
         }
 
         let suggestions = index.suggestions(prefix: text, limit: maxSuggestions)
@@ -60,13 +62,16 @@ public enum KommunChecker {
     private static func rows(for codes: [String], index: PlaceIndex, sources: [Source]) -> [KommunRow] {
         // Täcker flera källor samma kommun gäller den första i listan.
         var sourceByCode: [String: String] = [:]
+        var sourceNames: [String: String] = [:]
         for source in sources {
             for kommun in source.kommuner where sourceByCode[kommun.code] == nil {
                 sourceByCode[kommun.code] = source.id
+                sourceNames[kommun.code] = kommun.name
             }
         }
         return codes.sorted().map { code in
-            KommunRow(code: code, name: index.kommunName(code) ?? code, sourceId: sourceByCode[code])
+            // Källans namn gäller när kommunen täcks ("Gotlands kommun" i stället för "Region Gotland").
+            KommunRow(code: code, name: sourceNames[code] ?? index.kommunName(code) ?? code, sourceId: sourceByCode[code])
         }
     }
 }
