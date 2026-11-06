@@ -19,6 +19,8 @@ struct KommunCheckView: View {
 
     @State private var query = ""
     @State private var attempt = 0
+    /// Sant medan ett nytt svar hämtas. Det gamla svaret tonas ned och går inte att trycka på.
+    @State private var updating = false
     /// Det senaste svaret. Det ligger kvar medan ett nytt hämtas, så att rutan inte blinkar.
     @State private var result = KommunResult(answer: .empty, areas: [])
     @State private var latest = LatestOnly()
@@ -38,6 +40,8 @@ struct KommunCheckView: View {
                 FlowSearchField(placeholder: "Kommun eller ort", text: $query)
                     .padding(.top, 24)
                 answerView
+                    .opacity(updating ? 0.4 : 1)
+                    .allowsHitTesting(!updating)
                     .padding(.top, 16)
             }
             .padding(.horizontal, 24)
@@ -54,13 +58,17 @@ struct KommunCheckView: View {
     private func update() async {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.count >= 2 else {
+            guard !Task.isCancelled else { return }
             result = KommunResult(answer: .empty, areas: [])
+            updating = false
             return
         }
+        updating = true
         // Väntar tills användaren slutat skriva. Ett nytt tangenttryck avbryter den här uppgiften.
         do { try await Task.sleep(for: .milliseconds(200)) } catch { return }
         guard let index else {
             result = KommunResult(answer: .unavailable, areas: [])
+            updating = false
             return
         }
         let model = model
@@ -75,6 +83,7 @@ struct KommunCheckView: View {
         // Nil: ett nyare anrop har startat. Avbruten: texten ändrades, och en ny uppgift tar över.
         guard let outcome, !Task.isCancelled else { return }
         result = outcome
+        updating = false
     }
 
     // MARK: Svar

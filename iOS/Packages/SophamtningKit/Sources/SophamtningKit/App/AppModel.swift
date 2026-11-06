@@ -121,7 +121,8 @@ public final class AppModel {
             try? store.setSources(CachedSources(response: fresh, fetchedAt: current))
             return fresh.sources
         } catch {
-            failedSourcesAt = current
+            // Ett avbrott (texten ändrades, skärmen stängdes) är inget misslyckande och skjuter inte upp nästa hämtning.
+            if !(error is CancellationError) { failedSourcesAt = current }
             return saved?.response.sources
         }
     }

@@ -10,6 +10,7 @@ struct AreaPickerView: View {
     let onSaved: () -> Void
 
     @State private var chosen: HitSelection?
+    @State private var saveFailed = false
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
     private var areasURL: URL? { hits.lazy.compactMap(\.areasUrl).first }
@@ -36,7 +37,7 @@ struct AreaPickerView: View {
                 ResultList {
                     ForEach(Array(hits.enumerated()), id: \.offset) { offset, hit in
                         if offset > 0 { ResultDivider() }
-                        Button { chosen = HitSelection(hit: hit) } label: {
+                        Button { saveFailed = false; chosen = HitSelection(hit: hit) } label: {
                             HStack(spacing: 12) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(hit.street)
@@ -71,8 +72,8 @@ struct AreaPickerView: View {
         
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
-            AreaConfirmSheet(model: model, hit: hit, onSave: {
-                _ = save(hit, in: model, onSaved: onSaved)
+            AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
+                saveFailed = !save(hit, in: model, onSaved: onSaved)
             }, onOther: { chosen = nil })
         }
     }

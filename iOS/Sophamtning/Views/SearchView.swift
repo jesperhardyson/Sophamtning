@@ -17,6 +17,8 @@ struct SearchView: View {
     private struct Outcome: Sendable {
         var state: SearchState
         var areas: [SearchHit]
+        /// Sant när `/omraden` anropades för en angiven ort men misslyckades.
+        var areasFailed = false
     }
 
     @State private var query = ""
@@ -25,6 +27,8 @@ struct SearchView: View {
     @State private var sources: [Source]?
     @State private var chosenArea: HitSelection?
     @State private var saveFailed = false
+    /// Sant medan ett nytt svar hämtas. Gamla träffar tonas ned och går inte att trycka på.
+    @State private var updating = false
     @State private var latest = LatestOnly()
 
     var body: some View {
@@ -33,6 +37,8 @@ struct SearchView: View {
                 FlowSearchField(placeholder: "Gata och husnummer", text: $query)
                     .padding(.top, 8)
                 content
+                    .opacity(updating ? 0.4 : 1)
+                    .allowsHitTesting(!updating)
                     .padding(.top, 20)
             }
             .padding(.horizontal, 24)
@@ -43,10 +49,11 @@ struct SearchView: View {
         .navigationTitle("Lägg till adress")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Trigger(query: query, attempt: attempt)) { await search() }
+        .onChange(of: query) { saveFailed = false }
         .sheet(item: $chosenArea) { selection in
             let hit = selection.hit
-            AreaConfirmSheet(model: model, hit: hit, onSave: {
-                _ = save(hit, in: model, onSaved: onSaved)
+            AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
+                saveFailed = !save(hit, in: model, onSaved: onSaved)
             }, onOther: { chosenArea = nil })
         }
     }
@@ -57,9 +64,12 @@ struct SearchView: View {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         // Minst tre tecken innan /sok anropas.
         guard text.count >= 3 else {
+            guard !Task.isCancelled else { return }
             outcome = Outcome(state: .idle, areas: [])
+            updating = false
             return
         }
+        updating = true
         do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
         // Gamla träffar ligger kvar medan ett nytt svar hämtas. Bara en tom eller felande ruta byts mot "söker".
         switch outcome.state {
@@ -75,8 +85,13 @@ struct SearchView: View {
                 let state = SearchState.from(response, query: text)
                 guard case .noHits(let place?) = state else { return Outcome(state: state, areas: []) }
                 // Misslyckas områdesanropet visas ändå "hittades inte", utan områdesval.
-                let areas = (try? await api.areas(place: place).addresses) ?? []
-                return Outcome(state: state, areas: areas)
+                do {
+                    return Outcome(state: state, areas: try await api.areas(place: place).addresses)
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    return Outcome(state: state, areas: [], areasFailed: true)
+                }
             }
         } catch let error as APIError {
             guard !Task.isCancelled else { return }
@@ -85,8 +100,11 @@ struct SearchView: View {
             return
         }
         guard let result, !Task.isCancelled else { return }
-        sources = await model.sourceList()
         outcome = result
+        updating = false
+        // Källnamnen behövs bara för texterna, så träffarna visas utan att vänta på `/kallor`.
+        let names = await model.sourceList()
+        if !Task.isCancelled { sources = names }
     }
 
     // MARK: Innehåll
@@ -152,8 +170,8 @@ struct SearchView: View {
                             message: "\(failedNames(failed)) svarade inte just nu. Saknas din adress kan du försöka igen om en stund.")
                     .padding(.bottom, 20)
             }
-            if let error = model.lastStorageError, saveFailed {
-                MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: error)
+            if saveFailed {
+                MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: saveFailedMessage)
                     .padding(.bottom, 20)
             }
             Text(hits.count == 1 ? "1 träff" : "\(hits.count) träffar")
@@ -232,6 +250,13 @@ struct SearchView: View {
                     PrimaryButtonLabel(title: "Välj område i \(kommun)")
                 }
                 .padding(.top, 24)
+            } else if place != nil, outcome.areasFailed {
+                MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Kunde inte hämta områden",
+                            message: "Försök igen. Det betyder inte att kommunen saknar områdesval.")
+                    .padding(.top, 10)
+                Button { attempt += 1 } label: { PrimaryButtonLabel(title: "Försök igen") }
+                    .buttonStyle(.plain)
+                    .padding(.top, 12)
             } else {
                 Text("Kontrollera stavningen och skriv gata, husnummer och gärna ort. Alla adresser finns inte hos alla källor.")
                     .font(.ui(18, weight: .semibold, relativeTo: .body))

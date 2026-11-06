@@ -36,7 +36,7 @@ public struct MessageCard: View {
                     .foregroundStyle(tint)
                 Text(message)
                     .font(.ui(14, weight: .semibold, relativeTo: .footnote))
-                    .foregroundStyle(style == .warning ? Color.Theme.warn : Color.Theme.text2)
+                    .foregroundStyle(style == .warning ? Color.Theme.text : Color.Theme.text2)
             }
             Spacer(minLength: 0)
         }

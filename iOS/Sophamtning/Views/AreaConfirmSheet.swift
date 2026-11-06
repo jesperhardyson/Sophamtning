@@ -4,7 +4,7 @@ import SwiftUI
 
 /// "Stämmer området?" Området sparas först när användaren trycker Spara området.
 struct AreaConfirmSheet: View {
-    let model: AppModel
+    let saveFailed: Bool
     let hit: SearchHit
     let onSave: () -> Void
     let onOther: () -> Void
@@ -37,8 +37,8 @@ struct AreaConfirmSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 16)
             }
-            if let error = model.lastStorageError {
-                MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: error)
+            if saveFailed {
+                MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: saveFailedMessage)
                     .padding(.top, 12)
             }
             Button(action: onSave) { PrimaryButtonLabel(title: "Spara området") }

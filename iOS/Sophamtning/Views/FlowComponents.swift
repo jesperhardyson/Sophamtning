@@ -105,14 +105,21 @@ struct ResultDivider: View {
     var body: some View { Rectangle().fill(Color.Theme.border).frame(height: 1) }
 }
 
-/// Sparar adressen och anropar `onSaved` om det gick. Går det inte är lagringsfelet satt i modellen.
+/// Sparar adressen och anropar `onSaved` om det gick. Går det inte visar vyn sitt eget fel, så modellens
+/// lagringsfel rensas för att inte dyka upp en gång till på hemskärmen.
 @MainActor
 func save(_ hit: SearchHit, in model: AppModel, onSaved: () -> Void) -> Bool {
     model.clearStorageError()
-    guard model.add(hit) else { return false }
+    guard model.add(hit) else {
+        model.clearStorageError()
+        return false
+    }
     onSaved()
     return true
 }
+
+let saveFailedMessage = "Adressen kunde inte sparas. Försök igen."
+
 
 /// Källans namn för ett id, annars id:t med stor bokstav.
 func sourceName(_ id: String, in sources: [Source]?) -> String {
