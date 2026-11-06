@@ -46,10 +46,18 @@ struct HomeView: View {
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .settings: SettingsSheet()
-            case .add: TemporarySheet(title: "Lägg till adress")
-            case .kommun: TemporarySheet(title: "Finns min kommuns hämtningsschema?")
+            case .add: addFlow(root: .search(source: nil))
+            case .kommun: addFlow(root: .kommun)
             }
         }
+    }
+
+    /// Adressflödet. Efter en sparad adress stängs arket, och hemskärmen hämtar schemat.
+    private func addFlow(root: AddRoute) -> some View {
+        AddFlowView(model: model, root: root, onClose: { sheet = nil }, onSaved: {
+            sheet = nil
+            Task { await model.refreshAll(manual: false) }
+        })
     }
 
     // MARK: Delar
@@ -119,7 +127,7 @@ struct HomeView: View {
                 .font(.ui(18, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text2)
                 .padding(.top, 14)
-            // Sökfältet beter sig som Lägg till tills uppgift 11 ersätter arket.
+            // Fältet öppnar adressökningen.
             Button { sheet = .add } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
@@ -145,7 +153,6 @@ struct HomeView: View {
             }
             .foregroundStyle(Color.Theme.brandText)
             .padding(.top, 16)
-            // Raden öppnar ett tillfälligt ark tills uppgift 11 ersätter det.
             Button { sheet = .kommun } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "map")
@@ -248,25 +255,6 @@ private struct SettingsSheet: View {
             .navigationTitle("Inställningar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Klar") { dismiss() } }
-        }
-    }
-}
-
-/// Tillfälligt ark som uppgift 11 ersätter med sökning och kommunkontroll.
-private struct TemporarySheet: View {
-    let title: String
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            Text("Kommer snart.")
-                .font(.ui(17, weight: .semibold))
-                .foregroundStyle(Color.Theme.text2)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.Theme.bg)
-                .navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { Button("Stäng") { dismiss() } }
         }
     }
 }

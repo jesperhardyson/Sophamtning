@@ -15,6 +15,9 @@ public final class AppModel {
     @ObservationIgnored private var schedules: [AddressKey: CachedSchedule]
     @ObservationIgnored private let store: LocalStore
     @ObservationIgnored private let refresher: ScheduleRefresher
+    @ObservationIgnored public let api: any SoporAPI
+    /// När källistan senast försökte hämtas utan att lyckas, så att inte varje tangenttryck hämtar på nytt.
+    @ObservationIgnored private var failedSourcesAt: Date?
     @ObservationIgnored private let now: @Sendable () -> Date
     /// Den senaste köade uppdateringen. Nästa väntar på den, så att två anrop aldrig hämtar samtidigt.
     @ObservationIgnored private var queue: Task<Void, Never>?
@@ -24,6 +27,7 @@ public final class AppModel {
     public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }) {
         self.store = store
         self.now = now
+        self.api = api
         refresher = ScheduleRefresher(api: api, store: store)
         let addresses = store.addresses()
         self.addresses = addresses
@@ -92,14 +96,46 @@ public final class AppModel {
         if fetchedAny { applyReminders() }
     }
 
+    // MARK: Källor
+
+    static let sourcesMaxAge: TimeInterval = 24 * 3600
+    static let sourcesRetryAfter: TimeInterval = 3600
+
+    /// Källistan för kommunfrågan: den sparade om den är högst ett dygn gammal, annars hämtas en ny.
+    /// Misslyckas hämtningen används den sparade listan, även om den är äldre. `nil` när inget är sparat och
+    /// hämtningen misslyckas, och det betyder "okänt", aldrig "inga källor".
+    public func sourceList() async -> [Source]? {
+        let saved = store.sources()
+        let current = now()
+        if let saved, current.timeIntervalSince(saved.fetchedAt) < Self.sourcesMaxAge {
+            return saved.response.sources
+        }
+        // Finns en gammal lista väntar vi med nästa försök. Utan lista försöker vi varje gång, för Försök igen.
+        if let saved, let failedSourcesAt, current.timeIntervalSince(failedSourcesAt) < Self.sourcesRetryAfter {
+            return saved.response.sources
+        }
+        do {
+            let fresh = try await api.sources()
+            failedSourcesAt = nil
+            // Listan är bara en cache. Går den inte att spara hämtas den på nytt nästa gång.
+            try? store.setSources(CachedSources(response: fresh, fetchedAt: current))
+            return fresh.sources
+        } catch {
+            failedSourcesAt = current
+            return saved?.response.sources
+        }
+    }
+
     // MARK: Adresser
 
-    /// Sparar adressen. En adress som redan finns läggs inte till igen. Går sparandet fel är
-    /// det tidigare läget kvar och `lastStorageError` är satt.
-    public func add(_ hit: SearchHit) {
+    /// Sparar adressen. En adress som redan finns läggs inte till igen men räknas som sparad. Går sparandet
+    /// fel är det tidigare läget kvar, `lastStorageError` är satt och svaret är `false`.
+    @discardableResult
+    public func add(_ hit: SearchHit) -> Bool {
         let key = AddressKey(source: hit.source, id: hit.id)
-        guard !addresses.contains(where: { $0.key == key }) else { return }
-        // Tillfälligt namn tills uppgift 11 låter användaren välja: "Hemma" för den första, annars gatan.
+        guard !addresses.contains(where: { $0.key == key }) else { return true }
+        // Den första adressen heter "Hemma", ett område får områdets namn och övriga gatan.
+        let name = addresses.isEmpty ? "Hemma" : hit.street
         let address = SavedAddress(
             key: key,
             url: hit.url,
@@ -108,11 +144,11 @@ public final class AppModel {
             kommun: hit.kommun,
             detail: hit.detail,
             selection: hit.selection,
-            displayName: addresses.isEmpty ? "Hemma" : hit.street,
+            displayName: name,
             isPrimary: false,
             addedAt: now()
         )
-        saveAddresses(AddressList.add(address, to: addresses))
+        return saveAddresses(AddressList.add(address, to: addresses))
     }
 
     /// Tar bort adressen och dess sparade schema. Går sparandet av listan fel är allt kvar.

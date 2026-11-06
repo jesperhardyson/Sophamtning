@@ -95,7 +95,7 @@ public struct HomeContent: Equatable, Sendable {
         return Entry(
             key: address.key,
             title: address.displayName,
-            subtitle: "\(address.street), \(address.locality)",
+            subtitle: [address.street, address.locality].filter { !$0.isEmpty }.joined(separator: ", "),
             status: status,
             refreshFailed: refreshFailed,
             reminderText: reminder,
