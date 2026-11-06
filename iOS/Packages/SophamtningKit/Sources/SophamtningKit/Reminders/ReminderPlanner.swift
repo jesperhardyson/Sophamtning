@@ -17,13 +17,16 @@ public struct PlannerInput: Sendable {
     public let placedOut: Set<PlacedOut>
     public let now: Date
     public let liveActivitiesAllowed: Bool
+    /// Adress och datum för Live Activities som faktiskt finns hos systemet (väntande eller pågående). Saknar standardvärde med avsikt.
+    public let existingActivities: Set<PlacedOut>
 
-    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool) {
+    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>) {
         self.addresses = addresses
         self.settings = settings
         self.placedOut = placedOut
         self.now = now
         self.liveActivitiesAllowed = liveActivitiesAllowed
+        self.existingActivities = existingActivities
     }
 }
 
@@ -71,13 +74,15 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
     public let shortDateText: String
     public let fractions: [ActivityFraction]
     public let estimated: Bool
+    public let warning: String?
 
-    public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool) {
+    public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?) {
         self.addressName = addressName
         self.dateText = dateText
         self.shortDateText = shortDateText
         self.fractions = fractions
         self.estimated = estimated
+        self.warning = warning
     }
 }
 
@@ -115,6 +120,13 @@ public struct ReminderPlan: Equatable, Sendable {
 public enum ReminderPlanner {
     /// Taket håller appen under iOS gräns för väntande notiser.
     static let maxNotifications = 60
+    static let maxAddressNameLength = 60
+    static let defaultReminderMinutes = 1080
+
+    /// Ogiltig tid ger standardtiden, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
+    private static func effectiveMinutes(_ settings: ReminderSettings) -> Int {
+        ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : defaultReminderMinutes
+    }
 
     /// En tömningsdag, med händelser samma dag ihopslagna.
     private struct Pickup {
@@ -127,18 +139,20 @@ public enum ReminderPlanner {
     public static func plan(_ input: PlannerInput) -> ReminderPlan {
         let today = StockholmClock.today(now: input.now)
 
-        // Samma adress två gånger ger samma identifierare, så första gäller.
-        var seen = Set<AddressKey>()
-        let entries = input.addresses.filter { seen.insert($0.address.key).inserted }
+        let entries = input.addresses
 
         let liveActivity = planLiveActivity(entries, input: input, today: today)
+        let activitiesActive = input.settings.liveActivityOn && input.liveActivitiesAllowed
+        let minutes = effectiveMinutes(input.settings)
 
         var notifications: [PlannedNotification] = []
         for entry in entries where entry.address.notificationsOn {
             guard let response = entry.schedule?.response else { continue }
             for pickup in pickups(in: response, today: today) {
-                if let live = liveActivity, live.key == entry.address.key, live.pickupDate == pickup.date { continue }
-                let fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: input.settings.reminderMinutes)
+                if input.placedOut.contains(PlacedOut(key: entry.address.key, date: pickup.date)) { continue }
+                // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet.
+                if activitiesActive, input.existingActivities.contains(PlacedOut(key: entry.address.key, date: pickup.date)) { continue }
+                let fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
                 guard fireDate > input.now else { continue }
                 notifications.append(PlannedNotification(
                     identifier: "\(entry.address.key.fileName)-\(pickup.date.iso)",
@@ -162,12 +176,12 @@ public enum ReminderPlanner {
         else { return nil }
 
         let key = primary.address.key
-        // Utställda tömningar hoppas över, och nästa används i stället.
-        guard let next = pickups(in: response, today: today).first(where: { !input.placedOut.contains(PlacedOut(key: key, date: $0.date)) }),
-              next.date >= today.adding(days: 1)
-        else { return nil }
+        // Första tömning efter i dag som inte är utställd. På tömningsdagen gäller alltså nästa tömning.
+        guard let next = pickups(in: response, today: today).first(where: {
+            $0.date > today && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
+        }) else { return nil }
 
-        let start = StockholmClock.date(on: next.date.adding(days: -1), minutes: input.settings.reminderMinutes)
+        let start = StockholmClock.date(on: next.date.adding(days: -1), minutes: effectiveMinutes(input.settings))
         let isTomorrow = next.date == today.adding(days: 1)
         return PlannedLiveActivity(
             key: key,
@@ -175,14 +189,15 @@ public enum ReminderPlanner {
             start: start,
             startsImmediately: isTomorrow && input.now >= start,
             content: PickupActivityContent(
-                addressName: primary.address.displayName,
+                addressName: String(primary.address.displayName.prefix(maxAddressNameLength)),
                 dateText: SwedishFormat.longDate(next.date, capitalized: true),
                 shortDateText: SwedishFormat.shortDate(next.date),
                 fractions: next.fractions.map { id in
                     let info = ScheduleLogic.displayInfo(for: id, in: response.fractions)
                     return ActivityFraction(id: id, name: info.name, short: info.short, color: info.color, icon: info.icon)
                 },
-                estimated: next.estimated
+                estimated: next.estimated,
+                warning: next.warning
             )
         )
     }

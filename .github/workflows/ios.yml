@@ -22,6 +22,11 @@ jobs:
         working-directory: iOS/Packages/SophamtningKit
         run: swift test --skip ContractTests
 
+      # Planeraren får inte bero på telefonens tidszon.
+      - name: Paketets tester i annan tidszon
+        working-directory: iOS/Packages/SophamtningKit
+        run: TZ=America/New_York swift test --skip ContractTests
+
       - name: Bygg appen
         working-directory: iOS
         run: |

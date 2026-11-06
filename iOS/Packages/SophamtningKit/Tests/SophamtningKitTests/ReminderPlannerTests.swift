@@ -71,6 +71,7 @@ private func plan(
     events: [PickupEvent] = standardEvents,
     otherEvents: [PickupEvent] = [event("2026-11-10", ["glas"])],
     placedOut: Set<PlacedOut> = [],
+    existing: Set<PlacedOut> = [],
     withPrimary: Bool = true,
     reminderMinutes: Int = 1080
 ) -> ReminderPlan {
@@ -84,7 +85,8 @@ private func plan(
         settings: ReminderSettings(reminderMinutes: reminderMinutes, liveActivityOn: live),
         placedOut: placedOut,
         now: now,
-        liveActivitiesAllowed: allowed
+        liveActivitiesAllowed: allowed,
+        existingActivities: existing
     ))
 }
 
@@ -96,7 +98,7 @@ private func single(_ events: [PickupEvent], notifications: Bool = true, now: Da
     }
     return ReminderPlanner.plan(PlannerInput(
         addresses: [PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: notifications), schedule: cached)],
-        settings: ReminderSettings(), placedOut: [], now: now, liveActivitiesAllowed: true
+        settings: ReminderSettings(), placedOut: [], now: now, liveActivitiesAllowed: true, existingActivities: []
     ))
 }
 
@@ -158,7 +160,7 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     let noResponse = ReminderPlanner.plan(PlannerInput(
         addresses: [PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: true), schedule: nil),
                     PlannerAddress(address: address(otherKey, name: "Stugan", primary: false, notifications: true), schedule: CachedSchedule())],
-        settings: ReminderSettings(liveActivityOn: true), placedOut: [], now: friday, liveActivitiesAllowed: true
+        settings: ReminderSettings(liveActivityOn: true), placedOut: [], now: friday, liveActivitiesAllowed: true, existingActivities: []
     ))
     #expect(noResponse == .empty)
 }
@@ -182,22 +184,18 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     #expect(p.notifications.last?.pickupDate == start.adding(days: 59 * 2))
 }
 
-@Test func stabilaIdentifierareUtanDubbletter() {
+@Test func stabilaIdentifierare() {
     let a = plan(notifications: true)
     let b = plan(notifications: true)
     #expect(a.notifications.map(\.identifier) == b.notifications.map(\.identifier))
     #expect(Set(a.notifications.map(\.identifier)).count == a.notifications.count)
     #expect(a.notifications[0].identifier == "\(homeKey.fileName)-2026-11-09")
-    // Samma adress två gånger och två händelser samma dag ger ändå en notis per adress och datum.
-    let duplicated = ReminderPlanner.plan(PlannerInput(
-        addresses: [
-            PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: true), schedule: schedule(homeKey, events: [event("2026-11-09", ["rest"]), event("2026-11-09", ["mat"], warning: "Varning.")])),
-            PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: true), schedule: schedule(homeKey, events: [event("2026-11-09", ["rest"])])),
-        ],
-        settings: ReminderSettings(), placedOut: [], now: friday, liveActivitiesAllowed: true
-    ))
-    #expect(duplicated.notifications.count == 1)
-    #expect(duplicated.notifications[0].body == "Hemma: Restavfall och Matavfall töms måndag 9 november. Varning.")
+}
+
+@Test func tvaHandelserSammaDagSlasIhop() {
+    let p = single([event("2026-11-09", ["rest"]), event("2026-11-09", ["mat"], warning: "Varning.")])
+    #expect(p.notifications.count == 1)
+    #expect(p.notifications[0].body == "Hemma: Restavfall och Matavfall töms måndag 9 november. Varning.")
 }
 
 @Test func notisBaraForAdressMedValPa() {
@@ -206,7 +204,7 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     let p = ReminderPlanner.plan(PlannerInput(
         addresses: [PlannerAddress(address: home, schedule: schedule(homeKey, events: standardEvents)),
                     PlannerAddress(address: other, schedule: schedule(otherKey, events: [event("2026-11-10", ["glas"])]))],
-        settings: ReminderSettings(), placedOut: [], now: friday, liveActivitiesAllowed: true
+        settings: ReminderSettings(), placedOut: [], now: friday, liveActivitiesAllowed: true, existingActivities: []
     ))
     #expect(p.notifications.map(\.key) == [otherKey])
 }
@@ -216,7 +214,7 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     #expect(n.fireDate == utc("2026-11-08T14:45:00Z"))
 }
 
-@Test func sommartidGerRatttUtcTid() {
+@Test func sommartidGerRattUtcTid() {
     // Omställning till sommartid sker 2026-03-29: kvällen den 29:e är UTC+2 och kvällen den 28:e UTC+1.
     let p = single([event("2026-03-30", ["rest"])], now: stockholm("2026-03-01T12:00"))
     #expect(p.notifications[0].fireDate == utc("2026-03-29T16:00:00Z"))
@@ -255,8 +253,9 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     #expect(plan(live: true, now: stockholm("2026-11-08T17:59")).liveActivity?.startsImmediately == false)
 }
 
-@Test func ingenLiveActivityPaTomningsdagen() {
-    #expect(plan(live: true, now: stockholm("2026-11-09T07:00")).liveActivity == nil)
+@Test func paTomningsdagenPlanerasNastaTomning() {
+    #expect(plan(live: true, now: stockholm("2026-11-09T07:00")).liveActivity?.pickupDate == day("2026-11-12"))
+    #expect(plan(live: true, now: stockholm("2026-11-09T07:00"), events: [event("2026-11-09", ["rest"])]).liveActivity == nil)
 }
 
 @Test func innehallSagerInteImorgon() throws {
@@ -303,28 +302,86 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     #expect(la?.pickupDate == day("2026-11-12"))
 }
 
-@Test func badaPaHopparOverNotisForAktivitetensTomning() {
-    let p = plan(notifications: true, live: true)
+private let homeMonday: Set<PlacedOut> = [PlacedOut(key: homeKey, date: day("2026-11-09"))]
+
+@Test func badaPaBehallerNotisUtanSchemalagdAktivitet() {
+    let p = plan(notifications: true, live: true, existing: [])
+    #expect(p.liveActivity?.pickupDate == day("2026-11-09"))
+    #expect(p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
+}
+
+@Test func badaPaHopparOverNotisNarAktivitetFinns() {
+    let p = plan(notifications: true, live: true, existing: homeMonday)
     #expect(!p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
     #expect(p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-12") })
-    // Den andra adressens notis för samma datum som aktiviteten påverkas inte, eftersom den inte har aktiviteten.
-    #expect(p.notifications.contains { $0.key == otherKey && $0.pickupDate == day("2026-11-10") })
+    // Aktivitetsplanen beror inte på vad som finns.
+    #expect(p.liveActivity == plan(notifications: true, live: true, existing: []).liveActivity)
+}
+
+@Test func aktivitetForAnnatDatumHindrarInteNotis() {
+    let otherDate: Set<PlacedOut> = [PlacedOut(key: homeKey, date: day("2026-11-12"))]
+    #expect(plan(notifications: true, live: true, existing: otherDate).notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
+    let otherAddress: Set<PlacedOut> = [PlacedOut(key: otherKey, date: day("2026-11-09"))]
+    #expect(plan(notifications: true, live: true, existing: otherAddress).notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
+}
+
+@Test func existerandeAktivitetUtanValPaHindrarInteNotis() {
+    #expect(plan(notifications: true, live: false, existing: homeMonday).notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
+    #expect(plan(notifications: true, live: true, allowed: false, existing: homeMonday).notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
 }
 
 @Test func notisForAnnanAdressSammaDatumBehalls() {
-    let same = [event("2026-11-09", ["glas"])]
-    let p = plan(notifications: true, live: true, otherEvents: same)
+    let p = plan(notifications: true, live: true, otherEvents: [event("2026-11-09", ["glas"])], existing: homeMonday)
     #expect(p.notifications.contains { $0.key == otherKey && $0.pickupDate == day("2026-11-09") })
     #expect(!p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
 }
 
-@Test func utstalldTomningGerNotisStarForAnnanTomningNarAktivitetenHoppatOver() {
-    // Aktiviteten gäller 12 nov, så notisen för 9 nov (som inte har någon aktivitet) står kvar.
-    let placed: Set = [PlacedOut(key: homeKey, date: day("2026-11-09"))]
-    let p = plan(notifications: true, live: true, placedOut: placed)
+@Test func utstalldTomningGerIngenNotis() {
+    let p = plan(notifications: true, live: true, placedOut: homeMonday)
     #expect(p.liveActivity?.pickupDate == day("2026-11-12"))
-    #expect(p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
-    #expect(!p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-12") })
+    #expect(!p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
+    #expect(p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-12") })
+    #expect(p.notifications.contains { $0.key == otherKey })
+}
+
+@Test(arguments: [0, -1, 2880, 899, 1381, 1000])
+func ogiltigPaminnelsetidGerStandardtid(minutes: Int) {
+    #expect(plan(notifications: true, reminderMinutes: minutes).notifications[0].fireDate == utc("2026-11-08T17:00:00Z"))
+    #expect(plan(live: true, reminderMinutes: minutes).liveActivity?.start == utc("2026-11-08T17:00:00Z"))
+}
+
+@Test func varningFolkerMedIAktiviteten() {
+    #expect(plan(live: true, events: [event("2026-11-09", ["rest"], warning: "Helgdag.")]).liveActivity?.content.warning == "Helgdag.")
+    #expect(plan(live: true).liveActivity?.content.warning == nil)
+}
+
+@Test func langtAdressnamnKortasTill60Tecken() {
+    let home = address(homeKey, name: String(repeating: "å", count: 100), primary: true, notifications: false)
+    let p = ReminderPlanner.plan(PlannerInput(
+        addresses: [PlannerAddress(address: home, schedule: schedule(homeKey, events: standardEvents))],
+        settings: ReminderSettings(liveActivityOn: true), placedOut: [], now: friday, liveActivitiesAllowed: true, existingActivities: []
+    ))
+    #expect(p.liveActivity?.content.addressName == String(repeating: "å", count: 60))
+    let short = ReminderPlanner.plan(PlannerInput(
+        addresses: [PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: false), schedule: schedule(homeKey, events: standardEvents))],
+        settings: ReminderSettings(liveActivityOn: true), placedOut: [], now: friday, liveActivitiesAllowed: true, existingActivities: []
+    ))
+    #expect(short.liveActivity?.content.addressName == "Hemma")
+}
+
+@Test func hogst60MedFleraAdresser() {
+    var entries: [PlannerAddress] = []
+    for n in 0..<4 {
+        let key = AddressKey(source: "s", id: "a\(n)")
+        let events = (0..<30).map { event(day("2026-11-10").adding(days: $0 * 2 + n).iso, ["rest"]) }
+        entries.append(PlannerAddress(address: address(key, name: "A\(n)", primary: n == 0, notifications: true), schedule: schedule(key, events: events)))
+    }
+    let p = ReminderPlanner.plan(PlannerInput(addresses: entries, settings: ReminderSettings(), placedOut: [], now: friday, liveActivitiesAllowed: true, existingActivities: []))
+    #expect(p.notifications.count == 60)
+    #expect(p.notifications.map(\.fireDate) == p.notifications.map(\.fireDate).sorted())
+    #expect(Set(p.notifications.map(\.identifier)).count == 60)
+    // 120 tömningar finns. De 60 närmaste ryms före 2026-11-10 + 30 dagar.
+    #expect(p.notifications.last!.pickupDate <= day("2026-11-10").adding(days: 31))
 }
 
 @Test func liveActivityNekadBehallerNotisen() {
@@ -337,10 +394,9 @@ private func body(estimated: Bool = false, warning: String? = nil) -> String {
     #expect(plan(notifications: true, live: false).notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-09") })
 }
 
-@Test func aktivitetUtanTomningIMorgonGerIngenAktivitetOchNotisenStarKvar() {
-    // Tömningen är i dag: ingen aktivitet, och notisen för den har redan passerat.
+@Test func paTomningsdagenGerNastaAktivitetOchNotisenStarKvarUtanExisterandeAktivitet() {
     let p = plan(notifications: true, live: true, now: stockholm("2026-11-09T07:00"))
-    #expect(p.liveActivity == nil)
+    #expect(p.liveActivity?.pickupDate == day("2026-11-12"))
     #expect(p.notifications.contains { $0.key == homeKey && $0.pickupDate == day("2026-11-12") })
 }
 
