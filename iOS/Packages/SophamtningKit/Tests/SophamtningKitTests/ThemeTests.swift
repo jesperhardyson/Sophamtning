@@ -117,14 +117,36 @@ import SophamtningKit
         #expect(resolved(Color.Theme.primary, dark: false) != resolved(Color.Theme.primary, dark: true))
     }
 
+    /// Katalogen i källträdet, hittad via testfilens egen sökväg.
+    private static var iconCatalog: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // SophamtningKitTests
+            .deletingLastPathComponent() // Tests
+            .deletingLastPathComponent() // paketroten
+            .appendingPathComponent("Sources/SophamtningDesign/Resources/Icons.xcassets")
+    }
+
     @Test func ikonerFinnsIPaketet() {
         #expect(FractionStyle.bundledIcons.count == 9)
         #expect(FractionStyle.bundledIcons.contains("recycle"))
-        // Ikonerna ligger i en kompilerad asset catalog i paketets resurser.
-        #expect(Fonts.bundle.url(forResource: "Assets", withExtension: "car") != nil)
+
+        // Gäller alla Xcode-versioner: varje ikon finns som imageset med SVG i källträdet.
+        let catalog = Self.iconCatalog
+        #expect(FileManager.default.fileExists(atPath: catalog.path), "Icons.xcassets saknas: \(catalog.path)")
+        for name in FractionStyle.bundledIcons.sorted() {
+            let set = catalog.appendingPathComponent("\(name).imageset")
+            #expect(FileManager.default.fileExists(atPath: set.appendingPathComponent("Contents.json").path), "\(name).imageset saknas")
+            #expect(FileManager.default.fileExists(atPath: set.appendingPathComponent("\(name).svg").path), "\(name).svg saknas")
+        }
+
+        // SwiftPM från kommandoraden kompilerar katalogen till Assets.car bara med nyare Xcode
+        // (Xcode 26.6 kopierar den som den är). Finns Assets.car ska bilderna gå att ladda.
+        // xcodebuild kompilerar alltid katalogen, så appbygget täcker det fallet.
         #if canImport(AppKit)
-        for name in FractionStyle.bundledIcons {
-            #expect(Fonts.bundle.image(forResource: NSImage.Name(name)) != nil, "\(name) saknas i asset catalog")
+        if Fonts.bundle.url(forResource: "Assets", withExtension: "car") != nil {
+            for name in FractionStyle.bundledIcons.sorted() {
+                #expect(Fonts.bundle.image(forResource: NSImage.Name(name)) != nil, "\(name) saknas i asset catalog")
+            }
         }
         #endif
     }
