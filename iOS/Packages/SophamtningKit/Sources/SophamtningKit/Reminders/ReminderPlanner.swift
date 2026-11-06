@@ -19,14 +19,18 @@ public struct PlannerInput: Sendable {
     public let liveActivitiesAllowed: Bool
     /// Adress och datum för Live Activities som faktiskt finns hos systemet (väntande eller pågående). Saknar standardvärde med avsikt.
     public let existingActivities: Set<PlacedOut>
+    /// Adress och datum där appen vet att aktiviteten syntes (pågående eller startad). Då behövs ingen reservnotis. Saknar
+    /// standardvärde med avsikt: glöms den skickas en onödig andra påminnelse.
+    public let shownActivities: Set<PlacedOut>
 
-    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>) {
+    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>, shownActivities: Set<PlacedOut>) {
         self.addresses = addresses
         self.settings = settings
         self.placedOut = placedOut
         self.now = now
         self.liveActivitiesAllowed = liveActivitiesAllowed
         self.existingActivities = existingActivities
+        self.shownActivities = shownActivities
     }
 }
 
@@ -38,6 +42,11 @@ public struct PlannedNotification: Equatable, Sendable {
     public let body: String
     public let key: AddressKey
     public let pickupDate: DayDate
+
+    /// Identifieraren för adressens notis ett visst datum. Reservnotisen har samma, så att den ersätter den vanliga.
+    public static func identifier(key: AddressKey, date: DayDate) -> String {
+        "\(key.fileName)-\(date.iso)"
+    }
 
     public init(identifier: String, fireDate: Date, title: String, body: String, key: AddressKey, pickupDate: DayDate) {
         self.identifier = identifier
@@ -128,6 +137,27 @@ public enum ReminderPlanner {
     static let maxAddressNameLength = 60
     static let defaultReminderMinutes = 1080
 
+    /// Reservnotisen kommer så här många minuter efter aktivitetens start, om aktiviteten inte syntes eller bekräftades.
+    static let fallbackDelayMinutes = 45
+    /// Senaste klockslag för reservnotisen, i minuter efter midnatt: 23:45.
+    static let fallbackLatestMinutes = 23 * 60 + 45
+    /// Från den här starten (23:15) hinner inte 45 minuter före midnatt, och fördröjningen blir kortare.
+    static let lateStartMinutes = 23 * 60 + 15
+    static let lateFallbackDelayMinutes = 15
+    /// Senaste klockslag för reservnotisen vid sen start: 23:59, alltså fortfarande samma dag.
+    static let lateFallbackLatestMinutes = 23 * 60 + 59
+
+    static let fallbackTitle = "Har du ställt ut kärlen?"
+    static let ordinaryTitle = "Ställ ut kärlen"
+
+    /// Reservnotisens klockslag i minuter efter midnatt, för en start vid `startMinutes` kvällen före. Aldrig över 23:59.
+    static func fallbackMinutes(startMinutes: Int) -> Int {
+        if startMinutes >= lateStartMinutes {
+            return min(startMinutes + lateFallbackDelayMinutes, lateFallbackLatestMinutes)
+        }
+        return min(startMinutes + fallbackDelayMinutes, fallbackLatestMinutes)
+    }
+
     /// Ogiltig tid ger standardtiden, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
     private static func effectiveMinutes(_ settings: ReminderSettings) -> Int {
         ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : defaultReminderMinutes
@@ -154,15 +184,23 @@ public enum ReminderPlanner {
         for entry in entries where entry.address.notificationsOn {
             guard let response = entry.schedule?.response else { continue }
             for pickup in pickups(in: response, today: today) {
-                if input.placedOut.contains(PlacedOut(key: entry.address.key, date: pickup.date)) { continue }
-                // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet.
-                if activitiesActive, input.existingActivities.contains(PlacedOut(key: entry.address.key, date: pickup.date)) { continue }
-                let fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                let id = PlacedOut(key: entry.address.key, date: pickup.date)
+                if input.placedOut.contains(id) { continue }
+                var minutesOfDay = minutes
+                var title = ordinaryTitle
+                // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse
+                // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
+                if activitiesActive, input.existingActivities.contains(id) {
+                    if input.shownActivities.contains(id) { continue }
+                    minutesOfDay = fallbackMinutes(startMinutes: minutes)
+                    title = fallbackTitle
+                }
+                let fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutesOfDay)
                 guard fireDate > input.now else { continue }
                 notifications.append(PlannedNotification(
-                    identifier: "\(entry.address.key.fileName)-\(pickup.date.iso)",
+                    identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date),
                     fireDate: fireDate,
-                    title: "Ställ ut kärlen",
+                    title: title,
                     body: body(addressName: entry.address.displayName, pickup: pickup, response: response),
                     key: entry.address.key,
                     pickupDate: pickup.date

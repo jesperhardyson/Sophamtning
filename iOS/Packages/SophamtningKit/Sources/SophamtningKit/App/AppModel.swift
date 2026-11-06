@@ -559,7 +559,8 @@ public final class AppModel {
             return nil
         }
         if !removals.isEmpty, status == .authorized {
-            let remaining = counted.filter { !removals.contains($0.id) }
+            // Även en passerad väntande aktivitet finns kvar hos systemet, och dess reservnotis ska ligga kvar.
+            let remaining = existing.filter { !removals.contains($0.id) }
             let safe = reminderPlan(existing: remaining, placedOut: placedOut, activitiesAllowed: systemAllows)
             await applyNotifications(safe.notifications, removing: false)
         }
@@ -604,10 +605,10 @@ public final class AppModel {
         }
 
         // Det är de aktiviteter som faktiskt finns nu som avgör om notisen behövs, inte de som skulle ha startats.
-        let actual = await activities.current()
+        let remainingNow = await activities.current()
             .filter { $0.phase.countsAsExisting && !removedActivityIds.contains($0.activity.id) }
             .map(\.activity)
-            .filter { !LiveActivityDiff.isOverdue($0, now: current) }
+        let actual = remainingNow.filter { !LiveActivityDiff.isOverdue($0, now: current) }
         let own = actual.filter { $0.key == primary }
         currentLiveActivity = own.first { !$0.isPending } ?? own.min { $0.start < $1.start }
         handledPickups = placedOut
@@ -616,7 +617,8 @@ public final class AppModel {
 
         // Utan tillstånd rörs inga notiser: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras de igen.
         guard status == .authorized else { return }
-        let final = reminderPlan(existing: actual, placedOut: placedOut, activitiesAllowed: systemAllows)
+        // En passerad väntande aktivitet är inget bevis för en visning, men reservnotisen täcker den med riktig tid.
+        let final = reminderPlan(existing: remainingNow, placedOut: placedOut, activitiesAllowed: systemAllows)
         await applyNotifications(final.notifications, removing: true)
     }
 
@@ -647,7 +649,9 @@ public final class AppModel {
             placedOut: placedOut,
             now: now(),
             liveActivitiesAllowed: activitiesAllowed,
-            existingActivities: Set(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
+            existingActivities: Set(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) }),
+            // En pågående aktivitet syns, och en tidigare visad är sparad. Då behövs ingen reservnotis.
+            shownActivities: Set(store.shownActivities()).union(existing.filter { !$0.isPending }.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
         )
     }
 

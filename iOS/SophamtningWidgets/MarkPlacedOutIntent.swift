@@ -2,8 +2,10 @@ import ActivityKit
 import AppIntents
 import os
 import SophamtningKit
+import UserNotifications
 
-/// Knappen **Utställt**: sparar att soporna är utställda, så att samma tömning inte startas igen, och avslutar aktiviteten.
+/// Knappen **Utställt**: sparar att soporna är utställda, så att samma tömning inte startas igen, avslutar aktiviteten och tar bort
+/// tömningens väntande reservnotis.
 /// Ingår i både app- och widgetmålet, och körs utan att appen öppnas.
 struct MarkPlacedOutIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Utställt"
@@ -40,7 +42,7 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
             }
         }
         if let date = DayDate(iso) {
-            let saved = await PlacedOutAction.perform(store: LocalStore.shared(), entry: PlacedOut(key: key, date: date), today: StockholmClock.today(now: Date()), end: end)
+            let saved = await PlacedOutAction.perform(store: LocalStore.shared(), entry: PlacedOut(key: key, date: date), today: StockholmClock.today(now: Date()), end: end, cancelReminder: Self.cancelReminder)
             if !saved {
                 // Aktiviteten är avslutad ändå. Nästa planering kan starta samma tömning igen.
                 Logger(subsystem: "se.hardyson.sophamtning", category: "LiveActivity").error("Kunde inte spara Utställt")
@@ -49,5 +51,10 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
             await end()
         }
         return .result()
+    }
+
+    /// Tar bort den väntande notisen. Misslyckas det blir följden bara en extra påminnelse, och nästa planering rättar det.
+    private static let cancelReminder: @Sendable (String) async throws -> Void = { identifier in
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 }

@@ -138,7 +138,7 @@ public struct AddressDetail: Equatable, Sendable {
     /// Texten vid valet för Live Activity.
     public static func liveActivityText(settings: ReminderSettings) -> String {
         let time = SwedishFormat.clock(minutes: settings.reminderMinutes)
-        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med."
+        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med. Slå på notiser också, så får du en reserv om aktiviteten inte startar."
     }
 
     /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.

@@ -227,7 +227,7 @@ private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity]
     )
     let plan = ReminderPlanner.plan(PlannerInput(
         addresses: [PlannerAddress(address: address, schedule: CachedSchedule(response: response))],
-        settings: ReminderSettings(liveActivityOn: true), placedOut: [], now: start.addingTimeInterval(60), liveActivitiesAllowed: true, existingActivities: []
+        settings: ReminderSettings(liveActivityOn: true), placedOut: [], now: start.addingTimeInterval(60), liveActivitiesAllowed: true, existingActivities: [], shownActivities: []
     ))
     let content = try #require(plan.liveActivity).content
     #expect(content.addressName.count == 60)

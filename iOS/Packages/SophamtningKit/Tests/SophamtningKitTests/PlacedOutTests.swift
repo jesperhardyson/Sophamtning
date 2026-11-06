@@ -103,14 +103,30 @@ private func entry(_ offset: Int) -> PlacedOut {
     #expect(throws: (any Error).self) { try LocalStore(directory: blocked).markPlacedOut(entry(1), today: today) }
 }
 
-@Test func utstalltAvslutarAktivitetenOchSparar() async throws {
+/// Fejk för notiscentret: noterar vilka identifierare som tas bort, och kan misslyckas.
+private actor FakeCenter {
+    private(set) var cancelled: [String] = []
+    private let failing: Bool
+    init(failing: Bool = false) { self.failing = failing }
+    struct Failed: Error {}
+    func cancel(_ id: String) throws {
+        cancelled.append(id)
+        if failing { throw Failed() }
+    }
+}
+
+@Test func utstalltAvslutarAktivitetenSpararOchTarBortNotisen() async throws {
     let temp = TempDir()
     let store = LocalStore(directory: temp.url)
     let ended = EndedFlag()
-    let saved = await PlacedOutAction.perform(store: store, entry: entry(1), today: today) { await ended.set() }
+    let center = FakeCenter()
+    let saved = await PlacedOutAction.perform(store: store, entry: entry(1), today: today, end: { await ended.set() }, cancelReminder: { try await center.cancel($0) })
     #expect(saved)
     #expect(await ended.value)
     #expect(store.placedOut() == [entry(1)])
+    // Adressens och datumets notis, med samma identifierare som planeraren ger.
+    #expect(await center.cancelled == ["\(key.fileName)-\(entry(1).date.iso)"])
+    #expect(await center.cancelled == [PlannedNotification.identifier(key: key, date: entry(1).date)])
 }
 
 @Test func utstalltAvslutarAktivitetenAvenVidSkrivfel() async throws {
@@ -119,10 +135,26 @@ private func entry(_ offset: Int) -> PlacedOut {
     let blocked = temp.url.appendingPathComponent("blockerad")
     try Data().write(to: blocked)
     let ended = EndedFlag()
+    let center = FakeCenter()
     // Skrivfelet kastas inte utanför.
-    let saved = await PlacedOutAction.perform(store: LocalStore(directory: blocked), entry: entry(1), today: today) { await ended.set() }
+    let saved = await PlacedOutAction.perform(store: LocalStore(directory: blocked), entry: entry(1), today: today, end: { await ended.set() }, cancelReminder: { try await center.cancel($0) })
     #expect(!saved)
     #expect(await ended.value)
+    // Notisen tas bort ändå: användaren har sagt att det är utställt.
+    #expect(await center.cancelled.count == 1)
+}
+
+@Test func utstalltAvslutarAktivitetenAvenNarNotisenInteGarAttTaBort() async throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    let ended = EndedFlag()
+    let center = FakeCenter(failing: true)
+    let saved = await PlacedOutAction.perform(store: store, entry: entry(1), today: today, end: { await ended.set() }, cancelReminder: { try await center.cancel($0) })
+    // Felet kastas inte, aktiviteten är avslutad och valet sparat. Följden är bara en extra påminnelse.
+    #expect(saved)
+    #expect(await ended.value)
+    #expect(store.placedOut() == [entry(1)])
+    #expect(await center.cancelled.count == 1)
 }
 
 @Test func visadeSparasRensasOchTomsPaBegaran() throws {

@@ -38,9 +38,16 @@ private final class FakeNotifications: NotificationScheduling, @unchecked Sendab
         for id in identifiers { log.add("notis- \(id.suffix(10))") }
     }
     var dates: [String] { lock.withLock { store.values.map(\.pickupDate.iso).sorted() } }
+    /// Den väntande notisen för tömningen, om det finns någon.
+    func notification(_ iso: String) -> PlannedNotification? { lock.withLock { store.values.first { $0.pickupDate.iso == iso } } }
+    /// Sant när notisen är reservnotisen: efter aktivitetens start, med reservens rubrik.
+    func isFallback(_ iso: String) -> Bool { notification(iso)?.title == "Har du ställt ut kärlen?" }
 }
 
 private struct StartFailed: Error {}
+
+/// Söndag 8 november vid givna minuter efter midnatt, svensk tid.
+private func sundayAt(_ minutes: Int) -> Date { StockholmClock.date(on: DayDate("2026-11-08")!, minutes: minutes) }
 
 private func pickupContent(_ name: String = "Hemma") -> PickupActivityContent {
     PickupActivityContent(addressName: name, dateText: "Måndag 9 november", shortDateText: "Mån 9 nov", fractions: [ActivityFraction(id: "rest", name: "Restavfall", short: "Rest", color: "#111111", icon: "trash")], estimated: false, warning: nil)
@@ -169,12 +176,12 @@ private struct Fixture {
     let clock: Clock
     let store: LocalStore
 
-    init(now: Date = friday, liveOn: Bool = true, systemEnabled: Bool = true, notificationStatus: NotificationAuthorization = .authorized, dates: [DayDate] = [monday, thursday], writeHomeSchedule: Bool = true) throws {
+    init(now: Date = friday, liveOn: Bool = true, systemEnabled: Bool = true, notificationStatus: NotificationAuthorization = .authorized, dates: [DayDate] = [monday, thursday], writeHomeSchedule: Bool = true, homeNotifications: Bool = true) throws {
         clock = Clock(now)
         notifications = FakeNotifications(log: log, status: notificationStatus)
         activities = FakeActivities(log: log, enabled: systemEnabled)
         store = LocalStore(directory: temp.url)
-        try store.setAddresses([saved(homeKey, name: "Hemma", primary: true), saved(otherKey, name: "Stugan", primary: false, notifications: false)])
+        try store.setAddresses([saved(homeKey, name: "Hemma", primary: true, notifications: homeNotifications), saved(otherKey, name: "Stugan", primary: false, notifications: false)])
         if writeHomeSchedule {
             try store.setSchedule(CachedSchedule(response: response(homeKey, dates), fetchedAt: now), for: homeKey)
         }
@@ -202,13 +209,17 @@ private struct Fixture {
     #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
 }
 
-@Test @MainActor func valetPaStartarOchTarBortNotisenForTomningen() async throws {
+@Test @MainActor func valetPaStartarOchErsatterNotisenForTomningenMedReserv() async throws {
     let f = try Fixture()
     let model = f.model()
     await apply(model)
     #expect(f.activities.starts.map(\.pickupDate) == [monday])
     #expect(f.activities.starts.first?.startsImmediately == false)
-    #expect(f.notifications.dates == ["2026-11-12"])
+    // En enda notis för måndagen, och det är reserven 45 minuter efter starten. Torsdagen har en vanlig.
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
+    #expect(f.notifications.notification("2026-11-09")?.fireDate == sundayAt(18 * 60 + 45))
+    #expect(!f.notifications.isFallback("2026-11-12"))
     #expect(model.currentLiveActivity?.pickupDate == monday)
     #expect(model.liveActivityError == nil)
 }
@@ -221,8 +232,10 @@ private struct Fixture {
     f.log.clear()
     model.setLiveActivity(true)
     await model.settleReminders()
-    // Notisen tas bort först när aktiviteten faktiskt finns.
-    #expect(f.log.all == ["start 2026-11-09", "notis- 2026-11-09"])
+    // Notisen ersätts av reserven först när aktiviteten faktiskt finns. Samma identifierare, så ingen tas bort.
+    #expect(f.log.all == ["start 2026-11-09", "notis+ 2026-11-09"])
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
 }
 
 @Test @MainActor func misslyckadStartLamnarNotisenKvar() async throws {
@@ -236,13 +249,17 @@ private struct Fixture {
     #expect(f.activities.starts.isEmpty)
     #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
     #expect(!f.log.all.contains("notis- 2026-11-09"))
+    // Misslyckad `request`: den vanliga notisen på ordinarie tid, inte reserven.
+    #expect(!f.notifications.isFallback("2026-11-09"))
+    #expect(f.notifications.notification("2026-11-09")?.fireDate == sundayAt(18 * 60))
     #expect(model.liveActivityError != nil)
     #expect(model.currentLiveActivity == nil)
-    // Nästa försök lyckas, och felet försvinner.
+    // Nästa försök lyckas, och felet försvinner. Notisen blir reserven.
     f.activities.setFailing(false)
     await apply(model)
     #expect(f.activities.starts.count == 1)
-    #expect(f.notifications.dates == ["2026-11-12"])
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
     #expect(model.liveActivityError == nil)
 }
 
@@ -362,8 +379,9 @@ private struct Fixture {
     await model.settleReminders()
     #expect(f.activities.ids == [old])
     #expect(model.liveActivityError != nil)
-    // Den gamla aviserar, så notisen behövs inte.
-    #expect(f.notifications.dates == ["2026-11-12"])
+    // Den gamla aviserar, och reserven ligger kvar bakom den.
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
     #expect(model.currentLiveActivity?.id == old)
 }
 
@@ -378,34 +396,42 @@ private struct Fixture {
 
 // MARK: Väntande vars start har passerat
 
-/// Söndag 12:00. En väntande aktivitet för måndag skulle ha startat 11:00, fast påminnelsetiden är 18:00.
-///
-/// Fallet är konstlat: starttiden skiljer sig från påminnelsetiden bara för att notisen ska ligga framåt och gå att se.
-/// Det verkliga fallet, där aktivitetens start och notisens tid är samma och båda har passerat, ger ingen notis alls, eftersom
-/// planeraren hoppar över passerade tider. Täckningen av det väntar på beslutet om reservnotis.
-private let sundayNoon = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
+/// Söndag 18:10. Aktiviteten för måndag skulle ha startat 18:00, alltså mer än marginalen sedan, och är fortfarande väntande.
+/// Reservnotisen 18:45 ligger framåt, så fallet går att se med riktiga tider.
+private let sundayPastStart = sundayAt(18 * 60 + 10)
 
 private func overdue(_ f: Fixture) {
-    f.activities.insert(SystemActivity(activity: ExistingActivity(id: "gammal", key: homeKey, pickupDate: monday, content: pickupContent(), isPending: true, start: sundayNoon.addingTimeInterval(-3600)), phase: .pending))
+    f.activities.insert(SystemActivity(activity: ExistingActivity(id: "gammal", key: homeKey, pickupDate: monday, content: pickupContent(), isPending: true, start: sundayAt(18 * 60)), phase: .pending))
 }
 
 @Test @MainActor func passeradVantandeErsattsMedAppenOppen() async throws {
-    let f = try Fixture(now: sundayNoon)
+    let f = try Fixture(now: sundayPastStart)
     overdue(f)
     await apply(f.model())
     #expect(!f.activities.ids.contains("gammal"))
     #expect(f.activities.starts.map(\.pickupDate) == [monday])
+    // Den nya syns direkt, och då behövs ingen reserv för måndagen.
+    #expect(f.notifications.notification("2026-11-09") == nil)
 }
 
-@Test @MainActor func passeradVantandeRaknasInteForNotisenIBakgrunden() async throws {
-    let f = try Fixture(now: sundayNoon)
+@Test @MainActor func passeradVantandeTackasAvReservnotisenIBakgrunden() async throws {
+    let f = try Fixture(now: sundayPastStart)
     overdue(f)
     let model = f.model()
     await apply(model, startingActivities: false)
     #expect(f.activities.ids == ["gammal"])
-    #expect(f.notifications.dates.contains("2026-11-09"))
+    // Den vanliga tiden 18:00 har passerat, och reserven 18:45 är den riktiga notisen.
+    #expect(f.notifications.isFallback("2026-11-09"))
+    #expect(f.notifications.notification("2026-11-09")?.fireDate == sundayAt(18 * 60 + 45))
     // Kortet lovar ingen tid som redan passerat.
     #expect(model.currentLiveActivity == nil)
+}
+
+@Test @MainActor func passeradVantandeNarReserventidenOckssaPasseratGerIngenNotis() async throws {
+    let f = try Fixture(now: sundayAt(18 * 60 + 50))
+    overdue(f)
+    await apply(f.model(), startingActivities: false)
+    #expect(f.notifications.notification("2026-11-09") == nil)
 }
 
 // MARK: Bortsvept
@@ -580,10 +606,13 @@ private func overdue(_ f: Fixture) {
     let f = try Fixture()
     let model = f.model()
     await apply(model)
-    #expect(f.notifications.dates == ["2026-11-12"])
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
     let background = f.model()
     await apply(background, startingActivities: false)
-    #expect(f.notifications.dates == ["2026-11-12"])
+    // Bakgrunden får planera reserven, eftersom den bara är en notis.
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
     #expect(f.activities.starts.count == 1)
 }
 
@@ -637,6 +666,65 @@ private func overdue(_ f: Fixture) {
     #expect(model.currentLiveActivity?.id == id)
 }
 
+// MARK: Reservnotis
+
+@Test @MainActor func reserventasBortNarAktivitetenVisats() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    #expect(f.notifications.isFallback("2026-11-09"))
+    // Systemet startar aktiviteten kl. 18:00, och appen ser den vid nästa planering.
+    f.clock.set(sundayAt(18 * 60 + 1))
+    f.activities.promote()
+    await apply(model)
+    #expect(f.notifications.dates == ["2026-11-12"])
+    #expect(model.handledPickup(key: homeKey, date: monday))
+}
+
+@Test @MainActor func reserventasBortNarAktivitetenAvslutatsEfterStarten() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    f.clock.set(sundayAt(18 * 60 + 20))
+    f.activities.promote()
+    await apply(model)
+    let id = try #require(f.activities.ids.first)
+    // Användaren sveper bort den. Den har visats, och reserven kommer inte tillbaka.
+    f.activities.setPhase(.dismissed, id: id)
+    await apply(model)
+    #expect(f.notifications.notification("2026-11-09") == nil)
+}
+
+@Test @MainActor func utstalltTarBortReserventVidNastaPlanering() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    #expect(f.notifications.isFallback("2026-11-09"))
+    try f.store.markPlacedOut(PlacedOut(key: homeKey, date: monday), today: DayDate("2026-11-06")!)
+    await apply(model)
+    #expect(f.notifications.dates == ["2026-11-12"])
+    #expect(f.log.all.contains("notis- 2026-11-09"))
+}
+
+@Test @MainActor func bastaLiveActivityUtanNotiserGerIngenNotis() async throws {
+    let f = try Fixture(homeNotifications: false)
+    let model = f.model()
+    await apply(model)
+    #expect(f.activities.starts.map(\.pickupDate) == [monday])
+    // Den andra adressen har notiser av, så ingen notis alls.
+    #expect(f.notifications.dates.isEmpty)
+}
+
+@Test @MainActor func reserventasBortNarNotiserSlasAv() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    #expect(f.notifications.isFallback("2026-11-09"))
+    _ = await model.setNotifications(false, for: homeKey)
+    await model.settleReminders()
+    #expect(f.notifications.dates.isEmpty)
+}
+
 // MARK: Systemets val
 
 @Test @MainActor func avstangtIIosBehallerValetOchNotisen() async throws {
@@ -647,12 +735,16 @@ private func overdue(_ f: Fixture) {
     #expect(model.settings.liveActivityOn)
     #expect(f.activities.starts.isEmpty)
     #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    // Avstängt i iOS: den vanliga notisen tillbaka på ordinarie tid.
+    #expect(!f.notifications.isFallback("2026-11-09"))
+    #expect(f.notifications.notification("2026-11-09")?.fireDate == sundayAt(18 * 60))
     // Slås det på igen och appen blir aktiv tas notisen över av aktiviteten.
     f.activities.setEnabled(true)
     await apply(model)
     #expect(model.liveActivitiesEnabled)
     #expect(f.activities.starts.map(\.pickupDate) == [monday])
-    #expect(f.notifications.dates == ["2026-11-12"])
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+    #expect(f.notifications.isFallback("2026-11-09"))
 }
 
 @Test @MainActor func avstangtIIosNarAktivitetVantarLaggerInNotisen() async throws {
@@ -667,6 +759,9 @@ private func overdue(_ f: Fixture) {
     let removed = try #require(log.firstIndex { $0.hasPrefix("remove") })
     #expect(added < removed)
     #expect(f.notifications.dates.contains("2026-11-09"))
+    // Den vanliga notisen ersätter reserven, med samma identifierare.
+    #expect(!f.notifications.isFallback("2026-11-09"))
+    #expect(f.notifications.notification("2026-11-09")?.fireDate == sundayAt(18 * 60))
 }
 
 @Test @MainActor func nekadeNotiserHindrarInteAktiviteten() async throws {
