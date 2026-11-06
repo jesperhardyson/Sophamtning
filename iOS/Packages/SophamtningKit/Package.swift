@@ -9,7 +9,10 @@ let package = Package(
         .library(name: "SophamtningDesign", targets: ["SophamtningDesign"]),
     ],
     targets: [
-        .target(name: "SophamtningKit"),
+        .target(
+            name: "SophamtningKit",
+            resources: [.process("Kommun/Resources")]
+        ),
         .target(name: "SophamtningDesign", dependencies: ["SophamtningKit"]),
         .testTarget(
             name: "SophamtningKitTests",
