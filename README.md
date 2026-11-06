@@ -20,6 +20,21 @@ Apparna bygger på det öppna [Sopor API v1](https://sopor.hardyson.se/api/v1/do
 | `docs/plans/` | Implementationsplaner |
 | `docs/design/` | Design i Pencil |
 
+## Bygga iOS-appen
+
+Kräver Xcode med iOS 26 och [xcodegen](https://github.com/yonaskolb/XcodeGen).
+
+```bash
+# Generera projektet efter ändringar i iOS/project.yml
+cd iOS && xcodegen generate
+
+# Paketets tester
+cd iOS/Packages/SophamtningKit && swift test
+
+# Bygg appen
+xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+```
+
 ## Bidra
 
 Läs [`CONTRIBUTING.md`](CONTRIBUTING.md). Saknas din kommun, eller är schemat fel, görs det i [sopor](https://github.com/jesperhardyson/sopor), eftersom datan finns där. Säkerhetsbrister rapporteras enligt [`SECURITY.md`](SECURITY.md).

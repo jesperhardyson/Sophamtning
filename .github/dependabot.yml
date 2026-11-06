@@ -7,3 +7,7 @@ updates:
     groups:
       actions:
         patterns: ['*']
+  - package-ecosystem: swift
+    directory: /iOS/Packages/SophamtningKit
+    schedule:
+      interval: weekly

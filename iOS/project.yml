@@ -1,0 +1,87 @@
+name: Sophamtning
+options:
+  bundleIdPrefix: se.hardyson
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+packages:
+  SophamtningKit:
+    path: Packages/SophamtningKit
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: 4WZU5V58ZG
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: NO
+targets:
+  Sophamtning:
+    type: application
+    platform: iOS
+    sources: [Sophamtning]
+    dependencies:
+      - target: SophamtningWidgets
+      - package: SophamtningKit
+        product: SophamtningKit
+      - package: SophamtningKit
+        product: SophamtningDesign
+    entitlements:
+      path: Sophamtning/Sophamtning.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.se.hardyson.sophamtning
+    info:
+      path: Sophamtning/Info.plist
+      properties:
+        CFBundleDisplayName: Sophämtning
+        NSSupportsLiveActivities: true
+        BGTaskSchedulerPermittedIdentifiers:
+          - se.hardyson.sophamtning.refresh
+        UIBackgroundModes:
+          - fetch
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning
+  SophamtningWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [SophamtningWidgets]
+    dependencies:
+      - package: SophamtningKit
+        product: SophamtningKit
+      - package: SophamtningKit
+        product: SophamtningDesign
+    entitlements:
+      path: SophamtningWidgets/SophamtningWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.se.hardyson.sophamtning
+    info:
+      path: SophamtningWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Sophämtning
+        NSSupportsLiveActivities: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning.widgets
+  SophamtningUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [SophamtningUITests]
+    dependencies:
+      - target: Sophamtning
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning.uitests
+        TEST_TARGET_NAME: Sophamtning
+schemes:
+  Sophamtning:
+    build:
+      targets:
+        Sophamtning: all
+    test:
+      targets:
+        - SophamtningUITests
