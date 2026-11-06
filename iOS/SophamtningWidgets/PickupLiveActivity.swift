@@ -19,14 +19,15 @@ struct PickupLiveActivity: Widget {
         } dynamicIsland: { context in
             let content = context.state
             return DynamicIsland {
-                // Rubriken ligger bredvid kameran. Den nedre regionen har ungefär 90 pt i höjd, så knappen och fraktionerna
-                // går före varningen, som alltid syns i sin helhet på låsskärmen.
+                // Rubriken ligger bredvid kameran. Den nedre regionen har ungefär 90 pt i höjd. Samma regel som på låsskärmen:
+                // fraktionerna och knappen går före varningen, som får en rad och hellre kapas.
                 DynamicIslandExpandedRegion(.leading) {
                     Text(PickupActivityContent.alertTitle)
                         .font(.ui(16, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .padding(.leading, 6)
                         .dynamicTypeSize(...DynamicTypeSize.large)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -36,20 +37,26 @@ struct PickupLiveActivity: Widget {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.trailing, 6)
                         .dynamicTypeSize(...DynamicTypeSize.large)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(content.fractionsLine)
+                        Text(content.addressName)
                             .font(.ui(14, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(1)
                         WarningLine(content: content, lineLimit: 1)
-                        PlacedOutButton(attributes: context.attributes, fullWidth: true, height: 34)
-                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 8) {
+                            FractionChips(content: content)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            PlacedOutButton(attributes: context.attributes, fullWidth: false)
+                                .layoutPriority(1)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
                     }
+                    // De rundade hörnen klipper annars rubriken och nedersta chipset.
+                    .padding(.horizontal, 6)
                     .environment(\.colorScheme, .dark)
                     .dynamicTypeSize(...DynamicTypeSize.large)
                 }
@@ -75,7 +82,8 @@ struct PickupLiveActivity: Widget {
     }
 }
 
-/// Låsskärmen. Systemet ger högst 160 pt i höjd, så varningen får två rader och chipsen en.
+/// Låsskärmen. Systemet ger högst 160 pt i höjd. Rubriken, datumet, chipsen och knappen behåller sin höjd, och varningen får det
+/// som blir över: två rader med en rad chips, annars en rad, och den kapas hellre än att något annat försvinner.
 private struct LockScreenPickup: View {
     let attributes: PickupActivityAttributes
     let content: PickupActivityContent
@@ -84,7 +92,7 @@ private struct LockScreenPickup: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 ActivityAppIcon()
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text(PickupActivityContent.alertTitle)
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(.white)
@@ -95,15 +103,18 @@ private struct LockScreenPickup: View {
                         .minimumScaleFactor(0.8)
                 }
             }
-            WarningLine(content: content)
+            WarningLine(content: content, lineLimit: content.warningLineLimit)
+                .layoutPriority(-1)
             HStack(spacing: 8) {
                 FractionChips(content: content)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 PlacedOutButton(attributes: attributes, fullWidth: false)
                     .layoutPriority(1)
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .accessibilityElement(children: .contain)
     }
 }
@@ -129,26 +140,23 @@ private struct WarningLine: View {
     }
 }
 
-/// Alla fraktioner syns alltid med namn. Får de inte plats som chips på en rad visas de som text, inom systemets höjdgräns.
+/// Alla fraktioner med färg, ikon och kort namn, på högst två rader. Det är enda layouten.
 private struct FractionChips: View {
     let content: PickupActivityContent
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) {
-                ForEach(content.fractions, id: \.id) { fraction in
-                    FractionChip(id: fraction.id, info: FractionInfo(name: fraction.name, short: fraction.short, color: fraction.color, icon: fraction.icon))
-                        .fixedSize()
-                        // Chipsen är ljusa enligt designen, på den mörka bakgrunden.
-                        .environment(\.colorScheme, .light)
+        VStack(alignment: .leading, spacing: ActivityChipMetrics.spacing) {
+            ForEach(Array(content.fractionRows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: ActivityChipMetrics.spacing) {
+                    ForEach(row, id: \.id) { fraction in
+                        FractionChip(id: fraction.id, info: FractionInfo(name: fraction.short, short: fraction.short, color: fraction.color, icon: fraction.icon), compact: true)
+                            .minimumScaleFactor(0.7)
+                    }
                 }
             }
-            Text(content.fractionNames)
-                .font(.ui(14, weight: .bold, relativeTo: .subheadline))
-                .foregroundStyle(.white)
-                .lineLimit(3)
-                .minimumScaleFactor(0.8)
         }
+        // Chipsen är ljusa enligt designen, på den mörka bakgrunden.
+        .environment(\.colorScheme, .light)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(content.fractions.map(\.name).joined(separator: ", "))
     }
@@ -178,3 +186,29 @@ private struct PlacedOutButton: View {
         .buttonStyle(.plain)
     }
 }
+
+// MARK: Förhandsvisning
+
+/// Sex fraktioner och varning, det största innehållet som finns i dag.
+private let sixFractions = PickupActivityContent(
+    addressName: "Hemma",
+    dateText: "Måndag 9 november",
+    shortDateText: "Mån 9 nov",
+    fractions: [
+        ("rest", "Rest"), ("mat", "Mat"), ("papper", "Papper"), ("plast", "Plast"), ("glas", "Glas"), ("metall", "Metall"),
+    ].map { ActivityFraction(id: $0.0, name: $0.1, short: $0.1, color: "#111111", icon: "trash-2") },
+    estimated: true,
+    warning: "Hämtning på helgdag. Kontrollera datum och tid med kommunen, eftersom tömningen kan flyttas med kort varsel."
+)
+
+private func lockPreview(width: CGFloat) -> some View {
+    LockScreenPickup(attributes: PickupActivityAttributes(key: AddressKey(source: "a", id: "b"), pickupDate: DayDate("2026-11-09")!, start: Date()), content: sixFractions)
+        .frame(width: width, alignment: .leading)
+        .frame(maxHeight: 160)
+        .background(activityBackground)
+        .environment(\.colorScheme, .dark)
+}
+
+// Kortet är telefonens bredd minus 30 pt i marginaler.
+#Preview("Sex fraktioner, 375 pt") { lockPreview(width: 345) }
+#Preview("Sex fraktioner, 402 pt") { lockPreview(width: 372) }

@@ -135,6 +135,39 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
 }
 
+@Test func felVidStartVisasAvenMedNotiser() throws {
+    // Notiser på, misslyckad direktstart och passerad tid: varken aktivitet eller notis för nästa tömning.
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["rest"])])]
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+}
+
+@Test func felVisasInteNarValetArAv() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: false), now: now, liveActivityError: "Gammalt fel.")
+    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+}
+
+@Test func passeradPaminnelseForNastaTomningVisas() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["rest"])])]
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, missedReminder: "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
+    #expect(try #require(content.primary).reminderText == "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
+}
+
+@Test func felGarForePasseradPaminnelse() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.", missedReminder: "Passerad.")
+    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+}
+
 @Test func passeradStarttidLovasInte() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: now.addingTimeInterval(-60)))

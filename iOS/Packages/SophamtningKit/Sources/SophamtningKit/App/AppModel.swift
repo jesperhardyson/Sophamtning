@@ -427,13 +427,14 @@ public final class AppModel {
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när en adress med påminnelser på har tömning i morgon
     /// och påminnelsetiden redan passerat. Ingen ersättningsnotis skickas, eftersom varje planering annars kunde skicka en ny.
     public var missedReminderText: String? {
+        addresses.lazy.compactMap { self.missedReminderText(for: $0) }.first
+    }
+
+    /// Samma text för en adress, till exempel huvudadressen på hemkortet. `nil` när den inte gäller adressens nästa tömning.
+    public func missedReminderText(for address: SavedAddress) -> String? {
         _ = scheduleRevision
-        for address in addresses where missedReminderApplies(to: address) {
-            if let text = AddressDetail.missedReminder(events: schedules[address.key]?.response?.events ?? [], settings: settings, now: now()) {
-                return text
-            }
-        }
-        return nil
+        guard missedReminderApplies(to: address) else { return nil }
+        return AddressDetail.missedReminder(events: schedules[address.key]?.response?.events ?? [], settings: settings, now: now())
     }
 
     /// Ersätter en adress som källan inte längre känner igen med en nyss sparad. Namn, huvudadress och notisval följer med,

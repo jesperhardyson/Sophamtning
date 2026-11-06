@@ -378,7 +378,11 @@ private struct Fixture {
 
 // MARK: Väntande vars start har passerat
 
-/// Söndag 12:00. En väntande aktivitet för måndag skulle ha startat 11:00. Påminnelsetiden är 18:00.
+/// Söndag 12:00. En väntande aktivitet för måndag skulle ha startat 11:00, fast påminnelsetiden är 18:00.
+///
+/// Fallet är konstlat: starttiden skiljer sig från påminnelsetiden bara för att notisen ska ligga framåt och gå att se.
+/// Det verkliga fallet, där aktivitetens start och notisens tid är samma och båda har passerat, ger ingen notis alls, eftersom
+/// planeraren hoppar över passerade tider. Täckningen av det väntar på beslutet om reservnotis.
 private let sundayNoon = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
 
 private func overdue(_ f: Fixture) {
@@ -518,6 +522,20 @@ private func overdue(_ f: Fixture) {
     let model = f.model()
     await apply(model)
     #expect(model.missedReminderText == nil)
+}
+
+@Test @MainActor func misslyckadDirektstartMedNotiserVisarFelOchPasseradPaminnelse() async throws {
+    let f = try Fixture(now: sundayEvening)
+    f.activities.setFailing(true)
+    let model = f.model()
+    await apply(model)
+    let home = try #require(model.addresses.first { $0.key == homeKey })
+    #expect(f.activities.ids.isEmpty)
+    #expect(!f.notifications.dates.contains("2026-11-09"))
+    #expect(model.liveActivityError != nil)
+    #expect(model.missedReminderText(for: home) != nil)
+    let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate, remindersAllowed: true, liveActivity: model.currentLiveActivity, liveActivitiesEnabled: model.liveActivitiesEnabled, liveActivityError: model.liveActivityError, missedReminder: model.missedReminderText(for: home))
+    #expect(try #require(content.primary).reminderText == model.liveActivityError)
 }
 
 @Test @MainActor func passeradPaminnelseVisasUtanAktivitet() async throws {

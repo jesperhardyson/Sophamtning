@@ -59,19 +59,19 @@ public struct HomeContent: Equatable, Sendable {
     public let primary: Entry?
     public let others: [Entry]
 
-    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil) -> HomeContent {
+    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil) -> HomeContent {
         let today = StockholmClock.today(now: now)
         let primaryAddress = addresses.first(where: \.isPrimary) ?? addresses.first
         let primary = primaryAddress.map { address in
-            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, withReminder: true, remindersAllowed: remindersAllowed, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError)
+            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, withReminder: true, remindersAllowed: remindersAllowed, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder)
         }
         let others = addresses
             .filter { $0.key != primaryAddress?.key }
-            .map { entry($0, schedule: schedules[$0.key], settings: settings, today: today, now: now, withReminder: false, remindersAllowed: remindersAllowed, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil) }
+            .map { entry($0, schedule: schedules[$0.key], settings: settings, today: today, now: now, withReminder: false, remindersAllowed: remindersAllowed, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: nil) }
         return HomeContent(primary: primary, others: others)
     }
 
-    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, withReminder: Bool, remindersAllowed: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?) -> Entry {
+    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, withReminder: Bool, remindersAllowed: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?) -> Entry {
         let status = status(of: schedule, today: today)
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
         var reminder: String?
@@ -83,7 +83,7 @@ public struct HomeContent: Equatable, Sendable {
                 pickup.estimated
             )
             if withReminder {
-                reminder = reminderText(notifications: address.notificationsOn && remindersAllowed, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError)
+                reminder = reminderText(notifications: address.notificationsOn && remindersAllowed, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder)
             }
         case .noUpcoming:
             summary = "Inga kommande hämtningar"
@@ -127,7 +127,7 @@ public struct HomeContent: Equatable, Sendable {
     /// Påminnelsen gäller kvällen före en hämtning, i svensk tid. Har kvällen före nästa hämtning redan
     /// passerat räknas den från nästa hämtning efter den. Finns ingen sådan visas en neutral text.
     /// Texten ska vara sann: en tid för Live Activity lovas bara när en aktivitet finns hos systemet.
-    private static func reminderText(notifications: Bool, settings: ReminderSettings, events: [PickupEvent], today: DayDate, now: Date, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?) -> String {
+    private static func reminderText(notifications: Bool, settings: ReminderSettings, events: [PickupEvent], today: DayDate, now: Date, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?) -> String {
         if settings.liveActivityOn, let liveActivity {
             guard liveActivity.isPending else { return "Live Activity visas nu" }
             // En tid som redan passerat lovas inte, även om aktiviteten står kvar som väntande.
@@ -138,11 +138,13 @@ public struct HomeContent: Equatable, Sendable {
                 return "Live Activity \(SwedishFormat.weekdayName(day)) kl. \(time)"
             }
         }
+        // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.
+        if settings.liveActivityOn, let liveActivityError { return liveActivityError }
         guard notifications || settings.liveActivityOn else { return "Påminn mig kvällen före" }
         guard notifications else {
-            guard liveActivitiesEnabled else { return "Live Activities är avstängda" }
-            return liveActivityError ?? "Ingen Live Activity planerad"
+            return liveActivitiesEnabled ? "Ingen Live Activity planerad" : "Live Activities är avstängda"
         }
+        if let missedReminder { return missedReminder }
         for event in ScheduleLogic.upcoming(events, today: today) {
             let evening = event.date.adding(days: -1)
             guard StockholmClock.date(on: evening, minutes: settings.reminderMinutes) > now else { continue }

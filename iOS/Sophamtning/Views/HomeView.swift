@@ -22,7 +22,8 @@ struct HomeView: View {
             remindersAllowed: model.notificationAuthorization == .authorized,
             liveActivity: model.currentLiveActivity,
             liveActivitiesEnabled: model.liveActivitiesEnabled,
-            liveActivityError: model.liveActivityError
+            liveActivityError: model.liveActivityError,
+            missedReminder: model.addresses.first(where: \.isPrimary).flatMap { model.missedReminderText(for: $0) }
         )
     }
 

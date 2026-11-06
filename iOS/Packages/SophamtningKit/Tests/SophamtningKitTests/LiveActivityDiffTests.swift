@@ -250,3 +250,32 @@ private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity]
     let largest = PickupActivityContent(addressName: String(repeating: "å", count: 60), dateText: "Onsdag 30 september", shortDateText: "Ons 30 sep", fractions: fractions, estimated: true, warning: String(repeating: "å", count: 500))
     #expect(try JSONEncoder().encode(largest).count < 4096)
 }
+
+// MARK: Fraktionernas rader
+
+private func fractions(_ count: Int) -> [ActivityFraction] {
+    (0..<count).map { ActivityFraction(id: "f\($0)", name: "Namn \($0)", short: "K\($0)", color: "#111111", icon: "trash") }
+}
+
+private func withFractions(_ count: Int, warning: String? = nil) -> PickupActivityContent {
+    PickupActivityContent(addressName: "Hemma", dateText: "Måndag 9 november", shortDateText: "Mån 9 nov", fractions: fractions(count), estimated: false, warning: warning)
+}
+
+@Test func allaFraktionerRymsPaHogstTvaRader() {
+    for count in 1...8 {
+        let rows = withFractions(count).fractionRows
+        #expect(rows.count <= 2, "\(count)")
+        // Ingen fraktion försvinner, och ordningen är kvar.
+        #expect(rows.flatMap { $0 }.map(\.id) == fractions(count).map(\.id), "\(count)")
+    }
+    #expect(withFractions(3).fractionRows.map(\.count) == [3])
+    #expect(withFractions(4).fractionRows.map(\.count) == [2, 2])
+    #expect(withFractions(5).fractionRows.map(\.count) == [3, 2])
+    #expect(withFractions(6).fractionRows.map(\.count) == [3, 3])
+}
+
+@Test func varningenFarEnRadNarFraktionernaTarTvaRader() {
+    #expect(withFractions(3).warningLineLimit == 2)
+    #expect(withFractions(4).warningLineLimit == 1)
+    #expect(withFractions(6).warningLineLimit == 1)
+}

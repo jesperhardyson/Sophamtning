@@ -77,29 +77,39 @@ public struct FractionIconView: View {
     }
 }
 
-/// Pillerformad märkning med ikon och namn.
+/// Måtten för de små chipsen i Live Activity. Två rader med tre chips ska rymmas bredvid knappen på en 375 pt bred telefon.
+public enum ActivityChipMetrics {
+    public static let spacing: CGFloat = 4
+    static let icon: CGFloat = 12
+    static let text: CGFloat = 12
+}
+
+/// Pillerformad märkning med ikon och namn. `compact` är den lilla varianten för Live Activity.
 public struct FractionChip: View {
     let style: FractionStyle
+    let compact: Bool
 
-    public init(id: String, info: FractionInfo) {
+    public init(id: String, info: FractionInfo, compact: Bool = false) {
         style = FractionStyle(id: id, info: info)
+        self.compact = compact
     }
 
     public var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: compact ? 3 : 6) {
             Image(style.iconName, bundle: .module)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 16, height: 16)
+                .frame(width: compact ? ActivityChipMetrics.icon : 16, height: compact ? ActivityChipMetrics.icon : 16)
                 .accessibilityHidden(true)
             Text(style.name)
-                .font(.ui(14, weight: .bold, relativeTo: .subheadline))
+                .font(compact ? .ui(ActivityChipMetrics.text, weight: .bold, relativeTo: .caption) : .ui(14, weight: .bold, relativeTo: .subheadline))
+                .lineLimit(1)
         }
         .foregroundStyle(style.foreground)
-        .padding(.leading, 8)
-        .padding(.trailing, 12)
-        .padding(.vertical, 6)
+        .padding(.leading, compact ? 5 : 8)
+        .padding(.trailing, compact ? 7 : 12)
+        .padding(.vertical, compact ? 3 : 6)
         .background(style.background, in: Capsule())
         .accessibilityElement(children: .combine)
     }

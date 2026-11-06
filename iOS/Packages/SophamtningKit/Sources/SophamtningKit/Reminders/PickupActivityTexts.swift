@@ -38,4 +38,16 @@ extension PickupActivityContent {
 
     /// "Hemma: Restavfall och Matavfall".
     public var fractionsLine: String { "\(addressName): \(fractionNames)" }
+
+    /// Fraktionerna som små chips på högst två rader. Alla får plats, och ingen döljs. Upp till tre ryms på en rad.
+    public var fractionRows: [[ActivityFraction]] {
+        guard fractions.count > 3 else { return fractions.isEmpty ? [] : [fractions] }
+        let first = (fractions.count + 1) / 2
+        return [Array(fractions.prefix(first)), Array(fractions.dropFirst(first))]
+    }
+
+    /// Fraktionerna går före varningen. Tar de två rader får varningen en, och kapas hellre än att något annat försvinner.
+    public var warningLineLimit: Int {
+        fractionRows.count > 1 ? 1 : 2
+    }
 }
