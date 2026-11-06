@@ -161,3 +161,21 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
     // De gamla anropen läser en skadad fil som saknad, som förut.
     #expect(store.addresses().isEmpty)
 }
+
+@Test func lagringenSkiljerOtillgangligFranSkadadFil() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sophamtning-unavailable-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let store = LocalStore(directory: dir)
+    try store.setAddresses([.fixture(isPrimary: true)])
+    let file = dir.appendingPathComponent("addresses.json")
+
+    // Läsningen misslyckas men innehållet är helt: otillgänglig, inte skadad.
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path) }
+    if case .unavailable = store.addressesState() {} else { Issue.record("en fil som inte går att läsa ska vara unavailable") }
+
+    // Läsningen går bra men innehållet går inte att tolka: skadad.
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+    try Data("skräp".utf8).write(to: file)
+    if case .unreadable = store.addressesState() {} else { Issue.record("ett innehåll som inte går att tolka ska vara unreadable") }
+}

@@ -1,10 +1,12 @@
 import Foundation
 
-/// Resultatet av att läsa en fil. `missing` är en fil som inte finns, vilket är ett normalt läge. `unreadable` är en fil som
-/// finns men inte går att läsa eller tolka (skadad, eller skyddad data efter omstart). Då får appen inte skriva över den.
+/// Resultatet av att läsa en fil. `missing` är en fil som inte finns, vilket är ett normalt läge. Finns den men går inte att läsa
+/// får appen aldrig skriva över den. `unavailable`: själva läsningen misslyckades (till exempel skyddad data före upplåsning),
+/// så innehållet kan vara helt i sin ordning. `unreadable`: läsningen gick bra men innehållet går inte att tolka, alltså skadat.
 public enum StoreRead<Value: Sendable>: Sendable {
     case missing
     case value(Value)
+    case unavailable
     case unreadable
 }
 
@@ -119,7 +121,8 @@ public final class LocalStore: Sendable {
     private func readState<T: Decodable & Sendable>(_ type: T.Type, from path: String) -> StoreRead<T> {
         let url = directory.appendingPathComponent(path)
         guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
-        guard let data = try? Data(contentsOf: url), let value = try? JSONDecoder().decode(type, from: data) else { return .unreadable }
+        guard let data = try? Data(contentsOf: url) else { return .unavailable }
+        guard let value = try? JSONDecoder().decode(type, from: data) else { return .unreadable }
         return .value(value)
     }
 

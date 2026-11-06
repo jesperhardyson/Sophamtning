@@ -103,9 +103,18 @@ struct HomeView: View {
     // MARK: Delar
 
     private func storageProblem(_ problem: AppModel.StorageProblem) -> some View {
-        let addresses = problem == .addressesUnreadable
+        let addresses = problem == .addressesUnreadable || problem == .addressesUnavailable
+        // Bara en skadad fil kan göras om. En fil som bara är otillgänglig just nu (till exempel före upplåsning) rörs aldrig.
+        let corrupt = problem == .addressesUnreadable || problem == .settingsUnreadable
+        let title: String
+        switch problem {
+        case .addressesUnreadable: title = "Dina sparade adresser kunde inte läsas"
+        case .addressesUnavailable: title = "Dina adresser kan inte läsas just nu"
+        case .settingsUnreadable: title = "Dina inställningar kunde inte läsas"
+        case .settingsUnavailable: title = "Dina inställningar kan inte läsas just nu"
+        }
         return VStack(alignment: .leading, spacing: 16) {
-            Text(addresses ? "Dina sparade adresser kunde inte läsas" : "Dina inställningar kunde inte läsas")
+            Text(title)
                 .font(.brand(30, relativeTo: .largeTitle))
                 .foregroundStyle(Color.Theme.text)
                 .padding(.top, 32)
@@ -114,14 +123,18 @@ struct HomeView: View {
                 style: .warning,
                 icon: "externaldrive.badge.xmark",
                 title: "Inget har raderats",
-                message: "Filen på telefonen är skadad eller går inte att nå just nu, till exempel direkt efter en omstart. Försök igen. Fungerar det inte kan du börja om."
+                message: corrupt
+                    ? "Filen på telefonen är skadad. Försök igen. Fungerar det inte kan du börja om."
+                    : "Lås upp telefonen och försök igen. Är den upplåst kan filen vara skyddad en kort stund efter en omstart."
             )
             Button { model.retryStorage() } label: { PrimaryButtonLabel(title: "Försök igen") }
-            Button { confirmingStartOver = true } label: {
-                Text("Börja om")
-                    .font(.ui(17, weight: .heavy, relativeTo: .headline))
-                    .foregroundStyle(Color.Theme.primary)
-                    .frame(maxWidth: .infinity, minHeight: 52)
+            if corrupt {
+                Button { confirmingStartOver = true } label: {
+                    Text("Börja om")
+                        .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                        .foregroundStyle(Color.Theme.primary)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
             }
         }
         .confirmationDialog(addresses ? "Börja om utan sparade adresser?" : "Använda standardinställningarna?", isPresented: $confirmingStartOver, titleVisibility: .visible) {

@@ -584,3 +584,60 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(try FileManager.default.contentsOfDirectory(atPath: temp.url.path).contains { $0.hasPrefix("settings.json.skadad-") })
     #expect(restarted.setReminderMinutes(20 * 60))
 }
+
+@Test @MainActor func borjaOmFlyttarInteEnFilSomRepareratsSedanFlaggan() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    let before = scheduler.planned
+    let file = temp.url.appendingPathComponent("addresses.json")
+    let good = try Data(contentsOf: file)
+    try Data("skräp".utf8).write(to: file)
+
+    let restarted = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(restarted.storageProblem == .addressesUnreadable)
+    // Filen blir läsbar igen, men appen har inte läst om den. Börja om läser om först och flyttar inget.
+    try good.write(to: file)
+    await restarted.startOver()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == nil)
+    #expect(restarted.addresses.count == 1)
+    #expect(try Data(contentsOf: file) == good)
+    #expect(!(try FileManager.default.contentsOfDirectory(atPath: temp.url.path)).contains { $0.contains(".skadad-") })
+    #expect(scheduler.planned == before)
+    #expect(scheduler.cancelled.isEmpty)
+}
+
+@Test @MainActor func tillfalligtOtillgangligFilFlyttasAldrigAvBorjaOm() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    let before = scheduler.planned
+    let file = temp.url.appendingPathComponent("addresses.json")
+    let good = try Data(contentsOf: file)
+    // Filen finns och är hel men går inte att läsa just nu, som skyddad data före upplåsning.
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path) }
+
+    let restarted = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(restarted.storageProblem == .addressesUnavailable)
+    await restarted.startOver()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == .addressesUnavailable)
+    #expect(FileManager.default.fileExists(atPath: file.path))
+    #expect(!(try FileManager.default.contentsOfDirectory(atPath: temp.url.path)).contains { $0.contains(".skadad-") })
+    #expect(scheduler.planned == before)
+    #expect(scheduler.cancelled.isEmpty)
+
+    // Efter upplåsning går det att läsa, och allt är kvar.
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+    restarted.retryStorage()
+    await restarted.settleReminders()
+    #expect(restarted.storageProblem == nil)
+    #expect(restarted.addresses.count == 1)
+    #expect(try Data(contentsOf: file) == good)
+}

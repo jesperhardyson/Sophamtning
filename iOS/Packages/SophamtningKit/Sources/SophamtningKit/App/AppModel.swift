@@ -26,9 +26,13 @@ public final class AppModel {
     /// Om några väntande notiser inte gick att lägga in, annars `nil`. Försöket upprepas vid nästa körning.
     public private(set) var reminderError: String?
     @ObservationIgnored private let scheduler: any NotificationScheduling
-    /// Falskt när `addresses.json` finns men inte går att läsa. Då skrivs filen aldrig över och inga notiser tas bort.
-    private var addressesReadable = true
-    private var settingsReadable = true
+    /// Varför `addresses.json` eller `settings.json` inte går att läsa, annars `nil`. Då skrivs filen aldrig över och inga
+    /// notiser tas bort. `corrupt`: innehållet går inte att tolka. `unavailable`: läsningen misslyckades, till exempel skyddad data.
+    private enum StoreIssue { case corrupt, unavailable }
+    private var addressesIssue: StoreIssue?
+    private var settingsIssue: StoreIssue?
+    private var addressesReadable: Bool { addressesIssue == nil }
+    private var settingsReadable: Bool { settingsIssue == nil }
     /// Den senaste köade påminnelseuppdateringen, så att två aldrig körs samtidigt.
     @ObservationIgnored private var reminderQueue: Task<Void, Never>?
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
@@ -40,23 +44,27 @@ public final class AppModel {
         self.now = now
         self.api = api
         refresher = ScheduleRefresher(api: api, store: store)
-        var readable = true
         let addresses: [SavedAddress]
         switch store.addressesState() {
         case .value(let saved): addresses = saved
         case .missing: addresses = []
         case .unreadable:
             addresses = []
-            readable = false
+            addressesIssue = .corrupt
+        case .unavailable:
+            addresses = []
+            addressesIssue = .unavailable
         }
-        addressesReadable = readable
         self.addresses = addresses
         switch store.settingsState() {
         case .value(let saved): settings = saved
         case .missing: settings = ReminderSettings()
         case .unreadable:
             settings = ReminderSettings()
-            settingsReadable = false
+            settingsIssue = .corrupt
+        case .unavailable:
+            settings = ReminderSettings()
+            settingsIssue = .unavailable
         }
         schedules = Dictionary(addresses.compactMap { address in
             store.schedule(for: address.key).map { (address.key, $0) }
@@ -70,25 +78,27 @@ public final class AppModel {
             switch store.addressesState() {
             case .value(let saved): adopt(saved)
             case .missing: adopt([])
-            case .unreadable: break
+            case .unreadable: addressesIssue = .corrupt
+            case .unavailable: addressesIssue = .unavailable
             }
         }
         if !settingsReadable {
             switch store.settingsState() {
             case .value(let saved):
                 settings = saved
-                settingsReadable = true
+                settingsIssue = nil
             case .missing:
                 settings = ReminderSettings()
-                settingsReadable = true
-            case .unreadable: break
+                settingsIssue = nil
+            case .unreadable: settingsIssue = .corrupt
+            case .unavailable: settingsIssue = .unavailable
             }
         }
     }
 
     private func adopt(_ saved: [SavedAddress]) {
         addresses = saved
-        addressesReadable = true
+        addressesIssue = nil
         schedules = Dictionary(saved.compactMap { address in
             store.schedule(for: address.key).map { (address.key, $0) }
         }, uniquingKeysWith: { first, _ in first })
@@ -96,15 +106,26 @@ public final class AppModel {
     }
 
     /// Filen som inte går att läsa, om någon. Hemskärmen visar då ett eget läge i stället för det tomma.
+    /// `...Unreadable`: innehållet är skadat, och Börja om erbjuds. `...Unavailable`: filen går inte att läsa just nu,
+    /// till exempel före upplåsning, och bara Försök igen erbjuds.
     public enum StorageProblem: Equatable, Sendable {
         case addressesUnreadable
+        case addressesUnavailable
         case settingsUnreadable
+        case settingsUnavailable
     }
 
     public var storageProblem: StorageProblem? {
-        if !addressesReadable { return .addressesUnreadable }
-        if !settingsReadable { return .settingsUnreadable }
-        return nil
+        switch addressesIssue {
+        case .corrupt: return .addressesUnreadable
+        case .unavailable: return .addressesUnavailable
+        case nil: break
+        }
+        switch settingsIssue {
+        case .corrupt: return .settingsUnreadable
+        case .unavailable: return .settingsUnavailable
+        case nil: return nil
+        }
     }
 
     /// "Försök igen": läser om filerna som inte gick att läsa.
@@ -114,12 +135,14 @@ public final class AppModel {
         applyReminders()
     }
 
-    /// "Börja om", efter bekräftelse. Den skadade filen flyttas åt sidan och raderas inte. Är det adresserna börjar appen
-    /// utan sparade adresser, och appens väntande notiser tas bort. Är det inställningarna används standardinställningarna.
-    /// Går det inte att flytta filen ändras inget och `lastStorageError` är satt.
+    /// "Börja om", efter bekräftelse, och bara för en fil vars innehåll är skadat. Filerna läses om först, och är de
+    /// fungerande eller bara tillfälligt otillgängliga flyttas inget. Den skadade filen flyttas åt sidan och raderas inte.
+    /// Är det adresserna börjar appen utan sparade adresser, och appens väntande notiser tas bort. Är det inställningarna
+    /// används standardinställningarna. Går det inte att flytta filen ändras inget och `lastStorageError` är satt.
     public func startOver() async {
+        reloadStorageIfNeeded()
         let date = now()
-        if !addressesReadable {
+        if addressesIssue == .corrupt {
             do {
                 try store.moveAsideAddresses(at: date)
             } catch {
@@ -128,12 +151,12 @@ public final class AppModel {
             }
             addresses = []
             schedules = [:]
-            addressesReadable = true
+            addressesIssue = nil
             scheduleRevision += 1
             let own = await scheduler.pending().map(\.identifier).filter { NotificationDiff.isOwn(identifier: $0) }
             if !own.isEmpty { await scheduler.cancel(identifiers: own) }
         }
-        if !settingsReadable {
+        if settingsIssue == .corrupt {
             do {
                 try store.moveAsideSettings(at: date)
             } catch {
@@ -141,7 +164,7 @@ public final class AppModel {
                 return
             }
             settings = ReminderSettings()
-            settingsReadable = true
+            settingsIssue = nil
         }
         applyReminders()
     }
@@ -192,7 +215,7 @@ public final class AppModel {
                 switch store.scheduleState(for: address.key) {
                 case .value(let saved): current = saved
                 case .missing: current = nil
-                case .unreadable: current = schedules[address.key]
+                case .unreadable, .unavailable: current = schedules[address.key]
                 }
                 if outcome == .storageFailed {
                     lastStorageError = "Kunde inte spara schemat."
