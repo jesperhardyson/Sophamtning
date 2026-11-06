@@ -2,6 +2,10 @@ import Foundation
 
 /// Lokal lagring som JSON-filer, delad mellan appen och widgeten via App Group.
 /// Skrivningar är atomiska, och en fil som saknas eller är skadad läses som saknad.
+/// Skrivfel kastas, så att anroparen kan visa dem.
+///
+/// Varje fil skrivs om i sin helhet. Skriver två processer samtidigt till samma fil kan en
+/// uppdatering gå förlorad. Uppgift 14 hanterar det för `placed-out.json`.
 public final class LocalStore: Sendable {
     public static let appGroup = "group.se.hardyson.sophamtning"
 
@@ -28,32 +32,32 @@ public final class LocalStore: Sendable {
         read([SavedAddress].self, from: "addresses.json") ?? []
     }
 
-    public func setAddresses(_ addresses: [SavedAddress]) {
-        write(addresses, to: "addresses.json")
+    public func setAddresses(_ addresses: [SavedAddress]) throws {
+        try write(addresses, to: "addresses.json")
     }
 
     public func settings() -> ReminderSettings {
         read(ReminderSettings.self, from: "settings.json") ?? ReminderSettings()
     }
 
-    public func setSettings(_ settings: ReminderSettings) {
-        write(settings, to: "settings.json")
+    public func setSettings(_ settings: ReminderSettings) throws {
+        try write(settings, to: "settings.json")
     }
 
     public func placedOut() -> [PlacedOut] {
         read([PlacedOut].self, from: "placed-out.json") ?? []
     }
 
-    public func setPlacedOut(_ placedOut: [PlacedOut]) {
-        write(placedOut, to: "placed-out.json")
+    public func setPlacedOut(_ placedOut: [PlacedOut]) throws {
+        try write(placedOut, to: "placed-out.json")
     }
 
     public func sources() -> CachedSources? {
         read(CachedSources.self, from: "sources.json")
     }
 
-    public func setSources(_ sources: CachedSources) {
-        write(sources, to: "sources.json")
+    public func setSources(_ sources: CachedSources) throws {
+        try write(sources, to: "sources.json")
     }
 
     // MARK: Scheman
@@ -62,12 +66,16 @@ public final class LocalStore: Sendable {
         read(CachedSchedule.self, from: scheduleFile(key))
     }
 
-    public func setSchedule(_ schedule: CachedSchedule, for key: AddressKey) {
-        write(schedule, to: scheduleFile(key))
+    public func setSchedule(_ schedule: CachedSchedule, for key: AddressKey) throws {
+        try write(schedule, to: scheduleFile(key))
     }
 
-    public func removeSchedule(for key: AddressKey) {
-        try? FileManager.default.removeItem(at: directory.appendingPathComponent(scheduleFile(key)))
+    public func removeSchedule(for key: AddressKey) throws {
+        do {
+            try FileManager.default.removeItem(at: directory.appendingPathComponent(scheduleFile(key)))
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            // Ett schema som redan saknas är inte ett fel.
+        }
     }
 
     // MARK: Filer
@@ -81,14 +89,9 @@ public final class LocalStore: Sendable {
         return try? JSONDecoder().decode(type, from: data)
     }
 
-    /// Ett skrivfel ger ingen krasch. Nästa läsning ger då det som låg där förut.
-    private func write<T: Encodable>(_ value: T, to path: String) {
+    private func write<T: Encodable>(_ value: T, to path: String) throws {
         let url = directory.appendingPathComponent(path)
-        do {
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(value).write(to: url, options: .atomic)
-        } catch {
-            assertionFailure("Kunde inte skriva \(path): \(error)")
-        }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try JSONEncoder().encode(value).write(to: url, options: .atomic)
     }
 }

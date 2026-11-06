@@ -2,10 +2,16 @@ import Testing
 import Foundation
 import SophamtningKit
 
-private func tempStore() -> (LocalStore, URL) {
-    let dir = FileManager.default.temporaryDirectory
+/// En tillfällig katalog som städas när testet är klart.
+private final class TempDir {
+    let url = FileManager.default.temporaryDirectory
         .appendingPathComponent("sophamtning-test-\(UUID().uuidString)", isDirectory: true)
-    return (LocalStore(directory: dir), dir)
+    deinit { try? FileManager.default.removeItem(at: url) }
+}
+
+private func tempStore() -> (LocalStore, URL, TempDir) {
+    let temp = TempDir()
+    return (LocalStore(directory: temp.url), temp.url, temp)
 }
 
 private let testKey = AddressKey(source: "orebro", id: "storgatan-21_örebro-75130")
@@ -33,12 +39,13 @@ private func fixtureResponse() throws -> AddressResponse {
     return try JSONDecoder().decode(AddressResponse.self, from: Data(contentsOf: url))
 }
 
-@Test func spararOchLaserAdress() {
-    let (store, _) = tempStore()
+@Test func spararOchLaserAdress() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
     let saved = SavedAddress.fixture(isPrimary: true)
-    store.setAddresses([saved])
+    try store.setAddresses([saved])
     #expect(store.addresses() == [saved])
-    #expect(store.addresses().first?.key.id == "storgatan-21_örebro-75130")
+    #expect(Array(store.addresses().first!.key.id.utf8) == Array("storgatan-21_örebro-75130".utf8))
 }
 
 @Test func filnamnInnehallerBaraHex() {
@@ -46,8 +53,32 @@ private func fixtureResponse() throws -> AddressResponse {
     #expect(testKey.fileName.allSatisfy { $0.isHexDigit })
 }
 
+@Test func filnamnArKantSha256OchSkiljerGranser() {
+    let key = AddressKey(source: "orebro", id: "storgatan-21_örebro-75130")
+    #expect(key.fileName == "28f0462e0be6d48847a301fd2b7389cfa572904da8d74853d5e86ebbf1105832")
+    #expect(AddressKey(source: "a", id: "bc").fileName != AddressKey(source: "ab", id: "c").fileName)
+}
+
+@Test func skrivfelKastas() throws {
+    let (_, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    try FileManager.default.createDirectory(at: temp.url, withIntermediateDirectories: true)
+    let file = temp.url.appendingPathComponent("en-fil")
+    try Data("x".utf8).write(to: file)
+    let store = LocalStore(directory: file.appendingPathComponent("under"))
+    #expect(throws: (any Error).self) { try store.setAddresses([SavedAddress.fixture()]) }
+    #expect(throws: (any Error).self) { try store.setSchedule(CachedSchedule(), for: testKey) }
+}
+
+@Test func taBortSaknatSchemaArInteFel() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    try store.removeSchedule(for: testKey)
+}
+
 @Test func skadadFilBehandlasSomSaknad() throws {
-    let (store, dir) = tempStore()
+    let (store, dir, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
     try store.setSchedule(CachedSchedule(response: fixtureResponse(), fetchedAt: Date(), lastAttemptAt: nil, lastError: nil), for: testKey)
     let file = dir.appendingPathComponent("schedules/\(testKey.fileName).json")
     try Data("{".utf8).write(to: file)
@@ -62,7 +93,8 @@ private func fixtureResponse() throws -> AddressResponse {
 }
 
 @Test func standardinstallningarArAvstangda() {
-    let (store, _) = tempStore()
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
     #expect(store.settings().liveActivityOn == false)
     #expect(store.settings().reminderMinutes == 1080)
     #expect(SavedAddress.fixture().notificationsOn == false)
@@ -74,30 +106,33 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
 }
 
 @Test func spararOchTarBortSchema() throws {
-    let (store, _) = tempStore()
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
     let schedule = try CachedSchedule(response: fixtureResponse(), fetchedAt: Date(timeIntervalSince1970: 1_800_000_000), lastAttemptAt: nil, lastError: .sourceUnavailable)
-    store.setSchedule(schedule, for: testKey)
+    try store.setSchedule(schedule, for: testKey)
     #expect(store.schedule(for: testKey) == schedule)
-    store.removeSchedule(for: testKey)
+    try store.removeSchedule(for: testKey)
     #expect(store.schedule(for: testKey) == nil)
 }
 
 @Test func spararInstallningarUtplaceradeOchKallor() throws {
-    let (store, _) = tempStore()
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
     let settings = ReminderSettings(reminderMinutes: 960, liveActivityOn: true)
-    store.setSettings(settings)
+    try store.setSettings(settings)
     #expect(store.settings() == settings)
     let placed = [PlacedOut(key: testKey, date: DayDate("2026-11-09")!)]
-    store.setPlacedOut(placed)
+    try store.setPlacedOut(placed)
     #expect(store.placedOut() == placed)
     let sources = CachedSources(response: SourcesResponse(sources: [], fractions: [:]), fetchedAt: Date(timeIntervalSince1970: 1_800_000_000))
-    store.setSources(sources)
+    try store.setSources(sources)
     #expect(store.sources() == sources)
 }
 
-@Test func tvaLagerDelarFiler() {
-    let (a, dir) = tempStore()
+@Test func tvaLagerDelarFiler() throws {
+    let (a, dir, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
     let b = LocalStore(directory: dir)
-    a.setAddresses([SavedAddress.fixture()])
+    try a.setAddresses([SavedAddress.fixture()])
     #expect(b.addresses().count == 1)
 }
