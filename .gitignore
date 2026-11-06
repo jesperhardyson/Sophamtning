@@ -1,0 +1,19 @@
+# System
+.DS_Store
+
+# Xcode och Swift
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Hemligheter får aldrig committas
+.env
+.env.*
+*.p8
+*.p12
+*.pem
+*.cer
+*.mobileprovision
+*.provisionprofile
+AuthKey_*

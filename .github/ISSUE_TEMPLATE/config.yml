@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Tipsa om en kommun
+    url: https://github.com/jesperhardyson/sopor/issues/new?template=ny-kommun.md
+    about: Kommunerna läggs till i projektet sopor.
+  - name: Fel i schemat
+    url: https://github.com/jesperhardyson/sopor/issues/new?template=fel-i-schemat.md
+    about: Datan finns i projektet sopor. Skriv inte din hemadress i ett publikt ärende.
+  - name: Säkerhetsbrist
+    url: https://github.com/jesperhardyson/Sophamtning/security/advisories/new
+    about: Rapportera säkerhetsbrister privat.
