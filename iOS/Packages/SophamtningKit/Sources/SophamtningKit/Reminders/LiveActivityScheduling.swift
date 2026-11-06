@@ -21,6 +21,11 @@ public struct SystemActivity: Equatable, Sendable {
     }
 }
 
+/// Appen ligger i bakgrunden, så starten gjordes inte. Det är inget fel, och nästa öppning försöker igen.
+public struct LiveActivityNotInForeground: Error {
+    public init() {}
+}
+
 /// Det som `AppModel` behöver av ActivityKit. Appen implementerar det med `Activity`.
 public protocol LiveActivityScheduling: Sendable {
     /// Om Live Activities är påslagna för appen i iOS.

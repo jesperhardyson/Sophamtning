@@ -33,6 +33,10 @@ public final class AppModel {
     public private(set) var currentLiveActivity: ExistingActivity?
     /// Om aktiviteten inte gick att lägga in, annars `nil`. Notisen står då kvar, och försöket upprepas vid nästa körning.
     public private(set) var liveActivityError: String?
+    /// Tömningar som redan är påminda: utställda, visade eller med en aktivitet som syns nu. Läses om av `applyReminders()`.
+    private var handledPickups: Set<PlacedOut> = []
+    /// Aktiviteter appen själv har tagit bort. Systemet listar dem en stund som avslutade, och det är inget svep.
+    @ObservationIgnored private var removedActivityIds: Set<String> = []
     /// Ett tunt anrop som laddar om widgeten, till exempel `WidgetCenter.shared.reloadAllTimelines()` i appen.
     /// Paketet känner inte till WidgetKit. Widgeten läser bara från lagringen, så den laddas om när lagringen ändrats.
     @ObservationIgnored private let widgetReloader: @MainActor () -> Void
@@ -409,11 +413,22 @@ public final class AppModel {
         address.notificationsOn && notificationAuthorization == .authorized
     }
 
+    /// Om tömningen redan är påmind: Utställt är tryckt eller aktiviteten visas eller har visats.
+    public func handledPickup(key: AddressKey, date: DayDate) -> Bool {
+        handledPickups.contains(PlacedOut(key: key, date: date))
+    }
+
+    /// "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen i morgon redan är påmind.
+    public func missedReminderApplies(to address: SavedAddress) -> Bool {
+        let tomorrow = StockholmClock.today(now: now()).adding(days: 1)
+        return remindersOn(for: address) && !handledPickup(key: address.key, date: tomorrow)
+    }
+
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när en adress med påminnelser på har tömning i morgon
     /// och påminnelsetiden redan passerat. Ingen ersättningsnotis skickas, eftersom varje planering annars kunde skicka en ny.
     public var missedReminderText: String? {
         _ = scheduleRevision
-        for address in addresses where remindersOn(for: address) {
+        for address in addresses where missedReminderApplies(to: address) {
             if let text = AddressDetail.missedReminder(events: schedules[address.key]?.response?.events ?? [], settings: settings, now: now()) {
                 return text
             }
@@ -495,7 +510,8 @@ public final class AppModel {
 
     /// Ordningen är planera, ändra aktiviteterna, läs dem på nytt, planera igen och ändra notiserna. En notis tas alltså bort först
     /// när aktiviteten faktiskt finns hos systemet. Ska en aktivitet bort läggs dess notis in före borttagningen, så att ingen
-    /// tömning står utan påminnelse om processen dör mitt i.
+    /// tömning står utan påminnelse om processen dör mitt i. En ny aktivitet startas före borttagningen av den gamla, så att
+    /// ett fel lämnar den gamla kvar.
     private func performApplyReminders(startingActivities: Bool) async {
         reloadStorageIfNeeded()
         // Går adresserna eller inställningarna inte att läsa vet appen inte vad användaren valt, så inget ändras.
@@ -505,7 +521,8 @@ public final class AppModel {
         let systemAllows = await activities.areEnabled()
         liveActivitiesEnabled = systemAllows
 
-        let today = StockholmClock.today(now: now())
+        let current = now()
+        let today = StockholmClock.today(now: current)
         // Rensningen är bara städning. Lyckas den inte görs den nästa gång.
         try? store.prunePlacedOut(today: today)
         let placedOut: Set<PlacedOut>
@@ -518,9 +535,15 @@ public final class AppModel {
 
         let primary = addresses.first(where: \.isPrimary)?.key
         let snapshot = await activities.current()
+        recordShown(snapshot, now: current, today: today)
         let existing = snapshot.filter(\.phase.countsAsExisting).map(\.activity)
-        let plan = reminderPlan(existing: existing, placedOut: placedOut, activitiesAllowed: systemAllows)
-        var actions = LiveActivityDiff.actions(desired: plan.liveActivity, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary)
+        // En väntande aktivitet vars start har passerat går inte att lita på, så den ersätter ingen notis.
+        let counted = existing.filter { !LiveActivityDiff.isOverdue($0, now: current) }
+        // Visad men inte längre kvar: bortsvept eller avslutad. Bara omstarten stoppas, notisen får aldrig försvinna tyst.
+        let stopped = Set(store.shownActivities()).subtracting(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
+        let desired = reminderPlan(existing: counted, placedOut: placedOut.union(stopped), activitiesAllowed: systemAllows).liveActivity
+        let todayContent = ReminderPlanner.activityContent(on: today, input: plannerInput(existing: counted, placedOut: placedOut, activitiesAllowed: systemAllows))
+        var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent)
         // Utan läsbart schema för huvudadressen går det inte att planera någon ersättning, så dess aktiviteter står kvar.
         if settings.liveActivityOn, let primary, schedules[primary]?.response == nil {
             let protected = Set(existing.filter { $0.key == primary }.map(\.id))
@@ -535,40 +558,60 @@ public final class AppModel {
             return nil
         }
         if !removals.isEmpty, status == .authorized {
-            let remaining = existing.filter { !removals.contains($0.id) }
+            let remaining = counted.filter { !removals.contains($0.id) }
             let safe = reminderPlan(existing: remaining, placedOut: placedOut, activitiesAllowed: systemAllows)
             await applyNotifications(safe.notifications, removing: false)
         }
 
-        for action in actions {
-            if case .remove(let id) = action { await activities.remove(id: id) }
-        }
-        // En inaktuell aktivitet räknas inte, och den visas inte längre med rätt innehåll.
-        for item in snapshot where item.phase == .stale { await activities.remove(id: item.activity.id) }
+        var notStarted: [PlannedLiveActivity] = []
         var startFailed = false
         for action in actions {
             switch action {
             case .remove: break
             case .update(let id, let content): await activities.update(id: id, content: content)
             case .start(let activity):
-                guard startingActivities else { continue }
                 do {
                     try await activities.start(activity)
+                    // En direktstart syns med en gång, och är bevis för att tömningen har visats.
+                    if activity.startMode(now: current) == .immediately {
+                        try? store.markShown([PlacedOut(key: activity.key, date: activity.pickupDate)], today: today)
+                    }
+                } catch is LiveActivityNotInForeground {
+                    notStarted.append(activity)
                 } catch {
+                    notStarted.append(activity)
                     startFailed = true
                 }
             }
         }
+        for id in removals {
+            // Kunde den nya inte startas är den gamla för samma tömning bättre än ingen.
+            let activity = existing.first { $0.id == id }
+            if notStarted.contains(where: { $0.key == activity?.key && $0.pickupDate == activity?.pickupDate }) { continue }
+            removedActivityIds.insert(id)
+            await activities.remove(id: id)
+        }
+        // En inaktuell aktivitet räknas inte, och den visas inte längre med rätt innehåll.
+        for item in snapshot where item.phase == .stale {
+            removedActivityIds.insert(item.activity.id)
+            await activities.remove(id: item.activity.id)
+        }
         if startFailed {
             liveActivityError = "Live Activity kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
-        } else if startingActivities || !settings.liveActivityOn {
+        } else if notStarted.isEmpty, startingActivities || !settings.liveActivityOn {
             liveActivityError = nil
         }
 
         // Det är de aktiviteter som faktiskt finns nu som avgör om notisen behövs, inte de som skulle ha startats.
-        let actual = await activities.current().filter(\.phase.countsAsExisting).map(\.activity)
+        let actual = await activities.current()
+            .filter { $0.phase.countsAsExisting && !removedActivityIds.contains($0.activity.id) }
+            .map(\.activity)
+            .filter { !LiveActivityDiff.isOverdue($0, now: current) }
         let own = actual.filter { $0.key == primary }
         currentLiveActivity = own.first { !$0.isPending } ?? own.min { $0.start < $1.start }
+        handledPickups = placedOut
+            .union(store.shownActivities())
+            .union(actual.filter { !$0.isPending }.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
 
         // Utan tillstånd rörs inga notiser: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras de igen.
         guard status == .authorized else { return }
@@ -576,15 +619,39 @@ public final class AppModel {
         await applyNotifications(final.notifications, removing: true)
     }
 
-    private func reminderPlan(existing: [ExistingActivity], placedOut: Set<PlacedOut>, activitiesAllowed: Bool) -> ReminderPlan {
-        ReminderPlanner.plan(PlannerInput(
+    /// Sparar att en tömnings aktivitet har visats. Pågående är bevis, och avslutad efter starttiden också. Är valet av töms listan,
+    /// så att samma tömning kan starta när valet slås på igen. Ett skrivfel gör bara att aktiviteten kan startas igen.
+    private func recordShown(_ snapshot: [SystemActivity], now: Date, today: DayDate) {
+        guard settings.liveActivityOn else {
+            try? store.clearShown()
+            return
+        }
+        let shown = snapshot.filter { item in
+            guard !removedActivityIds.contains(item.activity.id) else { return false }
+            switch item.phase {
+            case .active: return true
+            case .ended, .dismissed: return item.activity.start <= now
+            case .pending, .stale: return false
+            }
+        }
+        let entries = shown.map { PlacedOut(key: $0.activity.key, date: $0.activity.pickupDate) }
+        // Även utan nya poster, så att passerade rensas.
+        try? store.markShown(entries, today: today)
+    }
+
+    private func plannerInput(existing: [ExistingActivity], placedOut: Set<PlacedOut>, activitiesAllowed: Bool) -> PlannerInput {
+        PlannerInput(
             addresses: addresses.map { PlannerAddress(address: $0, schedule: schedules[$0.key]) },
             settings: settings,
             placedOut: placedOut,
             now: now(),
             liveActivitiesAllowed: activitiesAllowed,
             existingActivities: Set(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
-        ))
+        )
+    }
+
+    private func reminderPlan(existing: [ExistingActivity], placedOut: Set<PlacedOut>, activitiesAllowed: Bool) -> ReminderPlan {
+        ReminderPlanner.plan(plannerInput(existing: existing, placedOut: placedOut, activitiesAllowed: activitiesAllowed))
     }
 
     /// Ändrar bara skillnaden mot de väntande notiserna. Med `removing` falskt läggs de bara in, och ingen tas bort.

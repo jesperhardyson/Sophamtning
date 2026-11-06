@@ -15,11 +15,12 @@ public enum StoreRead<Value: Sendable>: Sendable {
 /// Skrivfel kastas, så att anroparen kan visa dem.
 ///
 /// Varje fil skrivs om i sin helhet. Skriver två processer samtidigt till samma fil kan en uppdatering gå förlorad.
-/// `placed-out.json` är den enda fil som skrivs utanför appen, av knappen **Utställt**, och den läses och skrivs därför
-/// med `NSFileCoordinator`.
+/// `placed-out.json` skrivs också utanför appen, av knappen **Utställt**, och den läses och skrivs därför med
+/// `NSFileCoordinator`. `shown-activities.json` hanteras på samma sätt.
 public final class LocalStore: Sendable {
     public static let appGroup = "group.se.hardyson.sophamtning"
     private static let placedOutFile = "placed-out.json"
+    private static let shownFile = "shown-activities.json"
 
     private let directory: URL
 
@@ -75,7 +76,52 @@ public final class LocalStore: Sendable {
     }
 
     public func placedOutState() -> StoreRead<[PlacedOut]> {
-        let url = directory.appendingPathComponent(Self.placedOutFile)
+        readCoordinated(Self.placedOutFile)
+    }
+
+    public func setPlacedOut(_ placedOut: [PlacedOut]) throws {
+        try updateCoordinated(Self.placedOutFile) { _ in placedOut }
+    }
+
+    /// Lägger till en post utan att tappa någon som en annan process skriver samtidigt. Passerade poster rensas samtidigt.
+    public func markPlacedOut(_ entry: PlacedOut, today: DayDate) throws {
+        try updateCoordinated(Self.placedOutFile) { saved in
+            let current = saved.filter { $0.date >= today }
+            return current.contains(entry) ? current : current + [entry]
+        }
+    }
+
+    /// Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting.
+    public func prunePlacedOut(today: DayDate) throws {
+        try updateCoordinated(Self.placedOutFile) { saved in saved.filter { $0.date >= today } }
+    }
+
+    // MARK: Visade aktiviteter
+
+    /// Tömningar vars Live Activity har visats. En bortsvept aktivitet startas inte om för samma tömning.
+    /// Går filen inte att läsa är listan tom, och aktiviteten startas: det är den säkra riktningen.
+    public func shownActivities() -> [PlacedOut] {
+        if case .value(let saved) = readCoordinated(Self.shownFile) { return saved }
+        return []
+    }
+
+    /// Lägger till poster och rensar passerade. Finns inget nytt skrivs ingenting.
+    public func markShown(_ entries: [PlacedOut], today: DayDate) throws {
+        try updateCoordinated(Self.shownFile) { saved in
+            var current = saved.filter { $0.date >= today }
+            for entry in entries where entry.date >= today && !current.contains(entry) { current.append(entry) }
+            return current
+        }
+    }
+
+    public func clearShown() throws {
+        try updateCoordinated(Self.shownFile) { _ in [] }
+    }
+
+    // MARK: Samordnade filer
+
+    private func readCoordinated(_ file: String) -> StoreRead<[PlacedOut]> {
+        let url = directory.appendingPathComponent(file)
         var result: StoreRead<[PlacedOut]> = .unavailable
         var coordinationError: NSError?
         NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { current in
@@ -84,28 +130,11 @@ public final class LocalStore: Sendable {
         return result
     }
 
-    public func setPlacedOut(_ placedOut: [PlacedOut]) throws {
-        try updatePlacedOut { _ in placedOut }
-    }
-
-    /// Lägger till en post utan att tappa någon som en annan process skriver samtidigt. Passerade poster rensas samtidigt.
-    public func markPlacedOut(_ entry: PlacedOut, today: DayDate) throws {
-        try updatePlacedOut { saved in
-            let current = saved.filter { $0.date >= today }
-            return current.contains(entry) ? current : current + [entry]
-        }
-    }
-
-    /// Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting.
-    public func prunePlacedOut(today: DayDate) throws {
-        try updatePlacedOut { saved in saved.filter { $0.date >= today } }
-    }
-
     /// Läser och skriver under samma samordning, så att ingen annan skrivning hamnar mellan läsningen och skrivningen.
     /// Filen går att ersätta om den är skadad, eftersom det värsta som går förlorat är att en tömning kan startas igen.
     /// Går den inte att läsa just nu skrivs den aldrig över.
-    private func updatePlacedOut(_ change: ([PlacedOut]) -> [PlacedOut]) throws {
-        let url = directory.appendingPathComponent(Self.placedOutFile)
+    private func updateCoordinated(_ file: String, _ change: ([PlacedOut]) -> [PlacedOut]) throws {
+        let url = directory.appendingPathComponent(file)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var coordinationError: NSError?
         var failure: (any Error)?

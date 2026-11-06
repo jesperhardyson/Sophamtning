@@ -76,13 +76,18 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
     public let estimated: Bool
     public let warning: String?
 
+    /// Längsta varning. Allt innehåll måste rymmas inom systemets 4 KB, och höjden på låsskärmen är begränsad.
+    static let maxWarningLength = 200
+
     public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?) {
         self.addressName = addressName
         self.dateText = dateText
         self.shortDateText = shortDateText
         self.fractions = fractions
         self.estimated = estimated
-        self.warning = warning
+        self.warning = warning.map { text in
+            text.count > Self.maxWarningLength ? text.prefix(Self.maxWarningLength - 1) + "…" : text
+        }
     }
 }
 
@@ -188,17 +193,30 @@ public enum ReminderPlanner {
             pickupDate: next.date,
             start: start,
             startsImmediately: isTomorrow && input.now >= start,
-            content: PickupActivityContent(
-                addressName: String(primary.address.displayName.prefix(maxAddressNameLength)),
-                dateText: SwedishFormat.longDate(next.date, capitalized: true),
-                shortDateText: SwedishFormat.shortDate(next.date),
-                fractions: next.fractions.map { id in
-                    let info = ScheduleLogic.displayInfo(for: id, in: response.fractions)
-                    return ActivityFraction(id: id, name: info.name, short: info.short, color: info.color, icon: info.icon)
-                },
-                estimated: next.estimated,
-                warning: next.warning
-            )
+            content: content(of: next, address: primary.address, response: response)
+        )
+    }
+
+    /// Innehållet för huvudadressens tömning ett visst datum, för en aktivitet som redan pågår. `nil` utan sådan tömning.
+    public static func activityContent(on date: DayDate, input: PlannerInput) -> PickupActivityContent? {
+        guard let primary = input.addresses.first(where: { $0.address.isPrimary }),
+              let response = primary.schedule?.response,
+              let pickup = pickups(in: response, today: date).first(where: { $0.date == date })
+        else { return nil }
+        return content(of: pickup, address: primary.address, response: response)
+    }
+
+    private static func content(of pickup: Pickup, address: SavedAddress, response: AddressResponse) -> PickupActivityContent {
+        PickupActivityContent(
+            addressName: String(address.displayName.prefix(maxAddressNameLength)),
+            dateText: SwedishFormat.longDate(pickup.date, capitalized: true),
+            shortDateText: SwedishFormat.shortDate(pickup.date),
+            fractions: pickup.fractions.map { id in
+                let info = ScheduleLogic.displayInfo(for: id, in: response.fractions)
+                return ActivityFraction(id: id, name: info.name, short: info.short, color: info.color, icon: info.icon)
+            },
+            estimated: pickup.estimated,
+            warning: pickup.warning
         )
     }
 

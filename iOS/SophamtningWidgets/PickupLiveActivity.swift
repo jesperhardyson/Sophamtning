@@ -19,30 +19,37 @@ struct PickupLiveActivity: Widget {
         } dynamicIsland: { context in
             let content = context.state
             return DynamicIsland {
-                DynamicIslandExpandedRegion(.leading, priority: 1) {
+                // Rubriken ligger bredvid kameran. Den nedre regionen har ungefär 90 pt i höjd, så knappen och fraktionerna
+                // går före varningen, som alltid syns i sin helhet på låsskärmen.
+                DynamicIslandExpandedRegion(.leading) {
                     Text(PickupActivityContent.alertTitle)
-                        .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                        .font(.ui(16, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .padding(.leading, 6)
+                        .minimumScaleFactor(0.8)
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(content.shortDate)
-                        .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                        .font(.ui(14, weight: .heavy, relativeTo: .subheadline))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .padding(.trailing, 6)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(content.fractionsLine)
-                            .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                            .font(.ui(14, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(.white.opacity(0.85))
                             .lineLimit(2)
-                        WarningLine(content: content)
-                        PlacedOutButton(attributes: context.attributes, fullWidth: true)
+                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: false, vertical: true)
+                        WarningLine(content: content, lineLimit: 1)
+                        PlacedOutButton(attributes: context.attributes, fullWidth: true, height: 34)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.horizontal, 6)
                     .environment(\.colorScheme, .dark)
                     .dynamicTypeSize(...DynamicTypeSize.large)
                 }
@@ -90,7 +97,7 @@ private struct LockScreenPickup: View {
             }
             WarningLine(content: content)
             HStack(spacing: 8) {
-                FractionChips(fractions: content.fractions)
+                FractionChips(content: content)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 PlacedOutButton(attributes: attributes, fullWidth: false)
                     .layoutPriority(1)
@@ -104,6 +111,7 @@ private struct LockScreenPickup: View {
 /// Varningen från källan, när den finns.
 private struct WarningLine: View {
     let content: PickupActivityContent
+    var lineLimit = 2
 
     var body: some View {
         if let warning = content.warning {
@@ -113,7 +121,7 @@ private struct WarningLine: View {
                     .accessibilityHidden(true)
                 Text(warning)
                     .font(.ui(13, weight: .bold, relativeTo: .footnote))
-                    .lineLimit(2)
+                    .lineLimit(lineLimit)
                     .minimumScaleFactor(0.85)
             }
             .foregroundStyle(ThemeToken.warn.color)
@@ -121,44 +129,35 @@ private struct WarningLine: View {
     }
 }
 
-/// Fraktionerna med färg, ikon och text. Får hela namnen inte plats används korta namn, och sedan så många som ryms.
+/// Alla fraktioner syns alltid med namn. Får de inte plats som chips på en rad visas de som text, inom systemets höjdgräns.
 private struct FractionChips: View {
-    let fractions: [ActivityFraction]
+    let content: PickupActivityContent
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            row(fractions, short: false, hidden: 0)
-            row(fractions, short: true, hidden: 0)
-            if fractions.count > 2 {
-                row(Array(fractions.prefix(2)), short: true, hidden: fractions.count - 2)
+            HStack(spacing: 6) {
+                ForEach(content.fractions, id: \.id) { fraction in
+                    FractionChip(id: fraction.id, info: FractionInfo(name: fraction.name, short: fraction.short, color: fraction.color, icon: fraction.icon))
+                        .fixedSize()
+                        // Chipsen är ljusa enligt designen, på den mörka bakgrunden.
+                        .environment(\.colorScheme, .light)
+                }
             }
-            row(Array(fractions.prefix(1)), short: true, hidden: fractions.count - 1)
+            Text(content.fractionNames)
+                .font(.ui(14, weight: .bold, relativeTo: .subheadline))
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .minimumScaleFactor(0.8)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(fractions.map(\.name).joined(separator: ", "))
-    }
-
-    private func row(_ shown: [ActivityFraction], short: Bool, hidden: Int) -> some View {
-        HStack(spacing: 6) {
-            ForEach(shown, id: \.id) { fraction in
-                FractionChip(id: fraction.id, info: FractionInfo(name: short ? fraction.short : fraction.name, short: fraction.short, color: fraction.color, icon: fraction.icon))
-                    .fixedSize()
-                    // Chipsen är ljusa enligt designen, på den mörka bakgrunden.
-                    .environment(\.colorScheme, .light)
-            }
-            if hidden > 0 {
-                Text("+\(hidden)")
-                    .font(.ui(14, weight: .heavy, relativeTo: .subheadline))
-                    .foregroundStyle(.white)
-                    .fixedSize()
-            }
-        }
+        .accessibilityLabel(content.fractions.map(\.name).joined(separator: ", "))
     }
 }
 
 private struct PlacedOutButton: View {
     let attributes: PickupActivityAttributes
     let fullWidth: Bool
+    var height: CGFloat = 40
 
     var body: some View {
         Button(intent: MarkPlacedOutIntent(key: attributes.key, pickupDate: attributes.pickupDate)) {
@@ -173,7 +172,7 @@ private struct PlacedOutButton: View {
             }
             .foregroundStyle(ThemeToken.onPrimary.color)
             .padding(.horizontal, 14)
-            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 40)
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: height)
             .background(ThemeToken.primary.color, in: Capsule())
         }
         .buttonStyle(.plain)

@@ -21,8 +21,8 @@ private func existing(_ id: String, key: AddressKey = home, date: DayDate = mond
     ExistingActivity(id: id, key: key, pickupDate: date, content: c, isPending: pending, start: s)
 }
 
-private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil) -> [LiveActivityAction] {
-    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary)
+private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil) -> [LiveActivityAction] {
+    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent)
 }
 
 @Test func ingenOnskadTarBortAlla() {
@@ -117,6 +117,55 @@ private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity]
     #expect(actions(nil, [running], primary: nil) == [.remove(id: "a")])
 }
 
+// MARK: Utan start, i bakgrunden
+
+@Test func utanStartStartasIngen() {
+    #expect(actions(plan, [], canStart: false) == [])
+    #expect(actions(plan, [existing("a", date: thursday)], canStart: false) == [.remove(id: "a")])
+}
+
+@Test func utanStartBehallsVantandeMedSammaDatum() {
+    // Bakgrunden kan inte lägga in en ny, så den gamla är bättre än ingen alls.
+    #expect(actions(plan, [existing("a", content: content(warning: "Helgdag"))], canStart: false) == [])
+    #expect(actions(plan, [existing("a", start: start.addingTimeInterval(3600))], canStart: false) == [])
+}
+
+@Test func utanStartUppdaterasStartad() {
+    let running = existing("a", content: content(warning: "Helgdag"), pending: false)
+    #expect(actions(plan, [running], canStart: false) == [.update(id: "a", plan.content)])
+}
+
+// MARK: Väntande vars start har passerat
+
+@Test func passeradVantandeErsattsOmDetGar() {
+    let late = start.addingTimeInterval(LiveActivityDiff.overdueMargin + 1)
+    #expect(actions(plan, [existing("a")], now: late) == [.remove(id: "a"), .start(plan)])
+    #expect(actions(plan, [existing("a")], canStart: false, now: late) == [])
+}
+
+@Test func vantandeInomMarginalenRorsInte() {
+    let within = start.addingTimeInterval(LiveActivityDiff.overdueMargin)
+    #expect(actions(plan, [existing("a")], now: within) == [])
+    #expect(!LiveActivityDiff.isOverdue(existing("a"), now: within))
+    #expect(LiveActivityDiff.isOverdue(existing("a"), now: within.addingTimeInterval(1)))
+    #expect(!LiveActivityDiff.isOverdue(existing("a", pending: false), now: within.addingTimeInterval(1)))
+}
+
+// MARK: Dagens pågående
+
+@Test func tvaPagaendeForIDagStadas() {
+    let first = existing("a", date: today, pending: false), second = existing("b", date: today, pending: false)
+    #expect(actions(plan, [first, second]) == [.remove(id: "b"), .start(plan)])
+}
+
+@Test func dagensPagaendeUppdaterasMedNyttInnehall() {
+    let running = existing("a", date: today, pending: false)
+    let updated = content("Nytt namn", warning: "Helgdag")
+    #expect(actions(nil, [running], primary: home, todayContent: updated) == [.update(id: "a", updated)])
+    #expect(actions(nil, [running], primary: home, todayContent: content()) == [])
+    #expect(actions(nil, [running], primary: home, canStart: false, todayContent: updated) == [.update(id: "a", updated)])
+}
+
 // MARK: Lägen
 
 @Test func baraVantandeOchPagaendeRaknasSomBefintliga() {
@@ -165,7 +214,7 @@ private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity]
 }
 
 @Test func aktivitetensTextSagerAldrigIMorgon() throws {
-    // Lördag kväll, tömning söndag: alltså i morgon. Innehållet uppdateras inte under natten.
+    // Söndag kväll, tömning måndag: alltså i morgon. Innehållet uppdateras inte under natten.
     let tomorrow = PickupEvent(date: DayDate("2026-11-09")!, fractions: ["rest"], estimated: true, deviation: nil, warning: nil, labels: [:])
     let address = SavedAddress(key: home, url: URL(string: "https://example.com/a")!, street: "Gatan 1", locality: "Orten", kommun: "Kommunen", detail: nil, selection: "address", displayName: String(repeating: "x", count: 80), isPrimary: true, addedAt: Date(timeIntervalSince1970: 0))
     let response = AddressResponse(
@@ -186,4 +235,18 @@ private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity]
         #expect(!text.lowercased().contains("i morgon"))
         #expect(!text.lowercased().contains("i dag"))
     }
+}
+
+@Test func varningenKortas() {
+    let long = PickupActivityContent(addressName: "Hemma", dateText: "Måndag 9 november", shortDateText: "Mån 9 nov", fractions: [], estimated: false, warning: String(repeating: "x", count: 500))
+    #expect(long.warning?.count == 200)
+    #expect(long.warning?.hasSuffix("…") == true)
+    #expect(content(warning: String(repeating: "x", count: 200)).warning == String(repeating: "x", count: 200))
+}
+
+@Test func innehalletHallerSigUnderSystemetsGrans() throws {
+    // ActivityKit vägrar innehåll över 4 KB. Tolv fraktioner är fler än någon källa har i dag.
+    let fractions = (0..<12).map { ActivityFraction(id: "fraktion-\($0)", name: "Pappersförpackningar och kartong \($0)", short: "Papper", color: "#2E5E86", icon: "package") }
+    let largest = PickupActivityContent(addressName: String(repeating: "å", count: 60), dateText: "Onsdag 30 september", shortDateText: "Ons 30 sep", fractions: fractions, estimated: true, warning: String(repeating: "å", count: 500))
+    #expect(try JSONEncoder().encode(largest).count < 4096)
 }

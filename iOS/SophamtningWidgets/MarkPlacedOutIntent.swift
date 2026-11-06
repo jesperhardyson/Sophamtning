@@ -1,5 +1,6 @@
 import ActivityKit
 import AppIntents
+import os
 import SophamtningKit
 
 /// Knappen **Utställt**: sparar att soporna är utställda, så att samma tömning inte startas igen, och avslutar aktiviteten.
@@ -39,7 +40,11 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
             }
         }
         if let date = DayDate(iso) {
-            await PlacedOutAction.perform(store: LocalStore.shared(), entry: PlacedOut(key: key, date: date), today: StockholmClock.today(now: Date()), end: end)
+            let saved = await PlacedOutAction.perform(store: LocalStore.shared(), entry: PlacedOut(key: key, date: date), today: StockholmClock.today(now: Date()), end: end)
+            if !saved {
+                // Aktiviteten är avslutad ändå. Nästa planering kan starta samma tömning igen.
+                Logger(subsystem: "se.hardyson.sophamtning", category: "LiveActivity").error("Kunde inte spara Utställt")
+            }
         } else {
             await end()
         }

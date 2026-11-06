@@ -100,7 +100,7 @@ struct SettingsView: View {
                         Text("Live Activity")
                             .font(.ui(20, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.text)
-                        Text("Gäller huvudadressen och nästa tömning. Starten aviseras.")
+                        Text(AddressDetail.liveActivityText(settings: model.settings))
                             .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(Color.Theme.text2)
                     }
@@ -166,11 +166,15 @@ struct SettingsView: View {
 struct LiveActivityNotices: View {
     let model: AppModel
     let edge: Edge.Set
+    /// Hemkortet visar felet själv.
+    var showsError = true
 
     private var systemOff: Bool { model.settings.liveActivityOn && !model.liveActivitiesEnabled }
 
+    private var error: String? { showsError ? model.liveActivityError : nil }
+
     var body: some View {
-        if systemOff || model.liveActivityError != nil {
+        if systemOff || error != nil {
             VStack(alignment: .leading, spacing: 12) {
                 if systemOff {
                     MessageCard(style: .warning, icon: "bell.slash", title: "Live Activities är avstängda", message: "Du har stängt av dem för Sophämtning i iOS.")
@@ -184,7 +188,7 @@ struct LiveActivityNotices: View {
                     }
                     .buttonStyle(.plain)
                 }
-                if let error = model.liveActivityError {
+                if let error {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Live Activity saknas", message: error)
                 }
             }

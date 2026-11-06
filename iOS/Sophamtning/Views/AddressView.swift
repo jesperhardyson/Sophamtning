@@ -57,7 +57,7 @@ struct AddressView: View {
             settings: model.settings,
             sourceName: sources.map { sourceName(address.key.source, in: $0) },
             now: model.currentDate,
-            remindersOn: model.remindersOn(for: address)
+            remindersOn: model.missedReminderApplies(to: address)
         )
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {

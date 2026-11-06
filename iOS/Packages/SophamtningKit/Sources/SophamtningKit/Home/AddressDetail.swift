@@ -116,7 +116,6 @@ public struct AddressDetail: Equatable, Sendable {
             }
         } ?? []
 
-        let time = SwedishFormat.clock(minutes: settings.reminderMinutes)
         return AddressDetail(
             key: address.key,
             title: address.displayName,
@@ -130,10 +129,16 @@ public struct AddressDetail: Equatable, Sendable {
             fetchedText: fetched,
             webLink: response?.links.web,
             reminderText: reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
-            liveActivityText: "Visas på låsskärmen och i Dynamic Island från kl. \(time). Starten aviseras, och den försvinner senast efter 12 timmar.",
+            liveActivityText: liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
         )
+    }
+
+    /// Texten vid valet för Live Activity.
+    public static func liveActivityText(settings: ReminderSettings) -> String {
+        let time = SwedishFormat.clock(minutes: settings.reminderMinutes)
+        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med."
     }
 
     /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.

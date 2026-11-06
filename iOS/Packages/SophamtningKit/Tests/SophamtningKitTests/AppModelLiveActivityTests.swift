@@ -42,13 +42,20 @@ private final class FakeNotifications: NotificationScheduling, @unchecked Sendab
 
 private struct StartFailed: Error {}
 
+private func pickupContent(_ name: String = "Hemma") -> PickupActivityContent {
+    PickupActivityContent(addressName: name, dateText: "Måndag 9 november", shortDateText: "Mån 9 nov", fractions: [ActivityFraction(id: "rest", name: "Restavfall", short: "Rest", color: "#111111", icon: "trash")], estimated: false, warning: nil)
+}
+
 /// Systemets aktiviteter i minnet.
 private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable {
     private let lock = NSLock()
     private var list: [SystemActivity] = []
     private var counter = 0
     private var failing = false
+    private var failure: any Error = StartFailed()
     private var enabled: Bool
+    /// Systemet listar en aktivitet en stund till efter att appen avslutat den.
+    var keepsRemoved = false
     private(set) var starts: [PlannedLiveActivity] = []
     private(set) var updates: [String] = []
     let log: Log
@@ -59,7 +66,7 @@ private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable 
     func current() async -> [SystemActivity] { lock.withLock { list } }
     func start(_ activity: PlannedLiveActivity) async throws {
         try lock.withLock {
-            if failing { throw StartFailed() }
+            if failing { throw failure }
             counter += 1
             starts.append(activity)
             list.append(SystemActivity(
@@ -81,11 +88,21 @@ private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable 
         log.add("update \(id)")
     }
     func remove(id: String) async {
-        lock.withLock { list.removeAll { $0.activity.id == id } }
+        lock.withLock {
+            if keepsRemoved {
+                list = list.map { $0.activity.id == id ? SystemActivity(activity: $0.activity, phase: .dismissed) : $0 }
+            } else {
+                list.removeAll { $0.activity.id == id }
+            }
+        }
         log.add("remove \(id)")
     }
 
-    func setFailing(_ on: Bool) { lock.withLock { failing = on } }
+    func setFailing(_ on: Bool, with error: any Error = StartFailed()) { lock.withLock { failing = on; failure = error } }
+    /// Användaren sveper bort aktiviteten, eller systemet avslutar den.
+    func setPhase(_ phase: LiveActivityPhase, id: String) {
+        lock.withLock { list = list.map { $0.activity.id == id ? SystemActivity(activity: $0.activity, phase: phase) : $0 } }
+    }
     func setEnabled(_ on: Bool) { lock.withLock { enabled = on } }
     func insert(_ item: SystemActivity) { lock.withLock { list.append(item) } }
     func clearAll() { lock.withLock { list = [] } }
@@ -106,7 +123,7 @@ private let homeKey = AddressKey(source: "orebro", id: "1")
 private let otherKey = AddressKey(source: "orebro", id: "2")
 private let monday = DayDate("2026-11-09")!
 private let thursday = DayDate("2026-11-12")!
-/// Fredag 6 november 12:00. Tömning måndag 9 och torsdag 12 november.
+/// Fredag 6 november 12:00. Tömning måndag 9 och torsdag 12 november. `sundayEvening` är söndag 8 november 19:00.
 private let friday = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 12 * 60)
 private let sundayEvening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60)
 
@@ -289,16 +306,226 @@ private struct Fixture {
 }
 
 @Test @MainActor func bytHuvudadressTarBortPagaendeOchLaggerInNotisForst() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    f.activities.promote()
+    let id = try #require(f.activities.ids.first)
+    f.log.clear()
+    model.setPrimary(otherKey)
+    await model.settleReminders()
+    let log = f.log.all
+    let added = try #require(log.firstIndex(of: "notis+ 2026-11-09"))
+    let removed = try #require(log.firstIndex(of: "remove \(id)"))
+    #expect(added < removed)
+    #expect(!f.activities.activities.contains { $0.key == homeKey })
+    #expect(f.activities.activities.contains { $0.key == otherKey })
+    #expect(f.notifications.dates.contains("2026-11-09"))
+}
+
+@Test @MainActor func namnbytePaVantandeErsatterDenMedNyttNamn() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    let old = try #require(f.activities.ids.first)
+    f.log.clear()
+    model.rename(homeKey, to: "Stugan")
+    await model.settleReminders()
+    #expect(!f.activities.ids.contains(old))
+    #expect(f.activities.activities.map(\.content.addressName) == ["Stugan"])
+    #expect(f.activities.starts.count == 2)
+}
+
+// MARK: Ersätta en väntande
+
+@Test @MainActor func nyStartasForeBorttagningenAvGamla() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    let old = try #require(f.activities.ids.first)
+    f.log.clear()
+    model.rename(homeKey, to: "Stugan")
+    await model.settleReminders()
+    let log = f.log.all
+    let started = try #require(log.firstIndex(of: "start 2026-11-09"))
+    let removed = try #require(log.firstIndex(of: "remove \(old)"))
+    #expect(started < removed)
+}
+
+@Test @MainActor func misslyckadErsattningLamnarDenGamlaKvar() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    let old = try #require(f.activities.ids.first)
+    f.activities.setFailing(true)
+    model.rename(homeKey, to: "Stugan")
+    await model.settleReminders()
+    #expect(f.activities.ids == [old])
+    #expect(model.liveActivityError != nil)
+    // Den gamla aviserar, så notisen behövs inte.
+    #expect(f.notifications.dates == ["2026-11-12"])
+    #expect(model.currentLiveActivity?.id == old)
+}
+
+@Test @MainActor func utanForgrundGerStartenIngetFelmeddelande() async throws {
+    let f = try Fixture()
+    f.activities.setFailing(true, with: LiveActivityNotInForeground())
+    let model = f.model()
+    await apply(model)
+    #expect(model.liveActivityError == nil)
+    #expect(f.notifications.dates == ["2026-11-09", "2026-11-12"])
+}
+
+// MARK: Väntande vars start har passerat
+
+/// Söndag 12:00. En väntande aktivitet för måndag skulle ha startat 11:00. Påminnelsetiden är 18:00.
+private let sundayNoon = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
+
+private func overdue(_ f: Fixture) {
+    f.activities.insert(SystemActivity(activity: ExistingActivity(id: "gammal", key: homeKey, pickupDate: monday, content: pickupContent(), isPending: true, start: sundayNoon.addingTimeInterval(-3600)), phase: .pending))
+}
+
+@Test @MainActor func passeradVantandeErsattsMedAppenOppen() async throws {
+    let f = try Fixture(now: sundayNoon)
+    overdue(f)
+    await apply(f.model())
+    #expect(!f.activities.ids.contains("gammal"))
+    #expect(f.activities.starts.map(\.pickupDate) == [monday])
+}
+
+@Test @MainActor func passeradVantandeRaknasInteForNotisenIBakgrunden() async throws {
+    let f = try Fixture(now: sundayNoon)
+    overdue(f)
+    let model = f.model()
+    await apply(model, startingActivities: false)
+    #expect(f.activities.ids == ["gammal"])
+    #expect(f.notifications.dates.contains("2026-11-09"))
+    // Kortet lovar ingen tid som redan passerat.
+    #expect(model.currentLiveActivity == nil)
+}
+
+// MARK: Bortsvept
+
+@Test @MainActor func bortsveptStartasInteOmForSammaTomning() async throws {
+    let f = try Fixture(now: sundayEvening)
+    let model = f.model()
+    await apply(model)
+    let id = try #require(f.activities.ids.first)
+    f.activities.setPhase(.dismissed, id: id)
+    await apply(model)
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
+    #expect(model.handledPickup(key: homeKey, date: monday))
+}
+
+@Test @MainActor func avslutadOchBortaUrListanStartasInteOmNarDenSetts() async throws {
+    // Sedd som pågående av en tidigare körning, och sedan borta utan spår hos systemet.
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    f.activities.promote()
+    await apply(model)
+    f.activities.clearAll()
+    await apply(f.model())
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
+}
+
+@Test @MainActor func direktstartRaknasSomVisad() async throws {
+    let f = try Fixture(now: sundayEvening)
+    let model = f.model()
+    await apply(model)
+    f.activities.clearAll()
+    await apply(f.model())
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
+}
+
+@Test @MainActor func utanBevisStartasDenIgen() async throws {
+    // Väntande som försvunnit utan att ha setts som pågående: säkra riktningen är att starta.
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    f.activities.clearAll()
+    await apply(model)
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, monday])
+}
+
+@Test @MainActor func avslutadVantandeForeStarttidenStopparInte() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    let id = try #require(f.activities.ids.first)
+    f.activities.setPhase(.ended, id: id)
+    await apply(model)
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, monday])
+}
+
+@Test @MainActor func egenBorttagningRaknasInteSomBortsvept() async throws {
+    let f = try Fixture(now: sundayEvening)
+    f.activities.keepsRemoved = true
+    let model = f.model()
+    await apply(model)
+    model.setLiveActivity(false)
+    await model.settleReminders()
+    model.setLiveActivity(true)
+    await model.settleReminders()
+    // Valet stängdes av och på igen. Det är inget svep, så samma tömning startas på nytt.
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, monday])
+}
+
+@Test @MainActor func bortsveptBehallerNotisenOmDenLiggerFramfor() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    f.activities.promote()
+    await apply(model)
+    let id = try #require(f.activities.ids.first)
+    f.activities.setPhase(.dismissed, id: id)
+    await apply(model)
+    // Bara omstarten stoppas. Notisen får aldrig försvinna tyst.
+    #expect(f.notifications.dates.contains("2026-11-09"))
+}
+
+// MARK: Dagens innehåll
+
+@Test @MainActor func dagensPagaendeFarNyttNamn() async throws {
     let f = try Fixture(now: sundayEvening)
     let model = f.model()
     await apply(model)
     f.activities.promote()
-    #expect(f.activities.activities.first?.key == homeKey)
-    f.log.clear()
-    model.setPrimary(otherKey)
+    let id = try #require(f.activities.ids.first)
+    f.clock.set(StockholmClock.date(on: monday, minutes: 8 * 60))
+    await apply(model)
+    model.rename(homeKey, to: "Stugan")
     await model.settleReminders()
-    #expect(!f.activities.activities.contains { $0.key == homeKey })
-    #expect(f.activities.activities.contains { $0.key == otherKey })
+    #expect(f.activities.activities.first { $0.id == id }?.content.addressName == "Stugan")
+}
+
+// MARK: Passerad påminnelse
+
+@Test @MainActor func passeradPaminnelseVisasInteNarAktivitetenVisas() async throws {
+    let evening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60)
+    let f = try Fixture(now: evening)
+    let model = f.model()
+    await apply(model)
+    #expect(f.activities.starts.first?.startsImmediately == true)
+    #expect(model.missedReminderText == nil)
+    #expect(model.missedReminderApplies(to: try #require(model.addresses.first { $0.key == homeKey })) == false)
+}
+
+@Test @MainActor func passeradPaminnelseVisasInteEfterUtstallt() async throws {
+    let evening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60)
+    let f = try Fixture(now: evening, liveOn: false)
+    try f.store.setPlacedOut([PlacedOut(key: homeKey, date: monday)])
+    let model = f.model()
+    await apply(model)
+    #expect(model.missedReminderText == nil)
+}
+
+@Test @MainActor func passeradPaminnelseVisasUtanAktivitet() async throws {
+    let evening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60)
+    let f = try Fixture(now: evening, liveOn: false)
+    let model = f.model()
+    await apply(model)
+    #expect(model.missedReminderText != nil)
 }
 
 // MARK: Bakgrund

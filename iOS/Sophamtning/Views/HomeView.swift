@@ -21,7 +21,8 @@ struct HomeView: View {
             now: model.currentDate,
             remindersAllowed: model.notificationAuthorization == .authorized,
             liveActivity: model.currentLiveActivity,
-            liveActivitiesEnabled: model.liveActivitiesEnabled
+            liveActivitiesEnabled: model.liveActivitiesEnabled,
+            liveActivityError: model.liveActivityError
         )
     }
 
@@ -86,6 +87,7 @@ struct HomeView: View {
                         // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
                         storageProblem(problem)
                     } else if let primary = content.primary {
+                        LiveActivityNotices(model: model, edge: .top, showsError: false)
                         filled(primary: primary, others: content.others)
                     } else {
                         empty

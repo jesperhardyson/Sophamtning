@@ -125,6 +125,20 @@ private func entry(_ offset: Int) -> PlacedOut {
     #expect(await ended.value)
 }
 
+@Test func visadeSparasRensasOchTomsPaBegaran() throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    try store.markShown([entry(-1), entry(1)], today: today)
+    #expect(store.shownActivities() == [entry(1)])
+    try store.markShown([entry(1), entry(2)], today: today)
+    #expect(Set(store.shownActivities()) == [entry(1), entry(2)])
+    #expect(store.shownActivities().count == 2)
+    try store.clearShown()
+    #expect(store.shownActivities().isEmpty)
+    // Filerna är skilda åt: en visad är inte utställd.
+    #expect(store.placedOut().isEmpty)
+}
+
 private actor EndedFlag {
     var value = false
     func set() { value = true }

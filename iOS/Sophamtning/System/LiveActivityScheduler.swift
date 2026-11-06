@@ -5,9 +5,6 @@ import UIKit
 
 /// Lägger in och tar bort Live Activities hos iOS. Start sker bara när appen inte ligger i bakgrunden.
 struct LiveActivityScheduler: LiveActivityScheduling {
-    /// Bakgrundskörningar startar aldrig en aktivitet. Det här stoppar också ett anrop som råkar komma efter att appen lämnats.
-    struct NotInForeground: Error {}
-
     func areEnabled() async -> Bool {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }
@@ -30,7 +27,8 @@ struct LiveActivityScheduler: LiveActivityScheduling {
     }
 
     func start(_ planned: PlannedLiveActivity) async throws {
-        guard await UIApplication.shared.applicationState != .background else { throw NotInForeground() }
+        // Bakgrundskörningar startar aldrig en aktivitet. Det här stoppar också ett anrop som råkar komma efter att appen lämnats.
+        guard await UIApplication.shared.applicationState != .background else { throw LiveActivityNotInForeground() }
         let attributes = PickupActivityAttributes(key: planned.key, pickupDate: planned.pickupDate, start: planned.start)
         // Inget `staleDate`, eftersom ingen uppdatering kommer utan appen. Systemets gräns på 12 timmar avslutar aktiviteten.
         let content = ActivityContent(state: planned.content, staleDate: nil)
