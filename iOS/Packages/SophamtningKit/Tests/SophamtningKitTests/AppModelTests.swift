@@ -108,21 +108,48 @@ private func makeModel(api: any SoporAPI, store: LocalStore) -> AppModel {
 }
 
 @Test @MainActor func misslyckadSparningBehallerTidigareLageOchVisarFel() async throws {
+    // Lagringen går inte att skriva när katalogen i stället är en fil.
+    let blocked = TempDir()
+    try Data().write(to: blocked.url)
+    let model = makeModel(api: CountingAPI(response: try response()), store: LocalStore(directory: blocked.url))
+    #expect(model.lastStorageError == nil)
+    model.add(hit("1"))
+    #expect(model.addresses.isEmpty)
+    #expect(model.lastStorageError != nil)
+    model.clearStorageError()
+    #expect(model.lastStorageError == nil)
+}
+
+@Test @MainActor func misslyckadSparningAvForstaSvaretGerFelStalletForHamtar() async throws {
     let temp = TempDir()
     let store = LocalStore(directory: temp.url)
     let model = makeModel(api: CountingAPI(response: try response()), store: store)
     model.add(hit("1"))
-    #expect(model.lastStorageError == nil)
+    // En fil där schemakatalogen ska ligga gör att scheman inte går att spara.
+    try Data().write(to: temp.url.appendingPathComponent("schedules"))
+    await model.refreshAll(manual: false)
+    #expect(model.lastStorageError != nil)
+    let schedule = try #require(model.schedule(for: AddressKey(source: "orebro", id: "1")))
+    #expect(schedule.response == nil)
+    #expect(schedule.lastError != nil)
+    let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: fixedNow)
+    #expect(content.primary?.status != .loading)
+}
 
-    // Lagringen går inte att skriva när katalogen i stället är en fil.
-    let blocked = TempDir()
-    try Data().write(to: blocked.url)
-    let brokenModel = makeModel(api: CountingAPI(response: try response()), store: LocalStore(directory: blocked.url))
-    brokenModel.add(hit("1"))
-    #expect(brokenModel.addresses.isEmpty)
-    #expect(brokenModel.lastStorageError != nil)
-    brokenModel.clearStorageError()
-    #expect(brokenModel.lastStorageError == nil)
+@Test @MainActor func borttagningUnderPagaendeUppdateringLamnarIngetSchemaKvar() async throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    let model = makeModel(api: CountingAPI(response: try response()), store: store)
+    model.add(hit("1"))
+    model.add(hit("2"))
+    let removed = AddressKey(source: "orebro", id: "1")
+    let refresh = Task { await model.refreshAll(manual: false) }
+    try await Task.sleep(for: .milliseconds(20))
+    model.remove(removed)
+    await refresh.value
+    #expect(store.schedule(for: removed) == nil)
+    #expect(model.schedule(for: removed) == nil)
+    #expect(model.addresses.map(\.key.id) == ["2"])
 }
 
 @Test @MainActor func misslyckadBorttagningBehallerAdressen() async throws {

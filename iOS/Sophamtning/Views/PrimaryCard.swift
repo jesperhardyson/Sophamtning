@@ -41,7 +41,7 @@ struct PrimaryCard: View {
     private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: "house")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(.body, weight: .semibold))
                 .accessibilityHidden(true)
             Text(entry.title)
                 .font(.ui(18, weight: .heavy, relativeTo: .headline))
@@ -86,14 +86,14 @@ struct PrimaryCard: View {
         Button(action: onReminder) {
             HStack(spacing: 12) {
                 Image(systemName: "bell.badge")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(.body, weight: .semibold))
                     .accessibilityHidden(true)
                 Text(text)
                     .font(.ui(16, weight: .bold, relativeTo: .callout))
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(.subheadline, weight: .semibold))
                     .accessibilityHidden(true)
             }
             .foregroundStyle(foreground)

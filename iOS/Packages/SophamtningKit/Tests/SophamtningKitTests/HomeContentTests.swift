@@ -132,7 +132,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let loading = make([home], [:])
     #expect(try #require(loading.primary).status == .loading)
     let failed = make([home], [home.key: CachedSchedule(response: nil, fetchedAt: nil, lastAttemptAt: now, lastError: .network)])
-    #expect(try #require(failed.primary).status == .failed)
+    #expect(try #require(failed.primary).status == .failed(.network))
     #expect(try #require(failed.primary).summary == "Kunde inte hämta schemat")
 }
 
@@ -154,4 +154,43 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     var first = home
     first.isPrimary = false
     #expect(try #require(make([first, cabin], [:]).primary).title == "Hemma")
+}
+
+@Test func adressSomInteFinnsLangreFarEgenText() throws {
+    let gone = make([home], [home.key: CachedSchedule(response: nil, fetchedAt: nil, lastAttemptAt: now, lastError: .notFound)])
+    #expect(try #require(gone.primary).summary == "Adressen hittas inte längre")
+}
+
+@Test func radMedMisslyckadUppdateringNamnerDetISinEtikett() throws {
+    let content = make([home, cabin], [
+        home.key: schedule([event("2026-11-09", ["rest"])]),
+        cabin.key: schedule([event("2026-11-18", ["plast"])], lastError: .network),
+    ])
+    #expect(content.others[0].accessibilityLabel.contains("Kunde inte uppdateras"))
+}
+
+private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
+    var on = home
+    on.notificationsOn = true
+    return try #require(make([on], [on.key: schedule(events)], at: time).primary).reminderText
+}
+
+@Test func tomningIDagUtanSenareHamtningGerNeutralPaminnelsetext() throws {
+    #expect(try reminder(events: [event("2026-11-06", ["rest"])], at: now) == "Påminnelser på")
+}
+
+@Test func tomningIDagRaknarPaminnelsenFranNastaHamtning() throws {
+    let events = [event("2026-11-06", ["rest"]), event("2026-11-09", ["mat"])]
+    #expect(try reminder(events: events, at: now) == "Påminnelse söndag kl. 18:00")
+}
+
+@Test func tomningIMorgonForeKlockan18GerPaminnelseSammaKvall() throws {
+    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: now) == "Påminnelse fredag kl. 18:00")
+}
+
+@Test func tomningIMorgonEfter18GerNeutralTextOmIngenSenareFinns() throws {
+    let evening = StockholmClock.date(on: today, minutes: 19 * 60)
+    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: evening) == "Påminnelser på")
+    let later = [event("2026-11-07", ["rest"]), event("2026-11-12", ["mat"])]
+    #expect(try reminder(events: later, at: evening) == "Påminnelse onsdag kl. 18:00")
 }

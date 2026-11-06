@@ -19,6 +19,14 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     toolbar(showsAdd: content.primary != nil)
+                    if let error = model.lastStorageError {
+                        // Ett felmeddelande i flödet, inte en ruta som stör mitt i användningen.
+                        Button { model.clearStorageError() } label: {
+                            MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 12)
+                    }
                     if let primary = content.primary {
                         filled(primary: primary, others: content.others)
                     } else {
@@ -42,11 +50,6 @@ struct HomeView: View {
             case .kommun: TemporarySheet(title: "Finns min kommuns hämtningsschema?")
             }
         }
-        .alert("Något gick fel", isPresented: Binding(get: { model.lastStorageError != nil }, set: { if !$0 { model.clearStorageError() } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(model.lastStorageError ?? "")
-        }
     }
 
     // MARK: Delar
@@ -65,7 +68,7 @@ struct HomeView: View {
     private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(.body, weight: .semibold))
                 .foregroundStyle(Color.Theme.text)
                 .frame(width: 44, height: 44)
                 .background(Color.Theme.surface, in: Circle())
@@ -104,7 +107,7 @@ struct HomeView: View {
 
     private var empty: some View {
         VStack(alignment: .leading, spacing: 0) {
-            EmptyHero()
+            BrandSymbol()
                 .frame(maxWidth: .infinity)
                 .padding(.top, 24)
                 .padding(.bottom, 36)
@@ -120,7 +123,7 @@ struct HomeView: View {
             Button { sheet = .add } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 18))
+                        .font(.system(.body))
                         .accessibilityHidden(true)
                     Text("Gata och husnummer")
                         .font(.ui(18, weight: .semibold, relativeTo: .body))
@@ -146,7 +149,7 @@ struct HomeView: View {
             Button { sheet = .kommun } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "map")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(.title3, weight: .semibold))
                         .foregroundStyle(Color.Theme.brandText)
                         .frame(width: 44, height: 44)
                         .background(Color.Theme.brandSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -186,6 +189,11 @@ enum HomeSheet: String, Identifiable {
 private struct AddressRow: View {
     let entry: HomeContent.Entry
 
+    private var isFailure: Bool {
+        if case .failed = entry.status { return true }
+        return false
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -197,7 +205,7 @@ private struct AddressRow: View {
                     .foregroundStyle(Color.Theme.text2)
                 Text(entry.summary)
                     .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(entry.status == .failed ? Color.Theme.warn : Color.Theme.brandText)
+                    .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
             }
             Spacer(minLength: 0)
             if case .upcoming(let pickup) = entry.status {
@@ -217,37 +225,6 @@ private struct AddressRow: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.accessibilityLabel)
-    }
-}
-
-/// Appens märke för tomt läge: en kalender i en rundad pil.
-private struct EmptyHero: View {
-    private let size: CGFloat = 150
-    private let line: CGFloat = 20
-    private let startDegrees = 10.0
-    private let sweep = 0.875
-
-    var body: some View {
-        let radius = (size - line) / 2
-        let end = Angle.degrees(startDegrees + sweep * 360)
-        ZStack {
-            Circle()
-                .inset(by: line / 2)
-                .trim(from: 0, to: sweep)
-                .stroke(Color.Theme.primary, style: StrokeStyle(lineWidth: line, lineCap: .round))
-                .rotationEffect(.degrees(startDegrees))
-            // Pilspetsen sitter i slutet av bågen och pekar längs den.
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 34))
-                .foregroundStyle(Color.Theme.primary)
-                .rotationEffect(end + .degrees(180))
-                .offset(x: radius * cos(end.radians), y: radius * sin(end.radians))
-            Image(systemName: "calendar")
-                .font(.system(size: 62, weight: .bold))
-                .foregroundStyle(Color.Theme.primary)
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
     }
 }
 

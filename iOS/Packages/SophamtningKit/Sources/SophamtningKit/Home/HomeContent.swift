@@ -26,8 +26,9 @@ public struct HomeContent: Equatable, Sendable {
         case noUpcoming
         /// Schemat har inte hämtats än.
         case loading
-        /// Schemat saknas och det senaste försöket misslyckades. Det är ett tekniskt fel, inte att adressen saknas.
-        case failed
+        /// Schemat saknas och det senaste försöket misslyckades. Bara `notFound` betyder att adressen inte finns
+        /// längre, alla andra fel är tekniska.
+        case failed(APIError)
     }
 
     public struct Entry: Equatable, Sendable, Identifiable {
@@ -47,6 +48,7 @@ public struct HomeContent: Equatable, Sendable {
         /// Alla fraktioner som text, så att VoiceOver kan läsa dem även när raden bara visar ikoner.
         public var accessibilityLabel: String {
             var parts = [title, subtitle, summary]
+            if refreshFailed { parts.append("Kunde inte uppdateras, visar senast hämtade schema") }
             if case .upcoming(let pickup) = status {
                 parts.append(pickup.fractions.map(\.info.name).joined(separator: ", "))
             }
@@ -81,14 +83,14 @@ public struct HomeContent: Equatable, Sendable {
                 pickup.estimated
             )
             if withReminder {
-                reminder = reminderText(address: address, settings: settings, pickup: pickup)
+                reminder = reminderText(address: address, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now)
             }
         case .noUpcoming:
             summary = "Inga kommande hämtningar"
         case .loading:
             summary = "Hämtar schema…"
-        case .failed:
-            summary = "Kunde inte hämta schemat"
+        case .failed(let error):
+            summary = error == .notFound ? "Adressen hittas inte längre" : "Kunde inte hämta schemat"
         }
         return Entry(
             key: address.key,
@@ -104,7 +106,7 @@ public struct HomeContent: Equatable, Sendable {
     private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {
         guard let schedule else { return .loading }
         guard let response = schedule.response else {
-            return schedule.lastError != nil ? .failed : .loading
+            return schedule.lastError.map { .failed($0) } ?? .loading
         }
         guard let event = ScheduleLogic.nextPickup(response.events, today: today) else { return .noUpcoming }
         let daysUntil = today.days(until: event.date)
@@ -122,12 +124,17 @@ public struct HomeContent: Equatable, Sendable {
         ))
     }
 
-    /// Påminnelsen gäller kvällen före nästa hämtning, i svensk tid.
-    private static func reminderText(address: SavedAddress, settings: ReminderSettings, pickup: Pickup) -> String {
+    /// Påminnelsen gäller kvällen före en hämtning, i svensk tid. Har kvällen före nästa hämtning redan
+    /// passerat räknas den från nästa hämtning efter den. Finns ingen sådan visas en neutral text.
+    private static func reminderText(address: SavedAddress, settings: ReminderSettings, events: [PickupEvent], today: DayDate, now: Date) -> String {
         guard address.notificationsOn || settings.liveActivityOn else { return "Påminn mig kvällen före" }
-        let evening = pickup.date.adding(days: -1)
-        let time = String(format: "%02d:%02d", settings.reminderMinutes / 60, settings.reminderMinutes % 60)
-        return "Påminnelse \(SwedishFormat.weekdayName(evening)) kl. \(time)"
+        for event in ScheduleLogic.upcoming(events, today: today) {
+            let evening = event.date.adding(days: -1)
+            guard StockholmClock.date(on: evening, minutes: settings.reminderMinutes) > now else { continue }
+            let time = String(format: "%02d:%02d", settings.reminderMinutes / 60, settings.reminderMinutes % 60)
+            return "Påminnelse \(SwedishFormat.weekdayName(evening)) kl. \(time)"
+        }
+        return "Påminnelser på"
     }
 
     private static func capitalized(_ text: String) -> String {

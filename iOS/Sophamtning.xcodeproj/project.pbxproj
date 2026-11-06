@@ -11,6 +11,7 @@
 		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
+		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
@@ -60,6 +61,7 @@
 		C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SophamtningWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sophamtning.entitlements; sourceTree = "<group>"; };
 		D049414B36508C1128F2BAAA /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		D6B786AF21090DE7863B3899 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D6D00A6E7ADC817B366C21B8 /* SophamtningKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SophamtningKit; path = Packages/SophamtningKit; sourceTree = SOURCE_ROOT; };
 		F6E97966D4E1386A76326E42 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		FC4BE44B59AE1A33494CA69B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -101,6 +103,7 @@
 		74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */ = {
 			isa = PBXGroup;
 			children = (
+				D6B786AF21090DE7863B3899 /* Assets.xcassets */,
 				35136FCF3CCD34E55DE2CA57 /* Info.plist */,
 				CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */,
 				431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */,
@@ -162,6 +165,7 @@
 			buildConfigurationList = 678906BF6A452E8D56466C13 /* Build configuration list for PBXNativeTarget "Sophamtning" */;
 			buildPhases = (
 				C95C14DB6D35E664CF303D65 /* Sources */,
+				4E8F9D01744D5E34F5E2AD8B /* Resources */,
 				84E5D0F40E0D84E0DA9C65A7 /* Frameworks */,
 				360961160F082660DFD32353 /* Embed Foundation Extensions */,
 			);
@@ -264,6 +268,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4E8F9D01744D5E34F5E2AD8B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4C6D7525097D4B185CCACCBB /* Sources */ = {

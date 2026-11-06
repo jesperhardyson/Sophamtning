@@ -11,7 +11,6 @@ public final class AppModel {
     public private(set) var settings: ReminderSettings
     /// Det senaste lagringsfelet, tills det rensas med `clearStorageError()`. Då är det tidigare läget kvar.
     public private(set) var lastStorageError: String?
-    public private(set) var isRefreshing = false
 
     @ObservationIgnored private var schedules: [AddressKey: CachedSchedule]
     @ObservationIgnored private let store: LocalStore
@@ -67,22 +66,26 @@ public final class AppModel {
     }
 
     private func performRefresh(manual: Bool) async {
-        isRefreshing = true
-        defer { isRefreshing = false }
         var fetchedAny = false
         for address in addresses {
             // En adress som tagits bort under tiden hämtas inte.
             guard addresses.contains(where: { $0.key == address.key }) else { continue }
             let outcome = await refresher.refresh(address, now: now(), manual: manual)
-            if outcome == .storageFailed {
-                lastStorageError = "Kunde inte spara schemat."
-            }
             if outcome == .fetched { fetchedAny = true }
             if addresses.contains(where: { $0.key == address.key }) {
-                schedules[address.key] = store.schedule(for: address.key)
+                var current = store.schedule(for: address.key)
+                if outcome == .storageFailed {
+                    lastStorageError = "Kunde inte spara schemat."
+                    // Försöket gick inte att spara. Utan en markering i minnet skulle en ny adress stå kvar som "hämtar".
+                    var attempted = current ?? CachedSchedule()
+                    attempted.lastAttemptAt = now()
+                    attempted.lastError = .unexpected(0)
+                    current = attempted
+                }
+                schedules[address.key] = current
             } else {
                 // Adressen togs bort medan hämtningen pågick, så schemat ska inte bli kvar.
-                try? store.removeSchedule(for: address.key)
+                removeStoredSchedule(for: address.key)
             }
             scheduleRevision += 1
         }
@@ -117,12 +120,16 @@ public final class AppModel {
         guard saveAddresses(AddressList.remove(key, from: addresses)) else { return }
         schedules[key] = nil
         scheduleRevision += 1
+        removeStoredSchedule(for: key)
+        applyReminders()
+    }
+
+    private func removeStoredSchedule(for key: AddressKey) {
         do {
             try store.removeSchedule(for: key)
         } catch {
             lastStorageError = "Kunde inte ta bort det sparade schemat."
         }
-        applyReminders()
     }
 
     @discardableResult
