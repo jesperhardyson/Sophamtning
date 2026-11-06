@@ -106,11 +106,6 @@ extension Color {
         #endif
     }
 
-    /// Fast färg från 0xRRGGBB.
-    init(rgb: UInt32) {
-        self.init(.sRGB, red: Double((rgb >> 16) & 0xFF) / 255, green: Double((rgb >> 8) & 0xFF) / 255,
-                  blue: Double(rgb & 0xFF) / 255, opacity: 1)
-    }
 }
 
 #if canImport(UIKit)
@@ -128,11 +123,3 @@ private extension NSColor {
     }
 }
 #endif
-
-/// Tolkar exakt "#RRGGBB". Allt annat ger `nil`.
-func parseHexColor(_ text: String) -> UInt32? {
-    guard text.count == 7, text.first == "#" else { return nil }
-    let digits = text.dropFirst()
-    guard digits.allSatisfy({ $0.isASCII && $0.isHexDigit }) else { return nil }
-    return UInt32(digits, radix: 16)
-}

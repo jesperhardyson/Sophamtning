@@ -8,48 +8,44 @@ public struct FractionStyle: Sendable {
     public let iconName: String
     public let foreground: Color
     public let background: Color
-    /// Fraktionen har färger i temat.
+    /// Fraktionen har färger och ikon i temat.
     public let isKnown: Bool
-    /// Färgen kommer från API:ts `color` (okänd fraktion med giltig hex).
-    public let usesAPIColor: Bool
 
     /// Lucide-ikonerna som följer med paketet.
     static let bundledIcons: Set<String> = [
         "trash-2", "apple", "package", "cup-soda", "wine", "cylinder", "newspaper", "container", "recycle",
     ]
 
-    private static let themed: [String: (ThemeToken, ThemeToken)] = [
-        "rest": (.fracRest, .fracRestBg),
-        "karl": (.fracRest, .fracRestBg),
-        "mat": (.fracMat, .fracMatBg),
-        "papper": (.fracPapper, .fracPapperBg),
-        "tidningar": (.fracPapper, .fracPapperBg),
-        "plast": (.fracPlast, .fracPlastBg),
-        "glas": (.fracGlas, .fracGlasBg),
-        "metall": (.fracMetall, .fracMetallBg),
+    /// Kända fraktioner: förgrund, bakgrund och ikon bestäms av temat och designen.
+    private static let themed: [String: (fg: ThemeToken, bg: ThemeToken, icon: String)] = [
+        "rest": (.fracRest, .fracRestBg, "trash-2"),
+        "karl": (.fracRest, .fracRestBg, "container"),
+        "mat": (.fracMat, .fracMatBg, "apple"),
+        "papper": (.fracPapper, .fracPapperBg, "package"),
+        "tidningar": (.fracPapper, .fracPapperBg, "newspaper"),
+        "plast": (.fracPlast, .fracPlastBg, "cup-soda"),
+        "glas": (.fracGlas, .fracGlasBg, "wine"),
+        "metall": (.fracMetall, .fracMetallBg, "cylinder"),
     ]
+
+    /// Okända fraktioner får alltid neutral stil (text2 på surface2). API:ts färg används inte,
+    /// eftersom den är en fast ljus-färg som blir oläslig i mörkt läge.
+    static let unknownForeground = ThemeToken.text2
+    static let unknownBackground = ThemeToken.surface2
 
     public init(id: String, info: FractionInfo) {
         self.id = id
         name = info.name
-        iconName = Self.bundledIcons.contains(info.icon) ? info.icon : "recycle"
-        if let (fg, bg) = Self.themed[id] {
-            foreground = fg.color
-            background = bg.color
+        if let themed = Self.themed[id] {
+            iconName = themed.icon
+            foreground = themed.fg.color
+            background = themed.bg.color
             isKnown = true
-            usesAPIColor = false
-        } else if let rgb = parseHexColor(info.color) {
-            // API:ts färg är ljus-färg. Bakgrunden är en blek ton av samma färg.
-            let base = Color(rgb: rgb)
-            foreground = base
-            background = base.opacity(0.14)
-            isKnown = false
-            usesAPIColor = true
         } else {
-            foreground = Color.Theme.text2
-            background = Color.Theme.surface2
+            iconName = Self.bundledIcons.contains(info.icon) ? info.icon : "recycle"
+            foreground = Self.unknownForeground.color
+            background = Self.unknownBackground.color
             isKnown = false
-            usesAPIColor = false
         }
     }
 }

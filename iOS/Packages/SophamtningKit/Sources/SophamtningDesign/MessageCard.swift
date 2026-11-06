@@ -11,6 +11,7 @@ public struct MessageCard: View {
     let icon: String
     let title: String
     let message: String
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 18
 
     /// `icon` är ett SF Symbol-namn.
     public init(style: Style, icon: String, title: String, message: String) {
@@ -26,7 +27,7 @@ public struct MessageCard: View {
     public var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 18))
+                .font(.system(size: iconSize))
                 .foregroundStyle(tint)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
