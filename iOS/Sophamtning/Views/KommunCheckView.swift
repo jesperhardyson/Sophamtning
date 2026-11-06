@@ -24,6 +24,7 @@ struct KommunCheckView: View {
     /// Det senaste svaret. Det ligger kvar medan ett nytt hämtas, så att rutan inte blinkar.
     @State private var result = KommunResult(answer: .empty, areas: [])
     @State private var latest = LatestOnly()
+    @State private var webLink: WebLink?
     private let index = try? PlaceIndex.bundled()
 
     var body: some View {
@@ -48,6 +49,7 @@ struct KommunCheckView: View {
             .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)
+        .inAppBrowser(item: $webLink)
         .background(Color.Theme.bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Trigger(query: query, attempt: attempt)) { await update() }
@@ -163,7 +165,7 @@ struct KommunCheckView: View {
                         .foregroundStyle(Color.Theme.text)
                 }
             }
-            Link(destination: tipURL) {
+            Button { webLink = tipLink } label: {
                 Label("Tipsa om din kommun", systemImage: "arrow.up.right.square")
                     .font(.ui(16, weight: .heavy, relativeTo: .callout))
                     .foregroundStyle(Color.Theme.primary)

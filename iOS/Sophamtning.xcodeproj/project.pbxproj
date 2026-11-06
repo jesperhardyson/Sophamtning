@@ -12,6 +12,7 @@
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
 		6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */; };
+		70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
 		A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */; };
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
@@ -71,6 +72,7 @@
 		D049414B36508C1128F2BAAA /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		D6B786AF21090DE7863B3899 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D6D00A6E7ADC817B366C21B8 /* SophamtningKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SophamtningKit; path = Packages/SophamtningKit; sourceTree = SOURCE_ROOT; };
+		DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppBrowser.swift; sourceTree = "<group>"; };
 		E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KommunCheckView.swift; sourceTree = "<group>"; };
 		F6E97966D4E1386A76326E42 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerView.swift; sourceTree = "<group>"; };
@@ -165,6 +167,7 @@
 				F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */,
 				AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */,
 				F6E97966D4E1386A76326E42 /* HomeView.swift */,
+				DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */,
 				E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */,
 				A9662238FFEB7754E74086AF /* PrimaryCard.swift */,
 				4D5502E2E1A53F977DC24C47 /* SearchView.swift */,
@@ -311,6 +314,7 @@
 				EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */,
 				A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */,
 				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,
+				70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */,
 				6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */,
 				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
 				EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */,

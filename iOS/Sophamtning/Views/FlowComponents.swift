@@ -142,4 +142,4 @@ struct HitSelection: Identifiable {
     var id: String { "\(hit.source)/\(hit.id)" }
 }
 
-let tipURL = URL(string: "https://sopor.hardyson.se/bidra")!
+let tipLink = WebLink(url: URL(string: "https://sopor.hardyson.se/bidra")!)!

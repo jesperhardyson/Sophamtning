@@ -11,9 +11,10 @@ struct AreaPickerView: View {
 
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
+    @State private var webLink: WebLink?
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
-    private var areasURL: URL? { hits.lazy.compactMap(\.areasUrl).first }
+    private var areasLink: WebLink? { hits.lazy.compactMap(\.areasUrl).compactMap(WebLink.init(url:)).first }
 
     var body: some View {
         ScrollView {
@@ -26,8 +27,8 @@ struct AreaPickerView: View {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
                         .padding(.top, 20)
                 }
-                if let areasURL {
-                    Link(destination: areasURL) {
+                if let areasLink {
+                    Button { webLink = areasLink } label: {
                         Label("Vilka platser ingår i områdena?", systemImage: "arrow.up.right.square")
                             .font(.ui(17, weight: .heavy, relativeTo: .body))
                             .foregroundStyle(Color.Theme.primary)
@@ -69,7 +70,7 @@ struct AreaPickerView: View {
         .background(Color.Theme.bg.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        
+        .inAppBrowser(item: $webLink)
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
