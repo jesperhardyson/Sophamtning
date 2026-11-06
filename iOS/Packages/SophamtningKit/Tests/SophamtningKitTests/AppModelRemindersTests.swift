@@ -423,7 +423,7 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(model.lastStorageError != nil)
 }
 
-@Test @MainActor func valetForLiveActivitySparasMenPlanerarInteNagot() async throws {
+@Test @MainActor func valetForLiveActivitySparasOchNotisenStarKvarUtanSystemetsAktiviteter() async throws {
     let temp = TempDir()
     let scheduler = FakeScheduler(status: .authorized)
     let model = try await makeModel(scheduler, directory: temp.url)
@@ -435,7 +435,7 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     await model.settleReminders()
     #expect(model.settings.liveActivityOn)
     #expect(LocalStore(directory: temp.url).settings().liveActivityOn)
-    // Notiserna står kvar tills Live Activity kopplas.
+    // Här finns inga aktiviteter hos systemet, så notiserna står kvar.
     #expect(scheduler.planned == before)
 }
 

@@ -11,5 +11,6 @@ struct SophamtningWidgetBundle: WidgetBundle {
 
     var body: some Widget {
         NextPickupWidget()
+        PickupLiveActivity()
     }
 }

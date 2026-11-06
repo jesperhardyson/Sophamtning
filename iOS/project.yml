@@ -18,7 +18,10 @@ targets:
   Sophamtning:
     type: application
     platform: iOS
-    sources: [Sophamtning]
+    sources:
+      - Sophamtning
+      # Intenten ska finnas i båda målen, så att knappen körs utan att appen öppnas.
+      - path: SophamtningWidgets/MarkPlacedOutIntent.swift
     dependencies:
       - target: SophamtningWidgets
       - package: SophamtningKit

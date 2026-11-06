@@ -26,6 +26,13 @@ public final class AppModel {
     /// Om några väntande notiser inte gick att lägga in, annars `nil`. Försöket upprepas vid nästa körning.
     public private(set) var reminderError: String?
     @ObservationIgnored private let scheduler: any NotificationScheduling
+    @ObservationIgnored private let activities: any LiveActivityScheduling
+    /// Om Live Activities är påslagna i iOS, senast läst. Läses om av `applyReminders()`. Valet i appen ändras aldrig av det.
+    public private(set) var liveActivitiesEnabled = true
+    /// Huvudadressens aktivitet hos systemet efter senaste planeringen, med den pågående först. Hemkortet visar den.
+    public private(set) var currentLiveActivity: ExistingActivity?
+    /// Om aktiviteten inte gick att lägga in, annars `nil`. Notisen står då kvar, och försöket upprepas vid nästa körning.
+    public private(set) var liveActivityError: String?
     /// Ett tunt anrop som laddar om widgeten, till exempel `WidgetCenter.shared.reloadAllTimelines()` i appen.
     /// Paketet känner inte till WidgetKit. Widgeten läser bara från lagringen, så den laddas om när lagringen ändrats.
     @ObservationIgnored private let widgetReloader: @MainActor () -> Void
@@ -41,8 +48,9 @@ public final class AppModel {
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
     private var scheduleRevision = 0
 
-    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), widgetReloader: @escaping @MainActor () -> Void = {}) {
+    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}) {
         self.scheduler = scheduler
+        self.activities = activities
         self.widgetReloader = widgetReloader
         self.store = store
         self.now = now
@@ -196,18 +204,19 @@ public final class AppModel {
 
     /// Uppdaterar alla adresser, en i taget. Anrop köas efter varandra: ett anrop som kommer medan
     /// ett annat pågår väntar, och adresser som då är nyss hämtade hoppas över av `RefreshPolicy`.
-    public func refreshAll(manual: Bool) async {
+    /// `startingActivities` är falskt i bakgrunden, där en Live Activity aldrig får startas.
+    public func refreshAll(manual: Bool, startingActivities: Bool = true) async {
         let previous = queue
         let task = Task { @MainActor in
             await previous?.value
-            await self.performRefresh(manual: manual)
+            await self.performRefresh(manual: manual, startingActivities: startingActivities)
         }
         queue = task
         // Avbryts anroparen (dra för att uppdatera lämnar skärmen) fortsätter köplatsen ändå.
         await task.value
     }
 
-    private func performRefresh(manual: Bool) async {
+    private func performRefresh(manual: Bool, startingActivities: Bool) async {
         reloadStorageIfNeeded()
         var fetchedAny = false
         var savedAny = false
@@ -242,7 +251,7 @@ public final class AppModel {
             scheduleRevision += 1
         }
         if savedAny { widgetReloader() }
-        if fetchedAny { applyReminders() }
+        if fetchedAny { applyReminders(startingActivities: startingActivities) }
     }
 
     // MARK: Källor
@@ -357,7 +366,7 @@ public final class AppModel {
 
     // MARK: Inställningar
 
-    /// Valet sparas men planerar inget än, eftersom Live Activity kopplas i uppgift 14.
+    /// Opt-in: inget schemaläggs förrän valet är på. Stängs det av läggs notiserna in före att aktiviteterna tas bort.
     public func setLiveActivity(_ on: Bool) {
         var updated = settings
         updated.liveActivityOn = on
@@ -470,11 +479,12 @@ public final class AppModel {
 
     /// Läser tillståndet, kör planeraren och ändrar bara skillnaden mot det som redan är schemalagt.
     /// Körs vid lyckad hämtning, när appen öppnas och när ett påminnelseval ändras. Uppdateringarna köas.
-    public func applyReminders() {
+    /// `startingActivities` är falskt i bakgrunden: då startas ingen Live Activity, men de kan tas bort och uppdateras.
+    public func applyReminders(startingActivities: Bool = true) {
         let previous = reminderQueue
         reminderQueue = Task { @MainActor in
             await previous?.value
-            await self.performApplyReminders()
+            await self.performApplyReminders(startingActivities: startingActivities)
         }
     }
 
@@ -483,41 +493,120 @@ public final class AppModel {
         await reminderQueue?.value
     }
 
-    private func performApplyReminders() async {
+    /// Ordningen är planera, ändra aktiviteterna, läs dem på nytt, planera igen och ändra notiserna. En notis tas alltså bort först
+    /// när aktiviteten faktiskt finns hos systemet. Ska en aktivitet bort läggs dess notis in före borttagningen, så att ingen
+    /// tömning står utan påminnelse om processen dör mitt i.
+    private func performApplyReminders(startingActivities: Bool) async {
         reloadStorageIfNeeded()
         // Går adresserna eller inställningarna inte att läsa vet appen inte vad användaren valt, så inget ändras.
         guard addressesReadable, settingsReadable else { return }
         let status = await scheduler.authorization()
         notificationAuthorization = status
-        // Utan tillstånd rörs inget: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras notiserna igen.
+        let systemAllows = await activities.areEnabled()
+        liveActivitiesEnabled = systemAllows
+
+        let today = StockholmClock.today(now: now())
+        // Rensningen är bara städning. Lyckas den inte görs den nästa gång.
+        try? store.prunePlacedOut(today: today)
+        let placedOut: Set<PlacedOut>
+        switch store.placedOutState() {
+        case .value(let saved): placedOut = Set(saved)
+        case .missing, .unreadable: placedOut = []
+        // Det går inte att veta vad som är utställt, så inget ändras.
+        case .unavailable: return
+        }
+
+        let primary = addresses.first(where: \.isPrimary)?.key
+        let snapshot = await activities.current()
+        let existing = snapshot.filter(\.phase.countsAsExisting).map(\.activity)
+        let plan = reminderPlan(existing: existing, placedOut: placedOut, activitiesAllowed: systemAllows)
+        var actions = LiveActivityDiff.actions(desired: plan.liveActivity, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary)
+        // Utan läsbart schema för huvudadressen går det inte att planera någon ersättning, så dess aktiviteter står kvar.
+        if settings.liveActivityOn, let primary, schedules[primary]?.response == nil {
+            let protected = Set(existing.filter { $0.key == primary }.map(\.id))
+            actions.removeAll { action in
+                if case .remove(let id) = action { return protected.contains(id) }
+                return false
+            }
+        }
+
+        let removals = actions.compactMap { action -> String? in
+            if case .remove(let id) = action { return id }
+            return nil
+        }
+        if !removals.isEmpty, status == .authorized {
+            let remaining = existing.filter { !removals.contains($0.id) }
+            let safe = reminderPlan(existing: remaining, placedOut: placedOut, activitiesAllowed: systemAllows)
+            await applyNotifications(safe.notifications, removing: false)
+        }
+
+        for action in actions {
+            if case .remove(let id) = action { await activities.remove(id: id) }
+        }
+        // En inaktuell aktivitet räknas inte, och den visas inte längre med rätt innehåll.
+        for item in snapshot where item.phase == .stale { await activities.remove(id: item.activity.id) }
+        var startFailed = false
+        for action in actions {
+            switch action {
+            case .remove: break
+            case .update(let id, let content): await activities.update(id: id, content: content)
+            case .start(let activity):
+                guard startingActivities else { continue }
+                do {
+                    try await activities.start(activity)
+                } catch {
+                    startFailed = true
+                }
+            }
+        }
+        if startFailed {
+            liveActivityError = "Live Activity kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
+        } else if startingActivities || !settings.liveActivityOn {
+            liveActivityError = nil
+        }
+
+        // Det är de aktiviteter som faktiskt finns nu som avgör om notisen behövs, inte de som skulle ha startats.
+        let actual = await activities.current().filter(\.phase.countsAsExisting).map(\.activity)
+        let own = actual.filter { $0.key == primary }
+        currentLiveActivity = own.first { !$0.isPending } ?? own.min { $0.start < $1.start }
+
+        // Utan tillstånd rörs inga notiser: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras de igen.
         guard status == .authorized else { return }
-        // Bara notiser som appen själv skapat räknas, även om schemaläggaren skulle lämna fler.
-        let pending = await scheduler.pending().filter { NotificationDiff.isOwn(identifier: $0.identifier) }
-        let input = PlannerInput(
+        let final = reminderPlan(existing: actual, placedOut: placedOut, activitiesAllowed: systemAllows)
+        await applyNotifications(final.notifications, removing: true)
+    }
+
+    private func reminderPlan(existing: [ExistingActivity], placedOut: Set<PlacedOut>, activitiesAllowed: Bool) -> ReminderPlan {
+        ReminderPlanner.plan(PlannerInput(
             addresses: addresses.map { PlannerAddress(address: $0, schedule: schedules[$0.key]) },
             settings: settings,
-            placedOut: Set(store.placedOut()),
+            placedOut: placedOut,
             now: now(),
-            // Live Activity kopplas i uppgift 14. Tills dess är de avstängda i planeringen och inga aktiviteter
-            // finns, så att den vanliga notisen alltid skickas och ingen tömning blir utan påminnelse.
-            liveActivitiesAllowed: false,
-            existingActivities: []
-        )
-        let desired = ReminderPlanner.plan(input).notifications
+            liveActivitiesAllowed: activitiesAllowed,
+            existingActivities: Set(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
+        ))
+    }
+
+    /// Ändrar bara skillnaden mot de väntande notiserna. Med `removing` falskt läggs de bara in, och ingen tas bort.
+    private func applyNotifications(_ desired: [PlannedNotification], removing: Bool) async {
+        // Bara notiser som appen själv skapat räknas, även om schemaläggaren skulle lämna fler.
+        let pending = await scheduler.pending().filter { NotificationDiff.isOwn(identifier: $0.identifier) }
         let changes = NotificationDiff.diff(
             desired: desired,
             pendingIds: Set(pending.map(\.identifier)),
             pendingFireDates: Dictionary(pending.compactMap { p in p.fireDate.map { (p.identifier, $0) } }, uniquingKeysWith: { first, _ in first }),
             pendingBodies: Dictionary(pending.map { ($0.identifier, $0.body) }, uniquingKeysWith: { first, _ in first })
         )
-        // En adress med påminnelser på men utan läsbart schema behåller sina väntande notiser tills ett schema finns.
-        let protected = addresses.filter { $0.notificationsOn && schedules[$0.key]?.response == nil }.map { "\($0.key.fileName)-" }
-        // En ersatt notis läggs in med samma identifierare, som ersätter den gamla. Den tas därför inte bort först.
-        let replaced = Set(changes.add.map(\.identifier))
-        let removals = changes.removeIds.filter { id in
-            !replaced.contains(id) && !protected.contains { id.hasPrefix($0) }
+        if removing {
+            // En adress med påminnelser på men utan läsbart schema behåller sina väntande notiser tills ett schema finns.
+            let protected = addresses.filter { $0.notificationsOn && schedules[$0.key]?.response == nil }.map { "\($0.key.fileName)-" }
+            // En ersatt notis läggs in med samma identifierare, som ersätter den gamla. Den tas därför inte bort först.
+            let replaced = Set(changes.add.map(\.identifier))
+            let removals = changes.removeIds.filter { id in
+                !replaced.contains(id) && !protected.contains { id.hasPrefix($0) }
+            }
+            if !removals.isEmpty { await scheduler.cancel(identifiers: removals) }
         }
-        if !removals.isEmpty { await scheduler.cancel(identifiers: removals) }
         let failed = changes.add.isEmpty ? [] : await scheduler.schedule(changes.add)
         reminderError = failed.isEmpty ? nil : "Några påminnelser kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
     }

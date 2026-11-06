@@ -8,10 +8,13 @@ public struct PickupActivityAttributes: ActivityAttributes {
 
     public let key: AddressKey
     public let pickupDate: DayDate
+    /// Den planerade starten, så att appen kan se om en väntande aktivitet gäller en ändrad påminnelsetid.
+    public let start: Date
 
-    public init(key: AddressKey, pickupDate: DayDate) {
+    public init(key: AddressKey, pickupDate: DayDate, start: Date) {
         self.key = key
         self.pickupDate = pickupDate
+        self.start = start
     }
 }
 #endif

@@ -14,10 +14,12 @@ public enum StoreRead<Value: Sendable>: Sendable {
 /// Skrivningar är atomiska, och en fil som saknas eller är skadad läses som saknad.
 /// Skrivfel kastas, så att anroparen kan visa dem.
 ///
-/// Varje fil skrivs om i sin helhet. Skriver två processer samtidigt till samma fil kan en
-/// uppdatering gå förlorad. Uppgift 14 hanterar det för `placed-out.json`.
+/// Varje fil skrivs om i sin helhet. Skriver två processer samtidigt till samma fil kan en uppdatering gå förlorad.
+/// `placed-out.json` är den enda fil som skrivs utanför appen, av knappen **Utställt**, och den läses och skrivs därför
+/// med `NSFileCoordinator`.
 public final class LocalStore: Sendable {
     public static let appGroup = "group.se.hardyson.sophamtning"
+    private static let placedOutFile = "placed-out.json"
 
     private let directory: URL
 
@@ -68,11 +70,69 @@ public final class LocalStore: Sendable {
     }
 
     public func placedOut() -> [PlacedOut] {
-        read([PlacedOut].self, from: "placed-out.json") ?? []
+        if case .value(let saved) = placedOutState() { return saved }
+        return []
+    }
+
+    public func placedOutState() -> StoreRead<[PlacedOut]> {
+        let url = directory.appendingPathComponent(Self.placedOutFile)
+        var result: StoreRead<[PlacedOut]> = .unavailable
+        var coordinationError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { current in
+            result = decodePlacedOut(at: current)
+        }
+        return result
     }
 
     public func setPlacedOut(_ placedOut: [PlacedOut]) throws {
-        try write(placedOut, to: "placed-out.json")
+        try updatePlacedOut { _ in placedOut }
+    }
+
+    /// Lägger till en post utan att tappa någon som en annan process skriver samtidigt. Passerade poster rensas samtidigt.
+    public func markPlacedOut(_ entry: PlacedOut, today: DayDate) throws {
+        try updatePlacedOut { saved in
+            let current = saved.filter { $0.date >= today }
+            return current.contains(entry) ? current : current + [entry]
+        }
+    }
+
+    /// Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting.
+    public func prunePlacedOut(today: DayDate) throws {
+        try updatePlacedOut { saved in saved.filter { $0.date >= today } }
+    }
+
+    /// Läser och skriver under samma samordning, så att ingen annan skrivning hamnar mellan läsningen och skrivningen.
+    /// Filen går att ersätta om den är skadad, eftersom det värsta som går förlorat är att en tömning kan startas igen.
+    /// Går den inte att läsa just nu skrivs den aldrig över.
+    private func updatePlacedOut(_ change: ([PlacedOut]) -> [PlacedOut]) throws {
+        let url = directory.appendingPathComponent(Self.placedOutFile)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var coordinationError: NSError?
+        var failure: (any Error)?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: .forMerging, error: &coordinationError) { current in
+            do {
+                let saved: [PlacedOut]
+                switch decodePlacedOut(at: current) {
+                case .value(let value): saved = value
+                case .missing, .unreadable: saved = []
+                case .unavailable: throw CocoaError(.fileReadNoPermission)
+                }
+                let updated = change(saved)
+                // En oförändrad fil skrivs inte, och en rensning utan fil skapar ingen.
+                if updated != saved { try encode(updated, to: current) }
+            } catch {
+                failure = error
+            }
+        }
+        if let coordinationError { throw coordinationError }
+        if let failure { throw failure }
+    }
+
+    private func decodePlacedOut(at url: URL) -> StoreRead<[PlacedOut]> {
+        guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
+        guard let data = try? Data(contentsOf: url) else { return .unavailable }
+        guard let value = try? JSONDecoder().decode([PlacedOut].self, from: data) else { return .unreadable }
+        return .value(value)
     }
 
     public func sources() -> CachedSources? {
@@ -134,6 +194,10 @@ public final class LocalStore: Sendable {
     private func write<T: Encodable>(_ value: T, to path: String) throws {
         let url = directory.appendingPathComponent(path)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try encode(value, to: url)
+    }
+
+    private func encode<T: Encodable>(_ value: T, to url: URL) throws {
         // Filerna ska gå att läsa i bakgrunden och från widgeten efter första upplåsningen. Med strängare skydd ger
         // de bakgrundsuppdateringen och widgeten tomma läsningar medan telefonen är låst.
         try JSONEncoder().encode(value).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])

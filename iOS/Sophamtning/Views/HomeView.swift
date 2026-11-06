@@ -19,7 +19,9 @@ struct HomeView: View {
             schedules: model.cachedSchedules,
             settings: model.settings,
             now: model.currentDate,
-            remindersAllowed: model.notificationAuthorization == .authorized
+            remindersAllowed: model.notificationAuthorization == .authorized,
+            liveActivity: model.currentLiveActivity,
+            liveActivitiesEnabled: model.liveActivitiesEnabled
         )
     }
 
@@ -40,6 +42,12 @@ struct HomeView: View {
         .task {
             model.applyReminders()
             await model.refreshAll(manual: false)
+        }
+        .task {
+            // Slås Live Activities på eller av i iOS medan appen lever räknas påminnelserna om.
+            for await _ in LiveActivityEnablement.changes() {
+                model.applyReminders()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.

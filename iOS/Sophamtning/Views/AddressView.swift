@@ -246,6 +246,9 @@ struct AddressView: View {
             }
             .padding(.bottom, 12)
         }
+        if detail.isPrimary {
+            LiveActivityNotices(model: model, edge: .bottom)
+        }
         VStack(spacing: 0) {
             toggleRow(
                 title: "Notis kvällen före",

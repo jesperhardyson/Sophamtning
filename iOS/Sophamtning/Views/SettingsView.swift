@@ -1,6 +1,7 @@
 import SophamtningDesign
 import SophamtningKit
 import SwiftUI
+import UIKit
 
 /// Länken till integritetspolicyn. Policyn publiceras under `sopor.hardyson.se`, men sidan finns inte än: adressen visar
 /// webbplatsens reservsida. Länken är dold tills sidan skapas i uppgift 15, och då ändras konstanten till `true`.
@@ -112,6 +113,7 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+            LiveActivityNotices(model: model, edge: .top)
             if let missed = model.missedReminderText {
                 MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
                     .padding(.top, 12)
@@ -156,6 +158,38 @@ struct SettingsView: View {
             .padding(.top, 28)
             .padding(.bottom, 14)
             .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Meddelanden om Live Activity. Valet behålls när iOS stänger av dem, och notisen står kvar.
+/// Utan meddelanden tar vyn ingen plats, och `edge` får då inget avstånd.
+struct LiveActivityNotices: View {
+    let model: AppModel
+    let edge: Edge.Set
+
+    private var systemOff: Bool { model.settings.liveActivityOn && !model.liveActivitiesEnabled }
+
+    var body: some View {
+        if systemOff || model.liveActivityError != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                if systemOff {
+                    MessageCard(style: .warning, icon: "bell.slash", title: "Live Activities är avstängda", message: "Du har stängt av dem för Sophämtning i iOS.")
+                    Button {
+                        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                        Task { await UIApplication.shared.open(url) }
+                    } label: {
+                        Text("Öppna Inställningar")
+                            .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                            .foregroundStyle(Color.Theme.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if let error = model.liveActivityError {
+                    MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Live Activity saknas", message: error)
+                }
+            }
+            .padding(edge, 12)
+        }
     }
 }
 

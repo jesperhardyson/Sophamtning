@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Körningen bokar nästa körning först, hämtar scheman enligt `RefreshPolicy` (`refreshAll(manual: false)`), kör
 /// `applyReminders`, laddar om widgeten och avslutar. Den startar aldrig en Live Activity: en bakgrundskörning får inte det,
-/// och planerarens aktiviteter startas bara när appen är öppen. Tiden ute (`expire()`) avslutar uppgiften direkt.
+/// och planerarens aktiviteter startas bara när appen är öppen. Att ta bort och uppdatera går bra. Tiden ute (`expire()`) avslutar uppgiften direkt.
 /// `complete` anropas exakt en gång, oavsett om arbetet eller tiden ute kommer först.
 @MainActor
 public final class BackgroundRefreshRun {
@@ -42,8 +42,8 @@ public final class BackgroundRefreshRun {
         // Nästa körning bokas före arbetet, så att kedjan består även om den här avbryts.
         scheduleNext()
         work = Task { @MainActor in
-            await model.refreshAll(manual: false)
-            model.applyReminders()
+            await model.refreshAll(manual: false, startingActivities: false)
+            model.applyReminders(startingActivities: false)
             await model.settleReminders()
             finish(success: true)
         }
