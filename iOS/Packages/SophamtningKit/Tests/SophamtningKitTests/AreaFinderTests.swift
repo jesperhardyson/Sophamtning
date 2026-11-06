@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import SophamtningKit
 
@@ -175,10 +176,23 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
 }
 
 @MainActor @Suite struct AreaFinderModelTests {
-    @Test func standardvardetArIDagOchSenasteValbaraArIDag() {
-        let finder = AreaFinder(api: FinderAPI(), place: "Avesta", now: { nowDate }, wait: .zero)
-        #expect(finder.date == day("2026-11-06"))
+    @Test func oppningenHarInteDatumOchGerInteAnrop() async {
+        let api = FinderAPI()
+        let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
+        #expect(finder.date == nil)
+        #expect(finder.state == .idle)
         #expect(finder.latestSelectable == day("2026-11-06"))
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(api.days.isEmpty)
+        #expect(finder.state == .idle)
+    }
+
+    @Test func forsokIgenUtanValtDatumGerInteAnrop() async {
+        let api = FinderAPI()
+        let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
+        finder.retry()
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(api.days.isEmpty)
         #expect(finder.state == .idle)
     }
 
@@ -190,13 +204,26 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
     }
 
     @Test func framtidaDatumBegransasTillIDag() async {
-        let api = FinderAPI()
-        let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
+        let finder = AreaFinder(api: FinderAPI(), place: "Avesta", now: { nowDate }, wait: .zero)
         finder.choose(day("2026-11-20"))
         #expect(finder.date == day("2026-11-06"))
     }
 
-    @Test func lyckatSvarGerMatch() async {
+    @Test func senastValbaraRaknasOmVidValetEfterMidnatt() {
+        let clock = Mutex(nowDate)
+        let finder = AreaFinder(api: FinderAPI(), place: "Avesta", now: { clock.withLock { $0 } }, wait: .zero)
+        finder.choose(day("2026-11-07"))
+        #expect(finder.date == day("2026-11-06"))
+        // Midnatt har passerat medan arket låg öppet.
+        clock.withLock { $0 = StockholmClock.date(on: day("2026-11-07"), minutes: 5) }
+        #expect(finder.latestSelectable == day("2026-11-07"))
+        finder.choose(day("2026-11-07"))
+        #expect(finder.date == day("2026-11-07"))
+        finder.choose(day("2026-11-08"))
+        #expect(finder.date == day("2026-11-07"))
+    }
+
+    @Test func lyckatSvarGerMatchOchEttAnrop() async {
         let api = FinderAPI()
         let h = hit()
         api.handler = { _ in SearchResponse(addresses: [h], failed: [], dateCovered: true) }
@@ -205,6 +232,7 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
         #expect(finder.state == .searching)
         #expect(await eventually { finder.state == .match(h) })
         #expect(api.days == [day("2026-10-27")])
+        #expect(!finder.partial)
     }
 
     @Test func tekniskFelGerFelAldrigIngenHamtning() async {
@@ -213,6 +241,32 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
         let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
         finder.choose(day("2026-10-27"))
         #expect(await eventually { finder.state == .failed })
+        #expect(finder.retryable)
+    }
+
+    @Test func badRequestGerFelUtanForsokIgen() async {
+        let api = FinderAPI()
+        api.handler = { _ in throw APIError.badRequest }
+        let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
+        finder.choose(day("2026-10-27"))
+        #expect(await eventually { finder.state == .failed })
+        #expect(!finder.retryable)
+        // Ett nytt datum nollställer.
+        api.handler = { _ in SearchResponse(addresses: [], failed: [], dateCovered: true) }
+        finder.choose(day("2026-10-26"))
+        #expect(finder.retryable)
+        #expect(await eventually { finder.state == .noPickup })
+    }
+
+    @Test func traffMedFailedMarkerasSomDelvis() async {
+        let api = FinderAPI()
+        let h = hit()
+        api.handler = { _ in SearchResponse(addresses: [h], failed: ["skogsbo"], dateCovered: nil) }
+        let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
+        finder.choose(day("2026-10-27"))
+        #expect(await eventually { finder.state == .match(h) })
+        #expect(finder.partial)
+        #expect(AreaFinderText.partialNotice == "En källa svarade inte, så fler områden kan finnas.")
     }
 
     @Test func gammaltSvarErsatterAldrigNyare() async {
@@ -244,7 +298,7 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
         api.handler = { @Sendable day in
             if day == DayDate("2026-10-27")! {
                 for await _ in gate.stream { break }
-                throw APIError.network
+                throw APIError.badRequest
             }
             return SearchResponse(addresses: [fresh], failed: [], dateCovered: true)
         }
@@ -256,6 +310,7 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
         gate.continuation.yield()
         try? await Task.sleep(for: .milliseconds(100))
         #expect(finder.state == .match(fresh))
+        #expect(finder.retryable)
     }
 
     @Test func snabbaValGerEttAnropMedKortVantan() async {
@@ -279,12 +334,40 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
         #expect(await eventually { finder.state == .outsideSchedule })
         #expect(api.days == [day("2026-10-27"), day("2026-10-27")])
     }
+}
 
-    @Test func startHamtarForStandarddatumet() async {
-        let api = FinderAPI()
-        let finder = AreaFinder(api: api, place: "Avesta", now: { nowDate }, wait: .zero)
-        finder.start()
-        #expect(await eventually { finder.state == .noPickup })
-        #expect(api.days == [day("2026-11-06")])
+@Suite struct DayDatePickerTests {
+    @Test(arguments: ["America/New_York", "Asia/Tokyo", "Europe/Stockholm", "Pacific/Kiritimati"])
+    func valdDagBlirRattIValfriTidszon(_ id: String) throws {
+        let zone = try #require(TimeZone(identifier: id))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        for (hour, minute) in [(0, 0), (0, 1), (12, 0), (23, 59)] {
+            let picked = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 27, hour: hour, minute: minute)))
+            #expect(DayDate.from(picked: picked, in: zone) == day("2026-10-27"), "\(id) \(hour):\(minute)")
+        }
+    }
+
+    @Test(arguments: ["America/New_York", "Asia/Tokyo", "Europe/Stockholm"])
+    func dagenBlirEttDatumSomVisarSammaDagIZonen(_ id: String) throws {
+        let zone = try #require(TimeZone(identifier: id))
+        let picked = day("2026-10-27").pickerDate(in: zone)
+        #expect(DayDate.from(picked: picked, in: zone) == day("2026-10-27"))
+    }
+
+    @Test func datumkomponenterGerRattDagOchTillbaka() {
+        let d = day("2026-10-27")
+        #expect(DayDate(components: d.components) == d)
+        #expect(DayDate(components: DateComponents(year: 2026, month: 2, day: 30)) == nil)
+        #expect(DayDate(components: DateComponents(year: 2026, month: 2)) == nil)
+    }
+
+    @Test func kommunNamnVisasBaraNarTraffarnaGallerFlera() {
+        func h(_ k: String) -> SearchHit {
+            SearchHit(id: k, street: "S", locality: "", kommun: k, source: "s", detail: nil, selection: "area", notice: nil, areasUrl: nil,
+                      url: URL(string: "https://sopor.hardyson.se/api/v1/adress/s/\(k)")!)
+        }
+        #expect(!AreaFinderText.showsKommun([h("Avesta kommun"), h("Avesta kommun")]))
+        #expect(AreaFinderText.showsKommun([h("Avesta kommun"), h("Hedemora kommun")]))
     }
 }

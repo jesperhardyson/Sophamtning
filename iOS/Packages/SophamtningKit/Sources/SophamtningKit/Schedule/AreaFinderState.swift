@@ -32,6 +32,14 @@ public enum AreaFinderState: Equatable, Sendable {
 
 /// Texterna om tömningarna. Datum utan veckodag.
 public enum AreaFinderText {
+    /// Visas när en träff kommer fram trots att en källa inte svarade.
+    public static let partialNotice = "En källa svarade inte, så fler områden kan finnas."
+
+    /// Kommunens namn behövs i listan först när träffarna gäller mer än en kommun.
+    public static func showsKommun(_ hits: [SearchHit]) -> Bool {
+        Set(hits.map(\.kommun)).count > 1
+    }
+
     private static let question = "Stämmer det? En försenad tömning kan ge fel område."
 
     /// Kontrolltexten för en enskild träff.

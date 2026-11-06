@@ -10,7 +10,8 @@ struct AreaFinderSheet: View {
     let onOther: () -> Void
 
     @State private var finder: AreaFinder
-    @State private var showCalendar = false
+    /// Öppen från början, eftersom användaren ska ange datumet själv.
+    @State private var showCalendar = true
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
 
@@ -21,19 +22,29 @@ struct AreaFinderSheet: View {
         _finder = State(initialValue: AreaFinder(api: model.api, place: place))
     }
 
-    /// Datumväljaren räknar i Europe/Stockholm, så telefonens tidszon påverkar inte vilken dag som visas.
-    private var dateBinding: Binding<Date> {
+    /// Utan valt datum är inget markerat, så även dagens datum går att välja. Ett nytt tryck väljer om,
+    /// och att trycka på det valda datumet ändrar ingenting.
+    private var dateBinding: Binding<Set<DateComponents>> {
         Binding(
-            get: { StockholmClock.date(on: finder.date, minutes: 12 * 60) },
+            get: { Set(finder.date.map { [$0.components] } ?? []) },
             set: { picked in
-                finder.choose(StockholmClock.today(now: picked))
+                let current = finder.date?.components
+                guard let new = picked.first(where: { $0 != current }), let day = DayDate(components: new) else { return }
+                finder.choose(day)
                 showCalendar = false
             }
         )
     }
 
-    private var selectableRange: PartialRangeThrough<Date> {
-        ...StockholmClock.date(on: finder.latestSelectable, minutes: 23 * 60 + 59)
+    private var stockholmCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = StockholmClock.timeZone
+        calendar.locale = Locale(identifier: "sv_SE")
+        return calendar
+    }
+
+    private var selectableRange: PartialRangeUpTo<Date> {
+        ..<StockholmClock.date(on: finder.latestSelectable, minutes: 23 * 60 + 59)
     }
 
     var body: some View {
@@ -55,10 +66,9 @@ struct AreaFinderSheet: View {
                 dateField
                     .padding(.top, 8)
                 if showCalendar {
-                    DatePicker("Senaste tömning", selection: dateBinding, in: selectableRange, displayedComponents: .date)
-                        .datePickerStyle(.graphical)
-                        .labelsHidden()
+                    MultiDatePicker("Senaste tömning", selection: dateBinding, in: selectableRange)
                         .tint(Color.Theme.primary)
+                        .environment(\.calendar, stockholmCalendar)
                         .environment(\.timeZone, StockholmClock.timeZone)
                         .environment(\.locale, Locale(identifier: "sv_SE"))
                         .padding(.top, 8)
@@ -81,7 +91,6 @@ struct AreaFinderSheet: View {
         .background(Color.Theme.surface.ignoresSafeArea())
         .presentationDetents([.fraction(0.8), .large])
         .presentationDragIndicator(.visible)
-        .task { finder.start() }
         .onDisappear { finder.cancel() }
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
@@ -93,6 +102,10 @@ struct AreaFinderSheet: View {
 
     // MARK: Datum
 
+    private var dateText: String {
+        finder.date.map(SwedishFormat.longDateWithYear) ?? "Välj datum"
+    }
+
     private var dateField: some View {
         Button { withAnimation(.snappy) { showCalendar.toggle() } } label: {
             HStack(spacing: 12) {
@@ -100,9 +113,9 @@ struct AreaFinderSheet: View {
                     .font(.system(.title3))
                     .foregroundStyle(Color.Theme.primary)
                     .accessibilityHidden(true)
-                Text(SwedishFormat.longDateWithYear(finder.date))
+                Text(dateText)
                     .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                    .foregroundStyle(Color.Theme.text)
+                    .foregroundStyle(finder.date == nil ? Color.Theme.text2 : Color.Theme.text)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 18)
@@ -112,7 +125,7 @@ struct AreaFinderSheet: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Senaste tömning, \(SwedishFormat.longDateWithYear(finder.date))")
+        .accessibilityLabel("Senaste tömning, \(dateText)")
         .accessibilityHint("Ändrar datum")
     }
 
@@ -121,7 +134,9 @@ struct AreaFinderSheet: View {
     @ViewBuilder
     private var result: some View {
         switch finder.state {
-        case .idle, .searching:
+        case .idle:
+            EmptyView()
+        case .searching:
             HStack(spacing: 12) {
                 ProgressView()
                 Text("Söker områden")
@@ -144,8 +159,9 @@ struct AreaFinderSheet: View {
                     .font(.ui(18, weight: .heavy, relativeTo: .body))
                     .foregroundStyle(Color.Theme.text)
                     .fixedSize(horizontal: false, vertical: true)
+                if finder.partial { partialText.padding(.top, 0) }
                 ForEach(Array(hits.enumerated()), id: \.offset) { _, hit in
-                    Button { choose(hit) } label: { listCard(hit) }
+                    Button { choose(hit) } label: { listCard(hit, showKommun: AreaFinderText.showsKommun(hits)) }
                         .buttonStyle(.plain)
                 }
             }
@@ -156,10 +172,11 @@ struct AreaFinderSheet: View {
         case .failed:
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Kunde inte kontrollera just nu")
+                    Text(finder.retryable ? "Kunde inte kontrollera just nu" : "Kunde inte kontrollera det datumet")
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(Color.Theme.warn)
-                    Text("Det säger inget om ditt område. Försök igen om en stund.")
+                    Text(finder.retryable ? "Det säger inget om ditt område. Försök igen om en stund."
+                                          : "Det säger inget om ditt område. Välj ett annat datum eller välj område själv.")
                         .font(.ui(17, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Color.Theme.text)
                 }
@@ -167,9 +184,15 @@ struct AreaFinderSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.Theme.warnBg, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .accessibilityElement(children: .combine)
-                Button { finder.retry() } label: { PrimaryButtonLabel(title: "Försök igen") }
-                    .buttonStyle(.plain)
-                    .padding(.top, 24)
+                if finder.retryable {
+                    Button { finder.retry() } label: { PrimaryButtonLabel(title: "Försök igen") }
+                        .buttonStyle(.plain)
+                        .padding(.top, 24)
+                } else {
+                    Button { withAnimation(.snappy) { showCalendar = true } } label: { PrimaryButtonLabel(title: "Välj ett annat datum") }
+                        .buttonStyle(.plain)
+                        .padding(.top, 24)
+                }
             }
         }
     }
@@ -193,6 +216,7 @@ struct AreaFinderSheet: View {
                 .foregroundStyle(Color.Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
+            if finder.partial { partialText }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -200,8 +224,21 @@ struct AreaFinderSheet: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func listCard(_ hit: SearchHit) -> some View {
+    private var partialText: some View {
+        Text(AreaFinderText.partialNotice)
+            .font(.ui(16, weight: .heavy, relativeTo: .callout))
+            .foregroundStyle(Color.Theme.warn)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 8)
+    }
+
+    private func listCard(_ hit: SearchHit, showKommun: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
+            if showKommun {
+                Text(hit.kommun)
+                    .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.brandText)
+            }
             Text(hit.street)
                 .font(.ui(22, weight: .heavy, relativeTo: .title3))
                 .foregroundStyle(Color.Theme.text)

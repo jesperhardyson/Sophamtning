@@ -48,6 +48,8 @@ struct AddFlowView: View {
 struct FlowSearchField: View {
     let placeholder: String
     @Binding var text: String
+    /// Fältet får fokus när skärmen visas, så att tangentbordet syns utan tryck.
+    @FocusState private var focused: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -61,6 +63,7 @@ struct FlowSearchField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+                .focused($focused)
             if !text.isEmpty {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(Color.Theme.text2)
@@ -72,6 +75,11 @@ struct FlowSearchField: View {
         .frame(minHeight: 48)
         .background(Color.Theme.surface, in: Capsule())
         .overlay(Capsule().strokeBorder(Color.Theme.border))
+        .task {
+            // I ett ark tar fokus emot först när övergången är klar.
+            try? await Task.sleep(for: .milliseconds(350))
+            focused = true
+        }
     }
 }
 

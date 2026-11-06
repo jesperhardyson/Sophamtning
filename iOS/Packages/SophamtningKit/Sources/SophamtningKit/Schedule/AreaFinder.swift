@@ -6,7 +6,12 @@ import Observation
 @MainActor @Observable
 public final class AreaFinder {
     public private(set) var state: AreaFinderState = .idle
-    public private(set) var date: DayDate
+    /// Valt datum. `nil` tills användaren valt, så ingen fråga ställs och inget område gissas.
+    public private(set) var date: DayDate?
+    /// Falskt efter `400`: samma datum ger samma svar, så det finns inget att försöka igen.
+    public private(set) var retryable = true
+    /// Sant när en källa inte svarade men träffar ändå visas. Fler områden kan finnas.
+    public private(set) var partial = false
 
     @ObservationIgnored private let api: any SoporAPI
     @ObservationIgnored private let place: String
@@ -20,21 +25,18 @@ public final class AreaFinder {
         self.place = place
         self.now = now
         self.wait = wait
-        self.date = StockholmClock.today(now: now())
     }
 
     /// Senast valbara dag: i dag i Stockholm. Framtida tömningar finns inte.
     public var latestSelectable: DayDate { StockholmClock.today(now: now()) }
 
-    /// Hämtar för standarddatumet (i dag), utan väntan.
-    public func start() { load(after: .zero) }
-
-    /// Ett nytt datum. Datum efter i dag blir i dag.
+    /// Ett nytt datum. Datum efter i dag blir i dag, räknat vid valet.
     public func choose(_ day: DayDate) {
         date = min(day, latestSelectable)
         load(after: wait)
     }
 
+    /// Frågar igen med samma datum. Utan valt datum görs ingenting.
     public func retry() { load(after: .zero) }
 
     public func cancel() {
@@ -42,28 +44,41 @@ public final class AreaFinder {
         task = nil
     }
 
+    private struct Outcome: Sendable {
+        var state: AreaFinderState
+        var retryable = true
+        var partial = false
+    }
+
     private func load(after delay: Duration) {
+        guard let day = date else { return }
         task?.cancel()
         state = .searching
-        let day = date, api = api, place = place, latest = latest
+        retryable = true
+        partial = false
+        let api = api, place = place, latest = latest
         task = Task { [weak self] in
             if delay > .zero {
                 do { try await Task.sleep(for: delay) } catch { return }
             }
-            let outcome: AreaFinderState?
+            let outcome: Outcome?
             do {
                 outcome = try await latest.run {
-                    AreaFinderState.from(try await api.areas(place: place, lastEmptied: day))
+                    let response = try await api.areas(place: place, lastEmptied: day)
+                    return Outcome(state: AreaFinderState.from(response),
+                                   partial: !response.addresses.isEmpty && !response.failed.isEmpty)
                 }
             } catch is CancellationError {
                 return
             } catch {
                 // Alla tekniska fel är "kunde inte kontrollera", aldrig "ingen hämtning".
-                outcome = .failed
+                outcome = Outcome(state: .failed, retryable: (error as? APIError) != .badRequest)
             }
             // Nil: ett nyare anrop har startat. Avbruten: datumet ändrades igen.
             guard let outcome, !Task.isCancelled else { return }
-            self?.state = outcome
+            self?.state = outcome.state
+            self?.retryable = outcome.retryable
+            self?.partial = outcome.partial
         }
     }
 }
