@@ -6,15 +6,14 @@ public struct BinSpeechBubble: View {
     let text: String
     /// Var spetsen står i bubblans bredd, så att den pekar på kärlet.
     let tip: HorizontalAlignment
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     public init(text: String, tip: HorizontalAlignment = .center) {
         self.text = text
         self.tip = tip
     }
 
-    /// Smal nog att stå ovanför kärlet. Med större text får den bli bredare och bryts på fler rader.
-    private var maxWidth: CGFloat { typeSize.isAccessibilitySize ? 300 : 220 }
+    /// Smal nog att stå ovanför kärlet. Med större text bryts den på fler rader i samma bredd.
+    private let maxWidth: CGFloat = 220
 
     public var body: some View {
         VStack(alignment: tip, spacing: -1) {
@@ -35,8 +34,9 @@ public struct BinSpeechBubble: View {
                 .padding(.horizontal, 12)
         }
         .fixedSize()
-        // Bubblan är kort och tillfällig, så den växer inte förbi en viss storlek och täcker inte hela skärmen.
-        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        // Bubblan är kort och tillfällig, så den växer högst till den största vanliga textstorleken och täcker inte
+        // rubriken eller skärmen med tillgänglighetsstorlekar.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
         .accessibilityHidden(true)
     }

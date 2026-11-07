@@ -59,6 +59,14 @@ import Testing
         #expect(!BinBubbleTimeline.acceptsTap(roundElapsed: nil, bubbleElapsed: 1, reduceMotion: true))
     }
 
+    @Test func spetsenStarOvanforLocketEllerOvanforHelaKarlet() {
+        // Kärlet är 360 × 560 i SVG:n, och locket börjar vid y 150 från överkanten. 4 punkter luft till spetsen.
+        #expect(abs(BinBubbleTimeline.tipY(binWidth: 135, placement: .overLid) - (135 * 150 / 360 - 4)) < 0.001)
+        // Bredvid rubriken står spetsen ovanför hela kärlets ram, så att bubblan inte täcker kärlet eller texten.
+        #expect(BinBubbleTimeline.tipY(binWidth: 30, placement: .aboveBin) == -4)
+        #expect(BinBubbleTimeline.tipY(binWidth: 56, placement: .aboveBin) == -4)
+    }
+
     @Test func nastaTryckGerEnAnnanText() {
         var queue = BinLoaderTexts.Queue()
         var rng = SystemRandomNumberGenerator()

@@ -11,6 +11,7 @@ public struct BinRoundView: View {
     private let reduceMotionOverride: Bool?
     private let maxWidth: CGFloat
     private let bubbleTip: HorizontalAlignment
+    private let bubblePlacement: BinBubbleTimeline.Placement
     @ScaledMetric(relativeTo: .largeTitle) private var scaledWidth: CGFloat = 135
 
     /// Största bredden, så att sökfältet under kärlet inte trycks långt ned med största text.
@@ -40,11 +41,13 @@ public struct BinRoundView: View {
     ///   - width: Kärlets bredd. Växer med textstorleken som logotypen, högst till `maxWidth`.
     ///   - maxWidth: Största bredden med stor text.
     ///   - bubbleTip: Var bubblan står i förhållande till kärlet: mitt över, eller med vänsterkanten vid kärlet.
+    ///   - bubblePlacement: Om spetsen står ovanför locket eller ovanför hela kärlet.
     ///   - reduceMotion: Tvingar läget. Utan värde läses `accessibilityReduceMotion`.
-    public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, reduceMotion: Bool? = nil) {
+    public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, bubblePlacement: BinBubbleTimeline.Placement = .overLid, reduceMotion: Bool? = nil) {
         self.firstRound = firstRound
         self.maxWidth = maxWidth
         self.bubbleTip = bubbleTip
+        self.bubblePlacement = bubblePlacement
         reduceMotionOverride = reduceMotion
         _scaledWidth = ScaledMetric(wrappedValue: width, relativeTo: .largeTitle)
     }
@@ -104,26 +107,29 @@ public struct BinRoundView: View {
         }
     }
 
-    /// Bubblan står med spetsen strax ovanför locket, i den tomma ytan där fraktionen faller, och svävar uppåt därifrån.
+    /// Bubblan står med spetsen ovanför locket, eller ovanför hela kärlet, och svävar uppåt därifrån. Underkanten står
+    /// fast, så att en bubbla med flera rader växer uppåt och aldrig täcker kärlet.
     @ViewBuilder
     private var bubble: some View {
         if let bubbleStart {
-            let lidTop = width * Self.lidTop
-            TimelineView(.animation) { context in
-                let elapsed = context.date.timeIntervalSince(bubbleStart)
-                BinSpeechBubble(text: bubbleText, tip: bubbleTip)
-                    .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: 1))
-                    .opacity(BinBubbleTimeline.opacity(at: elapsed))
-                    .offset(y: -BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
-            }
-            // Spetsen står en bit ovanför locket.
-            .alignmentGuide(.top) { d in d[.bottom] - lidTop + 4 }
-            .allowsHitTesting(false)
+            let tipY = BinBubbleTimeline.tipY(binWidth: width, placement: bubblePlacement)
+            // En linje utan höjd i kärlets överkant. Bubblans underkant står på linjen och flyttas sedan till spetsens
+            // plats, så att bubblan växer uppåt oavsett hur många rader den har.
+            Color.clear
+                .frame(height: 0)
+                .overlay(alignment: Alignment(horizontal: bubbleTip, vertical: .bottom)) {
+                    TimelineView(.animation) { context in
+                        let elapsed = context.date.timeIntervalSince(bubbleStart)
+                        BinSpeechBubble(text: bubbleText, tip: bubbleTip)
+                            .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: 1))
+                            .opacity(BinBubbleTimeline.opacity(at: elapsed))
+                            .offset(y: -BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
+                    }
+                }
+                .offset(y: tipY)
+                .allowsHitTesting(false)
         }
     }
-
-    /// Lockets överkant i kärlets höjd, som andel av bredden (y 40 i en viewBox på 360 × 560 från y -110).
-    private nonisolated static let lidTop: CGFloat = (40 + 110) / 360
 
     /// Ett tryck: ett nytt varv och en bubbla, eller inget om ett varv eller en bubbla redan pågår.
     private func tapped() {
@@ -163,7 +169,7 @@ private struct BinBodyShape: Shape {
     VStack(spacing: 24) {
         BinRoundView(firstRound: .distantPast)
         BinRoundView(firstRound: .distantPast, reduceMotion: true)
-        BinRoundView(firstRound: .distantPast, width: 30, maxWidth: 56, bubbleTip: .leading)
+        BinRoundView(firstRound: .distantPast, width: 30, maxWidth: 56, bubbleTip: .leading, bubblePlacement: .aboveBin)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.Theme.bg)

@@ -41,6 +41,27 @@ public enum BinBubbleTimeline {
         return startScale + (1 - startScale) * CubicBezier.ease(0, 0, 0.58, 1).value(at: t)
     }
 
+    /// Var bubblan står i förhållande till kärlet.
+    public enum Placement: Sendable {
+        /// Spetsen strax ovanför locket, i den tomma ytan där fraktionen faller. För det stora kärlet i tomt läge.
+        case overLid
+        /// Spetsen ovanför kärlets hela ram. För det lilla kärlet bredvid rubriken, där texten når högre än locket.
+        case aboveBin
+    }
+
+    /// Luften mellan spetsen och det den pekar på, i punkter.
+    static let tipGap: Double = 4
+
+    /// Var spetsen står, i punkter från kärlets överkant (negativt är ovanför). Bubblan växer uppåt därifrån, så att
+    /// den aldrig täcker kärlet, hur många rader den än har. Locket börjar vid y 150 i kärlets 360 × 560 (y 40 i
+    /// SVG:ns viewBox, som börjar vid y -110).
+    public static func tipY(binWidth: Double, placement: Placement) -> Double {
+        switch placement {
+        case .overLid: binWidth * 150 / 360 - tipGap
+        case .aboveBin: -tipGap
+        }
+    }
+
     /// Om ett tryck på kärlet tas emot. Under ett varv gör trycket inget, och det finns bara en bubbla åt gången.
     /// Med Reducera rörelse spelas inget varv, så bara bubblan räknas.
     /// - Parameters:
