@@ -16,12 +16,132 @@ public enum Motion {
     public static func numberTransition(reduceMotion: Bool) -> ContentTransition {
         reduceMotion ? .opacity : .numericText()
     }
+
+    /// Kort på hemskärmen som kommer in. Utan snabb start, eftersom början annars sker bakom bakgrunden som tonas bort.
+    static func card(delay: TimeInterval, reduceMotion: Bool) -> Animation {
+        let base: Animation = reduceMotion ? .easeInOut(duration: 0.2) : .timingCurve(0.3, 0.45, 0.15, 1, duration: EntranceTimeline.cardDuration)
+        return base.delay(delay)
+    }
+
+    /// Rader i en lista som kommer in.
+    static func row(delay: TimeInterval, reduceMotion: Bool) -> Animation {
+        let base: Animation = reduceMotion ? .easeInOut(duration: 0.2) : .easeOut(duration: EntranceTimeline.rowDuration)
+        return base.delay(delay)
+    }
+
+    /// Nedtryck: direkt respons, och fjädring tillbaka.
+    static func press(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeInOut(duration: 0.1) : .spring(duration: 0.22, bounce: 0.45)
+    }
+}
+
+/// Hur knappar och rader fjädrar när de trycks ned. Med Reducera rörelse tonas de lite i stället.
+public enum PressMotion {
+    public static func scale(pressed: Bool, reduceMotion: Bool) -> Double {
+        pressed && !reduceMotion ? 0.96 : 1
+    }
+
+    public static func opacity(pressed: Bool, reduceMotion: Bool) -> Double {
+        pressed && reduceMotion ? 0.7 : 1
+    }
+}
+
+/// Knappar, kort och rader som går att trycka på. Rörelsen sker bara i ritningen, så den fördröjer aldrig trycket.
+public struct PressableButtonStyle: ButtonStyle {
+    /// Lätt vibration vid nedtryck, på de viktiga knapparna.
+    let haptic: Bool
+
+    public init(haptic: Bool = false) {
+        self.haptic = haptic
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
+        PressableLabel(configuration: configuration, haptic: haptic)
+    }
+}
+
+private struct PressableLabel: View {
+    let configuration: ButtonStyleConfiguration
+    let haptic: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let pressed = configuration.isPressed
+        configuration.label
+            .scaleEffect(PressMotion.scale(pressed: pressed, reduceMotion: reduceMotion))
+            .opacity(PressMotion.opacity(pressed: pressed, reduceMotion: reduceMotion))
+            .animation(Motion.press(reduceMotion: reduceMotion), value: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { old, new in haptic && new && !old }
+    }
+}
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    public static var pressable: PressableButtonStyle { PressableButtonStyle() }
+    public static var pressableWithHaptic: PressableButtonStyle { PressableButtonStyle(haptic: true) }
 }
 
 extension View {
+    /// Ett kort på hemskärmen: glider upp och tonas in när `shown` blir sant, efter sin plats i ordningen.
+    /// Bara ritningen animeras. Knappen är på sin slutliga plats och går att trycka på under tiden.
+    public func cardEntrance(shown: Bool, index: Int) -> some View {
+        modifier(CardEntranceModifier(shown: shown, index: index))
+    }
+
+    /// En rad i en lista: tonar och glider in när `shown` blir sant, efter sin plats i listan.
+    public func rowEntrance(shown: Bool, index: Int) -> some View {
+        modifier(RowEntranceModifier(shown: shown, index: index))
+    }
+
+    /// En rad som kommer in första gången den visas. Tillståndet ligger i raden, så vid retur till listan händer inget.
+    public func rowEntranceOnAppear(index: Int) -> some View {
+        modifier(RowAppearModifier(index: index))
+    }
+
     /// Dagar kvar och liknande: siffrorna rullar när texten ändras, men inte när den visas första gången.
     public func rollingNumbers<Value: Equatable>(value: Value, reduceMotion: Bool) -> some View {
         contentTransition(Motion.numberTransition(reduceMotion: reduceMotion))
             .animation(Motion.number(reduceMotion: reduceMotion), value: value)
+    }
+}
+
+private struct CardEntranceModifier: ViewModifier {
+    let shown: Bool
+    let index: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        let delay = EntranceTimeline.cardDelay(index: index, reduceMotion: reduceMotion)
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : EntranceTimeline.offset(EntranceTimeline.cardDistance, reduceMotion: reduceMotion))
+            .animation(Motion.card(delay: delay, reduceMotion: reduceMotion), value: shown)
+    }
+}
+
+private struct RowEntranceModifier: ViewModifier {
+    let shown: Bool
+    let index: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        // Raderna efter de första står stilla från början.
+        let visible = shown || !EntranceTimeline.animatesRow(index: index)
+        let delay = EntranceTimeline.rowDelay(index: index, reduceMotion: reduceMotion)
+        content
+            .opacity(visible ? 1 : 0)
+            .offset(y: visible ? 0 : EntranceTimeline.offset(EntranceTimeline.rowDistance, reduceMotion: reduceMotion))
+            .animation(Motion.row(delay: delay, reduceMotion: reduceMotion), value: visible)
+    }
+}
+
+private struct RowAppearModifier: ViewModifier {
+    let index: Int
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        content
+            .rowEntrance(shown: appeared || voiceOver || !EntranceTimeline.isEnabled, index: index)
+            .onAppear { appeared = true }
     }
 }

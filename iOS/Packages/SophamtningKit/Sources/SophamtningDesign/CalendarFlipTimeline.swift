@@ -1,11 +1,17 @@
 import Foundation
+import SophamtningKit
 
 /// Tidslinjen när kalenderbladet vänds, från ett datum till ett annat. Rena funktioner av tid, så att vyn ritar från klockan
 /// och en ny vändning kan ta över mitt i en gammal. Första halvan viker det gamla bladet upp till 90 grader, och i andra halvan
 /// kommer det nya fram från 90 grader. Med Reducera rörelse tonas bladet i stället ut och in, utan vridning.
 public enum CalendarFlipTimeline {
-    public static let half: TimeInterval = 0.18
-    public static let duration: TimeInterval = 0.36
+    public static let half: TimeInterval = 0.3
+    public static let duration: TimeInterval = 0.6
+
+    /// Datumet bladet vänds från vid start från början: dagens datum, eller `nil` om tömningen är i dag och inget ska vändas.
+    public static func openingDate(today: DayDate, pickup: DayDate) -> DayDate? {
+        today == pickup ? nil : today
+    }
 
     /// Vinkel i grader runt bladets övre kant.
     public static func angle(at elapsed: TimeInterval) -> Double {

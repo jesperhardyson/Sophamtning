@@ -68,7 +68,8 @@ struct AreaPickerView: View {
                             .padding(.vertical, 16)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
+                        .rowEntranceOnAppear(index: offset)
                     }
                 }
                 .padding(.top, 20)
@@ -121,7 +122,7 @@ private extension AreaPickerView {
             .background(Color.Theme.brandSoft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Vet du inte vilket område? Hitta det med din senaste tömning")
     }

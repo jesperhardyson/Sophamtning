@@ -5,6 +5,10 @@ import SwiftUI
 /// Hemskärmen: tomt läge utan adresser, annars huvudkort och övriga adresser.
 struct HomeView: View {
     let model: AppModel
+    /// Korten och kalenderbladet vid start från början.
+    let entrance: StartEntrance
+    let onEntranceFinished: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: HomeSheet?
     @State private var path: [AddressKey] = []
@@ -41,6 +45,13 @@ struct HomeView: View {
                         sheet = .add
                     })
                 }
+        }
+        .task(id: entrance.begin) {
+            // Starten är klar när kalenderbladet har vänts. Därefter visas brickan som vanligt.
+            guard entrance.begin != nil else { return }
+            let flip = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion) + CalendarFlipTimeline.duration
+            guard (try? await Task.sleep(for: .seconds(flip))) != nil else { return }
+            onEntranceFinished()
         }
         .task {
             model.applyReminders()
@@ -82,7 +93,7 @@ struct HomeView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                         .padding(.top, 12)
                     }
                     if let problem = model.storageProblem {
@@ -95,6 +106,8 @@ struct HomeView: View {
                         empty
                     }
                     disclaimer
+                        // Sist i ordningen, oavsett hur många kort det finns.
+                        .cardEntrance(shown: !entrance.hidesCards, index: min(2 + content.others.count + 1, 6))
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
@@ -144,6 +157,7 @@ struct HomeView: View {
                     : "Lås upp telefonen och försök igen. Är den upplåst kan filen vara skyddad en kort stund efter en omstart."
             )
             Button { model.retryStorage() } label: { PrimaryButtonLabel(title: "Försök igen") }
+                .buttonStyle(.pressable)
             if corrupt {
                 Button { confirmingStartOver = true } label: {
                     Text("Börja om")
@@ -186,7 +200,7 @@ struct HomeView: View {
                 .background(Color.Theme.surface, in: Circle())
                 .overlay(Circle().strokeBorder(Color.Theme.border))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityLabel(label)
     }
 
@@ -200,7 +214,9 @@ struct HomeView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
-            PrimaryCard(entry: primary, onOpen: { path.append(primary.key) })
+                .cardEntrance(shown: !entrance.hidesCards, index: 0)
+            PrimaryCard(entry: primary, opening: opening(for: primary), onOpen: { path.append(primary.key) })
+                .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
                     .font(.ui(22, weight: .heavy, relativeTo: .title2))
@@ -208,16 +224,29 @@ struct HomeView: View {
                     .padding(.top, 28)
                     .padding(.bottom, 14)
                     .accessibilityAddTraits(.isHeader)
+                    .cardEntrance(shown: !entrance.hidesCards, index: 2)
                 VStack(spacing: 12) {
-                    ForEach(others) { entry in
+                    ForEach(Array(others.enumerated()), id: \.element.id) { index, entry in
                         NavigationLink(value: entry.key) {
                             AddressRow(entry: entry)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
+                        .cardEntrance(shown: !entrance.hidesCards, index: 3 + index)
                     }
                 }
             }
         }
+    }
+
+    /// Huvudkortets plats i ordningen, efter rubriken.
+    private static let primaryCardIndex = 1
+
+    /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
+    private func opening(for primary: HomeContent.Entry) -> CalendarTile.Opening? {
+        guard entrance.allowsOpeningFlip, case .upcoming(let pickup) = primary.status,
+              let from = CalendarFlipTimeline.openingDate(today: StockholmClock.today(now: model.currentDate), pickup: pickup.date) else { return nil }
+        let delay = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion)
+        return CalendarTile.Opening(from: from, begin: entrance.begin?.addingTimeInterval(delay))
     }
 
     private var empty: some View {
@@ -226,15 +255,18 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 24)
                 .padding(.bottom, 36)
+                .cardEntrance(shown: !entrance.hidesCards, index: 0)
             Text("När töms dina kärl?")
                 .font(.brand(34, relativeTo: .largeTitle))
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .accessibilityAddTraits(.isHeader)
+                .cardEntrance(shown: !entrance.hidesCards, index: 1)
             Text("Skriv in din adress så ser du vilka kärl som töms och när. Inget konto behövs.")
                 .font(.ui(18, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text2)
                 .padding(.top, 14)
+                .cardEntrance(shown: !entrance.hidesCards, index: 1)
             // Fältet öppnar adressökningen.
             Button { sheet = .add } label: {
                 HStack(spacing: 12) {
@@ -251,8 +283,9 @@ struct HomeView: View {
                 .background(Color.Theme.surface, in: Capsule())
                 .overlay(Capsule().strokeBorder(Color.Theme.border))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .padding(.top, 24)
+            .cardEntrance(shown: !entrance.hidesCards, index: 2)
             Label {
                 Text("Adressen sparas bara i din telefon.")
                     .font(.ui(15, weight: .bold, relativeTo: .subheadline))
@@ -261,6 +294,7 @@ struct HomeView: View {
             }
             .foregroundStyle(Color.Theme.brandText)
             .padding(.top, 16)
+            .cardEntrance(shown: !entrance.hidesCards, index: 3)
             Button { sheet = .kommun } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "map")
@@ -282,8 +316,9 @@ struct HomeView: View {
                 .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .padding(.top, 20)
+            .cardEntrance(shown: !entrance.hidesCards, index: 4)
         }
     }
 
@@ -353,5 +388,5 @@ private struct AddressRow: View {
 }
 
 #Preview("Tomt") {
-    HomeView(model: AppModel(api: SoporClient(version: "preview"), store: LocalStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("preview-empty"))))
+    HomeView(model: AppModel(api: SoporClient(version: "preview"), store: LocalStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("preview-empty"))), entrance: StartEntrance(plays: false), onEntranceFinished: {})
 }

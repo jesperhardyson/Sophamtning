@@ -19,7 +19,7 @@ Kan göras en och en, i vilken ordning som helst, när telefonen är i handen.
 
 ### Start och utseende
 
-- [ ] **1. Introt.** Starta appen från början. En logotyp visas, utan hopp mot startskärmen, i både ljust och mörkt läge. Systemets toning hinner klart inom 0,3 sekunder. Logotypen glider över i hemskärmen på högst 0,8 sekunder.
+- [ ] **1. Introt.** Starta appen från början. En logotyp visas, utan hopp mot startskärmen, i både ljust och mörkt läge. Systemets toning hinner klart inom 0,3 sekunder. Sedan snurrar ringen ett varv, kalendern studsar med en lätt vibration, och logotypen krymper och tonas ut, allt på högst 1,2 sekunder. Ett tryck tar bort introt direkt.
 - [ ] **2. Inget intro vid retur.** Gå till hemskärmen och tillbaka till appen: inget intro. Öppna appen när den redan startat i bakgrunden: inget intro. Slå på VoiceOver och starta om: inget intro.
 - [ ] **3. Avstängt från början.** På en ren installation är notiser och Live Activity avstängda för alla adresser och i Inställningar. Ingen tillståndsfråga från iOS visas vid start. Hemkortet säger **Påminn mig kvällen före**.
 - [ ] **4. Laddning till schema.** Lägg till en ny adress. Kärlet laddar, och övergången till schemat hoppar inte. En snabb hämtning får inte kärlet att blinka till.

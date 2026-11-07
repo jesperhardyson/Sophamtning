@@ -30,6 +30,8 @@ struct SearchView: View {
     /// Sant medan ett nytt svar hämtas. Gamla träffar tonas ned och går inte att trycka på.
     @State private var updating = false
     @State private var latest = LatestOnly()
+    /// Ökar när en träff har sparats, för den lätta vibrationen.
+    @State private var saves = 0
 
     var body: some View {
         ScrollView {
@@ -50,6 +52,7 @@ struct SearchView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Trigger(query: query, attempt: attempt)) { await search() }
         .onChange(of: query) { saveFailed = false }
+        .sensoryFeedback(.impact(weight: .light), trigger: saves)
         .sheet(item: $chosenArea) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
@@ -130,7 +133,7 @@ struct SearchView: View {
                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Kunde inte söka hos alla källor",
                             message: "Försök igen. Det betyder inte att adressen saknas.")
                 Button { attempt += 1 } label: { PrimaryButtonLabel(title: "Försök igen") }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .accessibilityHint(failedNames(failed))
             }
         case .noHits(let place):
@@ -182,9 +185,12 @@ struct SearchView: View {
                 ForEach(Array(hits.enumerated()), id: \.offset) { offset, hit in
                     if offset > 0 { ResultDivider() }
                     Button { choose(hit) } label: { row(hit) }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
+                        .rowEntranceOnAppear(index: offset)
                 }
             }
+            // Nya träffar börjar om från första raden. Samma träffar igen gör ingenting.
+            .id(hits)
         }
     }
 
@@ -222,6 +228,7 @@ struct SearchView: View {
             chosenArea = HitSelection(hit: hit)
         } else {
             saveFailed = !save(hit, in: model, onSaved: onSaved)
+            if !saveFailed { saves += 1 }
         }
     }
 
@@ -250,13 +257,14 @@ struct SearchView: View {
                 NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas)) {
                     PrimaryButtonLabel(title: "Välj område i \(kommun)")
                 }
+                .buttonStyle(.pressable)
                 .padding(.top, 24)
             } else if place != nil, outcome.areasFailed {
                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Kunde inte hämta områden",
                             message: "Försök igen. Det betyder inte att kommunen saknar områdesval.")
                     .padding(.top, 10)
                 Button { attempt += 1 } label: { PrimaryButtonLabel(title: "Försök igen") }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .padding(.top, 12)
             } else {
                 Text("Kontrollera stavningen och skriv gata, husnummer och gärna ort. Alla adresser finns inte hos alla källor.")
@@ -286,7 +294,7 @@ struct SearchView: View {
                 MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte söka just nu",
                             message: "Källan svarar inte. Det betyder inte att adressen saknas.")
                 Button { attempt += 1 } label: { PrimaryButtonLabel(title: "Försök igen") }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
             }
         }
     }

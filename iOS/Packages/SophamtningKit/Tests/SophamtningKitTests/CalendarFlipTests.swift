@@ -1,11 +1,32 @@
 import Foundation
+import SophamtningKit
 import Testing
 @testable import SophamtningDesign
 
 @Suite struct CalendarFlipTests {
     @Test func bladetVandsPaTvaHalvor() {
         #expect(CalendarFlipTimeline.duration == 2 * CalendarFlipTimeline.half)
-        #expect(CalendarFlipTimeline.duration <= 0.5)
+        // En tydlig vändning, cirka 0,6 s.
+        #expect(abs(CalendarFlipTimeline.duration - 0.6) < 0.05)
+    }
+
+    @Test func vidStartVandsBladetFranDagensDatumTillTomningsdagen() {
+        let today = DayDate("2026-11-07")!
+        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: DayDate("2026-11-12")!) == today)
+        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: DayDate("2026-11-08")!) == today)
+    }
+
+    @Test func tomningIDagVandsInte() {
+        let today = DayDate("2026-11-07")!
+        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: today) == nil)
+    }
+
+    @Test func foreOchEfterVandningenSynsRattDatumOchBladetArRakt() {
+        // Tiden är negativ medan kortet kommer in: dagens datum, rakt blad och ingen toning.
+        #expect(!CalendarFlipTimeline.showsNewDate(at: -0.5))
+        #expect(CalendarFlipTimeline.angle(at: -0.5) == 0)
+        #expect(CalendarFlipTimeline.opacity(at: -0.5) == 1)
+        #expect(CalendarFlipTimeline.showsNewDate(at: CalendarFlipTimeline.duration))
     }
 
     @Test func bladetStartarOchSlutarRaktOchStilla() {

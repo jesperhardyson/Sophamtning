@@ -44,7 +44,7 @@ struct AreaConfirmSheet: View {
                         .padding(.top, 12)
                 }
                 Button(action: onSave) { PrimaryButtonLabel(title: "Spara området") }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressableWithHaptic)
                     .padding(.top, 24)
                 Button(action: onOther) {
                     Text("Välj ett annat område")
@@ -52,7 +52,7 @@ struct AreaConfirmSheet: View {
                         .foregroundStyle(Color.Theme.primary)
                         .frame(maxWidth: .infinity, minHeight: 48)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 .padding(.top, 8)
                 Spacer(minLength: 0)
             }

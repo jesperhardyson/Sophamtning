@@ -3,6 +3,12 @@ import SophamtningKit
 import SwiftUI
 import UIKit
 
+/// Adresserna vars schemarader redan har kommit in i den här processen.
+@MainActor
+private enum ShownSchedules {
+    static var keys = ShownOnce<AddressKey>()
+}
+
 /// Adressvyn: nästa tömning, kärlen, påminnelser och hela schemat.
 struct AddressView: View {
     let model: AppModel
@@ -17,7 +23,10 @@ struct AddressView: View {
     @State private var newName = ""
     @State private var confirmingRemoval = false
     @State private var notificationPulse = 0
+    /// Schemaraderna väntar tills listan syns, eftersom den ofta ligger nedanför skärmen.
+    @State private var rowsRevealed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .headline) private var dateWidth: CGFloat = 100
 
@@ -69,7 +78,7 @@ struct AddressView: View {
                     Button { model.clearStorageError() } label: {
                         MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .padding(.bottom, 16)
                 }
                 header(detail)
@@ -136,12 +145,14 @@ struct AddressView: View {
             VStack(spacing: 12) {
                 MessageCard(style: .warning, icon: "icloud.slash", title: "Källan svarar inte just nu", message: "Schemat kan inte hämtas. Det betyder inte att adressen saknas.")
                 Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                    .buttonStyle(.pressable)
             }
             .padding(.bottom, 20)
         case .notFound:
             VStack(spacing: 12) {
                 MessageCard(style: .warning, icon: "location.slash", title: "Adressen hittas inte längre", message: "Källan känner inte igen adressen. Sök upp den på nytt för att få schemat.")
                 Button(action: onSearchAgain) { PrimaryButtonLabel(title: "Sök igen") }
+                    .buttonStyle(.pressable)
             }
             .padding(.bottom, 20)
         case .badRequest:
@@ -157,6 +168,7 @@ struct AddressView: View {
             VStack(spacing: 12) {
                 MessageCard(style: .warning, icon: "externaldrive.badge.xmark", title: "Schemat kunde inte sparas", message: "Det går inte att spara på telefonen just nu, och schemat visas först när det har sparats. Det betyder inte att adressen saknas.")
                 Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                    .buttonStyle(.pressable)
             }
             .padding(.bottom, 20)
         case nil:
@@ -301,7 +313,13 @@ struct AddressView: View {
                 ForEach(Array(detail.rows.enumerated()), id: \.element.id) { index, row in
                     if index > 0 { ResultDivider() }
                     scheduleRow(row)
+                        .rowEntrance(shown: rowsRevealed || !playsRowEntrance, index: index)
                 }
+            }
+            .onScrollVisibilityChange(threshold: 0.02) { visible in
+                guard visible, !rowsRevealed else { return }
+                rowsRevealed = true
+                ShownSchedules.keys.markShown(key)
             }
         }
         if let fetched = detail.fetchedText, detail.mode != .loading {
@@ -318,6 +336,11 @@ struct AddressView: View {
             }
             .padding(.top, detail.fetchedText == nil ? 20 : 8)
         }
+    }
+
+    /// Raderna kommer in första gången listan för adressen syns. Med VoiceOver visas de direkt, så att de alltid går att läsa.
+    private var playsRowEntrance: Bool {
+        EntranceTimeline.isEnabled && !voiceOver && ShownSchedules.keys.shouldPlay(key)
     }
 
     private func scheduleRow(_ row: AddressDetail.Row) -> some View {

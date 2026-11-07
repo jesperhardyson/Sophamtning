@@ -6,9 +6,13 @@ import UserNotifications
 @main
 struct SophamtningApp: App {
     @State private var model: AppModel
-    @State private var showsIntro = StartIntroState.claim()
+    @State private var showsIntro: Bool
+    @State private var entrance: StartEntrance
 
     init() {
+        let start = StartIntroState.claim()
+        _showsIntro = State(initialValue: start.intro)
+        _entrance = State(initialValue: StartEntrance(plays: start.cards))
         Fonts.register()
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
@@ -30,12 +34,34 @@ struct SophamtningApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView(model: model)
+            HomeView(model: model, entrance: entrance, onEntranceFinished: { entrance.finish() })
                 .overlay {
                     if showsIntro {
-                        StartIntroView { showsIntro = false }
+                        StartIntroView(
+                            onExit: { entrance.start(at: Date()) },
+                            onFinish: {
+                                showsIntro = false
+                                entrance.start(at: Date())
+                            },
+                            onNoFreshLaunch: {
+                                showsIntro = false
+                                settleEntrance()
+                            }
+                        )
                     }
                 }
+                .onAppear {
+                    // Utan intro startar korten direkt, om det är en start från början.
+                    guard !showsIntro else { return }
+                    if StartIntroState.isFreshLaunch { entrance.start(at: Date()) } else { settleEntrance() }
+                }
         }
+    }
+
+    /// Processen startade i bakgrunden, så det är ingen start från början. Korten visas på en gång, utan rörelse.
+    private func settleEntrance() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { entrance.finish() }
     }
 }

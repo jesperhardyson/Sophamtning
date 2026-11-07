@@ -31,7 +31,7 @@ struct SettingsView: View {
                             Button { model.clearStorageError() } label: {
                                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.pressable)
                             .padding(.top, 8)
                         }
                         reminders
@@ -92,7 +92,7 @@ struct SettingsView: View {
                 ResultDivider()
                 LiveActivityToggleRow(model: model, text: AddressDetail.liveActivityText(settings: model.settings))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
             LiveActivityNotices(model: model, edge: .top)
@@ -121,7 +121,7 @@ struct SettingsView: View {
                 ResultDivider()
                 SettingsRow(title: "Version", value: version, showsChevron: false)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         }
@@ -166,7 +166,7 @@ struct LiveActivityNotices: View {
                             .font(.ui(17, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.primary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                 }
                 if let error {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Live Activity saknas", message: error)
@@ -237,7 +237,7 @@ private struct ChoiceRow: View {
             .frame(minHeight: 52)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -256,7 +256,7 @@ private struct ReminderTimeView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                     ResultList {
                         ForEach(Array(times.enumerated()), id: \.element) { index, minutes in
@@ -289,7 +289,7 @@ private struct PrimaryAddressView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                     ResultList {
                         ForEach(Array(model.addresses.enumerated()), id: \.element.key) { index, address in
@@ -348,6 +348,7 @@ private struct SourcesView: View {
                     } else {
                         MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
                         Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                            .buttonStyle(.pressable)
                     }
                 }
                 .padding(.horizontal, 24)

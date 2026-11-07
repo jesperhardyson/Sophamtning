@@ -6,8 +6,12 @@ import SwiftUI
 /// Byter `date` värde vänds bladet (`CalendarFlipTimeline`), men inte när brickan visas första gången. Med Reducera rörelse
 /// tonas bladet i stället. Kortets storlek påverkas inte, eftersom bara innehållet vrids. Brickan måste behålla sin identitet
 /// i vyn för att kunna se ändringen. I widgetar byts brickan ut med ny post och ingen animation sker.
+///
+/// Med `opening` visar brickan ett annat datum och vänds till `date` vid en bestämd tidpunkt. Det används bara i hemkortet vid
+/// start från början, och tillgänglighetsetiketten är `date` hela tiden.
 public struct CalendarTile: View {
     let date: DayDate
+    let opening: Opening?
     @ScaledMetric(relativeTo: .largeTitle) private var width: CGFloat = 78
     @ScaledMetric(relativeTo: .caption) private var headerHeight: CGFloat = 26
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -19,8 +23,22 @@ public struct CalendarTile: View {
         let start: Date
     }
 
-    public init(date: DayDate) {
+    /// Vändningen vid start från början.
+    public struct Opening: Equatable, Sendable {
+        /// Datumet som syns tills vändningen är halvvägs.
+        public let from: DayDate
+        /// När vändningen börjar, eller `nil` om det inte är bestämt än.
+        public let begin: Date?
+
+        public init(from: DayDate, begin: Date?) {
+            self.from = from
+            self.begin = begin
+        }
+    }
+
+    public init(date: DayDate, opening: Opening? = nil) {
         self.date = date
+        self.opening = opening
     }
 
     private var ring: some View {
@@ -32,7 +50,16 @@ public struct CalendarTile: View {
 
     public var body: some View {
         Group {
-            if let flip {
+            if let opening, flip == nil {
+                if let begin = opening.begin {
+                    TimelineView(.animation) { context in
+                        let elapsed = context.date.timeIntervalSince(begin)
+                        page(showing: CalendarFlipTimeline.showsNewDate(at: elapsed) ? date : opening.from, elapsed: elapsed)
+                    }
+                } else {
+                    page(showing: opening.from, elapsed: nil)
+                }
+            } else if let flip {
                 TimelineView(.animation) { context in
                     let elapsed = context.date.timeIntervalSince(flip.start)
                     page(showing: CalendarFlipTimeline.showsNewDate(at: elapsed) ? date : flip.from, elapsed: elapsed)
@@ -57,6 +84,8 @@ public struct CalendarTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(SwedishFormat.longDate(date, capitalized: false))
         .onChange(of: date) { old, _ in
+            // Vändningen vid start visar alltid det aktuella datumet som mål.
+            guard opening == nil else { return }
             // Visas redan en vändning tas den över från det datum som syns just nu.
             let visible = flip.map { CalendarFlipTimeline.showsNewDate(at: Date().timeIntervalSince($0.start)) ? old : $0.from } ?? old
             flip = Flip(from: visible, start: Date())

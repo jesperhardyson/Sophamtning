@@ -138,10 +138,12 @@ struct KommunCheckView: View {
                 NavigationLink(value: AddRoute.areas(title: row.name, place: shortKommunName(row.name), hits: result.areas)) {
                     PrimaryButtonLabel(title: "Välj område i \(shortKommunName(row.name))")
                 }
+                .buttonStyle(.pressable)
             } else {
                 NavigationLink(value: AddRoute.search(source: row.sourceId)) {
                     PrimaryButtonLabel(title: "Sök din adress")
                 }
+                .buttonStyle(.pressableWithHaptic)
             }
         }
         .padding(16)
@@ -198,6 +200,7 @@ struct KommunCheckView: View {
                                 .font(.ui(16, weight: .heavy, relativeTo: .callout))
                                 .foregroundStyle(Color.Theme.primary)
                         }
+                        .buttonStyle(.pressable)
                         .accessibilityLabel("Sök adress i \(row.name)")
                     } else {
                         Text("Inte än")
@@ -232,7 +235,7 @@ struct KommunCheckView: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
             }
         }
         .padding(16)
@@ -279,7 +282,7 @@ struct KommunCheckView: View {
                 }
             }
             Button { attempt += 1 } label: { PrimaryButtonLabel(title: "Försök igen") }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

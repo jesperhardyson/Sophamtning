@@ -6,6 +6,8 @@ import SwiftUI
 /// Hela kortet är en knapp som öppnar adressvyn, i alla lägen.
 struct PrimaryCard: View {
     let entry: HomeContent.Entry
+    /// Kalenderbladets vändning vid start från början.
+    var opening: CalendarTile.Opening?
     let onOpen: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -25,7 +27,7 @@ struct PrimaryCard: View {
 
     var body: some View {
         Button(action: onOpen) { card }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityText)
             .accessibilityHint("Öppnar adressen")
@@ -128,7 +130,7 @@ struct PrimaryCard: View {
 
     private func nextPickup(_ pickup: HomeContent.Pickup) -> some View {
         AdaptiveStack(spacing: 20) {
-            CalendarTile(date: pickup.date)
+            CalendarTile(date: pickup.date, opening: opening)
             VStack(alignment: .leading, spacing: 4) {
                 Text("NÄSTA TÖMNING")
                     .font(.ui(13, weight: .heavy, relativeTo: .caption))
