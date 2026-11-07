@@ -1,6 +1,7 @@
 import SophamtningDesign
 import SophamtningKit
 import SwiftUI
+import UIKit
 
 // Delar som kommunfrågan, adressökningen och områdesvalet delar.
 
@@ -224,5 +225,18 @@ private struct PlaceLabelStyle: LabelStyle {
             configuration.icon
             configuration.title
         }
+    }
+}
+
+/// Sidmarginalen på sidor med systemets stora rubrik, så att innehållet har samma kant som rubriken. Det är systemets
+/// minsta marginal, 16 eller 20 punkter beroende på skärmen.
+@MainActor
+enum PageMargin {
+    static var horizontal: CGFloat {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { scene in scene as? UIWindowScene }
+            .flatMap { scene in scene.windows }
+        let window = windows.first { window in window.isKeyWindow } ?? windows.first
+        return window?.rootViewController?.systemMinimumLayoutMargins.leading ?? 16
     }
 }

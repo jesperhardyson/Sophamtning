@@ -105,7 +105,8 @@ struct AddressView: View {
             }
             .animation(Motion.transition(reduceMotion: reduceMotion), value: detail.mode)
             .animation(Motion.transition(reduceMotion: reduceMotion), value: detail.notice)
-            .padding(.horizontal, 24)
+            // Samma kant som den stora rubriken i fältet.
+            .padding(.horizontal, PageMargin.horizontal)
             .padding(.bottom, 32)
         }
         .refreshable { await model.refreshAll(manual: true) }
@@ -235,9 +236,9 @@ struct AddressView: View {
         }
         .scrollIndicators(.hidden)
         .scrollTargetBehavior(.viewAligned)
-        .contentMargins(.horizontal, 24, for: .scrollContent)
+        .contentMargins(.horizontal, PageMargin.horizontal, for: .scrollContent)
         // Korten går ut till skärmens kant, medan resten av vyn har marginal.
-        .padding(.horizontal, -24)
+        .padding(.horizontal, -PageMargin.horizontal)
         .onScrollVisibilityChange(threshold: 0.02) { visible in
             if visible { binsRevealed = true }
         }

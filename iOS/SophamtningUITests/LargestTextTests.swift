@@ -34,7 +34,8 @@ final class LargestTextTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
         // Rubriken "Hemma" står i systemets fält. Adressen och platsen under den börjar vid marginalen.
         let lines = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Testgatan 1, Uppsala")).firstMatch
-        checkFits("adress", title: lines)
+        // Sidor med systemets stora rubrik har systemets marginal, så att innehållet har samma kant som rubriken.
+        checkFits("adress", title: lines, margin: 16)
 
         // Hela schemat.
         let link = app.buttons["Hela schemat"]
@@ -43,15 +44,15 @@ final class LargestTextTests: XCTestCase {
         link.tap()
         let row = app.otherElements.matching(NSPredicate(format: "label CONTAINS %@", "Plastförpackningar")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10), "Hela schemat ska visa raderna")
-        checkFits("hela-schemat", title: row)
+        checkFits("hela-schemat", title: row, margin: 16)
     }
 
     // MARK: Hjälpare
 
     /// Rubriken börjar vid marginalen, och inget element utom kärlkorten slutar till höger om fönstret.
-    private func checkFits(_ screen: String, title: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+    private func checkFits(_ screen: String, title: XCUIElement, margin: CGFloat = 24, file: StaticString = #filePath, line: UInt = #line) {
         let width = app.windows.firstMatch.frame.width
-        XCTAssertGreaterThanOrEqual(title.frame.minX, 24 - 0.5, "\(screen): rubriken ska börja vid marginalen", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(title.frame.minX, margin - 0.5, "\(screen): rubriken ska börja vid marginalen", file: file, line: line)
         let bins = binBand()
         guard let root = try? app.snapshot() else { return XCTFail("\(screen): ingen ögonblicksbild", file: file, line: line) }
         // Systemets toning under navigeringsfältet i iOS 26 är bredare än fönstret, men är inget av appens element.

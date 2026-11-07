@@ -44,7 +44,7 @@ struct SettingsView: View {
                         )
                         .padding(.top, 24)
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, PageMargin.horizontal)
                     .padding(.bottom, 32)
                 }
             }
@@ -268,7 +268,7 @@ private struct ReminderTimeView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
             }
         }
@@ -301,7 +301,7 @@ private struct PrimaryAddressView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
             }
         }
@@ -370,7 +370,7 @@ private struct SourcesView: View {
                                 .buttonStyle(.pressable)
                         }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, PageMargin.horizontal)
                     .padding(.vertical, 16)
                 }
             }

@@ -210,7 +210,8 @@ struct FullScheduleView: View {
                         missingAddress
                     }
                 }
-                .padding(.horizontal, 24)
+                // Samma kant som den stora rubriken i fältet.
+                .padding(.horizontal, PageMargin.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
