@@ -2,8 +2,7 @@ import SophamtningDesign
 import SophamtningKit
 import SwiftUI
 
-/// "Välj område": områdena för en kommun, med källans förklaring överst och länk till vilka platser som ingår. Utan
-/// förklaring från källan visas API:ts `notice` som förut.
+/// "Välj område": områdena för en kommun, med API:ts `notice`, källans förklaring och länk till vilka platser som ingår.
 struct AreaPickerView: View {
     let model: AppModel
     let title: String
@@ -27,12 +26,14 @@ struct AreaPickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if !sourceNotes.isEmpty {
-                    AreaSourceNotesView(notes: sourceNotes)
-                        .padding(.top, 8)
-                } else if let notice {
+                if let notice {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
                         .padding(.top, 8)
+                }
+                // Som på webben: varför man väljer område, och vart man vänder sig. Saknas källorna visas inget kort.
+                if !sourceNotes.isEmpty {
+                    AreaSourceNotesView(notes: sourceNotes)
+                        .padding(.top, notice == nil ? 8 : 16)
                 }
                 if place != nil {
                     finderRow
@@ -124,13 +125,18 @@ private extension AreaPickerView {
     }
 }
 
-/// Källans förklaring överst i områdesvalet: varför man väljer område, och en hjälprad där telefonnumret går att trycka
-/// på. Texterna står som källan skrev dem.
+/// Källans förklaring i områdesvalet, med webbens rubrik: varför man väljer område, och en hjälprad där telefonnumret
+/// går att trycka på. Texterna står som källan skrev dem.
 struct AreaSourceNotesView: View {
     let notes: [AreaSourceNote]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Därför väljer du område i stället för adress")
+                .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                .foregroundStyle(Color.Theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             ForEach(notes) { note in
                 VStack(alignment: .leading, spacing: 8) {
                     // Källans namn behövs bara när flera källor svarade.
@@ -142,7 +148,7 @@ struct AreaSourceNotesView: View {
                     }
                     if let explanation = note.explanation {
                         Text(explanation)
-                            .font(.ui(18, weight: .semibold, relativeTo: .body))
+                            .font(.ui(17, weight: .semibold, relativeTo: .body))
                             .foregroundStyle(Color.Theme.text)
                     }
                     if let help = note.help {
@@ -155,7 +161,9 @@ struct AreaSourceNotesView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
