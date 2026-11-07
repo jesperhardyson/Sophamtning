@@ -33,7 +33,7 @@ final class CoreFlowTests: XCTestCase {
     func testLaggaTillAdressVisasPaHem() {
         addAddress()
 
-        XCTAssertTrue(app.staticTexts["Sophämtning"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["hem-rubrik"].waitForExistence(timeout: 5))
         XCTAssertTrue(homeCard.waitForExistence(timeout: 5), "Huvudkortet ska visa den sparade adressen")
         XCTAssertFalse(app.staticTexts["När töms dina kärl?"].exists, "Det tomma läget ska vara borta")
     }

@@ -24,7 +24,7 @@ final class LargestTextTests: XCTestCase {
         addAddress()
         let card = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 10), "Huvudkortet ska visa adressen")
-        checkFits("hem", title: app.staticTexts["Sophämtning"])
+        checkFits("hem", title: app.staticTexts["hem-rubrik"])
 
         // Adressvyn.
         // Kortet är högre än skärmen, så trycket görs nära dess överkant, när arket har stängts.

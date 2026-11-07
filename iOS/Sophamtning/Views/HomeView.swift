@@ -23,6 +23,10 @@ struct HomeView: View {
     @State private var saves = 0
     /// Ökar när påminnelsen på huvudkortet faktiskt har slagits på.
     @State private var reminderPulse = 0
+    /// Sant när rubrikraden har scrollat in under fältet, och den lilla rubriken visas där.
+    @State private var titleCollapsed = false
+    /// Hemskärmen börjar överst när den första adressen har sparats, även om det tomma läget var scrollat.
+    @State private var scrollPosition = ScrollPosition(edge: .top)
 
     private var content: HomeContent {
         HomeContent.make(
@@ -45,11 +49,11 @@ struct HomeView: View {
         let filled = content.primary != nil && model.storageProblem == nil
         NavigationStack(path: $path) {
             screen(content)
-                // Systemets fält: stor rubrik som krymper vid scroll, och knapparna i systemets glas. Tomt läge och
-                // lagringsfel har ingen rubrik i fältet, bara knappen för inställningar.
-                .navigationTitle(filled ? "Sophämtning" : "")
-                // Alltid stort läge: iOS byter inte läge när det tomma läget blir ifyllt medan vyn visas.
-                .navigationBarTitleDisplayMode(.large)
+                // Systemets fält med knapparna i systemets glas. Den stora rubriken med kärlet står först i innehållet,
+                // eftersom en egen vy i systemets stora rubrik inte når VoiceOver. När den scrollat in under fältet står
+                // systemets lilla rubrik där. Tomt läge och lagringsfel har ingen rubrik, bara knappen för inställningar.
+                .navigationTitle(filled && titleCollapsed ? "Sophämtning" : "")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar { homeToolbar(filled: filled) }
                 .navigationDestination(for: AddressKey.self) { key in
                     AddressView(model: model, key: key, onSearchAgain: {
@@ -134,12 +138,22 @@ struct HomeView: View {
             .padding(.bottom, 24)
             .closesOpenSwipeRow($openRow)
         }
+        .scrollPosition($scrollPosition)
+        .onChange(of: content.primary == nil) { _, empty in
+            if !empty { scrollPosition.scrollTo(edge: .top) }
+        }
         // Ett tryck nedanför innehållet stänger också den öppna raden.
         .gesture(TapGesture().onEnded { openRow = nil }, including: openRow == nil ? .subviews : .all)
         .refreshable { await model.refreshAll(manual: true) }
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { openRow = nil }
         }
+        // Rubrikraden är cirka 50 punkter hög. När den är under fältet visas den lilla rubriken.
+        .onScrollGeometryChange(for: Bool.self, of: { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > Self.collapsedTitleOffset
+        }, action: { _, collapsed in
+            titleCollapsed = collapsed
+        })
         .background(Color.Theme.bg.ignoresSafeArea())
     }
 
@@ -211,25 +225,30 @@ struct HomeView: View {
     /// Knapparna uppe till höger delar en glaskapsel. Vid lagringsfel finns inga knappar.
     @ToolbarContentBuilder
     private func homeToolbar(filled: Bool) -> some ToolbarContent {
-        if filled {
-            // Den stora rubriken i appens typsnitt, med inträdet som korten. I det lilla fältet vid scroll står
-            // `navigationTitle`.
-            ToolbarItem(placement: .largeTitle) {
-                HomeTitle(shown: !entrance.hidesCards)
-            }
-        }
         if model.storageProblem == nil {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { sheet = .settings } label: { Label("Inställningar", systemImage: "gearshape") }
+                Button { toolbarTapped { sheet = .settings } } label: { Label("Inställningar", systemImage: "gearshape") }
                 if filled {
-                    Button { sheet = .add } label: { Label("Lägg till", systemImage: "plus") }
+                    Button { toolbarTapped { sheet = .add } } label: { Label("Lägg till", systemImage: "plus") }
                 }
             }
         }
     }
 
+    /// Står en rad öppen efter ett svep stänger trycket bara raden, som ett tryck någon annanstans på skärmen.
+    private func toolbarTapped(_ action: () -> Void) {
+        if openRow != nil {
+            openRow = nil
+        } else {
+            action()
+        }
+    }
+
     private func filled(primary: HomeContent.Entry, others: [HomeContent.Entry]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            HomeTitle(shown: !entrance.hidesCards, binFirstRound: binFirstRound)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
             AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
                 PrimaryCard(
                     entry: primary,
@@ -242,7 +261,6 @@ struct HomeView: View {
             }
             // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
             .id(primary.key)
-            .padding(.top, 8)
             .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
@@ -266,6 +284,9 @@ struct HomeView: View {
             }
         }
     }
+
+    /// Hur långt innehållet scrollat när rubrikraden har gått in under fältet.
+    private static let collapsedTitleOffset: CGFloat = 44
 
     /// Huvudkortets plats i ordningen, efter rubriken.
     private static let primaryCardIndex = 1
@@ -305,9 +326,9 @@ struct HomeView: View {
         return CalendarTile.Opening(from: from, begin: entrance.begin?.addingTimeInterval(delay))
     }
 
-    /// När kärlet i tomt läge spelar sitt första varv: när kortet har kommit in efter introt, direkt utan start från början,
-    /// och inte medan korten väntar på introt.
-    private var emptyBinFirstRound: Date? {
+    /// När kärlet i tomt läge och bredvid rubriken spelar sitt första varv: när det har kommit in efter introt, direkt
+    /// utan start från början, och inte medan korten väntar på introt. Båda står först i inträdet.
+    private var binFirstRound: Date? {
         if entrance.hidesCards { return nil }
         guard let begin = entrance.begin else { return .distantPast }
         return begin.addingTimeInterval(EntranceTimeline.flipDelay(cardIndex: 0, reduceMotion: reduceMotion))
@@ -317,7 +338,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Kärlet spelar ett varv när det har kommit in, och efter introt. Ytan ovanför kärlet är till för fraktionen
             // som faller, så kärlet står ungefär där logotypen stod.
-            BinRoundView(firstRound: emptyBinFirstRound)
+            BinRoundView(firstRound: binFirstRound)
                 .frame(maxWidth: .infinity)
                 .padding(.top, -24)
                 .padding(.bottom, 33)
@@ -396,24 +417,37 @@ struct HomeView: View {
     }
 }
 
-/// Den stora rubriken "Sophämtning" i systemets fält, i Fredoka som resten av appens rubriker. Den kommer in först av
-/// allt, före korten.
+/// Den stora rubriken "Sophämtning" i Fredoka, med ett litet kärl till vänster, ungefär lika högt som texten. Kärlet
+/// spelar ett varv efter inträdet och säger något i en pratbubbla vid tryck, som i tomt läge. Raden kommer in först av
+/// allt, före korten. När den scrollar bort står bara texten i det lilla fältet.
 private struct HomeTitle: View {
     let shown: Bool
+    let binFirstRound: Date?
+
+    /// Kärlets kropp slutar vid y 441 i SVG:ns viewBox (360 × 560 från y -110), strax ovanför skuggan.
+    private static let binBaseline: CGFloat = (441 + 110) / 560
 
     var body: some View {
-        Text("Sophämtning")
-            .font(.brand(34, relativeTo: .largeTitle))
-            .lineLimit(1)
-            // Krymper hellre än kapas med största text. Höjden är textens egen, så att fältet inte trycker ihop den.
-            .minimumScaleFactor(0.5)
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(Color.Theme.text)
-            // Samma marginal som korten under.
-            .padding(.leading, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityAddTraits(.isHeader)
-            .cardEntrance(shown: shown, index: 0)
+        HStack(alignment: .lastTextBaseline, spacing: 6) {
+            BinRoundView(firstRound: binFirstRound, width: 30, maxWidth: 56, bubbleTip: .leading)
+                // Kärlets botten står på textens baslinje.
+                .alignmentGuide(.lastTextBaseline) { d in d.height * Self.binBaseline }
+                // Pratbubblan står framför rubriken.
+                .zIndex(1)
+            Text("Sophämtning")
+                .font(.brand(34, relativeTo: .largeTitle))
+                .lineLimit(1)
+                // Krymper hellre än kapas med största text. Höjden är textens egen, så att fältet inte trycker ihop den.
+                .minimumScaleFactor(0.5)
+                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(Color.Theme.text)
+                // Kärlet är dolt för VoiceOver, så bara rubriken läses.
+                .accessibilityAddTraits(.isHeader)
+                // Den lilla rubriken i fältet har samma text vid scroll, så UI-testerna hittar den stora med sitt id.
+                .accessibilityIdentifier("hem-rubrik")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardEntrance(shown: shown, index: 0)
     }
 }
 

@@ -1,19 +1,23 @@
 import SwiftUI
 
-/// Kärlet i hemskärmens tomma läge. Det spelar ett varv när det visas och står sedan still med stängt lock. Ett tryck
-/// spelar ett nytt varv med nästa fraktion och en lätt vibration. Det är dekoration: ingen slinga och ingen text, så att
-/// slingan fortsatt betyder att något hämtas. Med Reducera rörelse står det still och trycket gör inget.
-/// Dolt för VoiceOver.
+/// Kärlet i hemskärmens tomma läge och bredvid rubriken. Det spelar ett varv när det visas och står sedan still med
+/// stängt lock. Ett tryck spelar ett nytt varv med nästa fraktion och en lätt vibration, och en av Sopors roliga texter
+/// kommer fram i en pratbubbla som svävar uppåt och tonas bort efter cirka 2 sekunder. En bubbla åt gången, och ett
+/// tryck under ett varv gör inget. Det är dekoration: ingen slinga, så att slingan fortsatt betyder att något hämtas.
+/// Med Reducera rörelse står kärlet still, och bubblan tonas bara in och ut på plats.
+/// Dolt för VoiceOver. Visas en bubbla tillkännages texten.
 public struct BinRoundView: View {
     private let firstRound: Date?
     private let reduceMotionOverride: Bool?
+    private let maxWidth: CGFloat
+    private let bubbleTip: HorizontalAlignment
     @ScaledMetric(relativeTo: .largeTitle) private var scaledWidth: CGFloat = 135
 
     /// Största bredden, så att sökfältet under kärlet inte trycks långt ned med största text.
     public static let maxWidth: CGFloat = 200
 
     /// Kärlets bredd: den skalade bredden, högst `maxWidth`.
-    public static func drawnWidth(scaled: CGFloat) -> CGFloat {
+    public static func drawnWidth(scaled: CGFloat, maxWidth: CGFloat = maxWidth) -> CGFloat {
         min(scaled, maxWidth)
     }
 
@@ -24,25 +28,35 @@ public struct BinRoundView: View {
     @State private var roundStart: Date?
     @State private var playedFirst = false
     @State private var taps = 0
+    /// När bubblan visades. `nil` när ingen bubbla syns.
+    @State private var bubbleStart: Date?
+    @State private var bubbleText = ""
+    /// Ingen text upprepas förrän alla visats, och två tryck i rad ger aldrig samma text.
+    @State private var texts = BinLoaderTexts.Queue()
 
     /// - Parameters:
     ///   - firstRound: När första varvet ska spelas. `nil` väntar, till exempel medan hemskärmen väntar på introt.
     ///     Ett datum som redan passerat spelar direkt.
     ///   - width: Kärlets bredd. Växer med textstorleken som logotypen, högst till `maxWidth`.
+    ///   - maxWidth: Största bredden med stor text.
+    ///   - bubbleTip: Var bubblan står i förhållande till kärlet: mitt över, eller med vänsterkanten vid kärlet.
     ///   - reduceMotion: Tvingar läget. Utan värde läses `accessibilityReduceMotion`.
-    public init(firstRound: Date?, width: CGFloat = 135, reduceMotion: Bool? = nil) {
+    public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, reduceMotion: Bool? = nil) {
         self.firstRound = firstRound
+        self.maxWidth = maxWidth
+        self.bubbleTip = bubbleTip
         reduceMotionOverride = reduceMotion
         _scaledWidth = ScaledMetric(wrappedValue: width, relativeTo: .largeTitle)
     }
 
     private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
-    private var width: CGFloat { Self.drawnWidth(scaled: scaledWidth) }
+    private var width: CGFloat { Self.drawnWidth(scaled: scaledWidth, maxWidth: maxWidth) }
 
     public var body: some View {
         figure
             .contentShape(BinBodyShape())
-            .onTapGesture { playRound(tapped: true) }
+            .onTapGesture { tapped() }
+            .overlay(alignment: Alignment(horizontal: bubbleTip, vertical: .top)) { bubble }
             .sensoryFeedback(.impact(weight: .light), trigger: taps)
             .task(id: firstRound) {
                 guard let firstRound, !playedFirst else { return }
@@ -53,7 +67,7 @@ public struct BinRoundView: View {
                 // Ett tryck under väntan har redan spelat varvet.
                 guard !playedFirst else { return }
                 playedFirst = true
-                playRound(tapped: false)
+                if !reduceMotion { roundStart = Date() }
             }
             .task(id: roundStart) {
                 // Varvet är slut: kärlet står still, och klockan stannar.
@@ -63,6 +77,15 @@ public struct BinRoundView: View {
                     guard (try? await Task.sleep(for: .seconds(left))) != nil else { return }
                 }
                 self.roundStart = nil
+            }
+            .task(id: bubbleStart) {
+                // Bubblan har tonats bort.
+                guard let bubbleStart else { return }
+                let left = BinBubbleTimeline.duration - Date().timeIntervalSince(bubbleStart)
+                if left > 0 {
+                    guard (try? await Task.sleep(for: .seconds(left))) != nil else { return }
+                }
+                self.bubbleStart = nil
             }
             .accessibilityHidden(true)
     }
@@ -81,16 +104,47 @@ public struct BinRoundView: View {
         }
     }
 
-    /// Startar ett varv. Ett tryck under ett pågående varv gör inget, och med Reducera rörelse spelas inget.
-    private func playRound(tapped: Bool) {
-        guard roundStart == nil, !reduceMotion else { return }
-        if tapped {
-            // Ett tryck före det första varvet ersätter det, så att inget varv spelas två gånger.
-            if playedFirst { round += 1 }
-            playedFirst = true
-            taps += 1
+    /// Bubblan står med spetsen strax ovanför locket, i den tomma ytan där fraktionen faller, och svävar uppåt därifrån.
+    @ViewBuilder
+    private var bubble: some View {
+        if let bubbleStart {
+            let lidTop = width * Self.lidTop
+            TimelineView(.animation) { context in
+                let elapsed = context.date.timeIntervalSince(bubbleStart)
+                BinSpeechBubble(text: bubbleText, tip: bubbleTip)
+                    .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: 1))
+                    .opacity(BinBubbleTimeline.opacity(at: elapsed))
+                    .offset(y: -BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
+            }
+            // Spetsen står en bit ovanför locket.
+            .alignmentGuide(.top) { d in d[.bottom] - lidTop + 4 }
+            .allowsHitTesting(false)
         }
-        roundStart = Date()
+    }
+
+    /// Lockets överkant i kärlets höjd, som andel av bredden (y 40 i en viewBox på 360 × 560 från y -110).
+    private nonisolated static let lidTop: CGFloat = (40 + 110) / 360
+
+    /// Ett tryck: ett nytt varv och en bubbla, eller inget om ett varv eller en bubbla redan pågår.
+    private func tapped() {
+        let now = Date()
+        guard BinBubbleTimeline.acceptsTap(
+            roundElapsed: roundStart.map { now.timeIntervalSince($0) },
+            bubbleElapsed: bubbleStart.map { now.timeIntervalSince($0) },
+            reduceMotion: reduceMotion
+        ) else { return }
+        // Ett tryck före det första varvet ersätter det, så att inget varv spelas två gånger.
+        if playedFirst { round += 1 }
+        playedFirst = true
+        taps += 1
+        if !reduceMotion { roundStart = now }
+        var generator = SystemRandomNumberGenerator()
+        bubbleText = texts.next(using: &generator)
+        bubbleStart = now
+        // Kärlet och bubblan är dolda för VoiceOver, så texten tillkännages i stället, med låg prioritet.
+        var announcement = AttributedString(bubbleText)
+        announcement.accessibilitySpeechAnnouncementPriority = .low
+        AccessibilityNotification.Announcement(announcement).post()
     }
 }
 
@@ -109,6 +163,7 @@ private struct BinBodyShape: Shape {
     VStack(spacing: 24) {
         BinRoundView(firstRound: .distantPast)
         BinRoundView(firstRound: .distantPast, reduceMotion: true)
+        BinRoundView(firstRound: .distantPast, width: 30, maxWidth: 56, bubbleTip: .leading)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.Theme.bg)
