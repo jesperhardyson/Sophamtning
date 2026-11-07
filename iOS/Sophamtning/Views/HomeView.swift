@@ -25,6 +25,8 @@ struct HomeView: View {
     @State private var reminderPulse = 0
     /// Sant när rubrikraden har scrollat in under fältet, och den lilla rubriken visas där.
     @State private var titleCollapsed = false
+    /// Rubrikradens höjd, uppmätt. Den växer med textstorleken.
+    @State private var titleRowHeight: CGFloat = 44
     /// Hemskärmen börjar överst när den första adressen har sparats, även om det tomma läget var scrollat.
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
@@ -148,9 +150,9 @@ struct HomeView: View {
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { openRow = nil }
         }
-        // Rubrikraden är cirka 50 punkter hög. När den är under fältet visas den lilla rubriken.
+        // När hela rubrikraden är under fältet visas systemets lilla rubrik där, utan toning, som när en titel byts.
         .onScrollGeometryChange(for: Bool.self, of: { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > Self.collapsedTitleOffset
+            geometry.contentOffset.y + geometry.contentInsets.top > collapsedTitleOffset
         }, action: { _, collapsed in
             titleCollapsed = collapsed
         })
@@ -247,7 +249,10 @@ struct HomeView: View {
     private func filled(primary: HomeContent.Entry, others: [HomeContent.Entry]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HomeTitle(shown: !entrance.hidesCards, binFirstRound: binFirstRound)
-                .padding(.top, 4)
+                .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.size.height }, action: { height in
+                    titleRowHeight = height
+                })
+                .padding(.top, Self.titleTopPadding)
                 .padding(.bottom, 12)
             AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
                 PrimaryCard(
@@ -285,8 +290,11 @@ struct HomeView: View {
         }
     }
 
-    /// Hur långt innehållet scrollat när rubrikraden har gått in under fältet.
-    private static let collapsedTitleOffset: CGFloat = 44
+    /// Hur långt innehållet har scrollat när hela rubrikraden har gått in under fältet. Följer radens uppmätta höjd,
+    /// så att den lilla rubriken inte visas medan halva den stora syns med stor text.
+    private var collapsedTitleOffset: CGFloat { Self.titleTopPadding + titleRowHeight }
+
+    private static let titleTopPadding: CGFloat = 4
 
     /// Huvudkortets plats i ordningen, efter rubriken.
     private static let primaryCardIndex = 1
