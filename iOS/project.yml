@@ -42,6 +42,8 @@ targets:
           - se.hardyson.sophamtning.refresh
         UIBackgroundModes:
           - fetch
+        # Appen använder bara kryptering som ingår i iOS (HTTPS), vilket är undantaget från exportreglerna.
+        ITSAppUsesNonExemptEncryption: false
         # Stillbilden som visas direkt vid start. Introt i appen tar över med exakt samma bild.
         UILaunchScreen:
           UIImageName: LaunchLogo

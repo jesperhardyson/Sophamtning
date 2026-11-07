@@ -119,7 +119,7 @@ struct SettingsView: View {
                     SettingsRow(title: "Integritet", value: "")
                 }
                 ResultDivider()
-                SettingsRow(title: "Version", value: version, showsChevron: false)
+                SettingsRow(title: "Version", value: version)
             }
             .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))

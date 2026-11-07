@@ -2,29 +2,44 @@ import XCTest
 
 /// Granskar varje skärm med `performAccessibilityAudit()` i tre lägen: vanlig storlek, största Dynamic Type
 /// i ljust läge och största Dynamic Type i mörkt läge. Varje skärm sparas också som skärmdump i testresultatet.
-/// Kontrast och klippt text granskas inte här av skäl som anges vid undantaget längre ner.
+/// Mörkt läge sätts med `XCUIDevice.shared.appearance`, eftersom startargumentet `-AppleInterfaceStyle` inte påverkar appen.
+/// Klippt text granskas i vanlig storlek. Vid största storlek och för kontrast gäller undantagen längre ner.
 @MainActor
 final class AccessibilityAuditTests: XCTestCase {
     private var app: XCUIApplication!
     private var mode = ""
+    private var checksClipping = true
+
+    private let largestText = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+
+    override func tearDown() async throws {
+        XCUIDevice.shared.appearance = .light
+        try await super.tearDown()
+    }
 
     func testGranskaVanligStorlek() {
-        run(mode: "normal", arguments: [])
+        run(mode: "normal", appearance: .light, arguments: [], checksClipping: true)
+    }
+
+    func testGranskaVanligStorlekMorkt() {
+        run(mode: "normal-morkt", appearance: .dark, arguments: [], checksClipping: true)
     }
 
     func testGranskaStorastStorlekLjust() {
-        run(mode: "storst-ljust", arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Light"])
+        run(mode: "storst-ljust", appearance: .light, arguments: largestText, checksClipping: false)
     }
 
     func testGranskaStorastStorlekMorkt() {
-        run(mode: "storst-morkt", arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleInterfaceStyle", "Dark"])
+        run(mode: "storst-morkt", appearance: .dark, arguments: largestText, checksClipping: false)
     }
 
     // MARK: Genomgång
 
-    private func run(mode: String, arguments: [String]) {
+    private func run(mode: String, appearance: XCUIDevice.Appearance, arguments: [String], checksClipping: Bool) {
         continueAfterFailure = true
         self.mode = mode
+        self.checksClipping = checksClipping
+        XCUIDevice.shared.appearance = appearance
         app = XCUIApplication()
         app.launchArguments = ["-uitest", "-AppleLanguages", "(sv)", "-AppleLocale", "sv_SE"] + arguments
         app.launch()
@@ -100,19 +115,37 @@ final class AccessibilityAuditTests: XCTestCase {
         shot.lifetime = .keepAlways
         add(shot)
         let mode = mode
+        let checksClipping = checksClipping
+        // Tangentbordets ram plus raden med ordförslag, som ligger strax ovanför själva tangenterna.
+        let keyboardFrame = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.insetBy(dx: 0, dy: -48) : nil
         do {
             try app.performAccessibilityAudit(for: .all) { issue in
-                // Kontrast och klippt text rapporteras av granskningen också för text som syns fullt ut: elementen får
-                // orimligt stora ramar vid största textstorlek, och text under navigeringsfältet räknas som täckt.
-                // Kontrasten är i stället kontrollerad mot designens färgpar, och klippning mot skärmdumparna i testresultatet.
-                if issue.auditType == .contrast || issue.auditType == .textClipped { return true }
-                // Tangentbordets egna element saknar beskrivning. De är systemets, inte appens.
-                if issue.auditType == .sufficientElementDescription, issue.element?.elementType == .other, issue.element?.label.isEmpty == true { return true }
+                // Vid största textstorlek får elementen orimligt stora ramar, och text under navigeringsfältet räknas som
+                // täckt, så klippt text rapporteras även när den syns fullt ut. Där granskas klippning mot skärmdumparna.
+                // I vanlig storlek är den på och inget filtreras bort.
+                if issue.auditType == .textClipped, !checksClipping { return true }
+                // Kända falska träffar i vanlig storlek, kontrollerade mot skärmdumparna (texten syns fullt ut):
+                // fältet med tangentbordsfokus, allt i bekräftelsearket (arkets ram räknas som beskuren) och
+                // kärlnamnen i chipsen, vars ram är trängre än texten.
+                if issue.auditType == .textClipped, let element = issue.element {
+                    if element.elementType == .textField { return true }
+                    if screen == "omrade-bekrafta" { return true }
+                    if element.elementType == .staticText, element.label.hasSuffix("förpackningar") { return true }
+                }
+                // Kontrasten är kontrollerad mot designens färgpar. Granskningen räknar fel på text över bilder och
+                // genomskinliga ytor, så den är fortsatt avstängd.
+                if issue.auditType == .contrast { return true }
+                // Tangentbordets egna element saknar beskrivning. De är systemets, inte appens, och släpps bara
+                // igenom när de ligger inom tangentbordets ram. Oetiketterade egna vyer upptäcks därmed.
+                if issue.auditType == .sufficientElementDescription, let keyboardFrame, let element = issue.element,
+                   element.elementType == .other, element.label.isEmpty, keyboardFrame.contains(element.frame) {
+                    return true
+                }
                 print("AUDIT-ISSUE: \(mode) | \(screen) | \(issue.auditType) | \(issue.compactDescription) | \(issue.element?.debugDescription.prefix(160) ?? "-")")
                 return false
             }
         } catch {
-            // Problemen är skrivna ovan och registrerade som fel.
+            XCTFail("Granskningen av \(screen) i läget \(mode) hittade problem: \(error)")
         }
     }
 }
