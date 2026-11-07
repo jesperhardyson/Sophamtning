@@ -38,5 +38,18 @@ xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination '
 - Tekniska fel får aldrig se ut som att en adress eller kommun saknas.
 - Bundle-id är `se.hardyson.sophamtning`, och App Group är `group.se.hardyson.sophamtning`.
 - All text i appen, alla kommentarer och alla commit-meddelanden är på svenska.
-- Commit-meddelanden följer `feature:` eller `fix:` och har inga AI-attributionsrader.
+- Commit-meddelanden och PR-titlar följer Conventional Commits och har inga AI-attributionsrader. Beskrivningen är på svenska.
+  - `feat:` för ny funktion och `fix:` för rättning. Aldrig `feature:`.
+  - `docs:`, `test:`, `ci:`, `chore:`, `refactor:` eller `build:` för det som inte ska ge en release, till exempel ändringar i spec och plan (`docs:`).
+  - Ändringar som bryter något: `feat!:` och en rad `BREAKING CHANGE:`.
+
+## Releaser
+
+Releaser ska skötas med Release Please (googleapis/release-please-action), med versionstypen `simple`. Flödet byggs i ärende #27 och är inte på plats än.
+
+- Release Please läser commit-meddelandena på `main`: `feat:` höjer minor, `fix:` höjer patch och `!` höjer major. Andra typer ger ingen release och syns inte i changelogen.
+- Repot squash-mergar, så PR-titeln blir commit-meddelandet på `main`. Titeln måste därför följa formatet ovan.
+- Release Please håller en öppen release-PR med nästa version i `version.txt` och `CHANGELOG.md`. När den mergas skapas taggen `vX.Y.Z` och en GitHub Release.
+- Taggen startar bygget till TestFlight. Varje uppladdning godkänns av Jesper, och App Store-inskickning görs bara efter hans godkännande.
+- Appens version (`MARKETING_VERSION` i `iOS/project.yml`) ska alltid vara densamma som i `version.txt`. Release Please uppdaterar den. Ändra aldrig version eller changelog för hand.
 - Ändringar i specen godkänns av Jesper innan bygget fortsätter.
