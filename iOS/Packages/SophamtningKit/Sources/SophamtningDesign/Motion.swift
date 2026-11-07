@@ -57,11 +57,33 @@ public struct PressableButtonStyle: ButtonStyle {
 
 private struct PressableLabel: View {
     let configuration: ButtonStyleConfiguration
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let pressed = configuration.isPressed
+        configuration.label.pressEffect(pressed: configuration.isPressed)
+    }
+}
+
+/// En knapp som bara är en del av ett kort. Den ritar inget eget nedtryck utan berättar om det, så att hela kortet kan
+/// fjädra med `pressEffect`, också delar som inte hör till knappen.
+public struct PressReportingButtonStyle: ButtonStyle {
+    @Binding var pressed: Bool
+
+    public init(pressed: Binding<Bool>) {
+        _pressed = pressed
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .onChange(of: configuration.isPressed) { _, isPressed in pressed = isPressed }
+    }
+}
+
+private struct PressEffect: ViewModifier {
+    let pressed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
             .scaleEffect(PressMotion.scale(pressed: pressed, reduceMotion: reduceMotion))
             .opacity(PressMotion.opacity(pressed: pressed, reduceMotion: reduceMotion))
             .animation(Motion.press(reduceMotion: reduceMotion), value: pressed)
@@ -73,6 +95,11 @@ extension ButtonStyle where Self == PressableButtonStyle {
 }
 
 extension View {
+    /// Samma fjädring som `.pressable`, när `pressed` är sant.
+    public func pressEffect(pressed: Bool) -> some View {
+        modifier(PressEffect(pressed: pressed))
+    }
+
     /// Ett kort på hemskärmen: glider upp och tonas in när `shown` blir sant, efter sin plats i ordningen.
     /// Bara ritningen animeras. Knappen är på sin slutliga plats och går att trycka på under tiden.
     public func cardEntrance(shown: Bool, index: Int) -> some View {

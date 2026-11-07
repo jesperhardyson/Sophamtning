@@ -439,3 +439,68 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     let content = make([home, other], [home.key: schedule(tuesdayPickup), other.key: schedule([event("2026-11-02", ["rest"])])])
     #expect(content.others[0].rowReminder == nil)
 }
+
+// MARK: Reglaget för påminnelsen på huvudkortet
+
+@Test func reglagetArAvUtanPaminnelse() throws {
+    let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])])
+    let reminder = try #require(content.primary?.reminder)
+    #expect(reminder == HomeContent.PrimaryReminder(isOn: false, isDenied: false, title: "Påminn mig kvällen före", detail: nil))
+}
+
+@Test func reglagetArPaMedTidenForPaminnelsenUnder() throws {
+    var on = home
+    on.notificationsOn = true
+    let content = make([on], [on.key: schedule([event("2026-11-09", ["rest"])])])
+    let reminder = try #require(content.primary?.reminder)
+    #expect(reminder.isOn)
+    #expect(!reminder.isDenied)
+    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.detail == "Söndag kl. 18:00")
+}
+
+@Test func nekadeNotiserGerAvstangtReglageOchText() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
+    let denied = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    #expect(try #require(denied.primary?.reminder) == HomeContent.PrimaryReminder(isOn: false, isDenied: true, title: "Notiser är avstängda i iOS", detail: nil))
+    // Också när valet inte är på: reglaget går inte att slå på förrän iOS tillåter notiser.
+    let off = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    #expect(try #require(off.primary?.reminder).isDenied)
+}
+
+@Test func ejFragadeNotiserVisasSomAvUtanNekat() throws {
+    var on = home
+    on.notificationsOn = true
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false)
+    let reminder = try #require(content.primary?.reminder)
+    #expect(!reminder.isOn)
+    #expect(!reminder.isDenied)
+    #expect(reminder.title == "Påminn mig kvällen före")
+}
+
+@Test func liveActivityVisasIUndertexten() throws {
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 17 * 60 + 30)
+    let content = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
+    let reminder = try #require(content.primary?.reminder)
+    #expect(!reminder.isOn)
+    #expect(reminder.detail == "Live Activity söndag kl. 17:30")
+}
+
+@Test func passeradPaminnelseVisasIUndertexten() throws {
+    var on = home
+    on.notificationsOn = true
+    let missed = "Tömning i morgon. Påminnelsen för i kväll har redan passerat."
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, missedReminder: missed)
+    #expect(try #require(content.primary?.reminder).detail == missed)
+}
+
+@Test func raderOchKortUtanHamtningHarInteReglaget() throws {
+    let content = make([home, cabin], [
+        home.key: schedule([event("2026-11-02", ["rest"])]),
+        cabin.key: schedule([event("2026-11-18", ["plast"])]),
+    ])
+    #expect(try #require(content.primary).reminder == nil)
+    #expect(content.others[0].reminder == nil)
+}

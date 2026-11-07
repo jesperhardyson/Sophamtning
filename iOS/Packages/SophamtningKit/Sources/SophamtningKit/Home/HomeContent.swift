@@ -53,6 +53,43 @@ public struct HomeContent: Equatable, Sendable {
         }
     }
 
+    /// Reglaget för påminnelsen på huvudkortet, som i adressvyn: av, på eller nekat i iOS.
+    public struct PrimaryReminder: Equatable, Sendable {
+        /// Notis kvällen före är på och tillåten i iOS.
+        public let isOn: Bool
+        /// iOS har nekat notiser. Reglaget är av, och en knapp öppnar Inställningar.
+        public let isDenied: Bool
+        /// "Påminn mig kvällen före", eller "Notiser är avstängda i iOS".
+        public let title: String
+        /// Raden under: när påminnelsen kommer ("Söndag kl. 18:00"), eller Live Activity ("Live Activity söndag kl. 17:30").
+        public let detail: String?
+
+        public init(isOn: Bool, isDenied: Bool, title: String, detail: String?) {
+            self.isOn = isOn
+            self.isDenied = isDenied
+            self.title = title
+            self.detail = detail
+        }
+
+        static let offTitle = "Påminn mig kvällen före"
+
+        /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
+        /// "Söndag kl. 18:00" under den.
+        init(text: String, isOn: Bool, isDenied: Bool) {
+            self.isOn = isOn
+            self.isDenied = isDenied
+            title = isDenied ? RowReminder.denied.text : Self.offTitle
+            if text == Self.offTitle {
+                detail = nil
+            } else if text.hasPrefix("Påminnelse ") {
+                let rest = text.dropFirst("Påminnelse ".count)
+                detail = rest.prefix(1).uppercased() + rest.dropFirst()
+            } else {
+                detail = text
+            }
+        }
+    }
+
     public struct Entry: Equatable, Sendable, Identifiable {
         public let key: AddressKey
         public let title: String
@@ -63,6 +100,8 @@ public struct HomeContent: Equatable, Sendable {
         public let refreshFailed: Bool
         /// Huvudkortets rad för påminnelse. `nil` när det inte finns någon kommande hämtning, och alltid på raderna.
         public let reminderText: String?
+        /// Huvudkortets reglage för påminnelsen. `nil` när det inte finns någon kommande hämtning, och alltid på raderna.
+        public let reminder: PrimaryReminder?
         /// Radens påminnelse under "Fler adresser". Bara när notis är på för adressen och en hämtning kommer, och utan
         /// Live Activity, som bara gäller huvudadressen. Alltid `nil` på huvudkortet.
         public let rowReminder: RowReminder?
@@ -115,6 +154,7 @@ public struct HomeContent: Equatable, Sendable {
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
         var reminder: String?
         var rowReminder: RowReminder?
+        var primaryReminder: PrimaryReminder?
         let summary: String
         switch status {
         case .upcoming(let pickup):
@@ -127,7 +167,9 @@ public struct HomeContent: Equatable, Sendable {
             let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
             let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
             if !asRow {
-                reminder = text()
+                let shown = text()
+                reminder = shown
+                primaryReminder = PrimaryReminder(text: shown, isOn: notifications, isDenied: remindersDenied)
             } else if address.notificationsOn {
                 if remindersDenied {
                     rowReminder = .denied
@@ -151,6 +193,7 @@ public struct HomeContent: Equatable, Sendable {
             status: status,
             refreshFailed: refreshFailed,
             reminderText: reminder,
+            reminder: primaryReminder,
             rowReminder: rowReminder,
             summary: summary
         )

@@ -2,16 +2,23 @@ import SophamtningDesign
 import SophamtningKit
 import SwiftUI
 
-/// Huvudkortet på hemskärmen: huvudadressens nästa tömning och raden för påminnelse.
-/// Hela kortet är en knapp som öppnar adressvyn, i alla lägen.
+/// Huvudkortet på hemskärmen: huvudadressens nästa tömning och reglaget för påminnelsen.
+/// Kortet öppnar adressvyn vid tryck, i alla lägen. Bara reglaget tar emot sina egna tryck. Hela kortet fjädrar när
+/// knappen trycks ned.
 struct PrimaryCard: View {
     let entry: HomeContent.Entry
     /// Kalenderbladets vändning vid start från början.
     var opening: CalendarTile.Opening?
+    /// Ökar när påminnelsen faktiskt har slagits på, för ikonens studs och vibrationen.
+    var reminderPulse = 0
     let onOpen: () -> Void
+    /// Reglaget slås på eller av. Samma flöde som i adressvyn.
+    var onReminderChange: (Bool) -> Void = { _ in }
+    var onOpenSettings: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var pressed = false
 
     private var foreground: Color { Color.Theme.onPrimary }
 
@@ -26,45 +33,11 @@ struct PrimaryCard: View {
     }
 
     var body: some View {
-        Button(action: onOpen) { card }
-            .buttonStyle(.pressable)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityText)
-            .accessibilityHint("Öppnar adressen")
-            .accessibilityAddTraits(.isButton)
-    }
-
-    private var accessibilityText: String {
-        var parts = [entry.accessibilityLabel]
-        if let text = entry.reminderText { parts.append(text) }
-        return parts.joined(separator: ", ")
-    }
-
-    private var card: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header
-            switch entry.status {
-            case .upcoming(let pickup):
-                Group {
-                    nextPickup(pickup)
-                    fractions(pickup)
-                    if let text = entry.reminderText {
-                        reminderRow(text)
-                    }
-                }
-                .transition(.opacity)
-            case .loading:
-                // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
-                // Texten under är dekoration, och VoiceOver läser "Hämtar schema".
-                BinLoaderView(textColor: Color.Theme.text)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .transition(.opacity)
-            case .noUpcoming, .failed:
-                Text(entry.summary)
-                    .font(.ui(20, weight: .heavy, relativeTo: .title3))
-                    .foregroundStyle(foreground)
+            Button(action: onOpen) { content }
+                .buttonStyle(PressReportingButtonStyle(pressed: $pressed))
+            if case .upcoming = entry.status, let reminder = entry.reminder {
+                PrimaryReminderRow(reminder: reminder, pulse: reminderPulse, onChange: { onReminderChange($0) }, onOpenSettings: { onOpenSettings() })
                     .transition(.opacity)
             }
             if entry.refreshFailed {
@@ -81,9 +54,63 @@ struct PrimaryCard: View {
             in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        // Ett tryck utanför knappen och reglaget, till exempel i kanten, öppnar också adressen.
+        .onTapGesture { onOpen() }
+        .pressEffect(pressed: pressed)
+        // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist, och slås på och av med kortets
+        // åtgärder, som snabbmenyn.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+        .accessibilityHint("Öppnar adressen")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onOpen() }
+        .accessibilityActions {
+            if entry.reminder?.isDenied == true {
+                Button("Öppna Inställningar") { onOpenSettings() }
+            }
+        }
         // Utanför padding och bakgrund, så att kortets höjd och bakgrund också följer med mjukt.
         .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
         .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
+    }
+
+    private var accessibilityText: String {
+        var parts = [entry.accessibilityLabel]
+        if case .upcoming = entry.status, let reminder = entry.reminder {
+            parts.append(reminder.isDenied ? reminder.title : "\(reminder.title): \(reminder.isOn ? "på" : "av")")
+            if let detail = reminder.detail { parts.append(detail) }
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    /// Allt utom reglaget: rubriken, nästa tömning och kärlen, eller laddning och fel.
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            header
+            switch entry.status {
+            case .upcoming(let pickup):
+                Group {
+                    nextPickup(pickup)
+                    fractions(pickup)
+                }
+                .transition(.opacity)
+            case .loading:
+                // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
+                // Texten under är dekoration, och VoiceOver läser "Hämtar schema".
+                BinLoaderView(textColor: Color.Theme.text)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .transition(.opacity)
+            case .noUpcoming, .failed:
+                Text(entry.summary)
+                    .font(.ui(20, weight: .heavy, relativeTo: .title3))
+                    .foregroundStyle(foreground)
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private var header: some View {
@@ -159,20 +186,59 @@ struct PrimaryCard: View {
         }
     }
 
-    private func reminderRow(_ text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bell.badge")
-                .font(.system(.body, weight: .semibold))
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.ui(16, weight: .bold, relativeTo: .callout))
-                .multilineTextAlignment(.leading)
+}
+
+/// Reglaget för påminnelsen på huvudkortet, som ett vanligt reglage i iOS: av, eller på med tiden under. Nekar iOS
+/// notiser är reglaget av och går inte att slå på, och en knapp öppnar Inställningar, som i adressvyn.
+private struct PrimaryReminderRow: View {
+    let reminder: HomeContent.PrimaryReminder
+    let pulse: Int
+    let onChange: (Bool) -> Void
+    let onOpenSettings: () -> Void
+
+    private var foreground: Color { Color.Theme.onPrimary }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ReminderSymbol(symbol: reminder.isDenied ? "bell.slash" : "bell.badge", pulse: pulse, color: foreground)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(reminder.title)
+                    .font(.ui(16, weight: .bold, relativeTo: .callout))
+                if reminder.isDenied {
+                    Button { onOpenSettings() } label: {
+                        Text("Öppna Inställningar")
+                            .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                            .underline()
+                    }
+                    .buttonStyle(.plain)
+                } else if let detail = reminder.detail {
+                    Text(detail)
+                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                        .opacity(0.9)
+                }
+            }
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
+            Toggle(reminder.title, isOn: Binding(get: { reminder.isOn }, set: { onChange($0) }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(Color.Theme.brandText)
+                .disabled(reminder.isDenied)
+                // Det avstängda reglaget öppnar Inställningar, i stället för att trycket går vidare och öppnar adressen.
+                .overlay {
+                    if reminder.isDenied {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture { onOpenSettings() }
+                    }
+                }
         }
         .foregroundStyle(foreground)
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
         .background(Color.Theme.cardOverlay, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .sensoryFeedback(.impact(weight: .light), trigger: pulse)
     }
 }
 

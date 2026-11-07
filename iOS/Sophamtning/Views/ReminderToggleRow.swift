@@ -11,12 +11,10 @@ struct ReminderToggleRow: View {
     let pulse: Int
     @Binding var isOn: Bool
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     var body: some View {
         Toggle(isOn: $isOn) {
             AdaptiveStack(spacing: 12, verticalSpacing: 8, alignment: .top) {
-                icon
+                ReminderSymbol(symbol: symbol, pulse: pulse, color: Color.Theme.primary)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
@@ -35,12 +33,20 @@ struct ReminderToggleRow: View {
         .padding(.vertical, 16)
         .sensoryFeedback(.impact(weight: .light), trigger: pulse)
     }
+}
 
-    @ViewBuilder
-    private var icon: some View {
+/// Ikonen för en påminnelse. Den studsar när `pulse` ökar, och pulserar i stället med Reducera rörelse.
+struct ReminderSymbol: View {
+    let symbol: String
+    let pulse: Int
+    let color: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
         let image = Image(systemName: symbol)
             .font(.system(.title3, weight: .semibold))
-            .foregroundStyle(Color.Theme.primary)
+            .foregroundStyle(color)
             .accessibilityHidden(true)
         if reduceMotion {
             image.symbolEffect(.pulse, options: .nonRepeating, value: pulse)
