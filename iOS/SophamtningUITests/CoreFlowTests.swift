@@ -89,7 +89,9 @@ final class CoreFlowTests: XCTestCase {
         field.typeText("okänd gata 1, Avesta")
         open("Välj område i Avesta kommun")
 
-        // Källans förklaring står överst, och hjälpraden med telefonnumret under.
+        // Varningen står kvar, och källans förklaring står under sin rubrik med hjälpraden och telefonnumret.
+        XCTAssertTrue(app.staticTexts["Du väljer området själv"].waitForExistence(timeout: 5), "Varningen med notice ska stå kvar")
+        XCTAssertTrue(app.staticTexts["Därför väljer du område i stället för adress"].exists)
         XCTAssertTrue(app.staticTexts["Avesta Vatten publicerar sophämtningen per område, men inte vilka adresser som hör till vilket område."].waitForExistence(timeout: 5))
         let help = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "0226-64 55 00")).firstMatch
         XCTAssertTrue(help.exists, "Hjälpraden ska synas")
@@ -104,14 +106,16 @@ final class CoreFlowTests: XCTestCase {
         let other = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Bodgatan (onsdag, jämn vecka)")).firstMatch
         XCTAssertTrue(other.exists, "Platser med andra dagar ska visas")
 
-        // Bekräftelsen visar alla platser när listan fälls ut.
+        // Bekräftelsen visar alla platser först när listan fälls ut. Raden prövas som synlig text, eftersom VoiceOver-texten
+        // alltid har alla platser. Den korta raden prövas inte, eftersom listan bakom arket har samma text.
         area.tap()
         XCTAssertTrue(app.staticTexts["Stämmer området?"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Välj ett annat område"].isHittable, "Knapparna ska synas utan att listan fällts ut")
+        let fullLine = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Askön, Nyhyttan, Klintbo, Snickarbo, Knallasbenning", "Högbo och Rutbo")).firstMatch
+        XCTAssertFalse(fullLine.exists, "Hela listan ska inte synas före utfällningen")
         app.buttons["Visa alla 18 platser"].tap()
-        XCTAssertTrue(app.buttons["Visa färre platser"].waitForExistence(timeout: 5))
-        let details = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Högbo och Rutbo")).firstMatch
-        XCTAssertTrue(details.exists, "Bekräftelsen ska visa hela listan med platser")
+        XCTAssertTrue(fullLine.waitForExistence(timeout: 5), "Bekräftelsen ska visa hela listan med platser")
+        XCTAssertTrue(app.buttons["Visa färre platser"].exists)
     }
 
     func testSchematGallerTillVisasForAvestaMenInteForLivekalla() {
