@@ -9,7 +9,7 @@ private enum ShownSchedules {
     static var keys = ShownOnce<AddressKey>()
 }
 
-/// Adressvyn: nästa tömning, kärlen, påminnelser och hela schemat.
+/// Adressvyn, med det viktigaste först: nästa tömning, de närmaste datumen, kärlen, påminnelser och sist källan.
 struct AddressView: View {
     let model: AppModel
     let key: AddressKey
@@ -23,12 +23,21 @@ struct AddressView: View {
     @State private var newName = ""
     @State private var confirmingRemoval = false
     @State private var notificationPulse = 0
-    /// Schemaraderna väntar tills listan syns, eftersom den ofta ligger nedanför skärmen.
+    /// Raderna under "Kommande" och korten för kärlen väntar tills de syns, eftersom de kan ligga nedanför skärmen.
     @State private var rowsRevealed = false
+    @State private var binsRevealed = false
+    /// Raderna och korten kommer in första gången adressen visas i processen. Bestäms en gång, så att de aldrig blinkar.
+    @State private var entrancePlays: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .headline) private var dateWidth: CGFloat = 100
+
+    init(model: AppModel, key: AddressKey, onSearchAgain: @escaping () -> Void) {
+        self.model = model
+        self.key = key
+        self.onSearchAgain = onSearchAgain
+        _entrancePlays = State(initialValue: EntranceTimeline.isEnabled && ShownSchedules.keys.shouldPlay(key))
+    }
 
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }
 
@@ -180,36 +189,12 @@ struct AddressView: View {
             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Varning från källan", message: warning)
                 .padding(.top, 12)
         }
-        sectionTitle("Kärlen")
-        VStack(spacing: 0) {
-            ForEach(detail.bins) { bin in
-                AdaptiveStack(spacing: 14, verticalSpacing: 8) {
-                    FractionIconView(id: bin.id, info: bin.info)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(bin.info.name)
-                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                            .foregroundStyle(Color.Theme.text)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.5)
-                        Text(bin.dateText)
-                            .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                            .foregroundStyle(Color.Theme.text2)
-                    }
-                    Spacer(minLength: 8)
-                    Text(bin.daysText)
-                        .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                        .foregroundStyle(Color.Theme.brandText)
-                        .rollingNumbers(value: bin.daysText, reduceMotion: reduceMotion)
-                        .fixedSize()
-                }
-                .padding(.vertical, 10)
-                .accessibilityElement(children: .combine)
-            }
-        }
+        upcoming(detail)
+        bins(detail)
     }
 
     private func nextCard(_ next: HomeContent.Pickup) -> some View {
-        HStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             AdaptiveStack(spacing: 20) {
                 CalendarTile(date: next.date)
                 VStack(alignment: .leading, spacing: 4) {
@@ -227,13 +212,86 @@ struct AddressView: View {
                         .font(.ui(17, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Color.Theme.text2)
                 }
-                .accessibilityElement(children: .combine)
             }
-            Spacer(minLength: 0)
+            // Kärlen som töms den dagen, med färg, ikon och text. Raderna bryts när de inte får plats.
+            FlowLayout(spacing: 8) {
+                ForEach(next.fractions) { fraction in
+                    FractionChip(id: fraction.id, info: fraction.info)
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.Theme.border))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(next.accessibilityLabel)
+    }
+
+    /// De tre närmaste datumen, och länken till hela schemat när det finns fler.
+    @ViewBuilder
+    private func upcoming(_ detail: AddressDetail) -> some View {
+        if typeSize.isAccessibilitySize {
+            // Under varandra med största text, så att inget ord bryts mitt i.
+            sectionTitle("Kommande")
+            if detail.hasFullSchedule {
+                fullScheduleLink
+                    .padding(.bottom, 12)
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                sectionTitle("Kommande")
+                Spacer(minLength: 0)
+                if detail.hasFullSchedule { fullScheduleLink }
+            }
+        }
+        ScheduleList(rows: detail.upcoming, shown: rowsRevealed || !entrancePlays || voiceOver)
+            .onScrollVisibilityChange(threshold: 0.02) { visible in
+                guard visible, !rowsRevealed else { return }
+                rowsRevealed = true
+                ShownSchedules.keys.markShown(key)
+            }
+    }
+
+    private var fullScheduleLink: some View {
+        NavigationLink {
+            FullScheduleView(model: model, key: key)
+        } label: {
+            HStack(spacing: 4) {
+                Text("Hela schemat")
+                Image(systemName: "chevron.right")
+                    .font(.system(.footnote, weight: .bold))
+                    .accessibilityHidden(true)
+            }
+            .font(.ui(16, weight: .heavy, relativeTo: .callout))
+            .foregroundStyle(Color.Theme.primary)
+        }
+        .buttonStyle(.pressable)
+    }
+
+    /// Nästa tömning per kärl, som kort i sidled. Nästa kort syns till hälften, så att det märks att det går att scrolla.
+    @ViewBuilder
+    private func bins(_ detail: AddressDetail) -> some View {
+        sectionTitle("Kärlen")
+        let large = typeSize.isAccessibilitySize
+        ScrollView(.horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                ForEach(Array(detail.bins.enumerated()), id: \.element.id) { index, bin in
+                    BinCard(bin: bin)
+                        .containerRelativeFrame(.horizontal, count: large ? 5 : 7, span: large ? 4 : 3, spacing: 12)
+                        .rowEntrance(shown: binsRevealed || !entrancePlays || voiceOver, index: index)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollIndicators(.hidden)
+        .scrollTargetBehavior(.viewAligned)
+        .contentMargins(.horizontal, 24, for: .scrollContent)
+        // Korten går ut till skärmens kant, medan resten av vyn har marginal.
+        .padding(.horizontal, -24)
+        .onScrollVisibilityChange(threshold: 0.02) { visible in
+            if visible { binsRevealed = true }
+        }
     }
 
     // MARK: Påminnelser
@@ -291,28 +349,10 @@ struct AddressView: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
     }
 
-    // MARK: Kommande och fot
+    // MARK: Fot
 
     @ViewBuilder
     private func footer(_ detail: AddressDetail) -> some View {
-        if detail.mode == .schedule {
-            sectionTitle("Kommande")
-            ResultList {
-                ForEach(Array(detail.rows.enumerated()), id: \.element.id) { index, row in
-                    // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
-                    VStack(spacing: 0) {
-                        if index > 0 { ResultDivider() }
-                        scheduleRow(row)
-                    }
-                    .rowEntrance(shown: rowsRevealed || !playsRowEntrance, index: index)
-                }
-            }
-            .onScrollVisibilityChange(threshold: 0.02) { visible in
-                guard visible, !rowsRevealed else { return }
-                rowsRevealed = true
-                ShownSchedules.keys.markShown(key)
-            }
-        }
         if let fetched = detail.fetchedText, detail.mode != .loading {
             Text(fetched)
                 .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
@@ -327,45 +367,6 @@ struct AddressView: View {
             }
             .padding(.top, detail.fetchedText == nil ? 20 : 8)
         }
-    }
-
-    /// Raderna kommer in första gången listan för adressen syns. Med VoiceOver visas de direkt, så att de alltid går att läsa.
-    private var playsRowEntrance: Bool {
-        EntranceTimeline.isEnabled && !voiceOver && ShownSchedules.keys.shouldPlay(key)
-    }
-
-    private func scheduleRow(_ row: AddressDetail.Row) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AdaptiveStack(spacing: 16, verticalSpacing: 10, alignment: .top) {
-                Text(row.dateText)
-                    .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                    .foregroundStyle(Color.Theme.text)
-                    .frame(width: typeSize.isAccessibilitySize ? nil : dateWidth, alignment: .leading)
-                FlowLayout(spacing: 8) {
-                    ForEach(row.fractions) { fraction in
-                        FractionChip(id: fraction.id, info: fraction.info)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            // Avvikelse och varning tar hela radens bredd, så att ingen text trängs ihop.
-            if let deviation = row.deviation {
-                Text(deviation)
-                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
-                    .foregroundStyle(Color.Theme.warn)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            if let warning = row.warning {
-                Label(warning, systemImage: "exclamationmark.triangle")
-                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
-                    .foregroundStyle(Color.Theme.warn)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(row.accessibilityLabel)
     }
 
     private func sectionTitle(_ title: String) -> some View {

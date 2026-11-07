@@ -109,12 +109,12 @@ final class CoreFlowTests: XCTestCase {
         waitUntilHittable(homeCard, "Hemkortet ska komma in")
 
         homeCard.tap()
-        // Listan ligger nedanför skärmen när vyn öppnas, och raderna väntar tills den syns. Bara de 8 första raderna
-        // kommer in, så raden som prövas är den första under rubriken.
+        // "Kommande" ligger direkt under nästa tömning, och raderna väntar tills listan syns. Raden som prövas är den
+        // första under rubriken. Kortet för nästa tömning läser samma kärl, så det utesluts.
         let title = app.staticTexts["Kommande"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
-        for _ in 0..<6 where !(title.isHittable && title.frame.maxY < app.frame.midY) { app.swipeUp() }
-        let row = app.otherElements.matching(NSPredicate(format: "label CONTAINS %@", ". Plastförpackningar")).element(boundBy: 0)
+        for _ in 0..<6 where !(title.isHittable && title.frame.maxY < app.frame.maxY - 240) { app.swipeUp() }
+        let row = app.otherElements.matching(NSPredicate(format: "label CONTAINS %@ AND NOT (label BEGINSWITH %@)", "dagar. Plastförpackningar", "Nästa tömning")).element(boundBy: 0)
         XCTAssertTrue(row.exists, "Schemaraderna ska finnas")
         XCTAssertGreaterThan(row.frame.minY, title.frame.maxY, "Raden ska vara den första under rubriken")
         XCTAssertLessThan(row.frame.minY - title.frame.maxY, 120, "Raden ska vara den första under rubriken")

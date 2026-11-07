@@ -26,6 +26,7 @@
 		6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */; };
 		6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */; };
 		70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */; };
+		74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2646AA909312B4395C8FC349 /* ScheduleViews.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
 		76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */; };
 		90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F307C543EEA02E99659E697 /* NotificationPresenter.swift */; };
@@ -83,6 +84,7 @@
 		0C8419AD422B35F3FFBD5521 /* PickupLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupLiveActivity.swift; sourceTree = "<group>"; };
 		140BBB80224770A99801765F /* AccessibilityAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditTests.swift; sourceTree = "<group>"; };
 		19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningWidgetBundle.swift; sourceTree = "<group>"; };
+		2646AA909312B4395C8FC349 /* ScheduleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleViews.swift; sourceTree = "<group>"; };
 		34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-omraden.json"; sourceTree = "<group>"; };
 		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreFlowTests.swift; sourceTree = "<group>"; };
@@ -259,6 +261,7 @@
 				E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */,
 				A9662238FFEB7754E74086AF /* PrimaryCard.swift */,
 				A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */,
+				2646AA909312B4395C8FC349 /* ScheduleViews.swift */,
 				4D5502E2E1A53F977DC24C47 /* SearchView.swift */,
 				C2F19D55CC253C38C359298A /* SettingsView.swift */,
 				8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */,
@@ -425,6 +428,7 @@
 				F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */,
 				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
 				38E9E5062ABB95267BEE75CA /* ReminderToggleRow.swift in Sources */,
+				74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */,
 				EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */,
 				350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */,
 				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,

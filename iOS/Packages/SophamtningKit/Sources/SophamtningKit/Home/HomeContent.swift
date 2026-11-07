@@ -18,6 +18,11 @@ public struct HomeContent: Equatable, Sendable {
         public let headline: String
         /// "Måndag 9 november", med "Ca" först när datumet är uppskattat.
         public let longDate: String
+
+        /// Datum, dagar kvar och kärlen i ett: "Nästa tömning. Om 3 dagar. Måndag 9 november. Restavfall, Matavfall".
+        public var accessibilityLabel: String {
+            ["Nästa tömning", headline, longDate, fractions.map(\.info.name).joined(separator: ", ")].joined(separator: ". ")
+        }
     }
 
     public enum Status: Equatable, Sendable {

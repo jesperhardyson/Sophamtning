@@ -169,4 +169,9 @@ import SophamtningKit
         #expect(SwedishFormat.dayNumber(day) == "9")
         #expect(SwedishFormat.weekdayName(day) == "måndag")
     }
+
+    @Test func kortNamnFranKallanAnnarsHelaNamnet() {
+        #expect(FractionStyle(id: "mat", info: FractionInfo(name: "Matavfall", short: "Mat", color: "#000000", icon: "apple")).shortName == "Mat")
+        #expect(FractionStyle(id: "x", info: FractionInfo(name: "Trädgård", short: "  ", color: "#000000", icon: "recycle")).shortName == "Trädgård")
+    }
 }
