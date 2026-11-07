@@ -219,11 +219,38 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
 }
 
 @Test func dagarKvarRaknasFranDatumetOchInteFranSparadeFalt() throws {
-    // Ett schema som hämtades för en vecka sedan: dagarna räknas från i dag, inte från när det hämtades.
+    // Ett schema som hämtades för en vecka sedan, med sparade fält som säger något annat: dagarna räknas från i dag och datumet.
     let old = StockholmClock.date(on: DayDate("2026-10-30")!, minutes: 8 * 60)
-    let result = detail(try schedule([event("2026-11-09", ["rest"])], fetchedAt: old))
+    let url = try #require(Bundle.module.url(forResource: "adress", withExtension: "json", subdirectory: "Fixtures"))
+    var json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    json["next"] = [[
+        "fraction": "rest", "name": "Restavfall", "color": "#555555", "date": "2026-11-09",
+        "daysUntil": 10, "isToday": true, "isTomorrow": true, "estimated": false, "warning": NSNull(),
+        "text": "Restavfall – i dag, fredag 30 oktober",
+    ]]
+    json["summary"] = "Restavfall i dag"
+    json["events"] = [["date": "2026-11-09", "fractions": ["rest"], "estimated": false, "deviation": NSNull(), "warning": NSNull(), "labels": [String: String]()]]
+    let response = try JSONDecoder().decode(AddressResponse.self, from: JSONSerialization.data(withJSONObject: json))
+    let result = detail(CachedSchedule(response: response, fetchedAt: old, lastAttemptAt: old, lastError: nil))
+    #expect(result.next?.headline == "Om 3 dagar")
+    #expect(result.next?.longDate == "Måndag 9 november")
     #expect(result.upcoming.first?.daysText == "om 3 dagar")
+    #expect(result.upcoming.first?.shortDaysText == "om 3 d")
     #expect(result.bins.first?.daysText == "om 3 dagar")
+}
+
+@Test func varningenForNastaTomningVisasBaraIRutan() throws {
+    let result = detail(try schedule([
+        event("2026-11-09", ["rest"], deviation: Deviation(originalDate: DayDate("2026-11-08"), reason: "Helg"), warning: "Helgdag"),
+        event("2026-11-12", ["mat"], warning: "Ställ ut tidigt"),
+    ]))
+    #expect(result.nextWarning == "Helgdag")
+    // Under "Kommande" står varningen inte en gång till, men avvikelsen står kvar.
+    #expect(result.upcoming.map(\.warning) == [nil, "Ställ ut tidigt"])
+    #expect(result.upcoming.first?.deviation == "Flyttad från sön 8 nov")
+    #expect(result.upcoming.first?.accessibilityLabel == "Mån 9 nov, om 3 dagar. Restavfall. Flyttad från sön 8 nov")
+    // Hela schemat visar alla varningar.
+    #expect(result.rows.map(\.warning) == ["Helgdag", "Ställ ut tidigt"])
 }
 
 @Test func voiceOverLaserRadenMedDagarKvar() throws {

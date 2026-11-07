@@ -83,10 +83,7 @@ struct AddressView: View {
                     .transition(.opacity)
                 switch detail.mode {
                 case .loading:
-                    BinLoaderView(textColor: Color.Theme.text)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    ScheduleLoadingCard()
                         .padding(.top, 20)
                         .transition(.opacity)
                 case .unavailable:
@@ -127,54 +124,12 @@ struct AddressView: View {
 
     // MARK: Lägen
 
-    @ViewBuilder
     private func notice(_ detail: AddressDetail) -> some View {
-        switch detail.notice {
-        case .savedShown(let fetched):
-            MessageCard(
-                style: .neutral,
-                icon: "icloud.slash",
-                title: "Visar senast hämtade schema",
-                message: ["Källan svarar inte just nu.", fetched].compactMap { $0 }.joined(separator: " ")
-            )
-            .padding(.bottom, 20)
-        case .sourceUnavailable:
-            VStack(spacing: 12) {
-                MessageCard(style: .warning, icon: "icloud.slash", title: "Källan svarar inte just nu", message: "Schemat kan inte hämtas. Det betyder inte att adressen saknas.")
-                Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
-                    .buttonStyle(.pressable)
-            }
-            .padding(.bottom, 20)
-        case .notFound:
-            VStack(spacing: 12) {
-                MessageCard(style: .warning, icon: "location.slash", title: "Adressen hittas inte längre", message: "Källan känner inte igen adressen. Sök upp den på nytt för att få schemat.")
-                Button(action: onSearchAgain) { PrimaryButtonLabel(title: "Sök igen") }
-                    .buttonStyle(.pressable)
-            }
-            .padding(.bottom, 20)
-        case .badRequest:
-            // Samma anrop upprepas inte, så det finns ingen Försök igen.
-            MessageCard(
-                style: .warning,
-                icon: "exclamationmark.triangle",
-                title: "Källan godtog inte förfrågan",
-                message: "Förfrågan för den här adressen avvisades. Det betyder inte att adressen saknas. Appen hämtar schemat på nytt som vanligt, högst en gång i timmen."
-            )
-            .padding(.bottom, 20)
-        case .storageFailed:
-            VStack(spacing: 12) {
-                MessageCard(style: .warning, icon: "externaldrive.badge.xmark", title: "Schemat kunde inte sparas", message: "Det går inte att spara på telefonen just nu, och schemat visas först när det har sparats. Det betyder inte att adressen saknas.")
-                Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
-                    .buttonStyle(.pressable)
-            }
-            .padding(.bottom, 20)
-        case nil:
-            EmptyView()
-        }
+        AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
     }
 
     private func noUpcoming(_ detail: AddressDetail) -> some View {
-        MessageCard(style: .neutral, icon: "calendar.badge.exclamationmark", title: "Inga kommande hämtningar", message: "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+        NoUpcomingCard()
             .padding(.bottom, 4)
     }
 
@@ -255,7 +210,7 @@ struct AddressView: View {
 
     private var fullScheduleLink: some View {
         NavigationLink {
-            FullScheduleView(model: model, key: key)
+            FullScheduleView(model: model, key: key, onSearchAgain: { onSearchAgain() })
         } label: {
             HStack(spacing: 4) {
                 Text("Hela schemat")

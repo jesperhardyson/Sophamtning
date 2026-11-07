@@ -60,6 +60,10 @@ public struct AddressDetail: Equatable, Sendable {
         public let warning: String?
         public var id: DayDate { date }
 
+        var withoutWarning: Row {
+            Row(date: date, dateText: dateText, dayNumber: dayNumber, month: month, daysText: daysText, shortDaysText: shortDaysText, fractions: fractions, deviation: deviation, warning: nil)
+        }
+
         public var accessibilityLabel: String {
             (["\(dateText), \(daysText)", fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
         }
@@ -80,8 +84,13 @@ public struct AddressDetail: Equatable, Sendable {
     /// Hur många datum som visas under "Kommande".
     public static let upcomingCount = 3
 
-    /// De närmaste datumen under "Kommande". Det första kan vara samma dag som nästa tömning.
-    public var upcoming: [Row] { Array(rows.prefix(Self.upcomingCount)) }
+    /// De närmaste datumen under "Kommande". Det första kan vara samma dag som nästa tömning. Dess varning står då
+    /// bara i rutan för nästa tömning (`nextWarning`), inte en gång till under raden. Avvikelsen står kvar.
+    public var upcoming: [Row] {
+        rows.prefix(Self.upcomingCount).map { row in
+            row.date == next?.date ? row.withoutWarning : row
+        }
+    }
 
     /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
     public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }

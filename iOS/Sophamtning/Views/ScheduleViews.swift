@@ -109,18 +109,23 @@ struct ScheduleList: View {
 struct BinCard: View {
     let bin: AddressDetail.Bin
 
-    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Lika många rader som namnet har ord, högst tre.
+    private var nameLines: Int {
+        min(max(bin.info.name.split(whereSeparator: \.isWhitespace).count, 1), 3)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             FractionIconView(id: bin.id, info: bin.info)
             VStack(alignment: .leading, spacing: 2) {
+                // Högst en rad per ord, så att ett långt ord ("Pappersförpackningar") krymper i stället för att brytas mitt i.
                 Text(bin.info.name)
                     .font(.ui(17, weight: .heavy, relativeTo: .headline))
                     .foregroundStyle(Color.Theme.text)
-                    .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
-                    .minimumScaleFactor(0.6)
+                    .lineLimit(nameLines)
+                    .minimumScaleFactor(0.4)
                 Text(bin.daysText)
                     .font(.ui(15, weight: .heavy, relativeTo: .callout))
                     .foregroundStyle(Color.Theme.brandText)
@@ -140,31 +145,134 @@ struct BinCard: View {
     }
 }
 
-/// Hela det kommande schemat, i samma format som raderna under "Kommande".
+/// Hela det kommande schemat, i samma format som raderna under "Kommande". Saknas schemat visas samma meddelanden som i
+/// adressvyn, och försvinner adressen medan vyn är öppen står det varför. Vyn är aldrig tom.
 struct FullScheduleView: View {
     let model: AppModel
     let key: AddressKey
+    let onSearchAgain: () -> Void
 
     var body: some View {
         ZStack {
             Color.Theme.bg.ignoresSafeArea()
-            if let address = model.addresses.first(where: { $0.key == key }) {
-                let detail = AddressDetail.make(
-                    address: address,
-                    schedule: model.schedule(for: key),
-                    settings: model.settings,
-                    sourceName: nil,
-                    now: model.currentDate
-                )
-                ScrollView {
-                    ScheduleList(rows: detail.rows)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 8)
-                        .padding(.bottom, 32)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if let address = model.addresses.first(where: { $0.key == key }) {
+                        content(for: address)
+                    } else {
+                        missingAddress
+                    }
                 }
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
+            .refreshable { await model.refreshAll(manual: true) }
         }
         .navigationTitle("Hela schemat")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func content(for address: SavedAddress) -> some View {
+        let detail = AddressDetail.make(
+            address: address,
+            schedule: model.schedule(for: key),
+            settings: model.settings,
+            sourceName: nil,
+            now: model.currentDate
+        )
+        AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
+        switch detail.mode {
+        case .loading:
+            ScheduleLoadingCard()
+        case .unavailable:
+            // Felet står i meddelandet ovan.
+            EmptyView()
+        case .noUpcoming:
+            NoUpcomingCard()
+        case .schedule:
+            ScheduleList(rows: detail.rows)
+        }
+    }
+
+    /// Adressen togs bort, eller adresserna går inte att läsa just nu. Ett läsfel får aldrig se ut som en borttagen adress.
+    @ViewBuilder
+    private var missingAddress: some View {
+        if model.storageProblem == .addressesUnreadable || model.storageProblem == .addressesUnavailable {
+            MessageCard(style: .warning, icon: "externaldrive.badge.xmark", title: "Dina adresser kan inte läsas just nu", message: "Inget har raderats. Gå tillbaka till hemskärmen och försök igen.")
+        } else {
+            MessageCard(style: .neutral, icon: "mappin.slash", title: "Adressen är borttagen", message: "Den finns inte längre bland dina sparade adresser.")
+        }
+    }
+}
+
+/// Meddelandet högst upp i adressvyn och i hela schemat när hämtningen eller sparandet har misslyckats.
+struct AddressNoticeView: View {
+    let model: AppModel
+    let notice: AddressDetail.Notice?
+    /// Öppnar sökningen igen, för en adress som källan inte längre känner igen.
+    let onSearchAgain: () -> Void
+
+    var body: some View {
+        switch notice {
+        case .savedShown(let fetched):
+            MessageCard(
+                style: .neutral,
+                icon: "icloud.slash",
+                title: "Visar senast hämtade schema",
+                message: ["Källan svarar inte just nu.", fetched].compactMap { $0 }.joined(separator: " ")
+            )
+            .padding(.bottom, 20)
+        case .sourceUnavailable:
+            VStack(spacing: 12) {
+                MessageCard(style: .warning, icon: "icloud.slash", title: "Källan svarar inte just nu", message: "Schemat kan inte hämtas. Det betyder inte att adressen saknas.")
+                Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                    .buttonStyle(.pressable)
+            }
+            .padding(.bottom, 20)
+        case .notFound:
+            VStack(spacing: 12) {
+                MessageCard(style: .warning, icon: "location.slash", title: "Adressen hittas inte längre", message: "Källan känner inte igen adressen. Sök upp den på nytt för att få schemat.")
+                Button { onSearchAgain() } label: { PrimaryButtonLabel(title: "Sök igen") }
+                    .buttonStyle(.pressable)
+            }
+            .padding(.bottom, 20)
+        case .badRequest:
+            // Samma anrop upprepas inte, så det finns ingen Försök igen.
+            MessageCard(
+                style: .warning,
+                icon: "exclamationmark.triangle",
+                title: "Källan godtog inte förfrågan",
+                message: "Förfrågan för den här adressen avvisades. Det betyder inte att adressen saknas. Appen hämtar schemat på nytt som vanligt, högst en gång i timmen."
+            )
+            .padding(.bottom, 20)
+        case .storageFailed:
+            VStack(spacing: 12) {
+                MessageCard(style: .warning, icon: "externaldrive.badge.xmark", title: "Schemat kunde inte sparas", message: "Det går inte att spara på telefonen just nu, och schemat visas först när det har sparats. Det betyder inte att adressen saknas.")
+                Button { Task { await model.refreshAll(manual: true) } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                    .buttonStyle(.pressable)
+            }
+            .padding(.bottom, 20)
+        case nil:
+            EmptyView()
+        }
+    }
+}
+
+/// Schemat hämtas för första gången.
+struct ScheduleLoadingCard: View {
+    var body: some View {
+        BinLoaderView(textColor: Color.Theme.text)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+}
+
+/// Schemat finns men har inga hämtningar från och med i dag.
+struct NoUpcomingCard: View {
+    var body: some View {
+        MessageCard(style: .neutral, icon: "calendar.badge.exclamationmark", title: "Inga kommande hämtningar", message: "Schemat kan ta slut tills kommunen har publicerat nästa period.")
     }
 }

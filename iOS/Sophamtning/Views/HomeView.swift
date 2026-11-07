@@ -269,8 +269,12 @@ struct HomeView: View {
         guard case .upcoming(let pickup) = primary?.status,
               let from = CalendarFlipTimeline.openingDate(today: StockholmClock.today(now: model.currentDate), pickup: pickup.date) else { return 0 }
         let pages = CalendarFlipTimeline.dates(from: from, to: pickup.date, reduceMotion: reduceMotion).count
-        return CalendarFlipTimeline.duration(pages: pages, reduceMotion: reduceMotion)
+        // Marginalen gör att brickan hinner vibrera vid landningen innan starten avslutas, även när båda väcks samtidigt.
+        return CalendarFlipTimeline.duration(pages: pages, reduceMotion: reduceMotion) + Self.landingMargin
     }
+
+    /// Tid efter sista bladets landning innan starten avslutas.
+    private static let landingMargin: TimeInterval = 0.05
 
     /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
     private func opening(for primary: HomeContent.Entry) -> CalendarTile.Opening? {
