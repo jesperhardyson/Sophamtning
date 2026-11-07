@@ -134,7 +134,7 @@ struct KommunCheckView: View {
                 }
             }
             if hasAreas {
-                NavigationLink(value: AddRoute.areas(title: row.name, hits: result.areas)) {
+                NavigationLink(value: AddRoute.areas(title: row.name, place: shortKommunName(row.name), hits: result.areas)) {
                     PrimaryButtonLabel(title: "Välj område i \(shortKommunName(row.name))")
                 }
             } else {

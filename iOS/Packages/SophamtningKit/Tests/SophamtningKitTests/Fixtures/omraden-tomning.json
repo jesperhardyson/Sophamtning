@@ -1,0 +1,20 @@
+{
+  "apiVersion": "1",
+  "failed": [],
+  "dateCovered": true,
+  "addresses": [
+    {
+      "id": "trakt-7",
+      "street": "Avesta tätort, Östanfors m.fl.",
+      "locality": "",
+      "kommun": "Avesta kommun",
+      "source": "avesta",
+      "detail": "Tisdag, jämn vecka · Trakt 7",
+      "selection": "area",
+      "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+      "areasUrl": "https://sopor.hardyson.se/avesta/omraden",
+      "url": "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-7",
+      "pickups": { "previous": ["2026-10-13", "2026-10-27"], "next": "2026-11-10" }
+    }
+  ]
+}

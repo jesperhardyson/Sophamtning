@@ -24,6 +24,16 @@ public enum SwedishFormat {
         return capitalized ? text.prefix(1).uppercased() + text.dropFirst() : text
     }
 
+    /// "Tisdag 27 oktober 2026".
+    public static func longDateWithYear(_ day: DayDate) -> String {
+        "\(longDate(day, capitalized: true)) \(day.year)"
+    }
+
+    /// "13 okt", utan veckodag.
+    public static func dayMonth(_ day: DayDate) -> String {
+        "\(day.day) \(shortMonths[day.month - 1])"
+    }
+
     /// Veckodagen helt utskriven, "måndag".
     public static func weekdayName(_ day: DayDate) -> String {
         weekdays[weekdayIndex(day)]
@@ -56,5 +66,10 @@ public enum SwedishFormat {
     /// Sätter "ca" framför en text när tiden är uppskattad.
     public static func estimated(_ text: String, _ isEstimated: Bool) -> String {
         isEstimated ? "ca \(text)" : text
+    }
+
+    /// Klockslaget för minuter efter midnatt, "18:00".
+    public static func clock(minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
     }
 }

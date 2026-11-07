@@ -135978,6 +135978,73 @@
             },
             {
               "type": "frame",
+              "id": "CbOxT",
+              "name": "Hitta område",
+              "width": "fill_container",
+              "fill": "$brand-soft",
+              "cornerRadius": 18,
+              "gap": 12,
+              "padding": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "tnss8",
+                  "name": "Ikon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "calendar-search",
+                  "library": "lucide",
+                  "fill": "$brand-text"
+                },
+                {
+                  "type": "frame",
+                  "id": "ngYey",
+                  "name": "Text",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "izbcf",
+                      "name": "Rubrik",
+                      "fill": "$brand-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Vet du inte vilket område?",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h4bm4",
+                      "name": "Undertext",
+                      "fill": "$brand-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Hitta det med din senaste tömning",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "icon",
+                  "id": "sZyia",
+                  "name": "Pil",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "chevron-right",
+                  "library": "lucide",
+                  "fill": "$brand-text"
+                }
+              ]
+            },
+            {
+              "type": "frame",
               "id": "UZ5NB",
               "name": "Länk",
               "width": "fill_container",
@@ -142360,6 +142427,1149 @@
                       }
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "dN6Eu",
+      "x": 6266,
+      "y": -8900,
+      "name": "iOS · Hitta område (träff)",
+      "clip": true,
+      "width": 402,
+      "height": 874,
+      "fill": "#0B241666",
+      "layout": "vertical",
+      "justifyContent": "end",
+      "children": [
+        {
+          "type": "frame",
+          "id": "icsD5",
+          "name": "Ark",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": [
+            32,
+            32,
+            0,
+            0
+          ],
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            12,
+            24,
+            32,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "weqVS",
+              "name": "Greppyta",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mKKkk",
+                  "name": "Grepp",
+                  "width": 40,
+                  "height": 5,
+                  "fill": "$border",
+                  "cornerRadius": 3
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "lrapW",
+              "name": "Rubrik",
+              "fill": "$text",
+              "content": "När tömdes ditt kärl senast?",
+              "fontFamily": "$font-ui",
+              "fontSize": 24,
+              "fontWeight": "800",
+              "letterSpacing": -0.4
+            },
+            {
+              "type": "text",
+              "id": "SujGp",
+              "name": "Ingress",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Varje hämtdag hör till ett område, så datumet visar vilket som gäller.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-ui",
+              "fontSize": 16,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "rOPDv",
+              "name": "Datum",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "t3CQg",
+                  "name": "Etikett",
+                  "fill": "$text-2",
+                  "content": "Senaste tömning",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "frame",
+                  "id": "Kgx9Q",
+                  "name": "Fält",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "stroke": "$primary",
+                  "strokeWidth": 2,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "WyJTp",
+                      "name": "Ikon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "calendar",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "D7yEF",
+                      "name": "Värde",
+                      "fill": "$text",
+                      "content": "Tisdag 27 oktober 2026",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BScW2",
+              "name": "Svar",
+              "width": "fill_container",
+              "fill": "$brand-soft",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "a6UCV6",
+                  "name": "Etikett",
+                  "fill": "$brand-text",
+                  "content": "Det här bör vara ditt område",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "frame",
+                  "id": "a4J79q",
+                  "name": "Avesta tätort, Östanfors m.fl.",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KS8Yo",
+                      "name": "Område",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Avesta tätort, Östanfors m.fl.",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "g8IQQf",
+                      "name": "Tömning",
+                      "fill": "$text-2",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Tisdag, jämn vecka · Trakt 7",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "lK2zQ",
+                  "name": "Kontroll",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Tömningar 13 okt och 27 okt. Nästa är 10 nov. Stämmer det? En försenad tömning kan ge fel område.",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-ui",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "id": "nkBX8",
+              "type": "ref",
+              "ref": "bWfxG",
+              "name": "Välj det här området",
+              "width": "fill_container",
+              "descendants": {
+                "c5oHbj": {
+                  "content": "Välj det här området"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "CKF17",
+              "name": "Välj område själv",
+              "width": "fill_container",
+              "height": 44,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "p6BKz",
+                  "name": "Etikett",
+                  "fill": "$primary",
+                  "content": "Välj område själv",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 16,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "J4FCjy",
+      "x": 6748,
+      "y": -8900,
+      "name": "iOS · Hitta område (flera)",
+      "clip": true,
+      "width": 402,
+      "height": 874,
+      "fill": "#0B241666",
+      "layout": "vertical",
+      "justifyContent": "end",
+      "children": [
+        {
+          "type": "frame",
+          "id": "tMdNM",
+          "name": "Ark",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": [
+            32,
+            32,
+            0,
+            0
+          ],
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            12,
+            24,
+            32,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "HIsxi",
+              "name": "Greppyta",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CHFGx",
+                  "name": "Grepp",
+                  "width": 40,
+                  "height": 5,
+                  "fill": "$border",
+                  "cornerRadius": 3
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "JIsz2",
+              "name": "Rubrik",
+              "fill": "$text",
+              "content": "När tömdes ditt kärl senast?",
+              "fontFamily": "$font-ui",
+              "fontSize": 24,
+              "fontWeight": "800",
+              "letterSpacing": -0.4
+            },
+            {
+              "type": "text",
+              "id": "uyhbL",
+              "name": "Ingress",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Varje hämtdag hör till ett område, så datumet visar vilket som gäller.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-ui",
+              "fontSize": 16,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "s6PufC",
+              "name": "Datum",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "po521",
+                  "name": "Etikett",
+                  "fill": "$text-2",
+                  "content": "Senaste tömning",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "frame",
+                  "id": "MPZVu",
+                  "name": "Fält",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "stroke": "$primary",
+                  "strokeWidth": 2,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "UqrwU",
+                      "name": "Ikon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "calendar",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "vkRMY",
+                      "name": "Värde",
+                      "fill": "$text",
+                      "content": "Tisdag 27 oktober 2026",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "XA3Oz",
+              "name": "Svar",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Flera områden hade hämtning den dagen. Välj ditt område.",
+              "lineHeight": 1.3,
+              "fontFamily": "$font-ui",
+              "fontSize": 16,
+              "fontWeight": "800"
+            },
+            {
+              "type": "frame",
+              "id": "g6tvhz",
+              "name": "Lista",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "c3alrB",
+                  "name": "Svar",
+                  "width": "fill_container",
+                  "fill": "$brand-soft",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "o09yr",
+                      "name": "Avesta tätort, Östanfors m.fl.",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Z5jTnf",
+                          "name": "Område",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Avesta tätort, Östanfors m.fl.",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 18,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "UK9Pp",
+                          "name": "Tömning",
+                          "fill": "$text-2",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Tisdag, jämn vecka · Trakt 7",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "IX6tT",
+                      "name": "Kontroll",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Tömningar 13 okt och 27 okt. Nästa 10 nov.",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EpBBv",
+                  "name": "Svar",
+                  "width": "fill_container",
+                  "fill": "$brand-soft",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SxfC5",
+                      "name": "Skogsbo tätort, Rosse m.fl.",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ni6qV",
+                          "name": "Område",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Skogsbo tätort, Rosse m.fl.",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 18,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "A6aoMb",
+                          "name": "Tömning",
+                          "fill": "$text-2",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Tisdag, jämn vecka · Trakt 2",
+                          "fontFamily": "$font-ui",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "z1Xzfb",
+                      "name": "Kontroll",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Tömningar 13 okt och 27 okt. Nästa 10 nov.",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TyVVe",
+              "name": "Välj område själv",
+              "width": "fill_container",
+              "height": 44,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Kh6EX",
+                  "name": "Etikett",
+                  "fill": "$primary",
+                  "content": "Välj område själv",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 16,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "UVG5K",
+      "x": 7230,
+      "y": -8900,
+      "name": "iOS · Hitta område (ingen hämtning)",
+      "clip": true,
+      "width": 402,
+      "height": 874,
+      "fill": "#0B241666",
+      "layout": "vertical",
+      "justifyContent": "end",
+      "children": [
+        {
+          "type": "frame",
+          "id": "QTeFM",
+          "name": "Ark",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": [
+            32,
+            32,
+            0,
+            0
+          ],
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            12,
+            24,
+            32,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "g9aP3o",
+              "name": "Greppyta",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "r0xMI",
+                  "name": "Grepp",
+                  "width": 40,
+                  "height": 5,
+                  "fill": "$border",
+                  "cornerRadius": 3
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "f4Z11",
+              "name": "Rubrik",
+              "fill": "$text",
+              "content": "När tömdes ditt kärl senast?",
+              "fontFamily": "$font-ui",
+              "fontSize": 24,
+              "fontWeight": "800",
+              "letterSpacing": -0.4
+            },
+            {
+              "type": "text",
+              "id": "J5V63D",
+              "name": "Ingress",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Varje hämtdag hör till ett område, så datumet visar vilket som gäller.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-ui",
+              "fontSize": 16,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "z9WS5",
+              "name": "Datum",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "gw5Uj",
+                  "name": "Etikett",
+                  "fill": "$text-2",
+                  "content": "Senaste tömning",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "frame",
+                  "id": "Ib5qH",
+                  "name": "Fält",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "stroke": "$primary",
+                  "strokeWidth": 2,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "q7jcZv",
+                      "name": "Ikon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "calendar",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "D9Ut2e",
+                      "name": "Värde",
+                      "fill": "$text",
+                      "content": "Tisdag 27 oktober 2026",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n2Q2ca",
+              "name": "Svar",
+              "width": "fill_container",
+              "fill": "$earth-soft",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "qzcRH",
+                  "name": "Rubrik",
+                  "fill": "$text",
+                  "content": "Inget område har hämtning den dagen",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 17,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "ggyUT",
+                  "name": "Text",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Prova ett annat datum eller välj område i listan.",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-ui",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mpqgP",
+              "name": "Välj område själv",
+              "width": "fill_container",
+              "height": 44,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HRO2Q",
+                  "name": "Etikett",
+                  "fill": "$primary",
+                  "content": "Välj område själv",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 16,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "WL2Oe",
+      "x": 7712,
+      "y": -8900,
+      "name": "iOS · Hitta område (utanför schemat)",
+      "clip": true,
+      "width": 402,
+      "height": 874,
+      "fill": "#0B241666",
+      "layout": "vertical",
+      "justifyContent": "end",
+      "children": [
+        {
+          "type": "frame",
+          "id": "sk2GV",
+          "name": "Ark",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": [
+            32,
+            32,
+            0,
+            0
+          ],
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            12,
+            24,
+            32,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "jDlSm",
+              "name": "Greppyta",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U4gCJ",
+                  "name": "Grepp",
+                  "width": 40,
+                  "height": 5,
+                  "fill": "$border",
+                  "cornerRadius": 3
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "wGVS4",
+              "name": "Rubrik",
+              "fill": "$text",
+              "content": "När tömdes ditt kärl senast?",
+              "fontFamily": "$font-ui",
+              "fontSize": 24,
+              "fontWeight": "800",
+              "letterSpacing": -0.4
+            },
+            {
+              "type": "text",
+              "id": "vvvVw",
+              "name": "Ingress",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Varje hämtdag hör till ett område, så datumet visar vilket som gäller.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-ui",
+              "fontSize": 16,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "ufkoy",
+              "name": "Datum",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uYk3c",
+                  "name": "Etikett",
+                  "fill": "$text-2",
+                  "content": "Senaste tömning",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "frame",
+                  "id": "DrzSy",
+                  "name": "Fält",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "stroke": "$primary",
+                  "strokeWidth": 2,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "pYQr6",
+                      "name": "Ikon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "calendar",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "q7qqm2",
+                      "name": "Värde",
+                      "fill": "$text",
+                      "content": "Tisdag 27 oktober 2026",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "h4GYte",
+              "name": "Svar",
+              "width": "fill_container",
+              "fill": "$earth-soft",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Zt3dl",
+                  "name": "Rubrik",
+                  "fill": "$text",
+                  "content": "Schemat täcker inte det datumet",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 17,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "bXKKc",
+                  "name": "Text",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Prova ett senare datum eller välj område i listan.",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-ui",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ehQAI",
+              "name": "Välj område själv",
+              "width": "fill_container",
+              "height": 44,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RuqKa",
+                  "name": "Etikett",
+                  "fill": "$primary",
+                  "content": "Välj område själv",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 16,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "k2IYS",
+      "x": 8194,
+      "y": -8900,
+      "name": "iOS · Hitta område (fel)",
+      "clip": true,
+      "width": 402,
+      "height": 874,
+      "fill": "#0B241666",
+      "layout": "vertical",
+      "justifyContent": "end",
+      "children": [
+        {
+          "type": "frame",
+          "id": "hWZ6n",
+          "name": "Ark",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": [
+            32,
+            32,
+            0,
+            0
+          ],
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            12,
+            24,
+            32,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "m47o3",
+              "name": "Greppyta",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "L7D0Q",
+                  "name": "Grepp",
+                  "width": 40,
+                  "height": 5,
+                  "fill": "$border",
+                  "cornerRadius": 3
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "VHEL6",
+              "name": "Rubrik",
+              "fill": "$text",
+              "content": "När tömdes ditt kärl senast?",
+              "fontFamily": "$font-ui",
+              "fontSize": 24,
+              "fontWeight": "800",
+              "letterSpacing": -0.4
+            },
+            {
+              "type": "text",
+              "id": "j4hf2q",
+              "name": "Ingress",
+              "fill": "$text-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Varje hämtdag hör till ett område, så datumet visar vilket som gäller.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-ui",
+              "fontSize": 16,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "MVJ2K",
+              "name": "Datum",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "mzArm",
+                  "name": "Etikett",
+                  "fill": "$text-2",
+                  "content": "Senaste tömning",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "frame",
+                  "id": "H4iaRh",
+                  "name": "Fält",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "stroke": "$primary",
+                  "strokeWidth": 2,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "n8DCzk",
+                      "name": "Ikon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "calendar",
+                      "library": "lucide",
+                      "fill": "$primary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "BcNWK",
+                      "name": "Värde",
+                      "fill": "$text",
+                      "content": "Tisdag 27 oktober 2026",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 17,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VB2CP",
+              "name": "Svar",
+              "width": "fill_container",
+              "fill": "$warn-bg",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jkrZF",
+                  "name": "Rubrik",
+                  "fill": "$warn",
+                  "content": "Kunde inte kontrollera just nu",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 17,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "M2veL",
+                  "name": "Text",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Det säger inget om ditt område. Försök igen om en stund.",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-ui",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "id": "LV68G",
+              "type": "ref",
+              "ref": "bWfxG",
+              "name": "Försök igen",
+              "width": "fill_container",
+              "descendants": {
+                "c5oHbj": {
+                  "content": "Försök igen"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "RjpJ5",
+              "name": "Välj område själv",
+              "width": "fill_container",
+              "height": 44,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ezZ2l",
+                  "name": "Etikett",
+                  "fill": "$primary",
+                  "content": "Välj område själv",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 16,
+                  "fontWeight": "800"
                 }
               ]
             }

@@ -23,6 +23,10 @@ public struct SoporClient: SoporAPI {
         try await get(Self.endpoint("omraden", [("plats", place)]))
     }
 
+    public func areas(place: String, lastEmptied: DayDate) async throws -> SearchResponse {
+        try await get(Self.endpoint("omraden", [("plats", place), ("tomning", lastEmptied.iso)]))
+    }
+
     public func address(url: URL) async throws -> AddressResponse {
         try await get(url)
     }

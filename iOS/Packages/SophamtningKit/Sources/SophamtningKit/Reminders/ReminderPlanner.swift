@@ -19,14 +19,22 @@ public struct PlannerInput: Sendable {
     public let liveActivitiesAllowed: Bool
     /// Adress och datum för Live Activities som faktiskt finns hos systemet (väntande eller pågående). Saknar standardvärde med avsikt.
     public let existingActivities: Set<PlacedOut>
+    /// Adress och datum där aktiviteten bevisligen syntes (pågående sedd eller lyckad direktstart). Då behövs ingen reservnotis. Saknar
+    /// standardvärde med avsikt: glöms den skickas en onödig andra påminnelse.
+    public let shownActivities: Set<PlacedOut>
+    /// Aktiviteternas egna starttider, så att reserven räknas från den start som faktiskt gäller. Saknas en post används
+    /// påminnelsetiden i inställningarna.
+    public let activityStarts: [PlacedOut: Date]
 
-    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>) {
+    public init(addresses: [PlannerAddress], settings: ReminderSettings, placedOut: Set<PlacedOut>, now: Date, liveActivitiesAllowed: Bool, existingActivities: Set<PlacedOut>, shownActivities: Set<PlacedOut>, activityStarts: [PlacedOut: Date] = [:]) {
         self.addresses = addresses
         self.settings = settings
         self.placedOut = placedOut
         self.now = now
         self.liveActivitiesAllowed = liveActivitiesAllowed
         self.existingActivities = existingActivities
+        self.shownActivities = shownActivities
+        self.activityStarts = activityStarts
     }
 }
 
@@ -38,6 +46,11 @@ public struct PlannedNotification: Equatable, Sendable {
     public let body: String
     public let key: AddressKey
     public let pickupDate: DayDate
+
+    /// Identifieraren för adressens notis ett visst datum. Reservnotisen har samma, så att den ersätter den vanliga.
+    public static func identifier(key: AddressKey, date: DayDate) -> String {
+        "\(key.fileName)-\(date.iso)"
+    }
 
     public init(identifier: String, fireDate: Date, title: String, body: String, key: AddressKey, pickupDate: DayDate) {
         self.identifier = identifier
@@ -76,13 +89,18 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
     public let estimated: Bool
     public let warning: String?
 
+    /// Längsta varning. Allt innehåll måste rymmas inom systemets 4 KB, och höjden på låsskärmen är begränsad.
+    static let maxWarningLength = 200
+
     public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?) {
         self.addressName = addressName
         self.dateText = dateText
         self.shortDateText = shortDateText
         self.fractions = fractions
         self.estimated = estimated
-        self.warning = warning
+        self.warning = warning.map { text in
+            text.count > Self.maxWarningLength ? text.prefix(Self.maxWarningLength - 1) + "…" : text
+        }
     }
 }
 
@@ -123,6 +141,21 @@ public enum ReminderPlanner {
     static let maxAddressNameLength = 60
     static let defaultReminderMinutes = 1080
 
+    /// Reservnotisen kommer så här många minuter efter aktivitetens start, om aktiviteten inte syntes eller bekräftades.
+    static let fallbackDelayMinutes = 45
+    /// Senaste klockslag för reservnotisen, i minuter efter midnatt: 23:45. Påminnelsetiden stannar vid 23:00, så starten är
+    /// aldrig senare än taket.
+    static let fallbackLatestMinutes = 23 * 60 + 45
+
+    static let fallbackTitle = "Har du ställt ut kärlen?"
+    static let ordinaryTitle = "Ställ ut kärlen"
+
+    /// Reservnotisens tid för en aktivitet som startar `start`: 45 minuter senare, högst 23:45 samma dag i svensk tid.
+    static func fallbackDate(start: Date) -> Date {
+        let latest = StockholmClock.date(on: StockholmClock.today(now: start), minutes: fallbackLatestMinutes)
+        return min(start.addingTimeInterval(TimeInterval(fallbackDelayMinutes * 60)), latest)
+    }
+
     /// Ogiltig tid ger standardtiden, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
     private static func effectiveMinutes(_ settings: ReminderSettings) -> Int {
         ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : defaultReminderMinutes
@@ -149,15 +182,22 @@ public enum ReminderPlanner {
         for entry in entries where entry.address.notificationsOn {
             guard let response = entry.schedule?.response else { continue }
             for pickup in pickups(in: response, today: today) {
-                if input.placedOut.contains(PlacedOut(key: entry.address.key, date: pickup.date)) { continue }
-                // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet.
-                if activitiesActive, input.existingActivities.contains(PlacedOut(key: entry.address.key, date: pickup.date)) { continue }
-                let fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                let id = PlacedOut(key: entry.address.key, date: pickup.date)
+                if input.placedOut.contains(id) { continue }
+                var fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                var title = ordinaryTitle
+                // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse
+                // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
+                if activitiesActive, input.existingActivities.contains(id) {
+                    if input.shownActivities.contains(id) { continue }
+                    fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate)
+                    title = fallbackTitle
+                }
                 guard fireDate > input.now else { continue }
                 notifications.append(PlannedNotification(
-                    identifier: "\(entry.address.key.fileName)-\(pickup.date.iso)",
+                    identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date),
                     fireDate: fireDate,
-                    title: "Ställ ut kärlen",
+                    title: title,
                     body: body(addressName: entry.address.displayName, pickup: pickup, response: response),
                     key: entry.address.key,
                     pickupDate: pickup.date
@@ -167,6 +207,26 @@ public enum ReminderPlanner {
         notifications.sort { ($0.fireDate, $0.identifier) < ($1.fireDate, $1.identifier) }
 
         return ReminderPlan(notifications: Array(notifications.prefix(maxNotifications)), liveActivity: liveActivity)
+    }
+
+    /// Notiser som står kvar när deras tid ligger framför även om planen inte längre innehåller dem. Gäller tömningar där den
+    /// ordinarie notistiden har passerat, tömningen finns kvar i schemat och den varken är utställd eller bevisat visad:
+    /// en väntande notis där är reserven, och tas den bort står tömningen utan påminnelse. Planeraren skapar aldrig en ny.
+    /// Adresser med notiser avstängda ingår inte, så avstängda val tar fortfarande bort sina notiser.
+    public static func retainable(_ input: PlannerInput) -> [String: PlacedOut] {
+        let today = StockholmClock.today(now: input.now)
+        let minutes = effectiveMinutes(input.settings)
+        var result: [String: PlacedOut] = [:]
+        for entry in input.addresses where entry.address.notificationsOn {
+            guard let response = entry.schedule?.response else { continue }
+            for pickup in pickups(in: response, today: today) {
+                let id = PlacedOut(key: entry.address.key, date: pickup.date)
+                if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
+                let ordinary = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date)] = id }
+            }
+        }
+        return result
     }
 
     private static func planLiveActivity(_ entries: [PlannerAddress], input: PlannerInput, today: DayDate) -> PlannedLiveActivity? {
@@ -188,17 +248,30 @@ public enum ReminderPlanner {
             pickupDate: next.date,
             start: start,
             startsImmediately: isTomorrow && input.now >= start,
-            content: PickupActivityContent(
-                addressName: String(primary.address.displayName.prefix(maxAddressNameLength)),
-                dateText: SwedishFormat.longDate(next.date, capitalized: true),
-                shortDateText: SwedishFormat.shortDate(next.date),
-                fractions: next.fractions.map { id in
-                    let info = ScheduleLogic.displayInfo(for: id, in: response.fractions)
-                    return ActivityFraction(id: id, name: info.name, short: info.short, color: info.color, icon: info.icon)
-                },
-                estimated: next.estimated,
-                warning: next.warning
-            )
+            content: content(of: next, address: primary.address, response: response)
+        )
+    }
+
+    /// Innehållet för huvudadressens tömning ett visst datum, för en aktivitet som redan pågår. `nil` utan sådan tömning.
+    public static func activityContent(on date: DayDate, input: PlannerInput) -> PickupActivityContent? {
+        guard let primary = input.addresses.first(where: { $0.address.isPrimary }),
+              let response = primary.schedule?.response,
+              let pickup = pickups(in: response, today: date).first(where: { $0.date == date })
+        else { return nil }
+        return content(of: pickup, address: primary.address, response: response)
+    }
+
+    private static func content(of pickup: Pickup, address: SavedAddress, response: AddressResponse) -> PickupActivityContent {
+        PickupActivityContent(
+            addressName: String(address.displayName.prefix(maxAddressNameLength)),
+            dateText: SwedishFormat.longDate(pickup.date, capitalized: true),
+            shortDateText: SwedishFormat.shortDate(pickup.date),
+            fractions: pickup.fractions.map { id in
+                let info = ScheduleLogic.displayInfo(for: id, in: response.fractions)
+                return ActivityFraction(id: id, name: info.name, short: info.short, color: info.color, icon: info.icon)
+            },
+            estimated: pickup.estimated,
+            warning: pickup.warning
         )
     }
 

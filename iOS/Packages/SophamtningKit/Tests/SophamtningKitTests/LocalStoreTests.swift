@@ -136,3 +136,46 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
     try a.setAddresses([SavedAddress.fixture()])
     #expect(b.addresses().count == 1)
 }
+
+@Test func lagringenSkiljerSaknadFranOlasbarFil() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sophamtning-state-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let store = LocalStore(directory: dir)
+    if case .missing = store.addressesState() {} else { Issue.record("saknad adressfil ska vara missing") }
+    if case .missing = store.settingsState() {} else { Issue.record("saknad inställningsfil ska vara missing") }
+    if case .missing = store.scheduleState(for: testKey) {} else { Issue.record("saknat schema ska vara missing") }
+
+    try store.setAddresses([.fixture(isPrimary: true)])
+    try store.setSettings(ReminderSettings())
+    try store.setSchedule(CachedSchedule(), for: testKey)
+    if case .value(let list) = store.addressesState() { #expect(list.count == 1) } else { Issue.record("adresser ska gå att läsa") }
+    if case .value = store.settingsState() {} else { Issue.record("inställningar ska gå att läsa") }
+    if case .value = store.scheduleState(for: testKey) {} else { Issue.record("schema ska gå att läsa") }
+
+    try Data("skräp".utf8).write(to: dir.appendingPathComponent("addresses.json"))
+    try Data("skräp".utf8).write(to: dir.appendingPathComponent("settings.json"))
+    try Data("skräp".utf8).write(to: dir.appendingPathComponent("schedules/\(testKey.fileName).json"))
+    if case .unreadable = store.addressesState() {} else { Issue.record("skadad adressfil ska vara unreadable") }
+    if case .unreadable = store.settingsState() {} else { Issue.record("skadad inställningsfil ska vara unreadable") }
+    if case .unreadable = store.scheduleState(for: testKey) {} else { Issue.record("skadat schema ska vara unreadable") }
+    // De gamla anropen läser en skadad fil som saknad, som förut.
+    #expect(store.addresses().isEmpty)
+}
+
+@Test func lagringenSkiljerOtillgangligFranSkadadFil() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sophamtning-unavailable-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let store = LocalStore(directory: dir)
+    try store.setAddresses([.fixture(isPrimary: true)])
+    let file = dir.appendingPathComponent("addresses.json")
+
+    // Läsningen misslyckas men innehållet är helt: otillgänglig, inte skadad.
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path) }
+    if case .unavailable = store.addressesState() {} else { Issue.record("en fil som inte går att läsa ska vara unavailable") }
+
+    // Läsningen går bra men innehållet går inte att tolka: skadad.
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+    try Data("skräp".utf8).write(to: file)
+    if case .unreadable = store.addressesState() {} else { Issue.record("ett innehåll som inte går att tolka ska vara unreadable") }
+}

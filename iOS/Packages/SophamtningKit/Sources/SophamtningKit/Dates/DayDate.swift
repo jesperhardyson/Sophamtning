@@ -26,6 +26,21 @@ public struct DayDate: Codable, Hashable, Comparable, Sendable {
         self = candidate
     }
 
+    /// Dagen som en datumväljare i `timeZone` visar för `picked`, oavsett telefonens tidszon.
+    public static func from(picked: Date, in timeZone: TimeZone) -> DayDate {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: picked)
+        return DayDate(year: parts.year!, month: parts.month!, day: parts.day!)
+    }
+
+    /// Mitt på dagen i `timeZone`, till en datumväljare som sätts till samma zon.
+    public func pickerDate(in timeZone: TimeZone) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+    }
+
     public var iso: String {
         String(format: "%04d-%02d-%02d", year, month, day)
     }

@@ -29,4 +29,22 @@ struct LiveAPITests {
             #expect(address.address.id == hit.id)
         } catch APIError.sourceUnavailable {}
     }
+
+    /// Verifierat mot produktion: Avesta 2026-10-27 ger Trakt 7 och schemat täcker datumet.
+    @Test func avkodarOmradeMedSenasteTomning() async throws {
+        let r = try await client.areas(place: "Avesta", lastEmptied: DayDate("2026-10-27")!)
+        #expect(r.dateCovered == true)
+        let hit = try #require(r.addresses.first { $0.detail?.contains("Trakt 7") == true })
+        let pickups = try #require(hit.pickups)
+        #expect(pickups.previous.last == DayDate("2026-10-27"))
+        #expect(pickups.previous.count <= 2)
+        #expect(pickups.next != nil)
+        #expect(AreaFinderState.from(r) != .failed)
+    }
+
+    @Test func omradenUtanTomningHarInteNyaFalt() async throws {
+        let r = try await client.areas(place: "Avesta")
+        #expect(r.dateCovered == nil)
+        #expect(r.addresses.allSatisfy { $0.pickups == nil })
+    }
 }

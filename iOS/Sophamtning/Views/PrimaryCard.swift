@@ -3,13 +3,29 @@ import SophamtningKit
 import SwiftUI
 
 /// Huvudkortet på hemskärmen: huvudadressens nästa tömning och raden för påminnelse.
+/// Hela kortet är en knapp som öppnar adressvyn, i alla lägen.
 struct PrimaryCard: View {
     let entry: HomeContent.Entry
-    let onReminder: () -> Void
+    let onOpen: () -> Void
 
     private var foreground: Color { Color.Theme.onPrimary }
 
     var body: some View {
+        Button(action: onOpen) { card }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
+            .accessibilityHint("Öppnar adressen")
+            .accessibilityAddTraits(.isButton)
+    }
+
+    private var accessibilityText: String {
+        var parts = [entry.accessibilityLabel]
+        if let text = entry.reminderText { parts.append(text) }
+        return parts.joined(separator: ", ")
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
             switch entry.status {
@@ -43,6 +59,7 @@ struct PrimaryCard: View {
             LinearGradient(colors: [Color.Theme.primary, Color.Theme.brandText], startPoint: .top, endPoint: .bottom),
             in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
     private var header: some View {
@@ -56,6 +73,10 @@ struct PrimaryCard: View {
                 .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                 .opacity(0.9)
                 .lineLimit(2)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(.subheadline, weight: .semibold))
+                .accessibilityHidden(true)
         }
         .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
@@ -90,25 +111,19 @@ struct PrimaryCard: View {
     }
 
     private func reminderRow(_ text: String) -> some View {
-        Button(action: onReminder) {
-            HStack(spacing: 12) {
-                Image(systemName: "bell.badge")
-                    .font(.system(.body, weight: .semibold))
-                    .accessibilityHidden(true)
-                Text(text)
-                    .font(.ui(16, weight: .bold, relativeTo: .callout))
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .accessibilityHidden(true)
-            }
-            .foregroundStyle(foreground)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(Color.Theme.cardOverlay, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        HStack(spacing: 12) {
+            Image(systemName: "bell.badge")
+                .font(.system(.body, weight: .semibold))
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.ui(16, weight: .bold, relativeTo: .callout))
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
+        .foregroundStyle(foreground)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+        .background(Color.Theme.cardOverlay, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -123,7 +138,7 @@ struct FlowLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let result = arrange(width: bounds.width, subviews: subviews)
         for (index, origin) in result.origins.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: .unspecified)
+            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: ProposedViewSize(width: bounds.width, height: nil))
         }
     }
 
@@ -134,7 +149,8 @@ struct FlowLayout: Layout {
         var rowHeight: CGFloat = 0
         var maxX: CGFloat = 0
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            // Barnen får högst radens bredd, så att långa namn bryts i stället för att klippas.
+            let size = subview.sizeThatFits(ProposedViewSize(width: width.isFinite ? width : nil, height: nil))
             if x > 0, x + size.width > width {
                 x = 0
                 y += rowHeight + spacing

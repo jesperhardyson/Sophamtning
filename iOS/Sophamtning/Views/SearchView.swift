@@ -247,7 +247,7 @@ struct SearchView: View {
                     .foregroundStyle(Color.Theme.text2)
                     .multilineTextAlignment(.center)
                     .padding(.top, 10)
-                NavigationLink(value: AddRoute.areas(title: areas[0].kommun, hits: areas)) {
+                NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas)) {
                     PrimaryButtonLabel(title: "Välj område i \(kommun)")
                 }
                 .padding(.top, 24)

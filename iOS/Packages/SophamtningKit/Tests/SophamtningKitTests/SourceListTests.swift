@@ -19,6 +19,7 @@ private final class SourcesAPI: SoporAPI, @unchecked Sendable {
     }
     func search(query: String, source: String?) async throws -> SearchResponse { fatalError() }
     func areas(place: String) async throws -> SearchResponse { fatalError() }
+    func areas(place: String, lastEmptied: DayDate) async throws -> SearchResponse { fatalError() }
     func address(url: URL) async throws -> AddressResponse { fatalError() }
 }
 

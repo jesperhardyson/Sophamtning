@@ -14,8 +14,10 @@ public struct SearchHit: Codable, Hashable, Sendable {
     public let areasUrl: URL?
     /// Adressens schema i API:t. Procentkodad och får inte kodas om.
     public let url: URL
+    /// Områdets tömningar kring datumet i `/omraden?tomning=`. `nil` när anropet saknar datum.
+    public let pickups: Pickups?
 
-    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?, areasUrl: URL?, url: URL) {
+    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?, areasUrl: URL?, url: URL, pickups: Pickups? = nil) {
         self.id = id
         self.street = street
         self.locality = locality
@@ -26,19 +28,37 @@ public struct SearchHit: Codable, Hashable, Sendable {
         self.notice = notice
         self.areasUrl = areasUrl
         self.url = url
+        self.pickups = pickups
     }
 
     public var isArea: Bool { selection == "area" }
+}
+
+/// Tömningarna för ett område kring ett angivet datum.
+public struct Pickups: Codable, Hashable, Sendable {
+    /// Högst två, med angivet datum sist.
+    public let previous: [DayDate]
+    /// Räknas från angivet datum och kan alltså ha passerat. `nil` när schemat inte har fler datum.
+    public let next: DayDate?
+
+    public init(previous: [DayDate], next: DayDate?) {
+        self.previous = previous
+        self.next = next
+    }
 }
 
 public struct SearchResponse: Codable, Hashable, Sendable {
     public let addresses: [SearchHit]
     /// Källor som inte svarade. En delvis sökning behåller ändå träffarna.
     public let failed: [String]
+    /// Bara med `tomning`. `true`: datumet ligger inom schemat. `false`: utanför schemat.
+    /// `nil`: kunde inte bedömas, eller anropet hade inget datum.
+    public let dateCovered: Bool?
 
-    public init(addresses: [SearchHit], failed: [String]) {
+    public init(addresses: [SearchHit], failed: [String], dateCovered: Bool? = nil) {
         self.addresses = addresses
         self.failed = failed
+        self.dateCovered = dateCovered
     }
 }
 
@@ -227,6 +247,8 @@ extension SearchHit {
         areasUrl = (try? c.decodeIfPresent(String.self, forKey: .areasUrl)).flatMap { $0 }
             .map { $0.trimmingCharacters(in: .whitespaces) }.flatMap { $0.isEmpty ? nil : URL(string: $0) }
         url = try c.decode(URL.self, forKey: .url)
+        // Trasiga tömningsdatum ger en träff utan datum. De får inte fälla träffen.
+        pickups = (try? c.decodeIfPresent(Pickups.self, forKey: .pickups)).flatMap { $0 }
     }
 }
 

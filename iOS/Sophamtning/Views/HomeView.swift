@@ -7,18 +7,76 @@ struct HomeView: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: HomeSheet?
+    @State private var path: [AddressKey] = []
+    /// Adressen som ersätts när sökningen "Sök igen" sparar en ny, och adresserna som fanns innan sökningen öppnades.
+    @State private var replacing: AddressKey?
+    @State private var knownKeys: Set<AddressKey> = []
+    @State private var confirmingStartOver = false
 
     private var content: HomeContent {
-        HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate)
+        HomeContent.make(
+            addresses: model.addresses,
+            schedules: model.cachedSchedules,
+            settings: model.settings,
+            now: model.currentDate,
+            remindersAllowed: model.notificationAuthorization == .authorized,
+            liveActivity: model.currentLiveActivity,
+            liveActivitiesEnabled: model.liveActivitiesEnabled,
+            liveActivityError: model.liveActivityError,
+            missedReminder: model.addresses.first(where: \.isPrimary).flatMap { model.missedReminderText(for: $0) },
+            reserveAt: model.addresses.first(where: \.isPrimary).flatMap { model.reserveNotificationDate(for: $0) }
+        )
     }
 
     var body: some View {
         let content = content
+        NavigationStack(path: $path) {
+            screen(content)
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: AddressKey.self) { key in
+                    AddressView(model: model, key: key, onSearchAgain: {
+                        path = []
+                        replacing = key
+                        knownKeys = Set(model.addresses.map(\.key))
+                        sheet = .add
+                    })
+                }
+        }
+        .task {
+            model.applyReminders()
+            await model.refreshAll(manual: false)
+        }
+        .task {
+            // Slås Live Activities på eller av i iOS medan appen lever räknas påminnelserna om.
+            for await _ in LiveActivityEnablement.changes() {
+                model.applyReminders()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.
+            if phase == .active {
+                model.applyReminders()
+                Task { await model.refreshAll(manual: false) }
+            } else if phase == .background {
+                // Bokar nästa bakgrundsuppdatering, tidigast om en timme.
+                BackgroundRefresh.schedule()
+            }
+        }
+        .sheet(item: $sheet, onDismiss: { replacing = nil }) { sheet in
+            switch sheet {
+            case .settings: SettingsView(model: model, onClose: { self.sheet = nil })
+            case .add: addFlow(root: .search(source: nil))
+            case .kommun: addFlow(root: .kommun)
+            }
+        }
+    }
+
+    private func screen(_ content: HomeContent) -> some View {
         ZStack {
             Color.Theme.bg.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    toolbar(showsAdd: content.primary != nil)
+                    if model.storageProblem == nil { toolbar(showsAdd: content.primary != nil) }
                     if let error = model.lastStorageError {
                         // Ett felmeddelande i flödet, inte en ruta som stör mitt i användningen.
                         Button { model.clearStorageError() } label: {
@@ -27,7 +85,11 @@ struct HomeView: View {
                         .buttonStyle(.plain)
                         .padding(.top, 12)
                     }
-                    if let primary = content.primary {
+                    if let problem = model.storageProblem {
+                        // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
+                        storageProblem(problem)
+                    } else if let primary = content.primary {
+                        LiveActivityNotices(model: model, edge: .top, showsError: false)
                         filled(primary: primary, others: content.others)
                     } else {
                         empty
@@ -39,28 +101,69 @@ struct HomeView: View {
             }
             .refreshable { await model.refreshAll(manual: true) }
         }
-        .task { await model.refreshAll(manual: false) }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await model.refreshAll(manual: false) } }
-        }
-        .sheet(item: $sheet) { sheet in
-            switch sheet {
-            case .settings: SettingsSheet()
-            case .add: addFlow(root: .search(source: nil))
-            case .kommun: addFlow(root: .kommun)
-            }
-        }
     }
 
     /// Adressflödet. Efter en sparad adress stängs arket, och hemskärmen hämtar schemat.
     private func addFlow(root: AddRoute) -> some View {
         AddFlowView(model: model, root: root, onClose: { sheet = nil }, onSaved: {
+            // "Sök igen": den gamla adressen ersätts först nu, när den nya är sparad.
+            if let old = replacing, let new = model.addresses.first(where: { !knownKeys.contains($0.key) })?.key {
+                model.replace(old, with: new)
+            }
             sheet = nil
             Task { await model.refreshAll(manual: false) }
         })
     }
 
     // MARK: Delar
+
+    private func storageProblem(_ problem: AppModel.StorageProblem) -> some View {
+        let addresses = problem == .addressesUnreadable || problem == .addressesUnavailable
+        // Bara en skadad fil kan göras om. En fil som bara är otillgänglig just nu (till exempel före upplåsning) rörs aldrig.
+        let corrupt = problem == .addressesUnreadable || problem == .settingsUnreadable
+        let title: String
+        switch problem {
+        case .addressesUnreadable: title = "Dina sparade adresser kunde inte läsas"
+        case .addressesUnavailable: title = "Dina adresser kan inte läsas just nu"
+        case .settingsUnreadable: title = "Dina inställningar kunde inte läsas"
+        case .settingsUnavailable: title = "Dina inställningar kan inte läsas just nu"
+        }
+        return VStack(alignment: .leading, spacing: 16) {
+            Text(title)
+                .font(.brand(30, relativeTo: .largeTitle))
+                .foregroundStyle(Color.Theme.text)
+                .padding(.top, 32)
+                .accessibilityAddTraits(.isHeader)
+            MessageCard(
+                style: .warning,
+                icon: "externaldrive.badge.xmark",
+                title: "Inget har raderats",
+                message: corrupt
+                    ? "Filen på telefonen är skadad. Försök igen. Fungerar det inte kan du börja om."
+                    : "Lås upp telefonen och försök igen. Är den upplåst kan filen vara skyddad en kort stund efter en omstart."
+            )
+            Button { model.retryStorage() } label: { PrimaryButtonLabel(title: "Försök igen") }
+            if corrupt {
+                Button { confirmingStartOver = true } label: {
+                    Text("Börja om")
+                        .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                        .foregroundStyle(Color.Theme.primary)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+            }
+        }
+        .confirmationDialog(addresses ? "Börja om utan sparade adresser?" : "Använda standardinställningarna?", isPresented: $confirmingStartOver, titleVisibility: .visible) {
+            Button(addresses ? "Ta bort sparade adresser och börja om" : "Använd standardinställningar", role: .destructive) {
+                model.clearStorageError()
+                Task { await model.startOver() }
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text(addresses
+                ? "Dina sparade adresser tas bort från appen och appens väntande påminnelser avbryts. Den skadade filen sparas åt sidan på telefonen. Därefter kan du lägga till adresser igen."
+                : "Påminnelsetid och Live Activity återställs till standard (kl. 18:00, Live Activity av). Dina adresser behålls. Den skadade filen sparas åt sidan på telefonen.")
+        }
+    }
 
     private func toolbar(showsAdd: Bool) -> some View {
         HStack(spacing: 12) {
@@ -94,8 +197,7 @@ struct HomeView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
-            // Påminnelsekortet kopplas i uppgift 12. Tills dess gör det ingenting.
-            PrimaryCard(entry: primary, onReminder: {})
+            PrimaryCard(entry: primary, onOpen: { path.append(primary.key) })
             if !others.isEmpty {
                 Text("Fler adresser")
                     .font(.ui(22, weight: .heavy, relativeTo: .title2))
@@ -105,8 +207,10 @@ struct HomeView: View {
                     .accessibilityAddTraits(.isHeader)
                 VStack(spacing: 12) {
                     ForEach(others) { entry in
-                        // Raden öppnar inget än. Adressvyn kopplas i uppgift 12.
-                        AddressRow(entry: entry)
+                        NavigationLink(value: entry.key) {
+                            AddressRow(entry: entry)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -239,30 +343,6 @@ private struct AddressRow: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.accessibilityLabel)
-    }
-}
-
-/// Inställningar i sin enklaste form tills uppgift 12 bygger skärmen. Visar bara att appen är inofficiell.
-private struct SettingsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                MessageCard(
-                    style: .neutral,
-                    icon: "info.circle",
-                    title: "Inofficiell app",
-                    message: "Appen är inte kopplad till någon kommun. Vid avvikelser gäller kommunens information."
-                )
-                Spacer()
-            }
-            .padding(24)
-            .background(Color.Theme.bg)
-            .navigationTitle("Inställningar")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Klar") { dismiss() } }
-        }
     }
 }
 
