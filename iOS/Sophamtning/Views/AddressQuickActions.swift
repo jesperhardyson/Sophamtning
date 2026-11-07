@@ -200,6 +200,11 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
 
     private var isFullSwipe: Bool { width > 0 && SwipeReveal.isFullSwipe(offset: offset, width: width, shape: buttonShape) }
 
+    /// Där raden visas. Förbi gränsen för fullt svep hoppar den längre än fingret, så att knappen växer till full bredd.
+    private var shownOffset: CGFloat {
+        width > 0 ? SwipeReveal.displayedOffset(offset, width: width, shape: buttonShape) : offset
+    }
+
     /// Ett tryck på raden stänger den öppna raden, den här eller en annan, i stället för att öppna adressen.
     private var tapCloses: Bool {
         if offset < 0 { return !dragging }
@@ -216,11 +221,12 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
                         .accessibilityHidden(true)
                 }
             }
-            .offset(x: offset)
+            .offset(x: shownOffset)
             .background(alignment: .trailing) { deleteButton }
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
             .gesture(SwipePan(isOpen: offset < 0, onChange: { changed($0) }, onEnd: { ended($0) }, onCancel: { cancelled() }))
-            .sensoryFeedback(.impact(weight: .light), trigger: isFullSwipe) { _, full in full }
+            // En lätt vibration när gränsen passeras, åt båda hållen, men bara medan fingret drar.
+            .sensoryFeedback(.impact(weight: .light), trigger: isFullSwipe) { _, _ in dragging }
             .onChange(of: openRow) { _, row in
                 // En annan rad öppnades, eller hemskärmen scrollades.
                 if row != id, !dragging { settle(at: 0) }
@@ -229,15 +235,13 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
     }
 
     private var deleteButton: some View {
-        let revealed = max(0, -offset - SwipeReveal.gap)
+        let layout = SwipeReveal.buttonLayout(offset: shownOffset, shape: buttonShape)
         return Button(action: onDelete) {
             switch buttonShape {
-            case .fullHeight: fullHeightLabel
-            case .round: roundLabel
+            case .fullHeight: fullHeightLabel(layout)
+            case .round: roundLabel(layout)
             }
         }
-        // Den runda knappen sitter vid raden när den har kommit fram helt, och följer raden vid ett längre svep.
-        .frame(width: revealed, alignment: revealed < buttonShape.buttonWidth ? .trailing : .leading)
         .frame(maxHeight: .infinity)
         .opacity(offset < 0 ? 1 : 0)
         // VoiceOver når borttagningen med en åtgärd på raden. Knappen läses bara när raden står öppen.
@@ -245,8 +249,9 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
         .accessibilityIdentifier("svep-ta-bort")
     }
 
-    /// Knappen på raderna: lika hög som raden, med radens hörn.
-    private var fullHeightLabel: some View {
+    /// Knappen på raderna: lika hög som raden, med radens hörn. Den fyller ytan bredvid raden, och ikonen och texten
+    /// ligger vid radens kant. Smalare än 88 pt kommer de fram under raden.
+    private func fullHeightLabel(_ layout: SwipeReveal.ButtonLayout) -> some View {
         VStack(spacing: 4) {
             Image(systemName: "trash")
                 .font(.system(.title3, weight: .semibold))
@@ -257,33 +262,43 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
                 .minimumScaleFactor(0.6)
         }
         .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: buttonShape.buttonWidth)
+        .offset(x: layout.contentOffset)
+        .frame(width: layout.width, alignment: .leading)
+        .frame(maxHeight: .infinity)
         .background(Color.Theme.destructive, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
-    /// Knappen bakom huvudkortet: en rund knapp mitt för kortet, med texten under. Den tonas och skalas in med svepet,
-    /// och fjädrar med raden. Med Reducera rörelse tonas den bara in.
-    private var roundLabel: some View {
+    /// Knappen bakom huvudkortet: rund i vila, mitt för kortet, med texten under. När ytan blir bredare växer den till en
+    /// kapsel med samma höjd, och ikonen och texten följer kortets kant. Den tonas och skalas in med svepet. Med Reducera
+    /// rörelse tonas den bara in.
+    private func roundLabel(_ layout: SwipeReveal.ButtonLayout) -> some View {
         let progress = SwipeReveal.revealProgress(offset: offset, shape: buttonShape)
-        return VStack(spacing: 6) {
+        let size = buttonShape.buttonWidth
+        return VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "trash")
                 .font(.system(.title3, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: buttonShape.buttonWidth, height: buttonShape.buttonWidth)
-                .background(Color.Theme.destructive, in: Circle())
+                .frame(width: size, height: size)
+                .frame(width: layout.width, alignment: .leading)
+                .background(Color.Theme.destructive, in: Capsule())
                 .accessibilityHidden(true)
             Text("Ta bort")
                 .font(.ui(12, weight: .bold, relativeTo: .caption))
                 .foregroundStyle(Color.Theme.text)
-                // Knappen är 56 pt bred i alla textstorlekar. Texten bryts efter "Ta" när den inte ryms på en rad, och
+                // Texten är 56 pt bred i alla textstorlekar. Den bryts efter "Ta" när den inte ryms på en rad, och
                 // växer inte längre än till tredje tillgänglighetsstorleken, så att "bort" ryms i bredden.
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                .frame(width: size)
         }
-        .frame(width: buttonShape.buttonWidth)
+        .frame(width: layout.width, alignment: .leading)
+        // Hela den synliga knappen, med texten under, tar emot tryck.
         .contentShape(Rectangle())
         .scaleEffect(reduceMotion ? 1 : 0.5 + 0.5 * progress)
         .opacity(progress)
@@ -295,7 +310,14 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
             start = offset
             openRow = id
         }
-        offset = SwipeReveal.offset(start: start, translation: translation, width: width)
+        let next = SwipeReveal.offset(start: start, translation: translation, width: width)
+        let crosses = width > 0 && SwipeReveal.isFullSwipe(offset: next, width: width, shape: buttonShape) != isFullSwipe
+        if crosses {
+            // Språnget till full bredd och tillbaka fjädrar. Fingret följs utan animation däremellan.
+            withAnimation(SwipeReveal.jump(reduceMotion: reduceMotion)) { offset = next }
+        } else {
+            offset = next
+        }
     }
 
     private func ended(_ velocity: CGFloat) {

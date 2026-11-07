@@ -69,6 +69,46 @@ public enum SwipeReveal {
         min(1, max(0, -offset / shape.openWidth))
     }
 
+    /// Hur mycket längre raden hoppar när svepet blir fullt, så att knappen växer till full bredd.
+    public static let fullSwipeJump: CGFloat = 48
+
+    /// Radens förskjutning som den visas. Förbi gränsen för fullt svep hoppar raden ett stycke längre än fingret, och
+    /// tillbaka när fingret drar under gränsen. Raden går aldrig längre än sin egen bredd.
+    public static func displayedOffset(_ offset: CGFloat, width: CGFloat, shape: ButtonShape) -> CGFloat {
+        guard isFullSwipe(offset: offset, width: width, shape: shape) else { return offset }
+        return max(-width, offset - fullSwipeJump)
+    }
+
+    /// Knappens bredd och var ikonen ligger, räknat från knappens vänsterkant.
+    public struct ButtonLayout: Equatable, Sendable {
+        public let width: CGFloat
+        /// Var ikonen (och texten) börjar. Noll när ikonen ligger vid radens kant, och negativ när knappen är smalare än
+        /// sin vilobredd och ikonen ligger mot skärmkanten, delvis under raden.
+        public let contentOffset: CGFloat
+
+        public init(width: CGFloat, contentOffset: CGFloat) {
+            self.width = width
+            self.contentOffset = contentOffset
+        }
+    }
+
+    /// Knappen fyller den frilagda ytan, med `gap` till raden, och ikonen följer radens kant. Den runda knappen är rund
+    /// tills ytan blir bredare än den, och växer sedan till en kapsel. Den höga knappen kommer fram under raden.
+    public static func buttonLayout(offset: CGFloat, shape: ButtonShape) -> ButtonLayout {
+        let revealed = max(0, -offset - gap)
+        switch shape {
+        case .round:
+            return ButtonLayout(width: max(shape.buttonWidth, revealed), contentOffset: 0)
+        case .fullHeight:
+            return ButtonLayout(width: revealed, contentOffset: min(0, revealed - shape.buttonWidth))
+        }
+    }
+
+    /// Språnget till full bredd och tillbaka. Med Reducera rörelse ändras bara bredden, utan fjädring.
+    public static func jump(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.35)
+    }
+
     /// Raden på väg till sitt läge. Med Reducera rörelse utan fjädring.
     public static func settle(reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.2)
