@@ -488,7 +488,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.uitests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = Sophamtning;
 			};
 			name = Release;
@@ -506,7 +506,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -522,7 +522,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.uitests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = Sophamtning;
 			};
 			name = Debug;
@@ -539,7 +539,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.widgets;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -622,7 +622,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning.widgets;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -700,7 +700,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = se.hardyson.sophamtning;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

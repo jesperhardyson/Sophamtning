@@ -51,6 +51,7 @@ targets:
           UIColorName: LaunchBackground
     settings:
       base:
+        TARGETED_DEVICE_FAMILY: "1"  # Bara iPhone, ingen iPad-anpassning (docs/specs/2026-11-06-app-store.md).
         PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
@@ -80,6 +81,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
+        TARGETED_DEVICE_FAMILY: "1"  # Bara iPhone, ingen iPad-anpassning (docs/specs/2026-11-06-app-store.md).
         PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning.widgets
   SophamtningUITests:
     type: bundle.ui-testing
@@ -89,6 +91,7 @@ targets:
       - target: Sophamtning
     settings:
       base:
+        TARGETED_DEVICE_FAMILY: "1"  # Bara iPhone, ingen iPad-anpassning (docs/specs/2026-11-06-app-store.md).
         PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Sophamtning
