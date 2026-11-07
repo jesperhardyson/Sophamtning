@@ -219,10 +219,13 @@ public struct HomeContent: Equatable, Sendable {
     /// Gatan eller områdets namn på första raden, och orten och kommunens hela namn på den andra. Ett område har hela
     /// sitt namn som gata och ingen ort: "Kaplansgården, Jularbo m.fl." och "Avesta kommun". Kommunen utelämnas när den
     /// bara upprepar orten, också i genitiv. Hårt mellanslag mellan gatunamn och nummer och före mittpunkten, så att
-    /// raderna aldrig bryts där.
+    /// raderna aldrig bryts där. Är namnet detsamma som gatan, som för ett område som sparats med sitt namn, står gatan
+    /// inte en gång till, bara platsen.
     public static func lines(for address: SavedAddress) -> AddressLines {
-        let street = address.street.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacing(/\ (?=\d)/, with: "\u{00A0}")
+        let trimmed = address.street.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = address.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let repeatsName = trimmed.compare(name, options: [.caseInsensitive]) == .orderedSame
+        let street = repeatsName ? "" : trimmed.replacing(/\ (?=\d)/, with: "\u{00A0}")
         return AddressLines(address: street, place: localityAndKommun(locality: address.locality, kommun: address.kommun))
     }
 

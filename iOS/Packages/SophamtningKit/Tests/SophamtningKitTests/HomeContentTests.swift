@@ -321,6 +321,20 @@ private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     #expect(try #require(make([onlyKommun], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Avesta kommun"))
 }
 
+@Test func gatanUpprepasInteNarNamnetArDetsamma() throws {
+    // Ett område sparas med sitt namn, som också är gatan. Bara platsen står under namnet.
+    let area = saved("r", name: "Ringänget, Veddarsbo m.fl.", street: "Ringänget, Veddarsbo m.fl.", locality: "", primary: true)
+    let entry = try #require(make([area], [:]).primary)
+    #expect(entry.lines == HomeContent.AddressLines(address: "", place: "Avesta kommun"))
+    #expect(entry.accessibilityLabel.hasPrefix("Ringänget, Veddarsbo m.fl., Avesta kommun"))
+    // Samma sak med en gata med nummer, oavsett skiftläge och mellanslag runt omkring.
+    let street = saved("s", name: "testgatan 3", street: " Testgatan 3 ", locality: "Uppsala", kommun: "Uppsala kommun", primary: true)
+    #expect(try #require(make([street], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Uppsala"))
+    // Ett eget namn ger gatan på raden under, som förut.
+    let named = saved("n", name: "Hemma", street: "Testgatan 3", locality: "Uppsala", kommun: "Uppsala kommun", primary: true)
+    #expect(try #require(make([named], [:]).primary).lines.address == "Testgatan\u{00A0}3")
+}
+
 @Test func voiceOverLaserAdressOchPlatsUtanMittpunkt() {
     #expect(HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun").accessibilityLabel == "Storgatan 12, Krylbo, Avesta kommun")
     #expect(HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun").accessibilityLabel == "Kaplansgården, Jularbo m.fl., Avesta kommun")
