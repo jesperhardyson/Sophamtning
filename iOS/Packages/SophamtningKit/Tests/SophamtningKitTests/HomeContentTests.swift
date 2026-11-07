@@ -390,7 +390,7 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     var primary = home
     primary.notificationsOn = true
     let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
-    let content = HomeContent.make(addresses: [primary, other], schedules: [primary.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false)
+    let content = HomeContent.make(addresses: [primary, other], schedules: [primary.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
     #expect(content.others[0].rowReminder == .denied)
     #expect(content.others[0].rowReminder?.text == "Notiser är avstängda i iOS")
     // Huvudkortet ändras inte.
@@ -398,8 +398,17 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
 }
 
 @Test func radMedNotisAvOchNekadeNotiserVisarIngenting() throws {
-    let content = HomeContent.make(addresses: [home, cabin], schedules: [home.key: schedule(tuesdayPickup), cabin.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false)
+    let content = HomeContent.make(addresses: [home, cabin], schedules: [home.key: schedule(tuesdayPickup), cabin.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
     #expect(content.others[0].rowReminder == nil)
+}
+
+@Test func radNarNotiserInteArBestamdaVisarPlaneradPaminnelse() throws {
+    // iOS har inte frågat än (till exempel efter en ominstallation): inte nekat, så raden visar det planerade läget.
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let content = HomeContent.make(addresses: [home, other, cabin], schedules: [home.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup), cabin.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: false)
+    #expect(content.others[0].rowReminder == .scheduled("Påminnelse tisdag kl. 18:00"))
+    // Notis av för adressen: ingenting.
+    #expect(content.others[1].rowReminder == nil)
 }
 
 @Test func radensPaminnelseHarIngenLiveActivity() throws {

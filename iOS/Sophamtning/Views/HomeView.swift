@@ -29,6 +29,7 @@ struct HomeView: View {
             settings: model.settings,
             now: model.currentDate,
             remindersAllowed: model.notificationAuthorization == .authorized,
+            remindersDenied: model.notificationAuthorization == .denied,
             liveActivity: model.currentLiveActivity,
             liveActivitiesEnabled: model.liveActivitiesEnabled,
             liveActivityError: model.liveActivityError,
@@ -399,30 +400,13 @@ private struct AddressRow: View {
     var body: some View {
         Group {
             if typeSize >= .xxLarge {
-                // Ikonerna under texten, så att namnet, platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        title
-                        details
-                    }
-                    HStack(spacing: 12) {
-                        icons
-                        Spacer(minLength: 0)
-                        chevron
-                    }
-                }
+                stacked
             } else {
-                // Ikonerna och pilen bredvid namnet. Platsen, datumet och påminnelsen under får hela bredden, så att
-                // de inte bryts i en smal spalt.
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 12) {
-                        title
-                            .layoutPriority(1)
-                        Spacer(minLength: 0)
-                        icons
-                        chevron
-                    }
-                    details
+                // Ikonerna och pilen bredvid namnet när namnet ryms på en rad. Annars står de under texten, så att inget
+                // ord i namnet bryts mitt i.
+                ViewThatFits(in: .horizontal) {
+                    sideBySide
+                    stacked
                 }
             }
         }
@@ -432,6 +416,37 @@ private struct AddressRow: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([entry.accessibilityLabel, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
+    }
+
+    /// Ikonerna och pilen bredvid namnet, som står på en rad. Platsen, datumet och påminnelsen under får hela bredden, så att
+    /// de inte bryts i en smal spalt. De räknas inte när `ViewThatFits` väljer, eftersom de alltid får brytas mellan orden.
+    private var sideBySide: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                title
+                    .fixedSize()
+                Spacer(minLength: 0)
+                icons
+                chevron
+            }
+            details
+                .frame(minWidth: 0, idealWidth: 0, maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Ikonerna under texten, så att namnet, platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                title
+                details
+            }
+            HStack(spacing: 12) {
+                icons
+                Spacer(minLength: 0)
+                chevron
+            }
+        }
     }
 
     private var title: some View {
