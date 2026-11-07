@@ -144,7 +144,8 @@ private struct SmallPickup: View {
                 .font(.brand(28, relativeTo: .title))
                 .foregroundStyle(Color.Theme.text)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                // "Ca i övermorgon" är den längsta formen, cirka 7 procent bredare än "Ca om 12 dagar".
+                .minimumScaleFactor(0.5)
             Text(shortDate)
                 .font(.ui(16, weight: .bold, relativeTo: .callout))
                 .foregroundStyle(Color.Theme.brandText)
@@ -226,7 +227,8 @@ private struct MediumPickup: View {
                     .font(.brand(24, relativeTo: .title2))
                     .foregroundStyle(Color.Theme.text)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    // "Ca i övermorgon" är den längsta formen, cirka 7 procent bredare än "Ca om 12 dagar".
+                    .minimumScaleFactor(0.5)
                 ForEach(rows, id: \.fraction) { pickup in
                     row(pickup)
                 }

@@ -55,10 +55,12 @@ public enum SwedishFormat {
         return "\(weekday.prefix(1).uppercased() + weekday.dropFirst()) \(day.day) \(shortMonths[day.month - 1])"
     }
 
+    /// "i dag", "i morgon", "i övermorgon" och från tre dagar "om 3 dagar".
     public static func relative(days: Int) -> String {
         switch days {
         case 0: "i dag"
         case 1: "i morgon"
+        case 2: "i övermorgon"
         default: "om \(days) dagar"
         }
     }

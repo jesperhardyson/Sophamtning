@@ -14,7 +14,7 @@ public struct HomeContent: Equatable, Sendable {
         public let daysUntil: Int
         public let estimated: Bool
         public let fractions: [FractionItem]
-        /// "Om 3 dagar", "I morgon" eller "I dag", med "Ca" först när datumet är uppskattat.
+        /// "Om 3 dagar", "I övermorgon", "I morgon" eller "I dag", med "Ca" först när datumet är uppskattat.
         public let headline: String
         /// "Måndag 9 november", med "Ca" först när datumet är uppskattat.
         public let longDate: String

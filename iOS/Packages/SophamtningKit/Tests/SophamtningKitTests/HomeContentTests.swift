@@ -87,6 +87,18 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     #expect(pickup.headline == "I morgon")
 }
 
+@Test func tvaDagarKvarArIOvermorgon() throws {
+    // Nu är det lördag den 7:e, och tömningen är måndag den 9:e.
+    let later = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 9 * 60)
+    let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], at: later)
+    guard case .upcoming(let pickup) = try #require(content.primary).status else { Issue.record("Väntade kommande hämtning"); return }
+    #expect(pickup.headline == "I övermorgon")
+    // Ett beräknat datum får "Ca" först.
+    let estimated = make([home], [home.key: schedule([event("2026-11-09", ["rest"], estimated: true)])], at: later)
+    guard case .upcoming(let guess) = try #require(estimated.primary).status else { Issue.record("Väntade kommande hämtning"); return }
+    #expect(guess.headline == "Ca i övermorgon")
+}
+
 @Test func hamtningIDagVisasSomIDag() throws {
     let content = make([home], [home.key: schedule([event("2026-11-06", ["rest"])])])
     guard case .upcoming(let pickup) = try #require(content.primary).status else { Issue.record("Väntade kommande hämtning"); return }

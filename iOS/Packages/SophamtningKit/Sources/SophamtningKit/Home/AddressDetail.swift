@@ -34,7 +34,7 @@ public struct AddressDetail: Equatable, Sendable {
         public let info: FractionInfo
         /// "Mån 9 nov", eller "ca tors 12 nov" när datumet är beräknat.
         public let dateText: String
-        /// "om 3 dagar", "i morgon" eller "i dag".
+        /// "om 3 dagar", "i övermorgon", "i morgon" eller "i dag".
         public let daysText: String
 
         /// Kortet för kärlet läses som en enhet: "Restavfall, om 3 dagar, Mån 9 nov".
@@ -50,7 +50,7 @@ public struct AddressDetail: Equatable, Sendable {
         /// Datumbrickan: "11" och "NOV".
         public let dayNumber: String
         public let month: String
-        /// "om 5 dagar", "i morgon" eller "i dag", med "ca" först när datumet är beräknat. Räknat från i dag.
+        /// "om 5 dagar", "i övermorgon", "i morgon" eller "i dag", med "ca" först när datumet är beräknat. Räknat från i dag.
         public let daysText: String
         /// Kort form för raden: "om 5 d", "i morgon" eller "i dag", med "ca" först när datumet är beräknat.
         public let shortDaysText: String
