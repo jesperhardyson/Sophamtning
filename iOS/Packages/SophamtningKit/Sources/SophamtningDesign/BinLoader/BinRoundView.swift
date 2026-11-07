@@ -7,7 +7,15 @@ import SwiftUI
 public struct BinRoundView: View {
     private let firstRound: Date?
     private let reduceMotionOverride: Bool?
-    @ScaledMetric(relativeTo: .largeTitle) private var width: CGFloat = 135
+    @ScaledMetric(relativeTo: .largeTitle) private var scaledWidth: CGFloat = 135
+
+    /// Största bredden, så att sökfältet under kärlet inte trycks långt ned med största text.
+    public static let maxWidth: CGFloat = 200
+
+    /// Kärlets bredd: den skalade bredden, högst `maxWidth`.
+    public static func drawnWidth(scaled: CGFloat) -> CGFloat {
+        min(scaled, maxWidth)
+    }
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     /// Varvet som spelas eller spelades senast. Styr fraktionen.
@@ -20,15 +28,16 @@ public struct BinRoundView: View {
     /// - Parameters:
     ///   - firstRound: När första varvet ska spelas. `nil` väntar, till exempel medan hemskärmen väntar på introt.
     ///     Ett datum som redan passerat spelar direkt.
-    ///   - width: Kärlets bredd. Växer med textstorleken som logotypen.
+    ///   - width: Kärlets bredd. Växer med textstorleken som logotypen, högst till `maxWidth`.
     ///   - reduceMotion: Tvingar läget. Utan värde läses `accessibilityReduceMotion`.
     public init(firstRound: Date?, width: CGFloat = 135, reduceMotion: Bool? = nil) {
         self.firstRound = firstRound
         reduceMotionOverride = reduceMotion
-        _width = ScaledMetric(wrappedValue: width, relativeTo: .largeTitle)
+        _scaledWidth = ScaledMetric(wrappedValue: width, relativeTo: .largeTitle)
     }
 
     private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
+    private var width: CGFloat { Self.drawnWidth(scaled: scaledWidth) }
 
     public var body: some View {
         figure

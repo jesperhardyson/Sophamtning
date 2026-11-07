@@ -265,9 +265,10 @@ public struct AddressDetail: Equatable, Sendable {
         }
     }
 
-    /// "om 5 d", "i morgon" eller "i dag".
+    /// "om 5 d", "i morgon" eller "i dag". Talet och d hålls ihop med hårt mellanslag, så att de aldrig hamnar på olika
+    /// rader.
     private static func shortRelative(days: Int) -> String {
-        days > 1 ? "om \(days) d" : SwedishFormat.relative(days: days)
+        days > 1 ? "om \(days)\u{00A0}d" : SwedishFormat.relative(days: days)
     }
 
     private static func deviationText(_ deviation: Deviation) -> String? {

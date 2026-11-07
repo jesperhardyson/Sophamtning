@@ -235,7 +235,7 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
     #expect(result.next?.headline == "Om 3 dagar")
     #expect(result.next?.longDate == "Måndag 9 november")
     #expect(result.upcoming.first?.daysText == "om 3 dagar")
-    #expect(result.upcoming.first?.shortDaysText == "om 3 d")
+    #expect(result.upcoming.first?.shortDaysText == "om 3\u{00A0}d", "Talet och d hålls ihop med hårt mellanslag")
     #expect(result.bins.first?.daysText == "om 3 dagar")
 }
 
@@ -277,5 +277,5 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
         event("2026-11-11", ["plast"]),
         event("2026-12-02", ["glas"], estimated: true),
     ]))
-    #expect(result.rows.map(\.shortDaysText) == ["i dag", "i morgon", "om 5 d", "ca om 26 d"])
+    #expect(result.rows.map(\.shortDaysText) == ["i dag", "i morgon", "om 5\u{00A0}d", "ca om 26\u{00A0}d"])
 }

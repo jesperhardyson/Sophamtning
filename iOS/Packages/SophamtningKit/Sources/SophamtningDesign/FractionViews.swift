@@ -112,6 +112,9 @@ public struct FractionChip: View {
             Text(short ? style.shortName : style.name)
                 .font(compact ? .ui(ActivityChipMetrics.text, weight: .bold, relativeTo: .caption) : .ui(14, weight: .bold, relativeTo: .subheadline))
                 .lineLimit(1)
+                // Ryms ett långt namn inte på raden krymper det, i stället för att klippas, så att chipet aldrig blir
+                // bredare än raden. I praktiken bara med de största textstorlekarna.
+                .minimumScaleFactor(0.6)
         }
         .foregroundStyle(style.foreground)
         .padding(.leading, compact ? 5 : 8)

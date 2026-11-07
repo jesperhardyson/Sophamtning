@@ -36,6 +36,7 @@
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
+		D0253C8AD586F6F9BF6A4C8F /* LargestTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D9A30BF0E402DC46212E29 /* LargestTextTests.swift */; };
 		D7CED481ACFED9008E352189 /* uitest-omraden.json in Resources */ = {isa = PBXBuildFile; fileRef = 34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */; };
 		D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */; };
 		D829D046905BD3FA5C15762E /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */; };
@@ -111,6 +112,7 @@
 		B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SophamtningWidgets.entitlements; sourceTree = "<group>"; };
 		BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SophamtningUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2F19D55CC253C38C359298A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C3D9A30BF0E402DC46212E29 /* LargestTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargestTextTests.swift; sourceTree = "<group>"; };
 		C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SophamtningWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C83C77BCFF8F5F3C97D1E11A /* UITestAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestAPI.swift; sourceTree = "<group>"; };
 		CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sophamtning.entitlements; sourceTree = "<group>"; };
@@ -234,6 +236,7 @@
 				D049414B36508C1128F2BAAA /* .gitkeep */,
 				140BBB80224770A99801765F /* AccessibilityAuditTests.swift */,
 				398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */,
+				C3D9A30BF0E402DC46212E29 /* LargestTextTests.swift */,
 				69E3159073675AD584A68EDF /* QuickActionsTests.swift */,
 			);
 			path = SophamtningUITests;
@@ -404,6 +407,7 @@
 			files = (
 				57E68D47DC84227704A88456 /* AccessibilityAuditTests.swift in Sources */,
 				E8809D7C66D5ED4E729C59D1 /* CoreFlowTests.swift in Sources */,
+				D0253C8AD586F6F9BF6A4C8F /* LargestTextTests.swift in Sources */,
 				D9CC6F196E7BF4D16BA2BB8E /* QuickActionsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

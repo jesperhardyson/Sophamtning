@@ -2,7 +2,7 @@ import CoreGraphics
 
 /// Kärlkortens bredd i adressvyn. Korten är 3 av 7 kolumner, men ett långt ord i namnet ("Pappersförpackningar") gör
 /// kortet bredare, högst 2/3 av bredden, så att namnet behåller samma storlek som grannkortens. Med tillgänglighetsstorlekar
-/// är korten 4 av 5 kolumner, som förut.
+/// är korten minst 4 av 5 kolumner och högst hela bredden, så att långa namn krymper mindre.
 public enum BinCardMetrics {
     /// Avståndet mellan korten.
     public static let spacing: CGFloat = 12
@@ -15,7 +15,7 @@ public enum BinCardMetrics {
     ///   - accessibilitySize: Sant med tillgänglighetsstorlekar.
     public static func width(container: CGFloat, content: CGFloat, accessibilitySize: Bool) -> CGFloat {
         let narrowest = accessibilitySize ? columns(4, of: 5, in: container) : columns(3, of: 7, in: container)
-        let widest = container * 2 / 3
+        let widest = accessibilitySize ? container : container * 2 / 3
         return max(narrowest, min(content, widest))
     }
 

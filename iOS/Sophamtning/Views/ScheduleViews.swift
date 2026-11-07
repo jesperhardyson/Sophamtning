@@ -8,16 +8,26 @@ struct ScheduleRowView: View {
     let row: AddressDetail.Row
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .headline) private var badgeWidth: CGFloat = 52
+    @ScaledMetric(relativeTo: .headline) private var scaledBadgeWidth: CGFloat = 52
+
+    /// Brickan växer med texten, men högst till 110 pt, så att raden ryms med största text.
+    private var badgeWidth: CGFloat { min(scaledBadgeWidth, 110) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if typeSize.isAccessibilitySize {
-                // Under varandra, så att chipsen och dagarna får hela bredden.
+                // Under varandra, så att chipsen och dagarna får hela bredden. Dagarna står bredvid brickan när de ryms,
+                // annars under den.
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 14) {
-                        badge
-                        days
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 14) {
+                            badge
+                            days.fixedSize()
+                        }
+                        VStack(alignment: .leading, spacing: 10) {
+                            badge
+                            days
+                        }
                     }
                     chips
                 }
@@ -78,7 +88,7 @@ struct ScheduleRowView: View {
             .font(.ui(15, weight: .heavy, relativeTo: .callout))
             .foregroundStyle(Color.Theme.brandText)
             .multilineTextAlignment(.trailing)
-            .fixedSize()
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -106,7 +116,8 @@ struct ScheduleList: View {
 }
 
 /// Kort för ett kärl: ikon, namn, dagar kvar och datum. Läses som ett element av VoiceOver.
-/// Kortet är minst 3/7 av bredden och blir bredare, högst 2/3, när ett ord i namnet inte ryms i full storlek.
+/// Kortet är minst 3/7 av bredden och blir bredare, högst 2/3, när ett ord i namnet inte ryms i full storlek. Med
+/// tillgänglighetsstorlekar är det minst 4/5 och högst hela bredden.
 struct BinCard: View {
     let bin: AddressDetail.Bin
 

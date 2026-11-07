@@ -23,11 +23,13 @@ import Testing
         #expect(width == container * 2 / 3)
     }
 
-    @Test func storstaTextBehallerFyraFemtedelar() {
-        // Med tillgänglighetsstorlekar är korten redan 4 av 5 kolumner, bredare än 2/3, och blir aldrig smalare.
+    @Test func storstaTextBorjarVidFyraFemtedelarOchFarHelaBredden() {
+        // Med tillgänglighetsstorlekar är korten minst 4 av 5 kolumner, och ett långt namn får hela bredden, inte bara
+        // 2/3, så att det krymper mindre.
         let wide = (container - 4 * 12) / 5 * 4 + 3 * 12
         #expect(BinCardMetrics.width(container: container, content: 100, accessibilitySize: true) == wide)
-        #expect(BinCardMetrics.width(container: container, content: 400, accessibilitySize: true) == wide)
+        #expect(BinCardMetrics.width(container: container, content: 320, accessibilitySize: true) == 320)
+        #expect(BinCardMetrics.width(container: container, content: 400, accessibilitySize: true) == container)
     }
 }
 
