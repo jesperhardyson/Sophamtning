@@ -6,13 +6,28 @@ import SwiftUI
 /// Hela kortet är en knapp som öppnar adressvyn, i alla lägen.
 struct PrimaryCard: View {
     let entry: HomeContent.Entry
+    /// Kalenderbladets vändning vid start från början.
+    var opening: CalendarTile.Opening?
     let onOpen: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var foreground: Color { Color.Theme.onPrimary }
 
+    /// Vilket läge kortet visar. Ett byte tonas mjukt, men ändrade uppgifter i samma läge gör ingen övergång.
+    private var phase: Int {
+        switch entry.status {
+        case .upcoming: 0
+        case .loading: 1
+        case .noUpcoming: 2
+        case .failed: 3
+        }
+    }
+
     var body: some View {
         Button(action: onOpen) { card }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityText)
             .accessibilityHint("Öppnar adressen")
@@ -30,11 +45,14 @@ struct PrimaryCard: View {
             header
             switch entry.status {
             case .upcoming(let pickup):
-                nextPickup(pickup)
-                fractions(pickup)
-                if let text = entry.reminderText {
-                    reminderRow(text)
+                Group {
+                    nextPickup(pickup)
+                    fractions(pickup)
+                    if let text = entry.reminderText {
+                        reminderRow(text)
+                    }
                 }
+                .transition(.opacity)
             case .loading:
                 // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
                 // Texten under är dekoration, och VoiceOver läser "Hämtar schema".
@@ -42,15 +60,18 @@ struct PrimaryCard: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .transition(.opacity)
             case .noUpcoming, .failed:
                 Text(entry.summary)
                     .font(.ui(20, weight: .heavy, relativeTo: .title3))
                     .foregroundStyle(foreground)
+                    .transition(.opacity)
             }
             if entry.refreshFailed {
                 Text("Kunde inte uppdatera schemat. Visar det senast hämtade.")
                     .font(.ui(13, weight: .semibold, relativeTo: .footnote))
                     .foregroundStyle(foreground.opacity(0.85))
+                    .transition(.opacity)
             }
         }
         .padding(20)
@@ -60,31 +81,58 @@ struct PrimaryCard: View {
             in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        // Utanför padding och bakgrund, så att kortets höjd och bakgrund också följer med mjukt.
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "house")
-                .font(.system(.body, weight: .semibold))
-                .accessibilityHidden(true)
-            Text(entry.title)
-                .font(.ui(18, weight: .heavy, relativeTo: .headline))
-            Text(entry.subtitle)
-                .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                .opacity(0.9)
-                .lineLimit(2)
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(.subheadline, weight: .semibold))
-                .accessibilityHidden(true)
+        Group {
+            if typeSize.isAccessibilitySize {
+                // Under varandra, och utan pil: hela kortet är ändå en knapp. Då får texten hela bredden.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "house")
+                            .font(.system(.body, weight: .semibold))
+                            .accessibilityHidden(true)
+                        Text(entry.title)
+                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.5)
+                    }
+                    Text(entry.subtitle)
+                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                        .opacity(0.9)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "house")
+                        .font(.system(.body, weight: .semibold))
+                        .accessibilityHidden(true)
+                    // Platsen under namnet, så att den får hela bredden. Den bryts i stället för att kapas.
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry.title)
+                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                        Text(entry.subtitle)
+                            .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                            .opacity(0.9)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
     }
 
     private func nextPickup(_ pickup: HomeContent.Pickup) -> some View {
-        HStack(alignment: .center, spacing: 20) {
-            CalendarTile(date: pickup.date)
+        AdaptiveStack(spacing: 20) {
+            CalendarTile(date: pickup.date, opening: opening)
             VStack(alignment: .leading, spacing: 4) {
                 Text("NÄSTA TÖMNING")
                     .font(.ui(13, weight: .heavy, relativeTo: .caption))
@@ -94,6 +142,7 @@ struct PrimaryCard: View {
                     .font(.ui(32, weight: .heavy, relativeTo: .title))
                     .minimumScaleFactor(0.7)
                     .lineLimit(2)
+                    .rollingNumbers(value: pickup.headline, reduceMotion: reduceMotion)
                 Text(pickup.longDate)
                     .font(.ui(17, weight: .bold, relativeTo: .body))
             }

@@ -88,11 +88,13 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
     public let fractions: [ActivityFraction]
     public let estimated: Bool
     public let warning: String?
+    /// Sant när Utställt är tryckt. Aktiviteten visar då en bock i några sekunder innan den försvinner.
+    public let placedOut: Bool
 
     /// Längsta varning. Allt innehåll måste rymmas inom systemets 4 KB, och höjden på låsskärmen är begränsad.
     static let maxWarningLength = 200
 
-    public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?) {
+    public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?, placedOut: Bool = false) {
         self.addressName = addressName
         self.dateText = dateText
         self.shortDateText = shortDateText
@@ -101,6 +103,28 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
         self.warning = warning.map { text in
             text.count > Self.maxWarningLength ? text.prefix(Self.maxWarningLength - 1) + "…" : text
         }
+        self.placedOut = placedOut
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case addressName, dateText, shortDateText, fractions, estimated, warning, placedOut
+    }
+
+    /// Äldre innehåll, till exempel en schemalagd aktivitet från en tidigare version, saknar `placedOut` och får `false`.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        addressName = try container.decode(String.self, forKey: .addressName)
+        dateText = try container.decode(String.self, forKey: .dateText)
+        shortDateText = try container.decode(String.self, forKey: .shortDateText)
+        fractions = try container.decode([ActivityFraction].self, forKey: .fractions)
+        estimated = try container.decode(Bool.self, forKey: .estimated)
+        warning = try container.decodeIfPresent(String.self, forKey: .warning)
+        placedOut = try container.decodeIfPresent(Bool.self, forKey: .placedOut) ?? false
+    }
+
+    /// Samma innehåll med Utställt tryckt.
+    public func markedPlacedOut() -> PickupActivityContent {
+        PickupActivityContent(addressName: addressName, dateText: dateText, shortDateText: shortDateText, fractions: fractions, estimated: estimated, warning: warning, placedOut: true)
     }
 }
 

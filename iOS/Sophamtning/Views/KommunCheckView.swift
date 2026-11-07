@@ -25,6 +25,8 @@ struct KommunCheckView: View {
     @State private var result = KommunResult(answer: .empty, areas: [])
     @State private var latest = LatestOnly()
     @State private var webLink: WebLink?
+    /// Ökar när Sök din adress har tryckts, för den lätta vibrationen.
+    @State private var searches = 0
     private let index = try? PlaceIndex.bundled()
 
     var body: some View {
@@ -32,6 +34,7 @@ struct KommunCheckView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Finns min kommuns hämtningsschema?")
                     .font(.brand(34, relativeTo: .largeTitle))
+                    .minimumScaleFactor(0.5)
                     .foregroundStyle(Color.Theme.text)
                     .accessibilityAddTraits(.isHeader)
                 Text("Skriv din kommun eller ort. Svaret kommer medan du skriver.")
@@ -53,6 +56,7 @@ struct KommunCheckView: View {
         .background(Color.Theme.bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Trigger(query: query, attempt: attempt)) { await update() }
+        .sensoryFeedback(.impact(weight: .light), trigger: searches)
     }
 
     // MARK: Hämtning
@@ -123,7 +127,7 @@ struct KommunCheckView: View {
                     .foregroundStyle(Color.Theme.brandText)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(viaPlace.map { "Ja, \(capitalizedFirst($0)) ligger i \(row.name)" } ?? "Ja, \(row.name) finns")
+                    Text(viaPlace.map { "Ja, \(capitalizedFirst($0)) ligger i \(kommunDisplayName(row.name))" } ?? "Ja, \(kommunDisplayName(row.name)) finns")
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(Color.Theme.brandText)
                     if hasAreas {
@@ -135,12 +139,16 @@ struct KommunCheckView: View {
             }
             if hasAreas {
                 NavigationLink(value: AddRoute.areas(title: row.name, place: shortKommunName(row.name), hits: result.areas)) {
-                    PrimaryButtonLabel(title: "Välj område i \(shortKommunName(row.name))")
+                    PrimaryButtonLabel(title: "Välj område i \(kommunDisplayName(row.name))")
                 }
+                .buttonStyle(.pressable)
             } else {
                 NavigationLink(value: AddRoute.search(source: row.sourceId)) {
                     PrimaryButtonLabel(title: "Sök din adress")
                 }
+                .buttonStyle(.pressable)
+                // Länken har ingen egen åtgärd. Ett tryck som övergår i rullning räknas inte.
+                .simultaneousGesture(TapGesture().onEnded { searches += 1 })
             }
         }
         .padding(16)
@@ -160,7 +168,7 @@ struct KommunCheckView: View {
                     Text("Inte än")
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(Color.Theme.text)
-                    Text("\(row.name) finns inte med ännu. Sopor lägger till fler kommuner efter hand.")
+                    Text("\(kommunDisplayName(row.name)) finns inte med ännu. Sopor lägger till fler kommuner efter hand.")
                         .font(.ui(16, weight: .semibold, relativeTo: .callout))
                         .foregroundStyle(Color.Theme.text)
                 }
@@ -168,7 +176,7 @@ struct KommunCheckView: View {
             Button { webLink = tipLink } label: {
                 Label("Tipsa om din kommun", systemImage: "arrow.up.right.square")
                     .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(Color.Theme.primary)
+                    .foregroundStyle(Color.Theme.brandText)
             }
         }
         .padding(16)
@@ -183,11 +191,11 @@ struct KommunCheckView: View {
                 .foregroundStyle(Color.Theme.text)
                 .accessibilityAddTraits(.isHeader)
             ForEach(rows, id: \.code) { row in
-                HStack(spacing: 12) {
+                AdaptiveStack(spacing: 12) {
                     Image(systemName: row.sourceId == nil ? "circle.dashed" : "checkmark.circle")
                         .foregroundStyle(row.sourceId == nil ? Color.Theme.text2 : Color.Theme.brandText)
                         .accessibilityHidden(true)
-                    Text(row.name)
+                    Text(kommunDisplayName(row.name))
                         .font(.ui(17, weight: .bold, relativeTo: .body))
                         .foregroundStyle(Color.Theme.text)
                     Spacer(minLength: 8)
@@ -197,7 +205,8 @@ struct KommunCheckView: View {
                                 .font(.ui(16, weight: .heavy, relativeTo: .callout))
                                 .foregroundStyle(Color.Theme.primary)
                         }
-                        .accessibilityLabel("Sök adress i \(row.name)")
+                        .buttonStyle(.pressable)
+                        .accessibilityLabel("Sök adress i \(kommunDisplayName(row.name))")
                     } else {
                         Text("Inte än")
                             .font(.ui(16, weight: .bold, relativeTo: .callout))
@@ -231,7 +240,7 @@ struct KommunCheckView: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
             }
         }
         .padding(16)
@@ -278,7 +287,7 @@ struct KommunCheckView: View {
                 }
             }
             Button { attempt += 1 } label: { PrimaryButtonLabel(title: "Försök igen") }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

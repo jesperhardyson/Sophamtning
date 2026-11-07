@@ -5,6 +5,10 @@ import SwiftUI
 /// Hemskärmen: tomt läge utan adresser, annars huvudkort och övriga adresser.
 struct HomeView: View {
     let model: AppModel
+    /// Korten och kalenderbladet vid start från början.
+    let entrance: StartEntrance
+    let onEntranceFinished: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: HomeSheet?
     @State private var path: [AddressKey] = []
@@ -12,6 +16,11 @@ struct HomeView: View {
     @State private var replacing: AddressKey?
     @State private var knownKeys: Set<AddressKey> = []
     @State private var confirmingStartOver = false
+    /// Adressen som står öppen efter ett svep. Bara en åt gången, och scrollning stänger den.
+    @State private var openRow: AddressKey?
+    /// Ökar när en adress eller ett område har sparats. Räknaren ligger här, eftersom arket stängs i samma
+    /// uppdatering, så att den lätta vibrationen alltid hinner spelas.
+    @State private var saves = 0
 
     private var content: HomeContent {
         HomeContent.make(
@@ -42,6 +51,14 @@ struct HomeView: View {
                     })
                 }
         }
+        .task(id: entrance.begin) {
+            // Starten är klar när kalenderbladet har bläddrats klart, så länge som bläddringen faktiskt tar. Därefter visas
+            // brickan som vanligt.
+            guard entrance.begin != nil else { return }
+            let flip = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion) + openingFlipDuration(content.primary)
+            guard (try? await Task.sleep(for: .seconds(flip))) != nil else { return }
+            onEntranceFinished()
+        }
         .task {
             model.applyReminders()
             await model.refreshAll(manual: false)
@@ -52,7 +69,10 @@ struct HomeView: View {
                 model.applyReminders()
             }
         }
+        // En öppen rad stängs när en adress öppnas eller stängs, och när appen byter läge.
+        .onChange(of: path) { openRow = nil }
         .onChange(of: scenePhase) { _, phase in
+            openRow = nil
             // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.
             if phase == .active {
                 model.applyReminders()
@@ -62,6 +82,7 @@ struct HomeView: View {
                 BackgroundRefresh.schedule()
             }
         }
+        .sensoryFeedback(.impact(weight: .light), trigger: saves)
         .sheet(item: $sheet, onDismiss: { replacing = nil }) { sheet in
             switch sheet {
             case .settings: SettingsView(model: model, onClose: { self.sheet = nil })
@@ -82,8 +103,13 @@ struct HomeView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                         .padding(.top, 12)
+                    }
+                    if let error = model.reminderError, model.storageProblem == nil, content.primary != nil {
+                        // Samma meddelande som i adressvyn, så att ett fel efter ett val i snabbmenyn syns.
+                        MessageCard(style: .warning, icon: "bell.slash", title: "Påminnelser saknas", message: error)
+                            .padding(.top, 12)
                     }
                     if let problem = model.storageProblem {
                         // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
@@ -95,11 +121,19 @@ struct HomeView: View {
                         empty
                     }
                     disclaimer
+                        // Sist i ordningen, oavsett hur många kort det finns.
+                        .cardEntrance(shown: !entrance.hidesCards, index: min(2 + content.others.count + 1, 6))
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
+                .closesOpenSwipeRow($openRow)
             }
+            // Ett tryck nedanför innehållet stänger också den öppna raden.
+            .gesture(TapGesture().onEnded { openRow = nil }, including: openRow == nil ? .subviews : .all)
             .refreshable { await model.refreshAll(manual: true) }
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting { openRow = nil }
+            }
         }
     }
 
@@ -111,6 +145,7 @@ struct HomeView: View {
                 model.replace(old, with: new)
             }
             sheet = nil
+            saves += 1
             Task { await model.refreshAll(manual: false) }
         })
     }
@@ -131,6 +166,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 16) {
             Text(title)
                 .font(.brand(30, relativeTo: .largeTitle))
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .padding(.top, 32)
                 .accessibilityAddTraits(.isHeader)
@@ -143,6 +179,7 @@ struct HomeView: View {
                     : "Lås upp telefonen och försök igen. Är den upplåst kan filen vara skyddad en kort stund efter en omstart."
             )
             Button { model.retryStorage() } label: { PrimaryButtonLabel(title: "Försök igen") }
+                .buttonStyle(.pressable)
             if corrupt {
                 Button { confirmingStartOver = true } label: {
                     Text("Börja om")
@@ -185,7 +222,7 @@ struct HomeView: View {
                 .background(Color.Theme.surface, in: Circle())
                 .overlay(Circle().strokeBorder(Color.Theme.border))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityLabel(label)
     }
 
@@ -193,11 +230,19 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Sophämtning")
                 .font(.brand(40, relativeTo: .largeTitle))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .padding(.top, 20)
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
-            PrimaryCard(entry: primary, onOpen: { path.append(primary.key) })
+                .cardEntrance(shown: !entrance.hidesCards, index: 0)
+            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, buttonShape: .round, openRow: $openRow) {
+                PrimaryCard(entry: primary, opening: opening(for: primary), onOpen: { path.append(primary.key) })
+            }
+            // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
+            .id(primary.key)
+            .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
                     .font(.ui(22, weight: .heavy, relativeTo: .title2))
@@ -205,16 +250,43 @@ struct HomeView: View {
                     .padding(.top, 28)
                     .padding(.bottom, 14)
                     .accessibilityAddTraits(.isHeader)
+                    .cardEntrance(shown: !entrance.hidesCards, index: 2)
                 VStack(spacing: 12) {
-                    ForEach(others) { entry in
-                        NavigationLink(value: entry.key) {
-                            AddressRow(entry: entry)
+                    ForEach(Array(others.enumerated()), id: \.element.id) { index, entry in
+                        AddressQuickActions(model: model, key: entry.key, cornerRadius: 20, buttonShape: .fullHeight, openRow: $openRow) {
+                            NavigationLink(value: entry.key) {
+                                AddressRow(entry: entry)
+                            }
+                            .buttonStyle(.pressable)
                         }
-                        .buttonStyle(.plain)
+                        .cardEntrance(shown: !entrance.hidesCards, index: 3 + index)
                     }
                 }
             }
         }
+    }
+
+    /// Huvudkortets plats i ordningen, efter rubriken.
+    private static let primaryCardIndex = 1
+
+    /// Hur länge kalenderbladet bläddras vid starten, eller 0 när det inte bläddras.
+    private func openingFlipDuration(_ primary: HomeContent.Entry?) -> TimeInterval {
+        guard case .upcoming(let pickup) = primary?.status,
+              let from = CalendarFlipTimeline.openingDate(today: StockholmClock.today(now: model.currentDate), pickup: pickup.date) else { return 0 }
+        let pages = CalendarFlipTimeline.dates(from: from, to: pickup.date, reduceMotion: reduceMotion).count
+        // Marginalen gör att brickan hinner vibrera vid landningen innan starten avslutas, även när båda väcks samtidigt.
+        return CalendarFlipTimeline.duration(pages: pages, reduceMotion: reduceMotion) + Self.landingMargin
+    }
+
+    /// Tid efter sista bladets landning innan starten avslutas.
+    private static let landingMargin: TimeInterval = 0.05
+
+    /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
+    private func opening(for primary: HomeContent.Entry) -> CalendarTile.Opening? {
+        guard entrance.allowsOpeningFlip, case .upcoming(let pickup) = primary.status,
+              let from = CalendarFlipTimeline.openingDate(today: StockholmClock.today(now: model.currentDate), pickup: pickup.date) else { return nil }
+        let delay = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion)
+        return CalendarTile.Opening(from: from, begin: entrance.begin?.addingTimeInterval(delay))
     }
 
     private var empty: some View {
@@ -223,14 +295,18 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 24)
                 .padding(.bottom, 36)
+                .cardEntrance(shown: !entrance.hidesCards, index: 0)
             Text("När töms dina kärl?")
                 .font(.brand(34, relativeTo: .largeTitle))
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .accessibilityAddTraits(.isHeader)
+                .cardEntrance(shown: !entrance.hidesCards, index: 1)
             Text("Skriv in din adress så ser du vilka kärl som töms och när. Inget konto behövs.")
                 .font(.ui(18, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text2)
                 .padding(.top, 14)
+                .cardEntrance(shown: !entrance.hidesCards, index: 1)
             // Fältet öppnar adressökningen.
             Button { sheet = .add } label: {
                 HStack(spacing: 12) {
@@ -247,8 +323,9 @@ struct HomeView: View {
                 .background(Color.Theme.surface, in: Capsule())
                 .overlay(Capsule().strokeBorder(Color.Theme.border))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .padding(.top, 24)
+            .cardEntrance(shown: !entrance.hidesCards, index: 2)
             Label {
                 Text("Adressen sparas bara i din telefon.")
                     .font(.ui(15, weight: .bold, relativeTo: .subheadline))
@@ -257,6 +334,7 @@ struct HomeView: View {
             }
             .foregroundStyle(Color.Theme.brandText)
             .padding(.top, 16)
+            .cardEntrance(shown: !entrance.hidesCards, index: 3)
             Button { sheet = .kommun } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "map")
@@ -278,8 +356,9 @@ struct HomeView: View {
                 .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .padding(.top, 20)
+            .cardEntrance(shown: !entrance.hidesCards, index: 4)
         }
     }
 
@@ -299,6 +378,8 @@ enum HomeSheet: String, Identifiable {
 /// En adress under "Fler adresser". Fraktionerna visas som ikoner, och raden läses upp med fraktionsnamnen.
 private struct AddressRow: View {
     let entry: HomeContent.Entry
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var isFailure: Bool {
         if case .failed = entry.status { return true }
@@ -306,46 +387,114 @@ private struct AddressRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(entry.title)
-                    .font(.ui(22, weight: .heavy, relativeTo: .title3))
-                    .foregroundStyle(Color.Theme.text)
-                Text(entry.subtitle)
-                    .font(.ui(17, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
-                Text(entry.summary)
-                    .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
-            }
-            Spacer(minLength: 0)
-            switch entry.status {
-            case .upcoming(let pickup):
-                HStack(spacing: 6) {
-                    ForEach(pickup.fractions.prefix(3)) { fraction in
-                        FractionIconView(id: fraction.id, info: fraction.info)
+        Group {
+            if typeSize >= .xxLarge {
+                // Ikonerna under texten, så att namnet, platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        title
+                        details
+                    }
+                    HStack(spacing: 12) {
+                        icons
+                        Spacer(minLength: 0)
+                        chevron
                     }
                 }
-                .accessibilityHidden(true)
-            case .loading:
-                // Ett litet kärl i stället för ikonerna. Raden läses upp av sin egen etikett.
-                BinLoaderView(width: 48, showsText: false)
-                    .accessibilityHidden(true)
-            default:
-                EmptyView()
+            } else {
+                // Ikonerna och pilen bredvid namnet. Platsen, datumet och påminnelsen under får hela bredden, så att
+                // de inte bryts i en smal spalt.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 12) {
+                        title
+                            .layoutPriority(1)
+                        Spacer(minLength: 0)
+                        icons
+                        chevron
+                    }
+                    details
+                }
             }
-            Image(systemName: "chevron.right")
-                .foregroundStyle(Color.Theme.text2)
-                .accessibilityHidden(true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entry.accessibilityLabel)
+        .accessibilityLabel([entry.accessibilityLabel, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
+    }
+
+    private var title: some View {
+        Text(entry.title)
+            .font(.ui(22, weight: .heavy, relativeTo: .title3))
+            .foregroundStyle(Color.Theme.text)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(entry.subtitle)
+                .font(.ui(17, weight: .semibold, relativeTo: .body))
+                .foregroundStyle(Color.Theme.text2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(entry.summary)
+                .font(.ui(16, weight: .heavy, relativeTo: .callout))
+                .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
+                .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
+            // Bara när notis är på för adressen. Ingen klocka när notis är av.
+            if let reminder = entry.rowReminder {
+                Label {
+                    Text(reminder.text)
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: reminderIcon(reminder))
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(reminder == .denied ? Color.Theme.text2 : Color.Theme.brandText)
+                }
+                .labelStyle(.titleAndIcon)
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    /// Ifylld klocka för en planerad påminnelse, överstruken när iOS inte tillåter notiser, och huvudkortets klocka när
+    /// kvällens påminnelse redan passerat.
+    private func reminderIcon(_ reminder: HomeContent.RowReminder) -> String {
+        switch reminder {
+        case .scheduled: "bell.fill"
+        case .denied: "bell.slash"
+        case .missed: "bell.badge"
+        }
+    }
+
+    @ViewBuilder
+    private var icons: some View {
+        switch entry.status {
+        case .upcoming(let pickup):
+            HStack(spacing: 6) {
+                ForEach(pickup.fractions.prefix(3)) { fraction in
+                    FractionIconView(id: fraction.id, info: fraction.info)
+                }
+            }
+            .accessibilityHidden(true)
+        case .loading:
+            // Ett litet kärl i stället för ikonerna. Raden läses upp av sin egen etikett.
+            BinLoaderView(width: 48, showsText: false)
+                .accessibilityHidden(true)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .foregroundStyle(Color.Theme.text2)
+            .accessibilityHidden(true)
     }
 }
 
 #Preview("Tomt") {
-    HomeView(model: AppModel(api: SoporClient(version: "preview"), store: LocalStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("preview-empty"))))
+    HomeView(model: AppModel(api: SoporClient(version: "preview"), store: LocalStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("preview-empty"))), entrance: StartEntrance(plays: false), onEntranceFinished: {})
 }

@@ -117,6 +117,14 @@ import SophamtningKit
         #expect(resolved(Color.Theme.primary, dark: false) != resolved(Color.Theme.primary, dark: true))
     }
 
+    @Test func forstorandeAtgardArSystemetsRoda() {
+        // Systemets röda följer ljust och mörkt läge, som i Mail.
+        for dark in [false, true] {
+            #expect(resolved(Color.Theme.destructive, dark: dark) == resolved(Color.red, dark: dark))
+        }
+        #expect(resolved(Color.Theme.destructive, dark: false) != resolved(Color.Theme.destructive, dark: true))
+    }
+
     /// Katalogen i källträdet, hittad via testfilens egen sökväg.
     private static var iconCatalog: URL {
         URL(fileURLWithPath: #filePath)
@@ -168,5 +176,10 @@ import SophamtningKit
         #expect(SwedishFormat.monthUppercased(day) == "NOV")
         #expect(SwedishFormat.dayNumber(day) == "9")
         #expect(SwedishFormat.weekdayName(day) == "måndag")
+    }
+
+    @Test func kortNamnFranKallanAnnarsHelaNamnet() {
+        #expect(FractionStyle(id: "mat", info: FractionInfo(name: "Matavfall", short: "Mat", color: "#000000", icon: "apple")).shortName == "Mat")
+        #expect(FractionStyle(id: "x", info: FractionInfo(name: "Trädgård", short: "  ", color: "#000000", icon: "recycle")).shortName == "Trädgård")
     }
 }

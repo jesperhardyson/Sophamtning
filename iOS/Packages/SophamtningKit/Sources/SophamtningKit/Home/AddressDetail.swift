@@ -36,20 +36,36 @@ public struct AddressDetail: Equatable, Sendable {
         public let dateText: String
         /// "om 3 dagar", "i morgon" eller "i dag".
         public let daysText: String
+
+        /// Kortet för kärlet läses som en enhet: "Restavfall, om 3 dagar, Mån 9 nov".
+        public var accessibilityLabel: String {
+            [info.name, daysText, dateText].joined(separator: ", ")
+        }
     }
 
     /// En dag i schemat. Flera fraktioner samma dag visas som chips.
     public struct Row: Equatable, Sendable, Identifiable {
         public let date: DayDate
         public let dateText: String
+        /// Datumbrickan: "11" och "NOV".
+        public let dayNumber: String
+        public let month: String
+        /// "om 5 dagar", "i morgon" eller "i dag", med "ca" först när datumet är beräknat. Räknat från i dag.
+        public let daysText: String
+        /// Kort form för raden: "om 5 d", "i morgon" eller "i dag", med "ca" först när datumet är beräknat.
+        public let shortDaysText: String
         public let fractions: [HomeContent.FractionItem]
         /// "Flyttad från mån 16 nov", eller källans orsak när ursprungsdatumet saknas.
         public let deviation: String?
         public let warning: String?
         public var id: DayDate { date }
 
+        var withoutWarning: Row {
+            Row(date: date, dateText: dateText, dayNumber: dayNumber, month: month, daysText: daysText, shortDaysText: shortDaysText, fractions: fractions, deviation: deviation, warning: nil)
+        }
+
         public var accessibilityLabel: String {
-            ([dateText, fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
+            (["\(dateText), \(daysText)", fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
         }
     }
 
@@ -62,7 +78,22 @@ public struct AddressDetail: Equatable, Sendable {
     /// Varning för nästa hämtning, som visas i en egen ruta.
     public let nextWarning: String?
     public let bins: [Bin]
+    /// Hela det kommande schemat, en rad per datum.
     public let rows: [Row]
+
+    /// Hur många datum som visas under "Kommande".
+    public static let upcomingCount = 3
+
+    /// De närmaste datumen under "Kommande". Det första kan vara samma dag som nästa tömning. Dess varning står då
+    /// bara i rutan för nästa tömning (`nextWarning`), inte en gång till under raden. Avvikelsen står kvar.
+    public var upcoming: [Row] {
+        rows.prefix(Self.upcomingCount).map { row in
+            row.date == next?.date ? row.withoutWarning : row
+        }
+    }
+
+    /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
+    public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
     /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall.", eller `nil` när schemat aldrig hämtats.
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
@@ -223,11 +254,20 @@ public struct AddressDetail: Equatable, Sendable {
             return Row(
                 date: date,
                 dateText: dateText(date, estimated: entry.estimated),
+                dayNumber: SwedishFormat.dayNumber(date),
+                month: SwedishFormat.monthUppercased(date),
+                daysText: SwedishFormat.estimated(SwedishFormat.relative(days: today.days(until: date)), entry.estimated),
+                shortDaysText: SwedishFormat.estimated(shortRelative(days: today.days(until: date)), entry.estimated),
                 fractions: entry.fractions.map { HomeContent.FractionItem(id: $0, info: ScheduleLogic.displayInfo(for: $0, in: response.fractions)) },
                 deviation: entry.deviation.flatMap(deviationText),
                 warning: entry.warnings.isEmpty ? nil : entry.warnings.joined(separator: " ")
             )
         }
+    }
+
+    /// "om 5 d", "i morgon" eller "i dag".
+    private static func shortRelative(days: Int) -> String {
+        days > 1 ? "om \(days) d" : SwedishFormat.relative(days: days)
     }
 
     private static func deviationText(_ deviation: Deviation) -> String? {

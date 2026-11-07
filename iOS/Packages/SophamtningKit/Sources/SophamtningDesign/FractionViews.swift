@@ -5,6 +5,8 @@ import SwiftUI
 public struct FractionStyle: Sendable {
     public let id: String
     public let name: String
+    /// Källans korta namn, "Mat", eller hela namnet när det korta saknas. För täta listor.
+    public let shortName: String
     public let iconName: String
     public let foreground: Color
     public let background: Color
@@ -36,6 +38,8 @@ public struct FractionStyle: Sendable {
     public init(id: String, info: FractionInfo) {
         self.id = id
         name = info.name
+        let short = info.short.trimmingCharacters(in: .whitespacesAndNewlines)
+        shortName = short.isEmpty ? info.name : short
         if let themed = Self.themed[id] {
             iconName = themed.icon
             foreground = themed.fg.color
@@ -84,14 +88,17 @@ public enum ActivityChipMetrics {
     static let text: CGFloat = 12
 }
 
-/// Pillerformad märkning med ikon och namn. `compact` är den lilla varianten för Live Activity.
+/// Pillerformad märkning med ikon och namn. `compact` är den lilla varianten för Live Activity. Med `short` står källans
+/// korta namn, som i schemaraderna, men VoiceOver läser alltid hela namnet.
 public struct FractionChip: View {
     let style: FractionStyle
     let compact: Bool
+    let short: Bool
 
-    public init(id: String, info: FractionInfo, compact: Bool = false) {
+    public init(id: String, info: FractionInfo, compact: Bool = false, short: Bool = false) {
         style = FractionStyle(id: id, info: info)
         self.compact = compact
+        self.short = short
     }
 
     public var body: some View {
@@ -102,7 +109,7 @@ public struct FractionChip: View {
                 .scaledToFit()
                 .frame(width: compact ? ActivityChipMetrics.icon : 16, height: compact ? ActivityChipMetrics.icon : 16)
                 .accessibilityHidden(true)
-            Text(style.name)
+            Text(short ? style.shortName : style.name)
                 .font(compact ? .ui(ActivityChipMetrics.text, weight: .bold, relativeTo: .caption) : .ui(14, weight: .bold, relativeTo: .subheadline))
                 .lineLimit(1)
         }
@@ -111,7 +118,8 @@ public struct FractionChip: View {
         .padding(.trailing, compact ? 7 : 12)
         .padding(.vertical, compact ? 3 : 6)
         .background(style.background, in: Capsule())
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(style.name)
     }
 }
 

@@ -42,11 +42,20 @@ targets:
           - se.hardyson.sophamtning.refresh
         UIBackgroundModes:
           - fetch
-        UILaunchScreen: {}
+        # Appen använder bara kryptering som ingår i iOS (HTTPS), vilket är undantaget från exportreglerna.
+        ITSAppUsesNonExemptEncryption: false
+        # Stillbilden som visas direkt vid start. Introt i appen tar över med exakt samma bild.
+        UILaunchScreen:
+          UIImageName: LaunchLogo
+          UIColorName: LaunchBackground
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Release:
+          # UI-testernas stubb och testdata ingår bara i Debug-bygget.
+          EXCLUDED_SOURCE_FILE_NAMES: "*/Sophamtning/UITest/* */Sophamtning/UITestData/*"
   SophamtningWidgets:
     type: app-extension
     platform: iOS
@@ -80,6 +89,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning.uitests
+        GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Sophamtning
 schemes:
   Sophamtning:

@@ -66,8 +66,12 @@ struct FlowSearchField: View {
                 .focused($focused)
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(Color.Theme.text2)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Color.Theme.text2)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .padding(.trailing, -12)
                 .accessibilityLabel("Rensa")
             }
         }
@@ -80,6 +84,23 @@ struct FlowSearchField: View {
             try? await Task.sleep(for: .milliseconds(350))
             focused = true
         }
+    }
+}
+
+/// Lägger innehållet på en rad, men under varandra med tillgänglighetsstorlekar på text, så att ingen text
+/// bryts mitt i ett ord eller trängs ihop.
+struct AdaptiveStack<Content: View>: View {
+    var spacing: CGFloat = 12
+    var verticalSpacing: CGFloat?
+    var alignment: VerticalAlignment = .center
+    @ViewBuilder let content: Content
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: verticalSpacing ?? spacing))
+            : AnyLayout(HStackLayout(alignment: alignment, spacing: spacing))
+        layout { content }
     }
 }
 
@@ -138,11 +159,6 @@ func sourceName(_ id: String, in sources: [Source]?) -> String {
 
 func capitalizedFirst(_ text: String) -> String {
     text.prefix(1).uppercased() + text.dropFirst()
-}
-
-/// "Avesta kommun" blir "Avesta". Namn utan ordet "kommun" lämnas som de är.
-func shortKommunName(_ name: String) -> String {
-    name.hasSuffix(" kommun") ? String(name.dropLast(" kommun".count)) : name
 }
 
 /// En träff som valts, med ett id som skiljer träffar från olika källor åt.

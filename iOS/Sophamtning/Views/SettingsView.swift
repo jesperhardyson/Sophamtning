@@ -3,9 +3,7 @@ import SophamtningKit
 import SwiftUI
 import UIKit
 
-/// Länken till integritetspolicyn. Policyn publiceras under `sopor.hardyson.se`, men sidan finns inte än: adressen visar
-/// webbplatsens reservsida. Länken är dold tills sidan skapas i uppgift 15, och då ändras konstanten till `true`.
-let privacyPageExists = false
+/// Länken till integritetspolicyn på `sopor.hardyson.se`.
 let privacyLink = WebLink(url: URL(string: "https://sopor.hardyson.se/integritet")!)!
 
 private enum SettingsRoute: Hashable {
@@ -33,7 +31,7 @@ struct SettingsView: View {
                             Button { model.clearStorageError() } label: {
                                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.pressable)
                             .padding(.top, 8)
                         }
                         reminders
@@ -92,25 +90,9 @@ struct SettingsView: View {
                     }
                 }
                 ResultDivider()
-                Toggle(isOn: Binding(
-                    get: { model.settings.liveActivityOn },
-                    set: { model.clearStorageError(); model.setLiveActivity($0) }
-                )) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Live Activity")
-                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                            .foregroundStyle(Color.Theme.text)
-                        Text(AddressDetail.liveActivityText(settings: model.settings))
-                            .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                            .foregroundStyle(Color.Theme.text2)
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.Theme.primary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                LiveActivityToggleRow(model: model, text: AddressDetail.liveActivityText(settings: model.settings))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
             LiveActivityNotices(model: model, edge: .top)
@@ -132,16 +114,14 @@ struct SettingsView: View {
                 NavigationLink(value: SettingsRoute.sources) {
                     SettingsRow(title: "Datakällor", value: sourceCount.map(String.init) ?? "")
                 }
-                if privacyPageExists {
-                    ResultDivider()
-                    Button { link = privacyLink } label: {
-                        SettingsRow(title: "Integritet", value: "")
-                    }
+                ResultDivider()
+                Button { link = privacyLink } label: {
+                    SettingsRow(title: "Integritet", value: "")
                 }
                 ResultDivider()
                 SettingsRow(title: "Version", value: version, showsChevron: false)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         }
@@ -186,7 +166,7 @@ struct LiveActivityNotices: View {
                             .font(.ui(17, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.primary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                 }
                 if let error {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Live Activity saknas", message: error)
@@ -205,14 +185,18 @@ private struct SettingsRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(title)
-                .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                .foregroundStyle(Color.Theme.text)
-            Spacer(minLength: 8)
-            if !value.isEmpty {
-                Text(value)
-                    .font(.ui(19, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
+            AdaptiveStack(spacing: 8, verticalSpacing: 2) {
+                Text(title)
+                    .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                    .foregroundStyle(Color.Theme.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                Spacer(minLength: 8)
+                if !value.isEmpty {
+                    Text(value)
+                        .font(.ui(19, weight: .semibold, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text2)
+                }
             }
             if showsChevron {
                 Image(systemName: "chevron.right")
@@ -253,7 +237,7 @@ private struct ChoiceRow: View {
             .frame(minHeight: 52)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -272,7 +256,7 @@ private struct ReminderTimeView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                     ResultList {
                         ForEach(Array(times.enumerated()), id: \.element) { index, minutes in
@@ -305,7 +289,7 @@ private struct PrimaryAddressView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                     ResultList {
                         ForEach(Array(model.addresses.enumerated()), id: \.element.key) { index, address in
@@ -364,6 +348,7 @@ private struct SourcesView: View {
                     } else {
                         MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
                         Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                            .buttonStyle(.pressable)
                     }
                 }
                 .padding(.horizontal, 24)

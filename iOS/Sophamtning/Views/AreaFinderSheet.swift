@@ -64,7 +64,7 @@ struct AreaFinderSheet: View {
                         withAnimation(.snappy) { showCalendar = false }
                         finder.find()
                     } label: { PrimaryButtonLabel(title: "Hitta område") }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                         .padding(.top, 8)
                 }
                 result
@@ -75,7 +75,7 @@ struct AreaFinderSheet: View {
                         .foregroundStyle(Color.Theme.primary)
                         .frame(maxWidth: .infinity, minHeight: 48)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 .padding(.top, 8)
             }
             .padding(.horizontal, 24)
@@ -86,10 +86,14 @@ struct AreaFinderSheet: View {
         .presentationDetents([.fraction(0.8), .large])
         .presentationDragIndicator(.visible)
         .onDisappear { finder.cancel() }
+        // Lätt vibration när områden hittats. Inget vid fel eller noll träffar.
+        .sensoryFeedback(.impact(weight: .light), trigger: finder.state) { _, state in state.foundAreas }
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
-                saveFailed = !save(hit, in: model, onSaved: onSaved)
+                let saved = save(hit, in: model, onSaved: onSaved)
+                saveFailed = !saved
+                return saved
             }, onOther: { chosen = nil })
         }
     }
@@ -118,7 +122,7 @@ struct AreaFinderSheet: View {
             .overlay(Capsule().strokeBorder(Color.Theme.primary, lineWidth: 2))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityLabel("Senaste tömning, \(dateText)")
         .accessibilityHint("Ändrar datum")
     }
@@ -144,7 +148,7 @@ struct AreaFinderSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 matchCard(hit)
                 Button { choose(hit) } label: { PrimaryButtonLabel(title: "Välj det här området") }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .padding(.top, 24)
             }
         case .multiple(let hits):
@@ -156,7 +160,7 @@ struct AreaFinderSheet: View {
                 if finder.partial { partialText.padding(.top, 0) }
                 ForEach(Array(hits.enumerated()), id: \.offset) { _, hit in
                     Button { choose(hit) } label: { listCard(hit, showKommun: AreaFinderText.showsKommun(hits)) }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                 }
             }
         case .noPickup:
@@ -180,11 +184,11 @@ struct AreaFinderSheet: View {
                 .accessibilityElement(children: .combine)
                 if finder.retryable {
                     Button { finder.retry() } label: { PrimaryButtonLabel(title: "Försök igen") }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                         .padding(.top, 24)
                 } else {
                     Button { withAnimation(.snappy) { showCalendar = true } } label: { PrimaryButtonLabel(title: "Välj ett annat datum") }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                         .padding(.top, 24)
                 }
             }
@@ -229,7 +233,7 @@ struct AreaFinderSheet: View {
     private func listCard(_ hit: SearchHit, showKommun: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if showKommun {
-                Text(hit.kommun)
+                Text(kommunDisplayName(hit.kommun))
                     .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.brandText)
             }

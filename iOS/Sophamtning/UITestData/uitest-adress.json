@@ -1,0 +1,1399 @@
+{
+  "apiVersion": "1",
+  "today": "2026-11-06",
+  "address": {
+    "id": "testgatan-1_uppsala-0000001",
+    "street": "Testgatan 1",
+    "locality": "Uppsala",
+    "kommun": "Uppsala kommun",
+    "source": "uppsala",
+    "detail": null,
+    "selection": "address",
+    "notice": null
+  },
+  "next": [
+    {
+      "fraction": "plast",
+      "name": "Plastförpackningar",
+      "color": "#A8431F",
+      "date": "2026-11-11",
+      "daysUntil": 5,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Plastförpackningar – om 5 dagar, onsdag 11 november"
+    },
+    {
+      "fraction": "glas",
+      "name": "Glas",
+      "color": "#1F6A7A",
+      "date": "2026-11-11",
+      "daysUntil": 5,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Glas – om 5 dagar, onsdag 11 november"
+    },
+    {
+      "fraction": "rest",
+      "name": "Restavfall",
+      "color": "#474C48",
+      "date": "2026-11-12",
+      "daysUntil": 6,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Restavfall – om 6 dagar, torsdag 12 november"
+    },
+    {
+      "fraction": "papper",
+      "name": "Pappersförpackningar",
+      "color": "#2E5E86",
+      "date": "2026-11-12",
+      "daysUntil": 6,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Pappersförpackningar – om 6 dagar, torsdag 12 november"
+    },
+    {
+      "fraction": "mat",
+      "name": "Matavfall",
+      "color": "#7A4A1E",
+      "date": "2026-11-12",
+      "daysUntil": 6,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Matavfall – om 6 dagar, torsdag 12 november"
+    },
+    {
+      "fraction": "metall",
+      "name": "Metall",
+      "color": "#6B4F7A",
+      "date": "2026-11-18",
+      "daysUntil": 12,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": true,
+      "warning": null,
+      "text": "Metall – om 12 dagar, onsdag 18 november"
+    },
+    {
+      "fraction": "tidningar",
+      "name": "Tidningar",
+      "color": "#2E5E86",
+      "date": "2026-11-19",
+      "daysUntil": 13,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": true,
+      "warning": null,
+      "text": "Tidningar – om 13 dagar, torsdag 19 november"
+    }
+  ],
+  "summary": "Plast & glas – om 5 dagar",
+  "events": [
+    {
+      "date": "2026-11-11",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-11-12",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-11-18",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-11-19",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-11-25",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-11-26",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-02",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-03",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-09",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-10",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-16",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-17",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-23",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-24",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": "Infaller på julafton – kan flyttas.",
+      "labels": {}
+    },
+    {
+      "date": "2026-12-30",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-31",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": "Infaller på nyårsafton – kan flyttas.",
+      "labels": {}
+    },
+    {
+      "date": "2027-01-06",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": "Infaller på trettondedag jul – kan flyttas.",
+      "labels": {}
+    },
+    {
+      "date": "2027-01-07",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-01-13",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-01-14",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-01-20",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-01-21",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-01-27",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-01-28",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-03",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-04",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-10",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-11",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-17",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-18",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-24",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-02-25",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-03",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-04",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-10",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-11",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-17",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-18",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-24",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-25",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-03-31",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-01",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-07",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-08",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-14",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-15",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-21",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-22",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-28",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-04-29",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-05",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-06",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": "Infaller på Kristi himmelsfärdsdag – kan flyttas.",
+      "labels": {}
+    },
+    {
+      "date": "2027-05-12",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-13",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-19",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-20",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-26",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-05-27",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-02",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-03",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-09",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-10",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-16",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-17",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-23",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-24",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-06-30",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-01",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-07",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-08",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-14",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-15",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-21",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-22",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-28",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-07-29",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-04",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-05",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-11",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-12",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-18",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-19",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-25",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-08-26",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-01",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-02",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-08",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-09",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-15",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-16",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-22",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-23",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-29",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-09-30",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-06",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-07",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-13",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-14",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-20",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-21",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-27",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-10-28",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-11-03",
+      "fractions": [
+        "plast",
+        "glas"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-11-04",
+      "fractions": [
+        "rest",
+        "papper",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-11-10",
+      "fractions": [
+        "plast",
+        "metall"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2027-11-11",
+      "fractions": [
+        "rest",
+        "papper",
+        "tidningar",
+        "mat"
+      ],
+      "estimated": true,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    }
+  ],
+  "bins": [],
+  "fractions": {
+    "rest": {
+      "name": "Restavfall",
+      "short": "Rest",
+      "color": "#474C48",
+      "icon": "trash-2"
+    },
+    "papper": {
+      "name": "Pappersförpackningar",
+      "short": "Papper",
+      "color": "#2E5E86",
+      "icon": "package"
+    },
+    "plast": {
+      "name": "Plastförpackningar",
+      "short": "Plast",
+      "color": "#A8431F",
+      "icon": "cup-soda"
+    },
+    "glas": {
+      "name": "Glas",
+      "short": "Glas",
+      "color": "#1F6A7A",
+      "icon": "wine"
+    },
+    "metall": {
+      "name": "Metall",
+      "short": "Metall",
+      "color": "#6B4F7A",
+      "icon": "cylinder"
+    },
+    "tidningar": {
+      "name": "Tidningar",
+      "short": "Tidn.",
+      "color": "#2E5E86",
+      "icon": "newspaper"
+    },
+    "mat": {
+      "name": "Matavfall",
+      "short": "Mat",
+      "color": "#7A4A1E",
+      "icon": "apple"
+    }
+  },
+  "links": {
+    "ics": "https://sopor.hardyson.se/ics/uppsala/testgatan-1_uppsala-0000001.ics",
+    "web": "https://sopor.hardyson.se/uppsala/testgatan-1_uppsala-0000001"
+  },
+  "updatedAt": "2026-11-06"
+}

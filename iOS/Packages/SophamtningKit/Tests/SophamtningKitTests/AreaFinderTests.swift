@@ -415,3 +415,14 @@ private let nowDate = StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 1
         #expect(AreaFinderText.showsKommun([h("Avesta kommun"), h("Hedemora kommun")]))
     }
 }
+
+@Suite struct AreaFinderFoundTests {
+    @Test func barTraffarRaknasSomFunna() {
+        let h = hit()
+        #expect(AreaFinderState.match(h).foundAreas)
+        #expect(AreaFinderState.multiple([h, hit("b")]).foundAreas)
+        for state in [AreaFinderState.idle, .searching, .noPickup, .outsideSchedule, .failed] {
+            #expect(!state.foundAreas)
+        }
+    }
+}

@@ -171,3 +171,111 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
     // Exakt påminnelsetid räknas som passerad, eftersom planeraren inte schemalägger det.
     #expect(make(StockholmClock.date(on: today, minutes: 18 * 60), schedule: tomorrow).missedReminder == text)
 }
+
+// MARK: Ordningen i adressvyn
+
+@Test func kommandeVisarDeTreNarmasteDatumenOchLankForFler() throws {
+    let events = [
+        event("2026-11-09", ["rest", "mat"]),
+        event("2026-11-12", ["papper"], estimated: true),
+        event("2026-11-16", ["plast"]),
+        event("2026-11-23", ["glas"]),
+    ]
+    let result = detail(try schedule(events))
+    #expect(result.upcoming.map(\.date.iso) == ["2026-11-09", "2026-11-12", "2026-11-16"])
+    #expect(result.hasFullSchedule)
+    // Hela schemat har alla datum, i samma format.
+    #expect(result.rows.map(\.date.iso) == ["2026-11-09", "2026-11-12", "2026-11-16", "2026-11-23"])
+}
+
+@Test func utanFlerAnTreDatumFinnsIngenLank() throws {
+    let three = detail(try schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["mat"]), event("2026-11-16", ["plast"])]))
+    #expect(three.upcoming.count == 3)
+    #expect(!three.hasFullSchedule)
+    let one = detail(try schedule([event("2026-11-09", ["rest"])]))
+    #expect(one.upcoming.count == 1)
+    #expect(!one.hasFullSchedule)
+    let none = detail(try schedule([]))
+    #expect(none.upcoming.isEmpty)
+    #expect(!none.hasFullSchedule)
+}
+
+@Test func forstaRadenKanVaraSammaDagSomNastaTomning() throws {
+    let result = detail(try schedule([event("2026-11-09", ["rest", "mat"]), event("2026-11-12", ["papper"])]))
+    #expect(result.next?.date == result.upcoming.first?.date)
+    #expect(result.upcoming.first?.fractions.map(\.id) == ["rest", "mat"])
+}
+
+@Test func radenHarDatumbrickaOchDagarKvarRaknatFranIDag() throws {
+    let result = detail(try schedule([
+        event("2026-11-06", ["rest"]),
+        event("2026-11-07", ["mat"]),
+        event("2026-11-11", ["plast"]),
+        event("2026-12-02", ["glas"], estimated: true),
+    ]))
+    #expect(result.rows.map(\.dayNumber) == ["6", "7", "11", "2"])
+    #expect(result.rows.map(\.month) == ["NOV", "NOV", "NOV", "DEC"])
+    #expect(result.rows.map(\.daysText) == ["i dag", "i morgon", "om 5 dagar", "ca om 26 dagar"])
+}
+
+@Test func dagarKvarRaknasFranDatumetOchInteFranSparadeFalt() throws {
+    // Ett schema som hämtades för en vecka sedan, med sparade fält som säger något annat: dagarna räknas från i dag och datumet.
+    let old = StockholmClock.date(on: DayDate("2026-10-30")!, minutes: 8 * 60)
+    let url = try #require(Bundle.module.url(forResource: "adress", withExtension: "json", subdirectory: "Fixtures"))
+    var json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    json["next"] = [[
+        "fraction": "rest", "name": "Restavfall", "color": "#555555", "date": "2026-11-09",
+        "daysUntil": 10, "isToday": true, "isTomorrow": true, "estimated": false, "warning": NSNull(),
+        "text": "Restavfall – i dag, fredag 30 oktober",
+    ]]
+    json["summary"] = "Restavfall i dag"
+    json["events"] = [["date": "2026-11-09", "fractions": ["rest"], "estimated": false, "deviation": NSNull(), "warning": NSNull(), "labels": [String: String]()]]
+    let response = try JSONDecoder().decode(AddressResponse.self, from: JSONSerialization.data(withJSONObject: json))
+    let result = detail(CachedSchedule(response: response, fetchedAt: old, lastAttemptAt: old, lastError: nil))
+    #expect(result.next?.headline == "Om 3 dagar")
+    #expect(result.next?.longDate == "Måndag 9 november")
+    #expect(result.upcoming.first?.daysText == "om 3 dagar")
+    #expect(result.upcoming.first?.shortDaysText == "om 3 d")
+    #expect(result.bins.first?.daysText == "om 3 dagar")
+}
+
+@Test func varningenForNastaTomningVisasBaraIRutan() throws {
+    let result = detail(try schedule([
+        event("2026-11-09", ["rest"], deviation: Deviation(originalDate: DayDate("2026-11-08"), reason: "Helg"), warning: "Helgdag"),
+        event("2026-11-12", ["mat"], warning: "Ställ ut tidigt"),
+    ]))
+    #expect(result.nextWarning == "Helgdag")
+    // Under "Kommande" står varningen inte en gång till, men avvikelsen står kvar.
+    #expect(result.upcoming.map(\.warning) == [nil, "Ställ ut tidigt"])
+    #expect(result.upcoming.first?.deviation == "Flyttad från sön 8 nov")
+    #expect(result.upcoming.first?.accessibilityLabel == "Mån 9 nov, om 3 dagar. Restavfall. Flyttad från sön 8 nov")
+    // Hela schemat visar alla varningar.
+    #expect(result.rows.map(\.warning) == ["Helgdag", "Ställ ut tidigt"])
+}
+
+@Test func voiceOverLaserRadenMedDagarKvar() throws {
+    let result = detail(try schedule([event("2026-11-12", ["rest", "mat"], estimated: true, warning: "Helgdag")]))
+    #expect(result.rows[0].accessibilityLabel == "ca tors 12 nov, ca om 6 dagar. Restavfall, Matavfall. Helgdag")
+}
+
+@Test func voiceOverLaserNastaTomningMedDatumDagarOchKarl() throws {
+    let result = detail(try schedule([event("2026-11-09", ["rest", "mat"])]))
+    #expect(result.next?.accessibilityLabel == "Nästa tömning. Om 3 dagar. Måndag 9 november. Restavfall, Matavfall")
+    let estimated = detail(try schedule([event("2026-11-09", ["rest"], estimated: true)]))
+    #expect(estimated.next?.accessibilityLabel == "Nästa tömning. Ca om 3 dagar. Ca måndag 9 november. Restavfall")
+}
+
+@Test func voiceOverLaserKarletsKort() throws {
+    let result = detail(try schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["papper"], estimated: true)]))
+    #expect(result.bins.map(\.accessibilityLabel) == ["Restavfall, om 3 dagar, Mån 9 nov", "Pappersförpackningar, om 6 dagar, ca tors 12 nov"])
+}
+
+@Test func radensKortaDagarKvarHarCaOchLasesHeltAvVoiceOver() throws {
+    let result = detail(try schedule([
+        event("2026-11-06", ["rest"]),
+        event("2026-11-07", ["mat"]),
+        event("2026-11-11", ["plast"]),
+        event("2026-12-02", ["glas"], estimated: true),
+    ]))
+    #expect(result.rows.map(\.shortDaysText) == ["i dag", "i morgon", "om 5 d", "ca om 26 d"])
+}

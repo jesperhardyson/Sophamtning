@@ -87,6 +87,8 @@ extension Color {
         public static let fracMetall = ThemeToken.fracMetall.color
         public static let fracMetallBg = ThemeToken.fracMetallBg.color
         public static let cardOverlay = ThemeToken.cardOverlay.color
+        /// Förstörande åtgärder, som Ta bort. Systemets röda, som följer ljust och mörkt läge.
+        public static let destructive = Color.red
     }
 
     /// En färg som byter värde mellan ljust och mörkt läge, på både iOS och macOS.
