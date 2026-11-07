@@ -3,9 +3,7 @@ import SophamtningKit
 import SwiftUI
 import UIKit
 
-/// Länken till integritetspolicyn. Policyn publiceras under `sopor.hardyson.se`, men sidan finns inte än: adressen visar
-/// webbplatsens reservsida. Länken är dold tills sidan skapas i uppgift 15, och då ändras konstanten till `true`.
-let privacyPageExists = false
+/// Länken till integritetspolicyn på `sopor.hardyson.se`.
 let privacyLink = WebLink(url: URL(string: "https://sopor.hardyson.se/integritet")!)!
 
 private enum SettingsRoute: Hashable {
@@ -116,11 +114,9 @@ struct SettingsView: View {
                 NavigationLink(value: SettingsRoute.sources) {
                     SettingsRow(title: "Datakällor", value: sourceCount.map(String.init) ?? "")
                 }
-                if privacyPageExists {
-                    ResultDivider()
-                    Button { link = privacyLink } label: {
-                        SettingsRow(title: "Integritet", value: "")
-                    }
+                ResultDivider()
+                Button { link = privacyLink } label: {
+                    SettingsRow(title: "Integritet", value: "")
                 }
                 ResultDivider()
                 SettingsRow(title: "Version", value: version, showsChevron: false)
