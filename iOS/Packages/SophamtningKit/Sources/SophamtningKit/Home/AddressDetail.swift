@@ -43,6 +43,30 @@ public struct AddressDetail: Equatable, Sendable {
         }
     }
 
+    /// Raden om hur långt schemat gäller, nära de kommande tömningarna.
+    public struct SchedulePeriodLine: Equatable, Sendable {
+        /// "Schemat gäller till 10 januari 2027."
+        public let text: String
+        /// Källans förklaring i mindre text, som källan skrev den, eller `nil`.
+        public let reason: String?
+
+        public init(text: String, reason: String?) {
+            self.text = text
+            self.reason = reason
+        }
+    }
+
+    /// Meddelandet när schemat inte har några hämtningar från och med i dag.
+    public struct NoUpcomingMessage: Equatable, Sendable {
+        public let title: String
+        public let message: String
+
+        public init(title: String, message: String) {
+            self.title = title
+            self.message = message
+        }
+    }
+
     /// En dag i schemat. Flera fraktioner samma dag visas som chips.
     public struct Row: Equatable, Sendable, Identifiable {
         public let date: DayDate
@@ -95,6 +119,10 @@ public struct AddressDetail: Equatable, Sendable {
 
     /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
     public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
+    /// "Schemat gäller till 10 januari 2027." med källans orsak. `nil` för live-källor och när perioden har passerat.
+    public let schedulePeriod: SchedulePeriodLine?
+    /// Meddelandet i läget `noUpcoming`. Har källans period passerat säger det att nästa period inte är publicerad än.
+    public let noUpcomingMessage: NoUpcomingMessage
     /// "Hämtat i dag 09:12", längst ned i kortet för källan, eller `nil` när schemat aldrig hämtats.
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
@@ -159,6 +187,8 @@ public struct AddressDetail: Equatable, Sendable {
             nextWarning: scheduleRows.first(where: { $0.date == next?.date })?.warning,
             bins: bins,
             rows: scheduleRows,
+            schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
+            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
             reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
@@ -166,6 +196,27 @@ public struct AddressDetail: Equatable, Sendable {
             isPrimary: address.isPrimary,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
         )
+    }
+
+    /// Raden visas när källan anger en period som inte har passerat och schemat visas. Live-källor har ingen period.
+    static func periodLine(_ period: SchedulePeriod?, mode: Mode, today: DayDate) -> SchedulePeriodLine? {
+        guard let period, period.until >= today, mode == .schedule || mode == .noUpcoming else { return nil }
+        return SchedulePeriodLine(text: "Schemat gäller till \(SwedishFormat.dayMonthYear(period.until)).", reason: cleanReason(period.reason))
+    }
+
+    /// Utan kommande hämtningar. Har perioden passerat har källan inte publicerat nästa period än, och källans orsak
+    /// står med. Det säger aldrig att adressen saknas.
+    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate) -> NoUpcomingMessage {
+        let title = "Inga kommande hämtningar"
+        guard let period, period.until < today else {
+            return NoUpcomingMessage(title: title, message: "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+        }
+        let base = "Schemat gällde till \(SwedishFormat.dayMonthYear(period.until)), och källan har inte publicerat nästa period än."
+        return NoUpcomingMessage(title: title, message: [base, cleanReason(period.reason)].compactMap { part in part }.joined(separator: " "))
+    }
+
+    private static func cleanReason(_ reason: String?) -> String? {
+        reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
     }
 
     /// Klockslaget för ett ögonblick i svensk tid, "18:45".

@@ -93,6 +93,25 @@ public struct AreaSource: Codable, Hashable, Sendable {
     }
 }
 
+/// Hur långt källans schema gäller. Live-källor har inget sådant, och då är `schedule` `nil`.
+public struct SchedulePeriod: Codable, Hashable, Sendable {
+    /// Sista dagen som schemat täcker, i Europe/Stockholm.
+    public let until: DayDate
+    /// "Avesta Vatten publicerar hämtschemat ett år i taget.", eller `nil`.
+    public let reason: String?
+
+    public init(until: DayDate, reason: String?) {
+        self.until = until
+        self.reason = reason
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        until = try c.decode(DayDate.self, forKey: .until)
+        reason = (try? c.decodeIfPresent(String.self, forKey: .reason)) ?? nil
+    }
+}
+
 /// Tömningarna för ett område kring ett angivet datum.
 public struct Pickups: Codable, Hashable, Sendable {
     /// Högst två, med angivet datum sist.
@@ -265,8 +284,10 @@ public struct AddressResponse: Codable, Hashable, Sendable {
     public let fractions: [String: FractionInfo]
     public let links: Links
     public let updatedAt: DayDate
+    /// Hur långt schemat gäller. `nil` för live-källor, i äldre svar och när fältet är trasigt.
+    public let schedule: SchedulePeriod?
 
-    public init(today: DayDate, address: Address, next: [NextPickup], summary: String, events: [PickupEvent], bins: [Bin], fractions: [String: FractionInfo], links: Links, updatedAt: DayDate) {
+    public init(today: DayDate, address: Address, next: [NextPickup], summary: String, events: [PickupEvent], bins: [Bin], fractions: [String: FractionInfo], links: Links, updatedAt: DayDate, schedule: SchedulePeriod? = nil) {
         self.today = today
         self.address = address
         self.next = next
@@ -276,6 +297,24 @@ public struct AddressResponse: Codable, Hashable, Sendable {
         self.fractions = fractions
         self.links = links
         self.updatedAt = updatedAt
+        self.schedule = schedule
+    }
+}
+
+extension AddressResponse {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        today = try c.decode(DayDate.self, forKey: .today)
+        address = try c.decode(Address.self, forKey: .address)
+        next = try c.decode([NextPickup].self, forKey: .next)
+        summary = try c.decode(String.self, forKey: .summary)
+        events = try c.decode([PickupEvent].self, forKey: .events)
+        bins = try c.decode([Bin].self, forKey: .bins)
+        fractions = try c.decode([String: FractionInfo].self, forKey: .fractions)
+        links = try c.decode(Links.self, forKey: .links)
+        updatedAt = try c.decode(DayDate.self, forKey: .updatedAt)
+        // Saknas, `null` eller trasigt: ingen rad om hur långt schemat gäller. Schemat visas ändå.
+        schedule = (try? c.decodeIfPresent(SchedulePeriod.self, forKey: .schedule)) ?? nil
     }
 }
 

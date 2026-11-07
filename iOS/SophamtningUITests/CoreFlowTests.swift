@@ -114,6 +114,38 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(details.exists, "Bekräftelsen ska visa hela listan med platser")
     }
 
+    func testSchematGallerTillVisasForAvestaMenInteForLivekalla() {
+        // Live-källan har `schedule: null`, så raden syns inte.
+        addAddress()
+        XCTAssertTrue(homeCard.waitForExistence(timeout: 5))
+        homeCard.tap()
+        XCTAssertTrue(app.staticTexts["Kommande"].waitForExistence(timeout: 5))
+        let period = NSPredicate(format: "label BEGINSWITH %@", "Schemat gäller till")
+        for _ in 0..<3 { app.swipeUp() }
+        XCTAssertFalse(app.descendants(matching: .any).matching(period).firstMatch.exists, "Live-källor ska inte visa hur långt schemat gäller")
+        app.buttons["BackButton"].firstMatch.tap()
+
+        // Avesta anger hur långt schemat gäller och varför.
+        open("Lägg till")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("okänd gata 1, Avesta")
+        open("Välj område i Avesta kommun")
+        let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 5))
+        area.tap()
+        open("Spara området")
+        let avesta = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
+        XCTAssertTrue(avesta.waitForExistence(timeout: 5))
+        avesta.tap()
+        XCTAssertTrue(app.staticTexts["Kommande"].waitForExistence(timeout: 5))
+        let line = app.descendants(matching: .any).matching(period).firstMatch
+        for _ in 0..<4 where !line.exists { app.swipeUp() }
+        XCTAssertTrue(line.waitForExistence(timeout: 5), "Avesta ska visa hur långt schemat gäller")
+        XCTAssertTrue(line.label.contains("Avesta Vatten publicerar hämtschemat ett år i taget."), "Orsaken ska stå under raden")
+    }
+
     func testHittaOmradeKnappenSynsNarKalendernArUtfalld() {
         open("Gata och husnummer")
         let field = app.textFields["Gata och husnummer"]

@@ -25,7 +25,9 @@ struct UITestAPI: SoporAPI {
     }
 
     func address(url: URL) async throws -> AddressResponse {
-        try Self.load("uitest-adress")
+        // Avesta har ett schema som gäller till ett visst datum. Testgatan är en live-källa utan sådant.
+        if url.path.contains("/adress/avesta/") { return try Self.load("uitest-adress-avesta") }
+        return try Self.load("uitest-adress")
     }
 
     func sources() async throws -> SourcesResponse {

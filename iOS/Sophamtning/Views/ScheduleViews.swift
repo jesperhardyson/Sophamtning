@@ -242,9 +242,13 @@ struct FullScheduleView: View {
             // Felet står i meddelandet ovan.
             EmptyView()
         case .noUpcoming:
-            NoUpcomingCard()
+            NoUpcomingCard(message: detail.noUpcomingMessage)
         case .schedule:
             ScheduleList(rows: detail.rows)
+        }
+        if let period = detail.schedulePeriod {
+            SchedulePeriodView(line: period)
+                .padding(.top, 12)
         }
         SourceCard(
             name: sourceName(key.source, in: sources),
@@ -329,9 +333,39 @@ struct ScheduleLoadingCard: View {
     }
 }
 
-/// Schemat finns men har inga hämtningar från och med i dag.
+/// Schemat finns men har inga hämtningar från och med i dag. Har källans period passerat står det att nästa period
+/// inte är publicerad än, med källans orsak.
 struct NoUpcomingCard: View {
+    let message: AddressDetail.NoUpcomingMessage
+
     var body: some View {
-        MessageCard(style: .neutral, icon: "calendar.badge.exclamationmark", title: "Inga kommande hämtningar", message: "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+        MessageCard(style: .neutral, icon: "calendar.badge.exclamationmark", title: message.title, message: message.message)
+    }
+}
+
+/// "Schemat gäller till 10 januari 2027." och källans orsak i mindre text under.
+struct SchedulePeriodView: View {
+    let line: AddressDetail.SchedulePeriodLine
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "calendar")
+                .font(.system(.callout, weight: .semibold))
+                .foregroundStyle(Color.Theme.text2)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(line.text)
+                    .font(.ui(16, weight: .semibold, relativeTo: .callout))
+                    .foregroundStyle(Color.Theme.text)
+                if let reason = line.reason {
+                    Text(reason)
+                        .font(.ui(14, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(Color.Theme.text2)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

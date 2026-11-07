@@ -124,9 +124,14 @@ struct AddressView: View {
         AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
     }
 
+    @ViewBuilder
     private func noUpcoming(_ detail: AddressDetail) -> some View {
-        NoUpcomingCard()
+        NoUpcomingCard(message: detail.noUpcomingMessage)
             .padding(.bottom, 4)
+        if let period = detail.schedulePeriod {
+            SchedulePeriodView(line: period)
+                .padding(.top, 12)
+        }
     }
 
     // MARK: Schema
@@ -202,6 +207,11 @@ struct AddressView: View {
                 rowsRevealed = true
                 ShownSchedules.keys.markShown(key)
             }
+        // Hur långt schemat gäller, direkt under de kommande tömningarna. Live-källor har ingen sådan rad.
+        if let period = detail.schedulePeriod {
+            SchedulePeriodView(line: period)
+                .padding(.top, 12)
+        }
     }
 
     private var fullScheduleLink: some View {

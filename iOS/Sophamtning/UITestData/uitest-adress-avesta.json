@@ -1,0 +1,147 @@
+{
+  "apiVersion": "1",
+  "today": "2026-11-06",
+  "address": {
+    "id": "trakt-1",
+    "street": "Askön, Nyhyttan m.fl.",
+    "locality": "",
+    "kommun": "Avesta kommun",
+    "source": "avesta",
+    "detail": "Måndag, udda vecka · Område 1",
+    "selection": "area",
+    "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning."
+  },
+  "next": [
+    {
+      "fraction": "rest",
+      "name": "Restavfall",
+      "color": "#474C48",
+      "date": "2026-11-15",
+      "daysUntil": 9,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Restavfall – om 9 dagar, måndag 16 november"
+    },
+    {
+      "fraction": "mat",
+      "name": "Matavfall",
+      "color": "#7A4A1E",
+      "date": "2026-11-15",
+      "daysUntil": 9,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Matavfall – om 9 dagar, måndag 16 november"
+    },
+    {
+      "fraction": "papper",
+      "name": "Pappersförpackningar",
+      "color": "#2E5E86",
+      "date": "2026-11-29",
+      "daysUntil": 23,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Pappersförpackningar – om 23 dagar, måndag 30 november"
+    },
+    {
+      "fraction": "plast",
+      "name": "Plastförpackningar",
+      "color": "#A8431F",
+      "date": "2026-12-13",
+      "daysUntil": 37,
+      "isToday": false,
+      "isTomorrow": false,
+      "estimated": false,
+      "warning": null,
+      "text": "Plastförpackningar – om 37 dagar, måndag 14 december"
+    }
+  ],
+  "summary": "Rest & mat – om 9 dagar",
+  "events": [
+    {
+      "date": "2026-11-15",
+      "fractions": [
+        "rest",
+        "mat"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-11-29",
+      "fractions": [
+        "papper",
+        "mat"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-13",
+      "fractions": [
+        "plast",
+        "mat"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    },
+    {
+      "date": "2026-12-27",
+      "fractions": [
+        "rest",
+        "mat"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
+    }
+  ],
+  "bins": [],
+  "fractions": {
+    "rest": {
+      "name": "Restavfall",
+      "short": "Rest",
+      "color": "#474C48",
+      "icon": "trash-2"
+    },
+    "papper": {
+      "name": "Pappersförpackningar",
+      "short": "Papper",
+      "color": "#2E5E86",
+      "icon": "package"
+    },
+    "plast": {
+      "name": "Plastförpackningar",
+      "short": "Plast",
+      "color": "#A8431F",
+      "icon": "cup-soda"
+    },
+    "mat": {
+      "name": "Matavfall",
+      "short": "Mat",
+      "color": "#7A4A1E",
+      "icon": "apple"
+    }
+  },
+  "schedule": {
+    "until": "2027-01-09",
+    "reason": "Avesta Vatten publicerar hämtschemat ett år i taget."
+  },
+  "links": {
+    "ics": "https://sopor.hardyson.se/ics/avesta/trakt-1.ics",
+    "web": "https://sopor.hardyson.se/avesta/trakt-1"
+  },
+  "updatedAt": "2026-11-03"
+}

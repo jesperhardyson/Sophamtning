@@ -1395,5 +1395,6 @@
     "ics": "https://sopor.hardyson.se/ics/uppsala/testgatan-1_uppsala-0000001.ics",
     "web": "https://sopor.hardyson.se/uppsala/testgatan-1_uppsala-0000001"
   },
-  "updatedAt": "2026-11-06"
+  "updatedAt": "2026-11-06",
+  "schedule": null
 }

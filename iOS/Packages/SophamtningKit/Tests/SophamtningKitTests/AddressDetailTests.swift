@@ -280,3 +280,80 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
     ]))
     #expect(result.rows.map(\.shortDaysText) == ["i dag", "i morgon", "om 5\u{00A0}d", "ca om 26\u{00A0}d"])
 }
+
+// MARK: Hur långt schemat gäller
+
+private func periodSchedule(_ events: [PickupEvent], until: String?, reason: String? = "Avesta Vatten publicerar hämtschemat ett år i taget.") throws -> CachedSchedule {
+    let base = try fixture("adress")
+    let period = until.map { SchedulePeriod(until: DayDate($0)!, reason: reason) }
+    let response = AddressResponse(today: base.today, address: base.address, next: [], summary: "", events: events, bins: [], fractions: base.fractions, links: base.links, updatedAt: base.updatedAt, schedule: period)
+    return CachedSchedule(response: response, fetchedAt: noon, lastAttemptAt: noon, lastError: nil)
+}
+
+@Test func schemaperiodenAvkodasFranAvesta() throws {
+    let response = try fixture("adress-avesta")
+    #expect(response.schedule == SchedulePeriod(until: DayDate("2027-01-10")!, reason: "Avesta Vatten publicerar hämtschemat ett år i taget."))
+    let again = try JSONDecoder().decode(AddressResponse.self, from: JSONEncoder().encode(response))
+    #expect(again == response)
+}
+
+@Test func schemaperiodenSaknasNullEllerTrasig() throws {
+    // Äldre svar och sparade scheman saknar fältet.
+    #expect(try fixture("adress").schedule == nil)
+    var json = try #require(try JSONSerialization.jsonObject(with: fixtureData("adress-avesta")) as? [String: Any])
+    for broken: Any in [NSNull(), "2027-01-10", ["until": "10 jan"], ["reason": "Utan datum"]] {
+        json["schedule"] = broken
+        let response = try JSONDecoder().decode(AddressResponse.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(response.schedule == nil)
+        #expect(!response.events.isEmpty)
+    }
+    json["schedule"] = ["until": "2027-01-10", "reason": NSNull()]
+    let noReason = try JSONDecoder().decode(AddressResponse.self, from: JSONSerialization.data(withJSONObject: json))
+    #expect(noReason.schedule == SchedulePeriod(until: DayDate("2027-01-10")!, reason: nil))
+}
+
+@Test func radenOmPeriodenVisasMedOrsak() throws {
+    let result = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: "2027-01-10"))
+    #expect(result.mode == .schedule)
+    #expect(result.schedulePeriod == AddressDetail.SchedulePeriodLine(text: "Schemat gäller till 10 januari 2027.", reason: "Avesta Vatten publicerar hämtschemat ett år i taget."))
+}
+
+@Test func radenUtanOrsakOchForLivekallor() throws {
+    let blank = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: "2027-01-10", reason: "  "))
+    #expect(blank.schedulePeriod == AddressDetail.SchedulePeriodLine(text: "Schemat gäller till 10 januari 2027.", reason: nil))
+    // `null` gäller alla live-källor: ingen rad.
+    let live = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: nil))
+    #expect(live.schedulePeriod == nil)
+    #expect(live.noUpcomingMessage.message == "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+    // Inget schema än: ingen rad.
+    #expect(detail(nil).schedulePeriod == nil)
+}
+
+@Test func passeradPeriodUtanHamtningarSagerAttNastaPeriodInteArPublicerad() throws {
+    let result = detail(try periodSchedule([event("2026-11-01", ["rest"])], until: "2026-11-05"))
+    #expect(result.mode == .noUpcoming)
+    #expect(result.schedulePeriod == nil)
+    #expect(result.noUpcomingMessage == AddressDetail.NoUpcomingMessage(
+        title: "Inga kommande hämtningar",
+        message: "Schemat gällde till 5 november 2026, och källan har inte publicerat nästa period än. Avesta Vatten publicerar hämtschemat ett år i taget."
+    ))
+    #expect(result.notice == nil)
+    let noReason = detail(try periodSchedule([], until: "2026-11-05", reason: nil))
+    #expect(noReason.noUpcomingMessage.message == "Schemat gällde till 5 november 2026, och källan har inte publicerat nästa period än.")
+}
+
+@Test func periodenGallerHelaSistaDagenISverige() throws {
+    let schedule = try periodSchedule([], until: "2026-11-06")
+    // 23:30 svensk tid den sista dagen: perioden gäller fortfarande.
+    let late = detail(schedule, now: StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 23 * 60 + 30))
+    #expect(late.schedulePeriod?.text == "Schemat gäller till 6 november 2026.")
+    #expect(late.noUpcomingMessage.message == "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+    // 00:30 svensk tid dagen efter, som är kvällen före i New York: perioden har passerat.
+    let after = detail(schedule, now: StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 30))
+    #expect(after.schedulePeriod == nil)
+    #expect(after.noUpcomingMessage.message.hasPrefix("Schemat gällde till 6 november 2026"))
+}
+
+@Test func datumMedArUtanVeckodag() {
+    #expect(SwedishFormat.dayMonthYear(DayDate("2027-01-10")!) == "10 januari 2027")
+}

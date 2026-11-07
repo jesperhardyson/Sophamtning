@@ -29,6 +29,11 @@ public enum SwedishFormat {
         "\(longDate(day, capitalized: true)) \(day.year)"
     }
 
+    /// "10 januari 2027", utan veckodag.
+    public static func dayMonthYear(_ day: DayDate) -> String {
+        "\(day.day) \(months[day.month - 1]) \(day.year)"
+    }
+
     /// "13 okt", utan veckodag.
     public static func dayMonth(_ day: DayDate) -> String {
         "\(day.day) \(shortMonths[day.month - 1])"
