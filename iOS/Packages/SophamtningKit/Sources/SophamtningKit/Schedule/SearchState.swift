@@ -41,7 +41,7 @@ public enum SearchState: Equatable, Sendable {
     /// nummer de två sista orden och det sista ordet (hela texten när den är ett eller två ord). Ett namn har högst två
     /// ord och minst två tecken, och skiftläget behålls.
     public static func placeCandidates(in query: String) -> [String] {
-        let tokens = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        let tokens = query.split(whereSeparator: \.isWhitespace).map { String($0) }
         let raw: [String]
         if query.contains(",") || tokens.contains(where: { $0.first?.isNumber == true }) {
             raw = place(in: query).map { [$0] } ?? []

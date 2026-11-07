@@ -112,7 +112,7 @@ struct SettingsView: View {
             heading("Om appen")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.sources) {
-                    SettingsRow(title: "Datakällor", value: sourceCount.map(String.init) ?? "")
+                    SettingsRow(title: "Datakällor", value: sourceCount.map { String($0) } ?? "")
                 }
                 ResultDivider()
                 Button { link = privacyLink } label: {

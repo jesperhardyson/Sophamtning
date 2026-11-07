@@ -101,7 +101,7 @@ struct AreaFinderSheet: View {
     // MARK: Datum
 
     private var dateText: String {
-        finder.date.map(SwedishFormat.longDateWithYear) ?? "Välj datum"
+        finder.date.map { SwedishFormat.longDateWithYear($0) } ?? "Välj datum"
     }
 
     private var dateField: some View {

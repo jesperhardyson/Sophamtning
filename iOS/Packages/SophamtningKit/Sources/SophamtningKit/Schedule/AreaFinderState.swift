@@ -73,7 +73,7 @@ public enum AreaFinderText {
     }
 
     private static func previousSentence(_ days: [DayDate]) -> String? {
-        let texts = days.map(SwedishFormat.dayMonth)
+        let texts = days.map { SwedishFormat.dayMonth($0) }
         switch texts.count {
         case 0: return nil
         case 1: return "Tömning \(texts[0])."

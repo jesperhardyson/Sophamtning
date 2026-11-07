@@ -43,7 +43,7 @@ public enum CalendarFlipTimeline {
         guard pages > 1 else { return [0] }
         // Mellanrummen växer jämnt från det första till det sista, så att farten bromsar in.
         let weights = (0..<(pages - 1)).map { pages == 2 ? 1 : 1 + (slowdown - 1) * Double($0) / Double(pages - 2) }
-        let gap = min(firstGap, (longest - foldDuration) / weights.reduce(0, +))
+        let gap = min(firstGap, (longest - foldDuration) / weights.reduce(0) { $0 + $1 })
         var starts: [TimeInterval] = [0]
         for weight in weights { starts.append(starts.last! + weight * gap) }
         return starts

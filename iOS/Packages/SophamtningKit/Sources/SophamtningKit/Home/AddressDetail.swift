@@ -159,7 +159,7 @@ public struct AddressDetail: Equatable, Sendable {
             rows: scheduleRows,
             fetchedText: fetched,
             webLink: response?.links.web,
-            reminderText: reserveAt.map(reserveText) ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
             liveActivityText: liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
@@ -259,7 +259,7 @@ public struct AddressDetail: Equatable, Sendable {
                 daysText: SwedishFormat.estimated(SwedishFormat.relative(days: today.days(until: date)), entry.estimated),
                 shortDaysText: SwedishFormat.estimated(shortRelative(days: today.days(until: date)), entry.estimated),
                 fractions: entry.fractions.map { HomeContent.FractionItem(id: $0, info: ScheduleLogic.displayInfo(for: $0, in: response.fractions)) },
-                deviation: entry.deviation.flatMap(deviationText),
+                deviation: entry.deviation.flatMap { deviationText($0) },
                 warning: entry.warnings.isEmpty ? nil : entry.warnings.joined(separator: " ")
             )
         }

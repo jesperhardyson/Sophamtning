@@ -86,7 +86,7 @@ private let cabin = address("cabin", name: "Stugan", primary: false)
 @Test func raderVisarKortDatumMedCaForBeraknade() {
     let events = [event("2026-11-09", ["rest"]), event("2026-11-12", ["papper"], estimated: true)]
     guard case .pickup(_, _, _, let fractions) = WidgetContent.make(addresses: [home], schedule: schedule(events), now: now) else { Issue.record("Väntade kommande hämtning"); return }
-    #expect(fractions.map(WidgetContent.rowDate) == ["mån 9 nov", "ca tors 12 nov"])
+    #expect(fractions.map { WidgetContent.rowDate($0) } == ["mån 9 nov", "ca tors 12 nov"])
 }
 
 @Test func tomningIDagVisasSomIDag() {

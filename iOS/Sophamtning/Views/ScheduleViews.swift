@@ -116,7 +116,7 @@ struct BinCard: View {
     @State private var wordWidth: CGFloat = 0
 
     private var words: [String] {
-        bin.info.name.split(whereSeparator: \.isWhitespace).map(String.init)
+        bin.info.name.split(whereSeparator: \.isWhitespace).map { String($0) }
     }
 
     /// Lika många rader som namnet har ord, högst tre.
