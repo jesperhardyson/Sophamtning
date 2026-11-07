@@ -339,6 +339,15 @@ private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     #expect(!kommunRepeatsLocality("Säters kommun", locality: "Sät"))
 }
 
+@Test func ortOchKommunSomPaKortensUndertitel() {
+    // Sökträffens rad: kommunen döljs när den bara upprepar orten, annars står hela namnet efter en mittpunkt.
+    #expect(localityAndKommun(locality: "Uppsala", kommun: "Uppsala kommun") == "Uppsala")
+    #expect(localityAndKommun(locality: "Säter", kommun: "Säters kommun") == "Säter")
+    #expect(localityAndKommun(locality: "Krylbo", kommun: "Avesta kommun") == "Krylbo\u{00A0}· Avesta kommun")
+    #expect(localityAndKommun(locality: " ", kommun: "Avesta kommun") == "Avesta kommun")
+    #expect(localityAndKommun(locality: "Krylbo", kommun: "") == "Krylbo")
+}
+
 @Test func undertitelnDoljerKommunenSomBaraUppreparOrten() throws {
     let sater = saved("s", name: "Hemma", street: "Storgatan 3", locality: "Säter", kommun: "Säters kommun", primary: true)
     let stockholm = saved("t", name: "Jobbet", street: "Drottninggatan 1", locality: "Stockholm", kommun: "Stockholms kommun", primary: false)

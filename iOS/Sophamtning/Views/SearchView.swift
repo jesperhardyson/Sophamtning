@@ -213,7 +213,8 @@ struct SearchView: View {
                 Text(hit.street)
                     .font(.ui(20, weight: .heavy, relativeTo: .headline))
                     .foregroundStyle(Color.Theme.text)
-                Text(hit.locality.isEmpty ? kommunDisplayName(hit.kommun) : "\(hit.locality), \(kommunDisplayName(hit.kommun))")
+                // Samma regel som kortens undertitel: kommunen upprepar inte orten.
+                Text(localityAndKommun(locality: hit.locality, kommun: hit.kommun))
                     .font(.ui(16, weight: .semibold, relativeTo: .callout))
                     .foregroundStyle(Color.Theme.text2)
                 if let detail = hit.detail {

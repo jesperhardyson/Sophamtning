@@ -25,3 +25,13 @@ public func kommunRepeatsLocality(_ kommun: String, locality: String) -> Bool {
     if same(place) || same(place + "s") { return true }
     return same("Falu") && place.compare("Falun", options: .caseInsensitive, locale: swedish) == .orderedSame
 }
+
+/// Orten och kommunen på en rad, med samma regel som kortens undertitel: "Uppsala", "Krylbo · Avesta kommun".
+/// Kommunen döljs när den bara upprepar orten. Utan ort står bara kommunen. Hårt mellanslag före mittpunkten.
+public func localityAndKommun(locality: String, kommun: String) -> String {
+    let place = locality.trimmingCharacters(in: .whitespacesAndNewlines)
+    let name = kommunDisplayName(kommun)
+    if place.isEmpty { return name }
+    guard !name.isEmpty, !kommunRepeatsLocality(name, locality: place) else { return place }
+    return "\(place)\u{00A0}· \(name)"
+}
