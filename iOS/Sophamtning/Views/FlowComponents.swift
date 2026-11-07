@@ -178,6 +178,8 @@ struct AddressLinesView: View {
     let addressStyle: TextStyleChoice
     var addressColor: Color = Color.Theme.text2
     var placeColor: Color = Color.Theme.text2
+    /// Sökträffarna har adressen som rubrik, i fetare stil.
+    var addressWeight: Font.Weight = .semibold
 
     /// Textstilen som storleken följer med Dynamic Type, för adressen och för platsen en storlek ner.
     enum TextStyleChoice {
@@ -191,7 +193,7 @@ struct AddressLinesView: View {
         VStack(alignment: .leading, spacing: 2) {
             if !lines.address.isEmpty {
                 Text(lines.address)
-                    .font(.ui(size, weight: .semibold, relativeTo: addressStyle.address))
+                    .font(.ui(size, weight: addressWeight, relativeTo: addressStyle.address))
                     .foregroundStyle(addressColor)
             }
             if !lines.place.isEmpty {

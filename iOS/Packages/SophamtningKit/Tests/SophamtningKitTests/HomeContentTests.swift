@@ -109,31 +109,31 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let primary = try #require(content.primary)
     #expect(primary.status == .noUpcoming)
     #expect(primary.summary == "Inga kommande hämtningar")
-    #expect(primary.reminderText == nil)
+    #expect(primary.reminder == nil)
 }
 
 @Test func utanPaslagenPaminnelseVisasInbjudan() throws {
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])])
-    #expect(try #require(content.primary).reminderText == "Påminn mig kvällen före")
+    #expect(try #require(content.primary).reminder?.detail == nil)
 }
 
 @Test func notisPaGerPaminnelseKvallenFore() throws {
     var on = home
     on.notificationsOn = true
     let content = make([on], [on.key: schedule([event("2026-11-09", ["rest"])])])
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+    #expect(try #require(content.primary).reminder?.detail == "Söndag kl. 18:00")
 }
 
 @Test func utanAktivitetLovasIngenLiveActivity() throws {
     // Utan någon aktivitet hos systemet påminner inget, och kortet får inte låta som att något gör det.
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(reminderMinutes: 1050, liveActivityOn: true))
-    #expect(try #require(content.primary).reminderText == "Ingen Live Activity planerad")
+    #expect(try #require(content.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
 @Test func felVidStartVisasPaKortet() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.")
-    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminder?.detail == "Kunde inte läggas in.")
 }
 
 @Test func felVidStartVisasAvenMedNotiser() throws {
@@ -142,7 +142,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.")
-    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminder?.detail == "Kunde inte läggas in.")
 }
 
 @Test func felVisasInteNarValetArAv() throws {
@@ -150,7 +150,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: false), now: now, liveActivityError: "Gammalt fel.")
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+    #expect(try #require(content.primary).reminder?.detail == "Söndag kl. 18:00")
 }
 
 @Test func passeradPaminnelseForNastaTomningVisas() throws {
@@ -158,7 +158,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, missedReminder: "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
-    #expect(try #require(content.primary).reminderText == "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
+    #expect(try #require(content.primary).reminder?.detail == "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
 }
 
 @Test func felGarForePasseradPaminnelse() throws {
@@ -166,13 +166,13 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.", missedReminder: "Passerad.")
-    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminder?.detail == "Kunde inte läggas in.")
 }
 
 @Test func passeradStarttidLovasInte() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: now.addingTimeInterval(-60)))
-    #expect(try #require(content.primary).reminderText == "Ingen Live Activity planerad")
+    #expect(try #require(content.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
 private func activity(pending: Bool, start: Date) -> ExistingActivity {
@@ -186,13 +186,13 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 1050)
     // Tiden kommer från aktiviteten, som kan ha lagts in före en ändring av inställningen.
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(reminderMinutes: 1200, liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
-    #expect(try #require(content.primary).reminderText == "Live Activity söndag kl. 17:30")
+    #expect(try #require(content.primary).reminder?.detail == "Live Activity söndag kl. 17:30")
 }
 
 @Test func startadLiveActivityVisasSomPagaende() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: false, start: now))
-    #expect(try #require(content.primary).reminderText == "Live Activity visas nu")
+    #expect(try #require(content.primary).reminder?.detail == "Live Activity visas nu")
 }
 
 @Test func utanAktivitetVisasNotisenSomForut() throws {
@@ -201,13 +201,13 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     // Starten misslyckades eller ska inte ske, och notisen är det som faktiskt påminner.
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: nil)
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+    #expect(try #require(content.primary).reminder?.detail == "Söndag kl. 18:00")
 }
 
 @Test func avstangdaLiveActivitiesSagsPaKortet() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivitiesEnabled: false)
-    #expect(try #require(content.primary).reminderText == "Live Activities är avstängda")
+    #expect(try #require(content.primary).reminder?.detail == "Live Activities är avstängda")
 }
 
 @Test func notisValetSomIosInteTillaterVisasSomAv() throws {
@@ -215,9 +215,9 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let denied = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, remindersAllowed: false)
-    #expect(try #require(denied.primary).reminderText == "Påminn mig kvällen före")
+    #expect(try #require(denied.primary).reminder?.detail == nil)
     let liveOnly = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, remindersAllowed: false)
-    #expect(try #require(liveOnly.primary).reminderText == "Ingen Live Activity planerad")
+    #expect(try #require(liveOnly.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {
@@ -264,27 +264,27 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
 private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     var on = home
     on.notificationsOn = true
-    return try #require(make([on], [on.key: schedule(events)], at: time).primary).reminderText
+    return try #require(make([on], [on.key: schedule(events)], at: time).primary).reminder?.detail
 }
 
 @Test func tomningIDagUtanSenareHamtningGerNeutralPaminnelsetext() throws {
-    #expect(try reminder(events: [event("2026-11-06", ["rest"])], at: now) == "Påminnelser på")
+    #expect(try reminder(events: [event("2026-11-06", ["rest"])], at: now) == nil)
 }
 
 @Test func tomningIDagRaknarPaminnelsenFranNastaHamtning() throws {
     let events = [event("2026-11-06", ["rest"]), event("2026-11-09", ["mat"])]
-    #expect(try reminder(events: events, at: now) == "Påminnelse söndag kl. 18:00")
+    #expect(try reminder(events: events, at: now) == "Söndag kl. 18:00")
 }
 
 @Test func tomningIMorgonForeKlockan18GerPaminnelseSammaKvall() throws {
-    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: now) == "Påminnelse fredag kl. 18:00")
+    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: now) == "Fredag kl. 18:00")
 }
 
 @Test func tomningIMorgonEfter18GerNeutralTextOmIngenSenareFinns() throws {
     let evening = StockholmClock.date(on: today, minutes: 19 * 60)
-    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: evening) == "Påminnelser på")
+    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: evening) == nil)
     let later = [event("2026-11-07", ["rest"]), event("2026-11-12", ["mat"])]
-    #expect(try reminder(events: later, at: evening) == "Påminnelse onsdag kl. 18:00")
+    #expect(try reminder(events: later, at: evening) == "Onsdag kl. 18:00")
 }
 
 // MARK: Adress och plats på var sin rad
@@ -379,7 +379,7 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     #expect(content.others[0].rowReminder == .scheduled("Påminnelse tisdag kl. 18:00"))
     #expect(content.others[0].rowReminder?.text == "Påminnelse tisdag kl. 18:00")
     // Raden har sitt läge, och huvudkortets text är bara huvudkortets.
-    #expect(content.others[0].reminderText == nil)
+    #expect(content.others[0].reminder == nil)
     #expect(content.primary?.rowReminder == nil)
 }
 
@@ -395,8 +395,9 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     let content = HomeContent.make(addresses: [primary, other], schedules: [primary.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
     #expect(content.others[0].rowReminder == .denied)
     #expect(content.others[0].rowReminder?.text == "Notiser är avstängda i iOS")
-    // Huvudkortet ändras inte.
-    #expect(content.primary?.reminderText == "Påminn mig kvällen före")
+    // Huvudkortets reglage är av och säger att notiserna är avstängda.
+    #expect(content.primary?.reminder?.isOn == false)
+    #expect(content.primary?.reminder?.isDenied == true)
 }
 
 @Test func radMedNotisAvOchNekadeNotiserVisarIngenting() throws {
@@ -505,4 +506,14 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     ])
     #expect(try #require(content.primary).reminder == nil)
     #expect(content.others[0].reminder == nil)
+}
+
+@Test func reglagetUppreparInteAttPaminnelserArPa() throws {
+    // Tömning i dag och ingen senare: reglaget säger redan att påminnelsen är på, så ingen undertext.
+    var on = home
+    on.notificationsOn = true
+    let reminder = try #require(make([on], [on.key: schedule([event("2026-11-06", ["rest"])])]).primary?.reminder)
+    #expect(reminder.isOn)
+    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.detail == nil)
 }

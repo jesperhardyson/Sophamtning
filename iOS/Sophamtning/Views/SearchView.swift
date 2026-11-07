@@ -204,18 +204,15 @@ struct SearchView: View {
 
     private func row(_ hit: SearchHit) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: "mappin.and.ellipse")
-                .font(.system(.title3))
-                .foregroundStyle(Color.Theme.brandText)
-                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(hit.street)
-                    .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                    .foregroundStyle(Color.Theme.text)
-                // Samma regel som kortens undertitel: kommunen upprepar inte orten.
-                Text(localityAndKommun(locality: hit.locality, kommun: hit.kommun))
-                    .font(.ui(16, weight: .semibold, relativeTo: .callout))
-                    .foregroundStyle(Color.Theme.text2)
+                // Adressen och platsen som på korten: platsen en storlek mindre, med platsikonen.
+                AddressLinesView(
+                    lines: HomeContent.AddressLines(address: hit.street, place: localityAndKommun(locality: hit.locality, kommun: hit.kommun)),
+                    size: 18,
+                    addressStyle: .body,
+                    addressColor: Color.Theme.text,
+                    addressWeight: .heavy
+                )
                 if let detail = hit.detail {
                     Text(detail)
                         .font(.ui(16, weight: .heavy, relativeTo: .callout))

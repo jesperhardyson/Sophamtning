@@ -394,8 +394,8 @@ private struct SourcesView: View {
             }
             .accessibilityElement(children: .combine)
             ForEach(SourceLink.links(for: source, kommunInfo: nil)) { link in
-                SourceLinkButton(link: link, webLink: $webLink)
-                    .buttonStyle(.borderless)
+                // Källans namn i etiketten, så att VoiceOver säger vilken källa länken hör till.
+                SourceLinkButton(link: link, webLink: $webLink, source: source.name)
             }
         }
         .padding(.vertical, 6)

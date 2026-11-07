@@ -561,7 +561,7 @@ private func overdue(_ f: Fixture) {
     #expect(model.liveActivityError != nil)
     #expect(model.missedReminderText(for: home) != nil)
     let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate, remindersAllowed: true, liveActivity: model.currentLiveActivity, liveActivitiesEnabled: model.liveActivitiesEnabled, liveActivityError: model.liveActivityError, missedReminder: model.missedReminderText(for: home))
-    #expect(try #require(content.primary).reminderText == model.liveActivityError)
+    #expect(try #require(content.primary).reminder?.detail == model.liveActivityError)
 }
 
 @Test @MainActor func passeradPaminnelseVisasUtanAktivitet() async throws {
@@ -868,7 +868,7 @@ private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_source
     // "Påminnelsen har passerat" gäller inte när en reserv ligger framför.
     #expect(model.missedReminderText(for: home) == nil)
     let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate, remindersAllowed: true, liveActivity: nil, liveActivitiesEnabled: true, liveActivityError: nil, missedReminder: nil, reserveAt: model.reserveNotificationDate(for: home))
-    #expect(try #require(content.primary).reminderText == "Reservpåminnelse kl. 18:45")
+    #expect(try #require(content.primary).reminder?.detail == "Reservpåminnelse kl. 18:45")
 }
 
 @Test @MainActor func utstalltTarBortReserventVidNastaPlanering() async throws {

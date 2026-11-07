@@ -50,6 +50,8 @@ struct SourceCard: View {
 struct SourceLinkButton: View {
     let link: SourceLink
     @Binding var webLink: WebLink?
+    /// Källans namn för VoiceOver, där flera källor står i samma lista: "Webbplats, Avesta Vatten och Avfall".
+    var source: String?
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -71,7 +73,7 @@ struct SourceLinkButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.pressable)
-        .accessibilityLabel(link.accessibilityLabel)
+        .accessibilityLabel(source.map { "\(link.accessibilityLabel), \($0)" } ?? link.accessibilityLabel)
         .accessibilityHint(link.webLink == nil ? "" : "Öppnas i appen")
         .accessibilityAddTraits(.isLink)
     }

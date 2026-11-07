@@ -79,7 +79,8 @@ public struct HomeContent: Equatable, Sendable {
             self.isOn = isOn
             self.isDenied = isDenied
             title = isDenied ? RowReminder.denied.text : Self.offTitle
-            if text == Self.offTitle {
+            // Inbjudan är redan rubriken, och "Påminnelser på" säger bara det reglaget redan visar.
+            if text == Self.offTitle || text == "Påminnelser på" {
                 detail = nil
             } else if text.hasPrefix("Påminnelse ") {
                 let rest = text.dropFirst("Påminnelse ".count)
@@ -119,8 +120,6 @@ public struct HomeContent: Equatable, Sendable {
         public let status: Status
         /// Senaste försöket att uppdatera misslyckades, men ett äldre schema visas.
         public let refreshFailed: Bool
-        /// Huvudkortets rad för påminnelse. `nil` när det inte finns någon kommande hämtning, och alltid på raderna.
-        public let reminderText: String?
         /// Huvudkortets reglage för påminnelsen. `nil` när det inte finns någon kommande hämtning, och alltid på raderna.
         public let reminder: PrimaryReminder?
         /// Radens påminnelse under "Fler adresser". Bara när notis är på för adressen och en hämtning kommer, och utan
@@ -173,7 +172,6 @@ public struct HomeContent: Equatable, Sendable {
     private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> Entry {
         let status = status(of: schedule, today: today)
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
-        var reminder: String?
         var rowReminder: RowReminder?
         var primaryReminder: PrimaryReminder?
         let summary: String
@@ -188,9 +186,7 @@ public struct HomeContent: Equatable, Sendable {
             let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
             let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
             if !asRow {
-                let shown = text()
-                reminder = shown
-                primaryReminder = PrimaryReminder(text: shown, isOn: notifications, isDenied: remindersDenied)
+                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied)
             } else if address.notificationsOn {
                 if remindersDenied {
                     rowReminder = .denied
@@ -213,7 +209,6 @@ public struct HomeContent: Equatable, Sendable {
             lines: lines(for: address),
             status: status,
             refreshFailed: refreshFailed,
-            reminderText: reminder,
             reminder: primaryReminder,
             rowReminder: rowReminder,
             summary: summary
