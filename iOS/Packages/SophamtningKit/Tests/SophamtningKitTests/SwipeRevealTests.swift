@@ -147,7 +147,7 @@ import Testing
     }
 
     @Test func forbiGransenDampasRorelsenSomEttGummiband() {
-        // Som i Påminnelser: förbi gränsen följer raden fingret trögt, med en tredjedel av rörelsen.
+        // Som i Påminnelser: förbi gränsen följer raden fingret trögt, med 30 procent av rörelsen.
         let limit = SwipeReveal.fullSwipeDistance(width: width)
         #expect(SwipeReveal.overshootDamping == 0.3)
         #expect(abs(SwipeReveal.trackedOffset(-limit - 10, width: width) - (-limit - 3)) < 0.001)
