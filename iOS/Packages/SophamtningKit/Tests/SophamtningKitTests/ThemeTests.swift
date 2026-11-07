@@ -49,7 +49,15 @@ import SophamtningKit
         #expect(ThemeToken.primary.dark == 0x4CC384)
         #expect(ThemeToken.bg.light == 0xE8F2EA)
         #expect(ThemeToken.fracPlastBg.dark == 0x3D241B)
-        #expect(ThemeToken.allCases.count == 28)
+        #expect(ThemeToken.allCases.count == 29)
+    }
+
+    @Test func reglagetPaKortetArMorktILjustOchMorkt() {
+        // Reglaget på det gröna huvudkortet: samma mörkgröna i båda lägena, som `onPrimary` i mörkt läge.
+        #expect(ThemeToken.toggleOn.light == 0x0B2416)
+        #expect(ThemeToken.toggleOn.dark == 0x0B2416)
+        #expect(resolved(Color.Theme.toggleOn, dark: false) == 0x0B2416)
+        #expect(resolved(Color.Theme.toggleOn, dark: true) == ThemeToken.onPrimary.dark)
     }
 
     @Test func kandFraktionAnvanderTematsIkonInteAPIts() {

@@ -10,6 +10,8 @@ public enum ThemeToken: CaseIterable, Sendable {
     case fracRest, fracRestBg, fracMat, fracMatBg, fracPapper, fracPapperBg
     case fracPlast, fracPlastBg, fracGlas, fracGlasBg, fracMetall, fracMetallBg
     case cardOverlay
+    /// Reglaget som är på, på det gröna huvudkortet. Mörkt i båda lägena, så att det syns mot kortet och den vita knoppen.
+    case toggleOn
 
     public var light: UInt32 { values.light }
     public var dark: UInt32 { values.dark }
@@ -48,6 +50,7 @@ public enum ThemeToken: CaseIterable, Sendable {
         case .fracMetall: (0x6B4F7A, 0xC6A9D6)
         case .fracMetallBg: (0xEEE6F1, 0x2E2436)
         case .cardOverlay: (0xFFFFFF, 0x0B2416)
+        case .toggleOn: (0x0B2416, 0x0B2416)
         }
     }
 
@@ -87,6 +90,7 @@ extension Color {
         public static let fracMetall = ThemeToken.fracMetall.color
         public static let fracMetallBg = ThemeToken.fracMetallBg.color
         public static let cardOverlay = ThemeToken.cardOverlay.color
+        public static let toggleOn = ThemeToken.toggleOn.color
         /// Förstörande åtgärder, som Ta bort. Systemets röda, som följer ljust och mörkt läge.
         public static let destructive = Color.red
     }
