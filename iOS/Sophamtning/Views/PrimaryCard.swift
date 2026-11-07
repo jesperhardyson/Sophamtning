@@ -254,11 +254,15 @@ private struct PrimaryReminderRow: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
+    private static let toggleTint = Color(red: 0x0B / 255, green: 0x24 / 255, blue: 0x16 / 255)
+
     private var toggle: some View {
         Toggle(reminder.title, isOn: Binding(get: { reminder.isOn }, set: { onChange($0) }))
             .labelsHidden()
             .toggleStyle(.switch)
-            .tint(Color.Theme.brandText)
+            // En mörk bana i både ljust och mörkt läge, så att påslaget syns tydligt mot det gröna kortet och den vita
+            // knoppen. Samma mörkgröna som texten på kortet i mörkt läge (`onPrimary`).
+            .tint(Self.toggleTint)
             .disabled(reminder.isDenied)
             // Det avstängda reglaget öppnar Inställningar, i stället för att trycket går vidare och öppnar adressen.
             .overlay {
