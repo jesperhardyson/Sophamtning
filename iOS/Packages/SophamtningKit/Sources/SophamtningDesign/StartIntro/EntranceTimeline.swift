@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Hur korten och listorna kommer in. Rena värden, så att fördelningen kan testas. Vyerna använder dem i `Motion`.
 public enum EntranceTimeline {
@@ -13,11 +14,6 @@ public enum EntranceTimeline {
     static let rowStagger: TimeInterval = 0.04
     /// Bara de första raderna kommer in en efter en. Resten står stilla från början, så att långa listor inte väntar.
     public static let rowLimit = 8
-
-    /// UI-testerna startar med `-uitest`, och då är inträdesanimationerna avstängda.
-    public static var isEnabled: Bool {
-        !ProcessInfo.processInfo.arguments.contains(StartIntroTimeline.skipArgument)
-    }
 
     public static func cardDelay(index: Int, reduceMotion: Bool) -> TimeInterval {
         reduceMotion ? 0 : Double(index) * cardStagger
@@ -52,9 +48,9 @@ public struct StartEntrance: Equatable, Sendable {
 
     private var phase: Phase
 
-    /// Hemskärmens kort kommer in en gång per process, aldrig i UI-tester.
-    public static func shouldPlay(arguments: [String], alreadyPlayed: Bool) -> Bool {
-        !arguments.contains(StartIntroTimeline.skipArgument) && !alreadyPlayed
+    /// Hemskärmens kort kommer in en gång per process, aldrig i UI-tester (`skipsIntro`, som appen bara sätter i Debug).
+    public static func shouldPlay(skipsIntro: Bool, alreadyPlayed: Bool) -> Bool {
+        !skipsIntro && !alreadyPlayed
     }
 
     public init(plays: Bool) {
@@ -96,5 +92,17 @@ public struct ShownOnce<Key: Hashable & Sendable>: Sendable {
 
     public mutating func markShown(_ key: Key) {
         shown.insert(key)
+    }
+}
+
+private struct EntranceEnabledKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// Om listornas inträde ska spelas. Appen stänger av det för UI-testerna i Debug, och i Release är det alltid på.
+    public var entranceEnabled: Bool {
+        get { self[EntranceEnabledKey.self] }
+        set { self[EntranceEnabledKey.self] = newValue }
     }
 }

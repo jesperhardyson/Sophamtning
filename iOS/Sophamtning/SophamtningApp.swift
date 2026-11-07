@@ -35,6 +35,7 @@ struct SophamtningApp: App {
     var body: some Scene {
         WindowGroup {
             HomeView(model: model, entrance: entrance, onEntranceFinished: { entrance.finish() })
+                .environment(\.entranceEnabled, !StartIntroState.skipsIntro)
                 .overlay {
                     if showsIntro {
                         StartIntroView(

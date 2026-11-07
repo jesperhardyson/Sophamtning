@@ -36,7 +36,7 @@ struct AddressView: View {
         self.model = model
         self.key = key
         self.onSearchAgain = onSearchAgain
-        _entrancePlays = State(initialValue: EntranceTimeline.isEnabled && ShownSchedules.keys.shouldPlay(key))
+        _entrancePlays = State(initialValue: !StartIntroState.skipsIntro && ShownSchedules.keys.shouldPlay(key))
     }
 
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }

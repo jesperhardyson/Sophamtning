@@ -7,9 +7,6 @@ import Foundation
 /// snurrar ringen ett varv, kalendern studsar till, och logotypen krymper och tonas ut medan bakgrunden tonas bort och
 /// hemskärmen, som ligger klar under, framträder. Med Reducera rörelse står logotypen still och allt tonas bort.
 public enum StartIntroTimeline {
-    /// Argumentet som UI-testerna startar appen med. Då visas inget intro.
-    public static let skipArgument = "-uitest"
-
     /// Hela introt, högst 1,2 sekunder.
     static let fullDuration: TimeInterval = 1.2
     /// Stilla i början, medan systemet tonar bort startskärmen.
@@ -97,9 +94,10 @@ public enum StartIntroTimeline {
         return 1 + (bouncePeak - 1) * exp(-3 * u) * sin(3 * Double.pi * u) / highest
     }
 
-    /// Introt visas när appen startar från början, aldrig med VoiceOver, aldrig i UI-tester och bara en gång per process.
-    public static func shouldPlay(voiceOverRunning: Bool, arguments: [String], alreadyShown: Bool) -> Bool {
-        !voiceOverRunning && !arguments.contains(skipArgument) && !alreadyShown
+    /// Introt visas när appen startar från början, aldrig med VoiceOver, aldrig i UI-tester (`skipsIntro`, som appen
+    /// bara sätter i Debug) och bara en gång per process.
+    public static func shouldPlay(voiceOverRunning: Bool, skipsIntro: Bool, alreadyShown: Bool) -> Bool {
+        !voiceOverRunning && !skipsIntro && !alreadyShown
     }
 
     /// Hur länge efter processens start första bilden får komma för att räknas som en start från början.

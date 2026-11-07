@@ -128,20 +128,19 @@ import Testing
     // MARK: När introt visas
 
     @Test func visasVidNormalStart() {
-        #expect(StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: ["Sophamtning"], alreadyShown: false))
+        #expect(StartIntroTimeline.shouldPlay(voiceOverRunning: false, skipsIntro: false, alreadyShown: false))
     }
 
     @Test func visasInteMedVoiceOver() {
-        #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: true, arguments: [], alreadyShown: false))
+        #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: true, skipsIntro: false, alreadyShown: false))
     }
 
     @Test func visasInteMedUiTest() {
-        #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: ["Sophamtning", "-uitest"], alreadyShown: false))
-        #expect(StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: ["Sophamtning", "-uitest-intrade"], alreadyShown: false))
+        #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: false, skipsIntro: true, alreadyShown: false))
     }
 
     @Test func visasBaraEnGangPerProcess() {
-        #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: [], alreadyShown: true))
+        #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: false, skipsIntro: false, alreadyShown: true))
     }
 
     @Test func ingenStartFranBorjanNarForstaBildenKommerLangeEfterProcessstarten() {

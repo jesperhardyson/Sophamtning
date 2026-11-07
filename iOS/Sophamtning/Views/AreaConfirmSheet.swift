@@ -6,8 +6,8 @@ import SwiftUI
 struct AreaConfirmSheet: View {
     let saveFailed: Bool
     let hit: SearchHit
-    /// Sparar området och svarar om det gick.
-    let onSave: () -> Bool
+    /// Sparar området. Den som äger arket håller reda på om det gick.
+    let onSave: () -> Void
     let onOther: () -> Void
 
     var body: some View {
@@ -46,7 +46,7 @@ struct AreaConfirmSheet: View {
                 }
                 // Vibrationen spelas av hemskärmen, som finns kvar när arket stängs.
                 Button {
-                    _ = onSave()
+                    onSave()
                 } label: { PrimaryButtonLabel(title: "Spara området") }
                     .buttonStyle(.pressable)
                     .padding(.top, 24)

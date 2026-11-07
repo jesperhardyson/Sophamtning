@@ -50,7 +50,6 @@ struct SearchView: View {
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
                 let saved = save(hit, in: model, onSaved: onSaved)
                 saveFailed = !saved
-                return saved
             }, onOther: { chosenArea = nil })
         }
     }

@@ -34,11 +34,9 @@ import Testing
     // MARK: En gång per process
 
     @Test func spelasBaraEnGangPerProcess() {
-        #expect(StartEntrance.shouldPlay(arguments: ["Sophamtning"], alreadyPlayed: false))
-        #expect(!StartEntrance.shouldPlay(arguments: ["Sophamtning"], alreadyPlayed: true))
-        #expect(!StartEntrance.shouldPlay(arguments: ["Sophamtning", "-uitest"], alreadyPlayed: false))
-        // Testet av inträdet har testdata men låter korten komma in.
-        #expect(StartEntrance.shouldPlay(arguments: ["Sophamtning", "-uitest-intrade"], alreadyPlayed: false))
+        #expect(StartEntrance.shouldPlay(skipsIntro: false, alreadyPlayed: false))
+        #expect(!StartEntrance.shouldPlay(skipsIntro: false, alreadyPlayed: true))
+        #expect(!StartEntrance.shouldPlay(skipsIntro: true, alreadyPlayed: false))
     }
 
     @Test func enStartBorjarEnGangOchAldrigOm() {

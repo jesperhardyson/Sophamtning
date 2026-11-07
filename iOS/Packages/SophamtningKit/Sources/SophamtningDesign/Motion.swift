@@ -135,11 +135,12 @@ private struct RowEntranceModifier: ViewModifier {
 private struct RowAppearModifier: ViewModifier {
     let index: Int
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.entranceEnabled) private var entranceEnabled
     @State private var appeared = false
 
     func body(content: Content) -> some View {
         content
-            .rowEntrance(shown: appeared || voiceOver || !EntranceTimeline.isEnabled, index: index)
+            .rowEntrance(shown: appeared || voiceOver || !entranceEnabled, index: index)
             .onAppear { appeared = true }
     }
 }

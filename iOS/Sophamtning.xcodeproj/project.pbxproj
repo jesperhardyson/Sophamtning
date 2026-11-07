@@ -361,11 +361,11 @@
 				};
 			};
 			buildConfigurationList = 773BC1D96DA1E8D86523BA7A /* Build configuration list for PBXProject "Sophamtning" */;
-			developmentRegion = en;
+			developmentRegion = sv;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
-				en,
+				sv,
 			);
 			mainGroup = 4D7DA47755D74838DFD79873;
 			minimizedProjectReferenceProxies = 1;

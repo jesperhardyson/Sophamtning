@@ -275,8 +275,13 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
             Text("Ta bort")
                 .font(.ui(12, weight: .bold, relativeTo: .caption))
                 .foregroundStyle(Color.Theme.text)
-                .lineLimit(1)
+                // Knappen är 56 pt bred i alla textstorlekar. Texten bryts efter "Ta" när den inte ryms på en rad, och
+                // växer inte längre än till tredje tillgänglighetsstorleken, så att "bort" ryms i bredden.
+                .lineLimit(2)
                 .minimumScaleFactor(0.6)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
         .frame(width: buttonShape.buttonWidth)
         .contentShape(Rectangle())

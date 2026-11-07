@@ -1,6 +1,7 @@
 name: Sophamtning
 options:
   bundleIdPrefix: se.hardyson
+  developmentLanguage: sv
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true

@@ -15,13 +15,22 @@ enum StartIntroState {
         StartIntroTimeline.isFreshLaunch(secondsSinceProcessStart: Date().timeIntervalSince(processStart))
     }
 
+    /// UI-testerna startar med `-uitest`, och då visas inget intro och korten kommer inte in. Argumentet läses bara i
+    /// Debug. I Release är det alltid `false`, så att en inställning utifrån aldrig kan stänga av animationerna.
+    static var skipsIntro: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-uitest")
+        #else
+        false
+        #endif
+    }
+
     /// Körs i appens init, innan första bilden. Svarar första gången och därefter aldrig: om introt ska visas och om hemskärmens kort ska komma in.
     static func claim() -> (intro: Bool, cards: Bool) {
         // Första åtkomsten tar starttiden, så den ska ske här i appens init och inte först när vyn visas.
         _ = processStart
-        let arguments = ProcessInfo.processInfo.arguments
-        let intro = StartIntroTimeline.shouldPlay(voiceOverRunning: UIAccessibility.isVoiceOverRunning, arguments: arguments, alreadyShown: shown)
-        let cards = StartEntrance.shouldPlay(arguments: arguments, alreadyPlayed: shown)
+        let intro = StartIntroTimeline.shouldPlay(voiceOverRunning: UIAccessibility.isVoiceOverRunning, skipsIntro: skipsIntro, alreadyShown: shown)
+        let cards = StartEntrance.shouldPlay(skipsIntro: skipsIntro, alreadyPlayed: shown)
         shown = true
         return (intro, cards)
     }
