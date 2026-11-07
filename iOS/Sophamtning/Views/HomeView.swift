@@ -131,6 +131,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 16) {
             Text(title)
                 .font(.brand(30, relativeTo: .largeTitle))
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .padding(.top, 32)
                 .accessibilityAddTraits(.isHeader)
@@ -193,6 +194,8 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Sophämtning")
                 .font(.brand(40, relativeTo: .largeTitle))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .padding(.top, 20)
                 .padding(.bottom, 20)
@@ -225,6 +228,7 @@ struct HomeView: View {
                 .padding(.bottom, 36)
             Text("När töms dina kärl?")
                 .font(.brand(34, relativeTo: .largeTitle))
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Color.Theme.text)
                 .accessibilityAddTraits(.isHeader)
             Text("Skriv in din adress så ser du vilka kärl som töms och när. Inget konto behövs.")

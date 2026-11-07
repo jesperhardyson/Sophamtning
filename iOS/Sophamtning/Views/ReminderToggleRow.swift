@@ -15,12 +15,14 @@ struct ReminderToggleRow: View {
 
     var body: some View {
         Toggle(isOn: $isOn) {
-            HStack(alignment: .top, spacing: 12) {
+            AdaptiveStack(spacing: 12, verticalSpacing: 8, alignment: .top) {
                 icon
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(Color.Theme.text)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.5)
                     Text(text)
                         .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
                         .foregroundStyle(Color.Theme.text2)

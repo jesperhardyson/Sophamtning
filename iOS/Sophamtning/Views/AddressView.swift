@@ -18,6 +18,7 @@ struct AddressView: View {
     @State private var confirmingRemoval = false
     @State private var notificationPulse = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .headline) private var dateWidth: CGFloat = 100
 
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }
@@ -182,14 +183,14 @@ struct AddressView: View {
         sectionTitle("Kärlen")
         VStack(spacing: 0) {
             ForEach(detail.bins) { bin in
-                HStack(spacing: 14) {
+                AdaptiveStack(spacing: 14, verticalSpacing: 8) {
                     FractionIconView(id: bin.id, info: bin.info)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(bin.info.name)
                             .font(.ui(20, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.text)
                             .lineLimit(2)
-                            .minimumScaleFactor(0.7)
+                            .minimumScaleFactor(0.5)
                         Text(bin.dateText)
                             .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(Color.Theme.text2)
@@ -209,23 +210,25 @@ struct AddressView: View {
 
     private func nextCard(_ next: HomeContent.Pickup) -> some View {
         HStack(spacing: 20) {
-            CalendarTile(date: next.date)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("NÄSTA TÖMNING")
-                    .font(.ui(13, weight: .heavy, relativeTo: .caption))
-                    .tracking(1.2)
-                    .foregroundStyle(Color.Theme.brandText)
-                Text(next.headline)
-                    .font(.ui(32, weight: .heavy, relativeTo: .title))
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(2)
-                    .foregroundStyle(Color.Theme.text)
-                    .rollingNumbers(value: next.headline, reduceMotion: reduceMotion)
-                Text(next.longDate)
-                    .font(.ui(17, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
+            AdaptiveStack(spacing: 20) {
+                CalendarTile(date: next.date)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("NÄSTA TÖMNING")
+                        .font(.ui(13, weight: .heavy, relativeTo: .caption))
+                        .tracking(1.2)
+                        .foregroundStyle(Color.Theme.brandText)
+                    Text(next.headline)
+                        .font(.ui(32, weight: .heavy, relativeTo: .title))
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(2)
+                        .foregroundStyle(Color.Theme.text)
+                        .rollingNumbers(value: next.headline, reduceMotion: reduceMotion)
+                    Text(next.longDate)
+                        .font(.ui(17, weight: .semibold, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text2)
+                }
+                .accessibilityElement(children: .combine)
             }
-            .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
         }
         .padding(20)
@@ -319,11 +322,11 @@ struct AddressView: View {
 
     private func scheduleRow(_ row: AddressDetail.Row) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 16) {
+            AdaptiveStack(spacing: 16, verticalSpacing: 10, alignment: .top) {
                 Text(row.dateText)
                     .font(.ui(18, weight: .heavy, relativeTo: .headline))
                     .foregroundStyle(Color.Theme.text)
-                    .frame(width: dateWidth, alignment: .leading)
+                    .frame(width: typeSize.isAccessibilitySize ? nil : dateWidth, alignment: .leading)
                 FlowLayout(spacing: 8) {
                     ForEach(row.fractions) { fraction in
                         FractionChip(id: fraction.id, info: fraction.info)

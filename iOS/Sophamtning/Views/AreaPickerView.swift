@@ -25,6 +25,7 @@ struct AreaPickerView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Välj område")
                     .font(.brand(40, relativeTo: .largeTitle))
+                    .minimumScaleFactor(0.5)
                     .foregroundStyle(Color.Theme.text)
                     .accessibilityAddTraits(.isHeader)
                 if let notice {

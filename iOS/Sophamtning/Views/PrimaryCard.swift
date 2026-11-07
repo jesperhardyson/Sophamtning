@@ -9,6 +9,7 @@ struct PrimaryCard: View {
     let onOpen: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var foreground: Color { Color.Theme.onPrimary }
 
@@ -84,27 +85,49 @@ struct PrimaryCard: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "house")
-                .font(.system(.body, weight: .semibold))
-                .accessibilityHidden(true)
-            Text(entry.title)
-                .font(.ui(18, weight: .heavy, relativeTo: .headline))
-            Text(entry.subtitle)
-                .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                .opacity(0.9)
-                .lineLimit(2)
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(.subheadline, weight: .semibold))
-                .accessibilityHidden(true)
+        Group {
+            if typeSize.isAccessibilitySize {
+                // Under varandra, och utan pil: hela kortet är ändå en knapp. Då får texten hela bredden.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "house")
+                            .font(.system(.body, weight: .semibold))
+                            .accessibilityHidden(true)
+                        Text(entry.title)
+                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.5)
+                    }
+                    Text(entry.subtitle)
+                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                        .opacity(0.9)
+                }
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "house")
+                        .font(.system(.body, weight: .semibold))
+                        .accessibilityHidden(true)
+                    AdaptiveStack(spacing: 8, verticalSpacing: 2) {
+                        Text(entry.title)
+                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                        Text(entry.subtitle)
+                            .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                            .opacity(0.9)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
     }
 
     private func nextPickup(_ pickup: HomeContent.Pickup) -> some View {
-        HStack(alignment: .center, spacing: 20) {
+        AdaptiveStack(spacing: 20) {
             CalendarTile(date: pickup.date)
             VStack(alignment: .leading, spacing: 4) {
                 Text("NÄSTA TÖMNING")

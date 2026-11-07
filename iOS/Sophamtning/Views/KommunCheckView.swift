@@ -32,6 +32,7 @@ struct KommunCheckView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Finns min kommuns hämtningsschema?")
                     .font(.brand(34, relativeTo: .largeTitle))
+                    .minimumScaleFactor(0.5)
                     .foregroundStyle(Color.Theme.text)
                     .accessibilityAddTraits(.isHeader)
                 Text("Skriv din kommun eller ort. Svaret kommer medan du skriver.")
@@ -168,7 +169,7 @@ struct KommunCheckView: View {
             Button { webLink = tipLink } label: {
                 Label("Tipsa om din kommun", systemImage: "arrow.up.right.square")
                     .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(Color.Theme.primary)
+                    .foregroundStyle(Color.Theme.brandText)
             }
         }
         .padding(16)
@@ -183,7 +184,7 @@ struct KommunCheckView: View {
                 .foregroundStyle(Color.Theme.text)
                 .accessibilityAddTraits(.isHeader)
             ForEach(rows, id: \.code) { row in
-                HStack(spacing: 12) {
+                AdaptiveStack(spacing: 12) {
                     Image(systemName: row.sourceId == nil ? "circle.dashed" : "checkmark.circle")
                         .foregroundStyle(row.sourceId == nil ? Color.Theme.text2 : Color.Theme.brandText)
                         .accessibilityHidden(true)

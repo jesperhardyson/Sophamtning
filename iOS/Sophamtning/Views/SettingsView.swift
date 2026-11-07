@@ -185,14 +185,18 @@ private struct SettingsRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(title)
-                .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                .foregroundStyle(Color.Theme.text)
-            Spacer(minLength: 8)
-            if !value.isEmpty {
-                Text(value)
-                    .font(.ui(19, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
+            AdaptiveStack(spacing: 8, verticalSpacing: 2) {
+                Text(title)
+                    .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                    .foregroundStyle(Color.Theme.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                Spacer(minLength: 8)
+                if !value.isEmpty {
+                    Text(value)
+                        .font(.ui(19, weight: .semibold, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text2)
+                }
             }
             if showsChevron {
                 Image(systemName: "chevron.right")
