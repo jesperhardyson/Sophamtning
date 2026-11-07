@@ -11,7 +11,8 @@ struct AreaConfirmSheet: View {
     let onOther: () -> Void
 
     var body: some View {
-        // Rullbart, så att Spara området går att nå även med största textstorlek.
+        // Rullbart, och Spara området står fast längst ned, så att knappen alltid syns, också i halv höjd och med
+        // största textstorlek.
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Stämmer området?")
@@ -44,12 +45,6 @@ struct AreaConfirmSheet: View {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: saveFailedMessage)
                         .padding(.top, 12)
                 }
-                // Vibrationen spelas av hemskärmen, som finns kvar när arket stängs.
-                Button {
-                    onSave()
-                } label: { PrimaryButtonLabel(title: "Spara området") }
-                    .buttonStyle(.pressable)
-                    .padding(.top, 24)
                 Button(action: onOther) {
                     Text("Välj ett annat område")
                         .font(.ui(18, weight: .heavy, relativeTo: .body))
@@ -57,13 +52,20 @@ struct AreaConfirmSheet: View {
                         .frame(maxWidth: .infinity, minHeight: 48)
                 }
                 .buttonStyle(.pressable)
-                .padding(.top, 8)
+                .padding(.top, 16)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .safeAreaBar(edge: .bottom) {
+            // Vibrationen spelas av hemskärmen, som finns kvar när arket stängs.
+            Button { onSave() } label: { PrimaryButtonLabel(title: "Spara området") }
+                .buttonStyle(.pressable)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 8)
+        }
         .background(Color.Theme.surface.ignoresSafeArea())
         .presentationDetents([.fraction(0.7), .large])
         .presentationDragIndicator(.visible)

@@ -81,6 +81,31 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["När töms dina kärl?"].exists)
     }
 
+    func testHittaOmradeKnappenSynsNarKalendernArUtfalld() {
+        open("Gata och husnummer")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("okänd gata 1, Avesta")
+        open("Välj område i Avesta kommun")
+        let finder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Vet du inte vilket område?")).firstMatch
+        XCTAssertTrue(finder.waitForExistence(timeout: 5))
+        finder.tap()
+
+        // Kalendern är utfälld från början, och knappen står ovanför hemindikatorn utan att arket dras upp.
+        let find = app.buttons["Hitta område"]
+        XCTAssertTrue(find.waitForExistence(timeout: 5))
+        XCTAssertTrue(find.isHittable, "Hitta område ska synas när kalendern är utfälld")
+
+        // Fäll ihop kalendern och ut igen: knappen ska fortfarande synas.
+        let date = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Senaste tömning")).firstMatch
+        date.tap()
+        XCTAssertTrue(find.waitForNonExistence(timeout: 5))
+        date.tap()
+        XCTAssertTrue(find.waitForExistence(timeout: 5))
+        XCTAssertTrue(find.isHittable, "Hitta område ska synas när kalendern fällts ut igen")
+    }
+
     func testPaminnelserArAvstangdaFranBorjan() {
         addAddress()
         XCTAssertTrue(homeCard.waitForExistence(timeout: 5))
