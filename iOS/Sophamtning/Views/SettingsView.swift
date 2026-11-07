@@ -310,69 +310,95 @@ private struct PrimaryAddressView: View {
     }
 }
 
-/// Källorna från `/kallor`, som en enkel lista, och Wikidata för ortlistan.
+/// Källorna från `/kallor` i en vanlig iOS-lista: namnet, kommunerna källan täcker och länkarna till webbplatsen och
+/// kontakten. Testdata visas inte. Sist står Wikidata för ortlistan.
 private struct SourcesView: View {
     let sources: [Source]?
     let loading: Bool
     let onRetry: () async -> Void
 
+    @State private var webLink: WebLink?
+
     var body: some View {
-        ZStack {
-            Color.Theme.bg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let sources {
-                        let shown = sources.filter { !$0.testData }
+        Group {
+            if let sources {
+                let shown = sources.filter { !$0.testData }
+                List {
+                    Section {
+                        ForEach(shown, id: \.id) { source in
+                            sourceRow(source)
+                        }
+                    } header: {
                         Text("Schemat hämtas från \(shown.count) källor.")
                             .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(Color.Theme.text2)
-                        ResultList {
-                            ForEach(Array(shown.enumerated()), id: \.element.id) { index, source in
-                                if index > 0 { ResultDivider() }
-                                row(source.name)
-                            }
-                            ResultDivider()
-                            row("Wikidata (CC0)", detail: "Ortlistan för kommunfrågan")
-                        }
-                    } else if loading {
-                        // Medan listan hämtas visas ingen felruta.
-                        HStack(spacing: 12) {
-                            ProgressView()
-                            Text("Hämtar källor…")
-                                .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                            .textCase(nil)
+                    }
+                    Section {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Wikidata (CC0)")
+                                .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                                .foregroundStyle(Color.Theme.text)
+                            Text("Ortlistan för kommunfrågan")
+                                .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                                 .foregroundStyle(Color.Theme.text2)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    } else {
-                        MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
-                        Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }
-                            .buttonStyle(.pressable)
+                        .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
                     }
+                    .listRowBackground(Color.Theme.surface)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if loading {
+                            // Medan listan hämtas visas ingen felruta.
+                            HStack(spacing: 12) {
+                                ProgressView()
+                                Text("Hämtar källor…")
+                                    .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                                    .foregroundStyle(Color.Theme.text2)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        } else {
+                            MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
+                            Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                                .buttonStyle(.pressable)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                }
             }
         }
+        .background(Color.Theme.bg.ignoresSafeArea())
+        .inAppBrowser(item: $webLink)
         .navigationTitle("Datakällor")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func row(_ title: String, detail: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                .foregroundStyle(Color.Theme.text)
-            if let detail {
-                Text(detail)
+    /// En källa: namnet och kommunerna, och under dem länkarna. Varje länk tar emot sitt eget tryck.
+    private func sourceRow(_ source: Source) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source.name)
+                    .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                    .foregroundStyle(Color.Theme.text)
+                Text(source.kommunerText)
                     .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.text2)
             }
+            .accessibilityElement(children: .combine)
+            ForEach(SourceLink.links(for: source, kommunInfo: nil)) { link in
+                SourceLinkButton(link: link, webLink: $webLink)
+                    .buttonStyle(.borderless)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .accessibilityElement(children: .combine)
+        .padding(.vertical, 6)
+        .listRowBackground(Color.Theme.surface)
     }
 }

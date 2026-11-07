@@ -111,9 +111,10 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
 
 @Test func hamtadTextFoljerSvenskTidOchDag() throws {
     let morning = StockholmClock.date(on: today, minutes: 9 * 60 + 12)
-    #expect(detail(try schedule([], fetchedAt: morning)).fetchedText == "Hämtat i dag 09:12 från Uppsala Vatten.")
+    // Källans namn står i kortet ovanför, så raden har bara tiden.
+    #expect(detail(try schedule([], fetchedAt: morning)).fetchedText == "Hämtat i dag 09:12")
     let old = StockholmClock.date(on: DayDate("2026-11-01")!, minutes: 7 * 60)
-    #expect(detail(try schedule([], fetchedAt: old), source: nil).fetchedText == "Hämtat 1 nov 07:00.")
+    #expect(detail(try schedule([], fetchedAt: old), source: nil).fetchedText == "Hämtat 1 nov 07:00")
 }
 
 @Test func schemaSomInteHamtatsAnnuVisarLaddning() {

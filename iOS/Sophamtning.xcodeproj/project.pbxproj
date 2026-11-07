@@ -32,6 +32,7 @@
 		90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F307C543EEA02E99659E697 /* NotificationPresenter.swift */; };
 		920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83C77BCFF8F5F3C97D1E11A /* UITestAPI.swift */; };
 		9392F46D1606F5A50029A130 /* MarkPlacedOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */; };
+		9CF16D5EFB70314F259BF636 /* SourceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E3AF68D874F45D17C1DE93 /* SourceCard.swift */; };
 		A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */; };
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -109,6 +110,7 @@
 		A8AF412C35614825019257CF /* NextPickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPickupWidget.swift; sourceTree = "<group>"; };
 		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
 		AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowComponents.swift; sourceTree = "<group>"; };
+		B7E3AF68D874F45D17C1DE93 /* SourceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceCard.swift; sourceTree = "<group>"; };
 		B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SophamtningWidgets.entitlements; sourceTree = "<group>"; };
 		BD21CCA7D63505D8A5977BEA /* SophamtningUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SophamtningUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2F19D55CC253C38C359298A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -267,6 +269,7 @@
 				2646AA909312B4395C8FC349 /* ScheduleViews.swift */,
 				4D5502E2E1A53F977DC24C47 /* SearchView.swift */,
 				C2F19D55CC253C38C359298A /* SettingsView.swift */,
+				B7E3AF68D874F45D17C1DE93 /* SourceCard.swift */,
 				8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */,
 			);
 			path = Views;
@@ -436,6 +439,7 @@
 				EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */,
 				350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */,
 				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,
+				9CF16D5EFB70314F259BF636 /* SourceCard.swift in Sources */,
 				0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */,
 				920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */,
 			);

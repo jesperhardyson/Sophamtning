@@ -35,7 +35,17 @@
           "name": "Uppsala kommun"
         }
       ],
-      "testData": false
+      "testData": false,
+      "contact": {
+        "phone": {
+          "number": "+46187279400",
+          "display": "018-727 94 00"
+        },
+        "email": "kundservice@uppsalavatten.se",
+        "page": "https://www.uppsalavatten.se/kontakt",
+        "checkedAt": "2026-11-07",
+        "checkedUrl": "https://www.uppsalavatten.se/kontakt"
+      }
     },
     {
       "id": "orebro",

@@ -196,6 +196,9 @@ struct FullScheduleView: View {
     let key: AddressKey
     let onSearchAgain: () -> Void
 
+    @State private var sources: [Source]?
+    @State private var link: WebLink?
+
     var body: some View {
         ZStack {
             Color.Theme.bg.ignoresSafeArea()
@@ -215,6 +218,8 @@ struct FullScheduleView: View {
         }
         .navigationTitle("Hela schemat")
         .navigationBarTitleDisplayMode(.inline)
+        .task { sources = await model.sourceList() }
+        .inAppBrowser(item: $link)
     }
 
     @ViewBuilder
@@ -223,7 +228,7 @@ struct FullScheduleView: View {
             address: address,
             schedule: model.schedule(for: key),
             settings: model.settings,
-            sourceName: nil,
+            sourceName: sources.map { sourceName(key.source, in: $0) },
             now: model.currentDate
         )
         AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
@@ -240,6 +245,13 @@ struct FullScheduleView: View {
         case .schedule:
             ScheduleList(rows: detail.rows)
         }
+        SourceCard(
+            name: sourceName(key.source, in: sources),
+            links: SourceLink.links(for: sources?.first { $0.id == key.source }, kommunInfo: detail.webLink),
+            fetched: detail.mode == .loading ? nil : detail.fetchedText,
+            webLink: $link
+        )
+        .padding(.top, 28)
     }
 
     /// Adressen togs bort, eller adresserna går inte att läsa just nu. Ett läsfel får aldrig se ut som en borttagen adress.

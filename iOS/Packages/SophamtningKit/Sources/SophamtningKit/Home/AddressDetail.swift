@@ -95,7 +95,7 @@ public struct AddressDetail: Equatable, Sendable {
 
     /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
     public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
-    /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall.", eller `nil` när schemat aldrig hämtats.
+    /// "Hämtat i dag 09:12", längst ned i kortet för källan, eller `nil` när schemat aldrig hämtats.
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
     public let webLink: URL?
@@ -125,6 +125,7 @@ public struct AddressDetail: Equatable, Sendable {
         }
 
         let fetched = fetchedText(at: schedule?.fetchedAt, sourceName: sourceName, now: now)
+        let fetchedTime = fetchedTime(at: schedule?.fetchedAt, now: now)
         let notice: Notice?
         switch schedule?.lastError {
         case .notFound: notice = .notFound
@@ -158,7 +159,7 @@ public struct AddressDetail: Equatable, Sendable {
             nextWarning: scheduleRows.first(where: { $0.date == next?.date })?.warning,
             bins: bins,
             rows: scheduleRows,
-            fetchedText: fetched,
+            fetchedText: fetchedTime,
             webLink: response?.links.web,
             reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
             liveActivityText: liveActivityText(settings: settings),
@@ -214,8 +215,15 @@ public struct AddressDetail: Equatable, Sendable {
         return "Kvällen före varje tömning kl. \(time)."
     }
 
-    /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall."
+    /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall.", i rutan när ett sparat schema visas efter ett fel.
     static func fetchedText(at fetchedAt: Date?, sourceName: String?, now: Date) -> String? {
+        guard let time = fetchedTime(at: fetchedAt, now: now) else { return nil }
+        let source = sourceName.map { " från \($0)" } ?? ""
+        return "\(time)\(source)."
+    }
+
+    /// "Hämtat i dag 09:12", "Hämtat i går 18:40" eller "Hämtat 1 nov 07:00", i svensk tid.
+    static func fetchedTime(at fetchedAt: Date?, now: Date) -> String? {
         guard let fetchedAt else { return nil }
         let day = StockholmClock.today(now: fetchedAt)
         let today = StockholmClock.today(now: now)
@@ -227,8 +235,7 @@ public struct AddressDetail: Equatable, Sendable {
         }
         let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: fetchedAt)
         let clock = SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
-        let source = sourceName.map { " från \($0)" } ?? ""
-        return "Hämtat \(when) \(clock)\(source)."
+        return "Hämtat \(when) \(clock)"
     }
 
     /// Kommande dagar, en rad per datum. Två händelser samma dag slås ihop, så att ingen fraktion eller varning tappas.

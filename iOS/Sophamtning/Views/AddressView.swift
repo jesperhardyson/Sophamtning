@@ -303,22 +303,15 @@ struct AddressView: View {
 
     // MARK: Fot
 
-    @ViewBuilder
+    /// Kortet för källan som ansvarar för hämtningen.
     private func footer(_ detail: AddressDetail) -> some View {
-        if let fetched = detail.fetchedText, detail.mode != .loading {
-            Text(fetched)
-                .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                .foregroundStyle(Color.Theme.text2)
-                .padding(.top, 20)
-        }
-        if let web = detail.webLink.flatMap({ WebLink(url: $0) }) {
-            Button { link = web } label: {
-                Text("Kommunens information")
-                    .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                    .foregroundStyle(Color.Theme.primary)
-            }
-            .padding(.top, detail.fetchedText == nil ? 20 : 8)
-        }
+        SourceCard(
+            name: sourceName(key.source, in: sources),
+            links: SourceLink.links(for: sources?.first { $0.id == key.source }, kommunInfo: detail.webLink),
+            fetched: detail.mode == .loading ? nil : detail.fetchedText,
+            webLink: $link
+        )
+        .padding(.top, 28)
     }
 
     private func sectionTitle(_ title: String) -> some View {

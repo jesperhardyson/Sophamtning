@@ -212,13 +212,68 @@ public struct Source: Codable, Hashable, Sendable {
     public let url: URL
     public let kommuner: [Kommun]
     public let testData: Bool
+    /// Kontaktuppgifter, eller `nil` när inget är känt. Saknas fältet, som i äldre svar, är det också `nil`.
+    public let contact: SourceContact?
 
-    public init(id: String, name: String, url: URL, kommuner: [Kommun], testData: Bool) {
+    public init(id: String, name: String, url: URL, kommuner: [Kommun], testData: Bool, contact: SourceContact? = nil) {
         self.id = id
         self.name = name
         self.url = url
         self.kommuner = kommuner
         self.testData = testData
+        self.contact = contact
+    }
+
+    /// Kommunerna källan täcker, med hela namnen: "Avesta kommun, Hedemora kommun och Säters kommun".
+    public var kommunerText: String {
+        let names = kommuner.map { kommunDisplayName($0.name) }.filter { !$0.isEmpty }
+        guard names.count > 1 else { return names.first ?? "" }
+        return names.dropLast().joined(separator: ", ") + " och " + names[names.count - 1]
+    }
+}
+
+/// Källans kontaktuppgifter från `/kallor`. Varje del kan saknas. `checkedAt` och `checkedUrl` visas inte.
+public struct SourceContact: Codable, Hashable, Sendable {
+    public struct Phone: Codable, Hashable, Sendable {
+        /// Numret att ringa, "+46187279400".
+        public let number: String?
+        /// Numret som det visas, "018-727 94 00".
+        public let display: String?
+
+        public init(number: String?, display: String?) {
+            self.number = number
+            self.display = display
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            number = (try? c.decodeIfPresent(String.self, forKey: .number)) ?? nil
+            display = (try? c.decodeIfPresent(String.self, forKey: .display)) ?? nil
+        }
+    }
+
+    public let phone: Phone?
+    public let email: String?
+    public let page: URL?
+    public let checkedAt: DayDate?
+    public let checkedUrl: URL?
+
+    public init(phone: Phone? = nil, email: String? = nil, page: URL? = nil, checkedAt: DayDate? = nil, checkedUrl: URL? = nil) {
+        self.phone = phone
+        self.email = email
+        self.page = page
+        self.checkedAt = checkedAt
+        self.checkedUrl = checkedUrl
+    }
+
+    /// En trasig del ger bara att den delen saknas. Den får aldrig fälla källan eller listan.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        phone = (try? c.decodeIfPresent(Phone.self, forKey: .phone)) ?? nil
+        email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? nil
+        page = (try? c.decodeIfPresent(URL.self, forKey: .page)) ?? nil
+        checkedAt = (try? c.decodeIfPresent(DayDate.self, forKey: .checkedAt)) ?? nil
+        checkedUrl = (try? c.decodeIfPresent(URL.self, forKey: .checkedUrl)) ?? nil
     }
 }
 
@@ -229,6 +284,19 @@ public struct SourcesResponse: Codable, Hashable, Sendable {
     public init(sources: [Source], fractions: [String: FractionInfo]) {
         self.sources = sources
         self.fractions = fractions
+    }
+}
+
+extension Source {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        url = try c.decode(URL.self, forKey: .url)
+        kommuner = try c.decode([Kommun].self, forKey: .kommuner)
+        testData = try c.decode(Bool.self, forKey: .testData)
+        // Saknas, `null` eller trasig: ingen kontakt. Källan visas ändå.
+        contact = (try? c.decodeIfPresent(SourceContact.self, forKey: .contact)) ?? nil
     }
 }
 
