@@ -666,6 +666,35 @@ private func overdue(_ f: Fixture) {
     #expect(!f.notifications.dates.contains("2026-11-09"))
 }
 
+/// Sparandet av Utställt misslyckades (posten finns inte i lagret), men aktiviteten är avslutad och visas med bock en stund till.
+@Test @MainActor func utstalltUtanSparadPostStartarInteOmOchReserventFolierBeviset() async throws {
+    // Aldrig sedd som visad: reserven ligger kvar, och samma tömning startas inte om.
+    let unseen = try Fixture()
+    let unseenModel = try await withReserve(unseen)
+    let unseenID = try #require(unseen.activities.ids.first)
+    unseen.activities.setPhase(.ended, id: unseenID)
+    unseen.log.clear()
+    for _ in 0..<2 { await apply(unseenModel); await apply(unseen.model()) }
+    #expect(unseen.store.placedOut().isEmpty)
+    #expect(unseen.activities.starts.map(\.pickupDate) == [monday, thursday])
+    #expect(!unseen.log.all.contains { $0.hasPrefix("start \(monday.iso)") })
+    reserveKvar(unseen)
+
+    // Sedd som visad innan: den bevisat visade aktiviteten släcker reserven, men startas ändå inte om.
+    let seen = try Fixture(now: sundayEvening)
+    let seenModel = seen.model()
+    await apply(seenModel)
+    let seenID = try #require(seen.activities.ids.first)
+    seen.activities.promote()
+    await apply(seenModel)
+    seen.activities.setPhase(.ended, id: seenID)
+    seen.log.clear()
+    for _ in 0..<2 { await apply(seenModel); await apply(seen.model()) }
+    #expect(seen.store.placedOut().isEmpty)
+    #expect(!seen.log.all.contains { $0.hasPrefix("start \(monday.iso)") })
+    #expect(!seen.notifications.dates.contains("2026-11-09"))
+}
+
 @Test @MainActor func gamlaPosterRensasVidPlanering() async throws {
     let f = try Fixture()
     try f.store.setPlacedOut([PlacedOut(key: homeKey, date: DayDate("2026-11-01")!), PlacedOut(key: homeKey, date: monday)])

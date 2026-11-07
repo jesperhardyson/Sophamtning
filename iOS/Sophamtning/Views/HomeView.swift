@@ -299,6 +299,7 @@ enum HomeSheet: String, Identifiable {
 /// En adress under "Fler adresser". Fraktionerna visas som ikoner, och raden läses upp med fraktionsnamnen.
 private struct AddressRow: View {
     let entry: HomeContent.Entry
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isFailure: Bool {
         if case .failed = entry.status { return true }
@@ -317,6 +318,7 @@ private struct AddressRow: View {
                 Text(entry.summary)
                     .font(.ui(16, weight: .heavy, relativeTo: .callout))
                     .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
+                    .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
             }
             Spacer(minLength: 0)
             switch entry.status {

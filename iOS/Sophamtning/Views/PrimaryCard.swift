@@ -71,8 +71,6 @@ struct PrimaryCard: View {
                     .transition(.opacity)
             }
         }
-        .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
-        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
@@ -80,6 +78,9 @@ struct PrimaryCard: View {
             in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        // Utanför padding och bakgrund, så att kortets höjd och bakgrund också följer med mjukt.
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
     }
 
     private var header: some View {

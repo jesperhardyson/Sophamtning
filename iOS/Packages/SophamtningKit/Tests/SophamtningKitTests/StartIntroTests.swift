@@ -30,15 +30,23 @@ import Testing
         }
     }
 
-    @Test func logotypenRorSigKortOchTonasUt() {
-        let grown = StartIntroTimeline.frame(at: 0.2, reduceMotion: false)
-        #expect(grown.scale > 1)
-        #expect(grown.logoOpacity == 1)
-        #expect(grown.backgroundOpacity == 1)
+    @Test func logotypenKrymperOchTonasUtEfterHallet() {
         let mid = StartIntroTimeline.frame(at: 0.5, reduceMotion: false)
+        #expect(mid.scale < 1 && mid.scale > StartIntroTimeline.finalScale)
         #expect(mid.logoOpacity > 0 && mid.logoOpacity < 1)
         #expect(mid.backgroundOpacity > 0 && mid.backgroundOpacity < 1)
-        #expect(StartIntroTimeline.frame(at: 0.8, reduceMotion: false).scale < grown.scale)
+        #expect(StartIntroTimeline.frame(at: 0.8, reduceMotion: false).scale == StartIntroTimeline.finalScale)
+    }
+
+    /// Systemet tonar startskärmen över appens första bilder i ungefär 0,3 s. Logotypen får inte röra sig då, annars syns två.
+    @Test func skalanArExaktEttTillOchMed03OchAldrigOverEttDarefter() {
+        for t in stride(from: 0.0, through: 0.3, by: 0.01) {
+            let frame = StartIntroTimeline.frame(at: t, reduceMotion: false)
+            #expect(frame == StartIntroTimeline.Frame(scale: 1, logoOpacity: 1, backgroundOpacity: 1), "t \(t)")
+        }
+        for t in stride(from: 0.3, through: 1.0, by: 0.01) {
+            #expect(StartIntroTimeline.frame(at: t, reduceMotion: false).scale <= 1, "t \(t)")
+        }
     }
 
     @Test func toningenSjunkerUtanAttGaUpp() {
@@ -81,6 +89,14 @@ import Testing
 
     @Test func visasBaraEnGangPerProcess() {
         #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: [], alreadyShown: true))
+    }
+
+    @Test func ingenStartFranBorjanNarForstaBildenKommerLangeEfterProcessstarten() {
+        // Processen startade i bakgrunden, till exempel för en bakgrundsuppdatering, och appen öppnas först senare.
+        #expect(StartIntroTimeline.isFreshLaunch(secondsSinceProcessStart: 0.5))
+        #expect(StartIntroTimeline.isFreshLaunch(secondsSinceProcessStart: 5))
+        #expect(!StartIntroTimeline.isFreshLaunch(secondsSinceProcessStart: 30))
+        #expect(!StartIntroTimeline.isFreshLaunch(secondsSinceProcessStart: 3600))
     }
 
     // MARK: Tillgångarna
