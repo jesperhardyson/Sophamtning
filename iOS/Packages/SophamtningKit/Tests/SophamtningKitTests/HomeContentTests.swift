@@ -55,7 +55,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest", "mat"])])])
     let primary = try #require(content.primary)
     #expect(primary.title == "Hemma")
-    #expect(primary.subtitle == "Storgatan\u{00A0}12 B, Krylbo\u{00A0}· Avesta kommun")
+    #expect(primary.lines == HomeContent.AddressLines(address: "Storgatan\u{00A0}12 B", place: "Krylbo\u{00A0}· Avesta kommun"))
     guard case .upcoming(let pickup) = primary.status else { Issue.record("Väntade kommande hämtning"); return }
     #expect(pickup.date == monday)
     #expect(pickup.headline == "Om 3 dagar")
@@ -72,11 +72,11 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let row = try #require(content.others.first)
     #expect(content.others.count == 1)
     #expect(row.title == "Stugan")
-    #expect(row.subtitle == "Bergsvägen\u{00A0}4, Horndal\u{00A0}· Avesta kommun")
+    #expect(row.lines == HomeContent.AddressLines(address: "Bergsvägen\u{00A0}4", place: "Horndal\u{00A0}· Avesta kommun"))
     #expect(row.summary == "Ons 18 nov\u{00A0}· om 12 dagar")
     guard case .upcoming(let pickup) = row.status else { Issue.record("Väntade kommande hämtning"); return }
     #expect(pickup.fractions.map(\.id) == ["plast"])
-    #expect(row.accessibilityLabel == "Stugan, Bergsvägen 4, Horndal · Avesta kommun, Ons 18 nov · om 12 dagar, Plastförpackningar")
+    #expect(row.accessibilityLabel == "Stugan, Bergsvägen 4, Horndal, Avesta kommun, Ons 18 nov · om 12 dagar, Plastförpackningar")
 }
 
 @Test func dagarRaknasLokaltEjFranSparatDatum() throws {
@@ -287,34 +287,36 @@ private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     #expect(try reminder(events: later, at: evening) == "Påminnelse onsdag kl. 18:00")
 }
 
-// MARK: Plats på alla kort
+// MARK: Adress och plats på var sin rad
 
-@Test func undertitelnHarGataOrtOchKommunensHelaNamn() throws {
+@Test func adressenOchPlatsenPaVarSinRad() throws {
     let street = saved("s", name: "Hemma", street: "Storgatan 12", locality: "Krylbo", primary: true)
-    let area = saved("a", name: "Stugan", street: "Kaplansgården", locality: "Jularbo m.fl.", primary: false)
+    // Ett område har hela namnet som gata och ingen ort, som i API:t.
+    let area = saved("a", name: "Stugan", street: "Kaplansgården, Jularbo m.fl.", locality: "", primary: false)
     let content = make([street, area], [:])
-    #expect(try #require(content.primary).subtitle == "Storgatan\u{00A0}12, Krylbo\u{00A0}· Avesta kommun")
-    #expect(content.others[0].subtitle == "Kaplansgården, Jularbo m.fl.\u{00A0}· Avesta kommun")
-}
-
-@Test func undertitelnForOmradeUtanOrtHarKommunen() throws {
-    let area = saved("a", name: "Stugan", street: "Kaplansgården", locality: "", primary: true)
-    #expect(try #require(make([area], [:]).primary).subtitle == "Kaplansgården\u{00A0}· Avesta kommun")
+    #expect(try #require(content.primary).lines == HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun"))
+    #expect(content.others[0].lines == HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun"))
 }
 
 @Test func kommunenVisasInteNarDenArSammaSomOrten() throws {
     let same = saved("u", name: "Jobbet", street: "Stationsgatan 12", locality: "Uppsala", kommun: "Uppsala kommun", primary: true)
-    #expect(try #require(make([same], [:]).primary).subtitle == "Stationsgatan\u{00A0}12, Uppsala")
+    #expect(try #require(make([same], [:]).primary).lines == HomeContent.AddressLines(address: "Stationsgatan\u{00A0}12", place: "Uppsala"))
     // Utan hänsyn till skiftläge.
     let shouting = saved("v", name: "Jobbet", street: "Stationsgatan 12", locality: "UPPSALA", kommun: "Uppsala kommun", primary: true)
-    #expect(try #require(make([shouting], [:]).primary).subtitle == "Stationsgatan\u{00A0}12, UPPSALA")
+    #expect(try #require(make([shouting], [:]).primary).lines.place == "UPPSALA")
 }
 
-@Test func undertitelnUtanGataHarOrtOchKommun() throws {
+@Test func utanGataFinnsBaraPlatsen() throws {
     let noStreet = saved("t", name: "Hemma", street: "", locality: "Krylbo", primary: true)
-    #expect(try #require(make([noStreet], [:]).primary).subtitle == "Krylbo\u{00A0}· Avesta kommun")
+    #expect(try #require(make([noStreet], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Krylbo\u{00A0}· Avesta kommun"))
     let onlyKommun = saved("k", name: "Hemma", street: " ", locality: "", primary: true)
-    #expect(try #require(make([onlyKommun], [:]).primary).subtitle == "Avesta kommun")
+    #expect(try #require(make([onlyKommun], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Avesta kommun"))
+}
+
+@Test func voiceOverLaserAdressOchPlatsUtanMittpunkt() {
+    #expect(HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun").accessibilityLabel == "Storgatan 12, Krylbo, Avesta kommun")
+    #expect(HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun").accessibilityLabel == "Kaplansgården, Jularbo m.fl., Avesta kommun")
+    #expect(HomeContent.AddressLines(address: "", place: "Uppsala").accessibilityLabel == "Uppsala")
 }
 
 @Test func kommunensKortaNamnSomISokningen() {
@@ -353,18 +355,18 @@ private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     let stockholm = saved("t", name: "Jobbet", street: "Drottninggatan 1", locality: "Stockholm", kommun: "Stockholms kommun", primary: false)
     let falun = saved("f", name: "Stugan", street: "Åsgatan 5", locality: "Falun", kommun: "Falu kommun", primary: false)
     let content = make([sater, stockholm, falun], [:])
-    #expect(try #require(content.primary).subtitle == "Storgatan\u{00A0}3, Säter")
-    #expect(content.others.map(\.subtitle) == ["Drottninggatan\u{00A0}1, Stockholm", "Åsgatan\u{00A0}5, Falun"])
+    #expect(try #require(content.primary).lines.place == "Säter")
+    #expect(content.others.map(\.lines.place) == ["Stockholm", "Falun"])
 }
 
 @Test func mittpunktenBorjarAldrigEnRad() throws {
     let content = make([home, cabin], [home.key: schedule([event("2026-11-09", ["rest"])]), cabin.key: schedule([event("2026-11-18", ["plast"])])])
     for entry in [try #require(content.primary)] + content.others {
-        #expect(!entry.subtitle.contains(" ·"))
+        #expect(!entry.lines.place.contains(" ·"))
         #expect(!entry.summary.contains(" ·"))
     }
     // Gatunamn och nummer hålls ihop, men husets bokstav får stå kvar.
-    #expect(try #require(content.primary).subtitle == "Storgatan\u{00A0}12 B, Krylbo\u{00A0}· Avesta kommun")
+    #expect(try #require(content.primary).lines.address == "Storgatan\u{00A0}12 B")
 }
 
 // MARK: Påminnelse på raderna

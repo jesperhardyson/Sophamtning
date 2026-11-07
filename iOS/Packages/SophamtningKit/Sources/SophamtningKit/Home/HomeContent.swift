@@ -90,11 +90,32 @@ public struct HomeContent: Equatable, Sendable {
         }
     }
 
+    /// Adressen och platsen på var sin rad: "Storgatan 12" och "Krylbo · Avesta kommun".
+    public struct AddressLines: Equatable, Sendable {
+        /// Gatan med nummer, eller områdets namn. Tom när adressen saknar gata.
+        public let address: String
+        /// Orten och kommunen. Kommunen döljs när den bara upprepar orten.
+        public let place: String
+
+        public init(address: String, place: String) {
+            self.address = address
+            self.place = place
+        }
+
+        /// "Storgatan 12, Krylbo, Avesta kommun", utan mittpunkt och med vanliga mellanslag.
+        public var accessibilityLabel: String {
+            [address, place.replacingOccurrences(of: "\u{00A0}· ", with: ", ")]
+                .filter { !$0.isEmpty }
+                .joined(separator: ", ")
+                .replacingOccurrences(of: "\u{00A0}", with: " ")
+        }
+    }
+
     public struct Entry: Equatable, Sendable, Identifiable {
         public let key: AddressKey
         public let title: String
-        /// Platsen: gatan eller området, orten och kommunen. "Storgatan 12, Krylbo · Avesta kommun".
-        public let subtitle: String
+        /// Adressen och platsen på var sin rad.
+        public let lines: AddressLines
         public let status: Status
         /// Senaste försöket att uppdatera misslyckades, men ett äldre schema visas.
         public let refreshFailed: Bool
@@ -112,7 +133,7 @@ public struct HomeContent: Equatable, Sendable {
 
         /// Alla fraktioner som text, så att VoiceOver kan läsa dem även när raden bara visar ikoner.
         public var accessibilityLabel: String {
-            var parts = [title, subtitle, summary]
+            var parts = [title, lines.accessibilityLabel, summary]
             if refreshFailed { parts.append("Kunde inte uppdateras, visar senast hämtade schema") }
             if case .upcoming(let pickup) = status {
                 parts.append(pickup.fractions.map(\.info.name).joined(separator: ", "))
@@ -189,7 +210,7 @@ public struct HomeContent: Equatable, Sendable {
         return Entry(
             key: address.key,
             title: address.displayName,
-            subtitle: subtitle(for: address),
+            lines: lines(for: address),
             status: status,
             refreshFailed: refreshFailed,
             reminderText: reminder,
@@ -199,17 +220,14 @@ public struct HomeContent: Equatable, Sendable {
         )
     }
 
-    /// Gatan eller områdets namn, orten och kommunens hela namn: "Storgatan 12, Krylbo · Avesta kommun". Kommunen utelämnas
-    /// när den bara upprepar orten, också i genitiv: "Stationsgatan 12, Uppsala", "Storgatan 3, Säter".
-    /// Hårda mellanslag mellan gatunamn och nummer och före mittpunkten, så att raden aldrig bryts där.
-    public static func subtitle(for address: SavedAddress) -> String {
+    /// Gatan eller områdets namn på första raden, och orten och kommunens hela namn på den andra. Ett område har hela
+    /// sitt namn som gata och ingen ort: "Kaplansgården, Jularbo m.fl." och "Avesta kommun". Kommunen utelämnas när den
+    /// bara upprepar orten, också i genitiv. Hårt mellanslag mellan gatunamn och nummer och före mittpunkten, så att
+    /// raderna aldrig bryts där.
+    public static func lines(for address: SavedAddress) -> AddressLines {
         let street = address.street.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacing(/\ (?=\d)/, with: "\u{00A0}")
-        let locality = address.locality.trimmingCharacters(in: .whitespacesAndNewlines)
-        let kommun = kommunDisplayName(address.kommun)
-        let place = [street, locality].filter { !$0.isEmpty }.joined(separator: ", ")
-        guard !kommun.isEmpty, !kommunRepeatsLocality(kommun, locality: locality) else { return place }
-        return place.isEmpty ? kommun : "\(place)\u{00A0}· \(kommun)"
+        return AddressLines(address: street, place: localityAndKommun(locality: address.locality, kommun: address.kommun))
     }
 
     private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {

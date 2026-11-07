@@ -127,9 +127,7 @@ struct PrimaryCard: View {
                             .lineLimit(2)
                             .minimumScaleFactor(0.5)
                     }
-                    Text(entry.subtitle)
-                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                        .opacity(0.9)
+                    placeLines
                 }
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -140,10 +138,7 @@ struct PrimaryCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(entry.title)
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                        Text(entry.subtitle)
-                            .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                            .opacity(0.9)
-                            .fixedSize(horizontal: false, vertical: true)
+                        placeLines
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
@@ -155,6 +150,12 @@ struct PrimaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Adressen och platsen. På det gröna kortet är platsen något svagare än adressen i stället för `text2`, som inte
+    /// syns mot grönt.
+    private var placeLines: some View {
+        AddressLinesView(lines: entry.lines, size: 15, addressStyle: .subheadline, addressColor: foreground.opacity(0.9), placeColor: foreground.opacity(0.8))
     }
 
     private func nextPickup(_ pickup: HomeContent.Pickup) -> some View {
@@ -196,49 +197,77 @@ private struct PrimaryReminderRow: View {
     let onChange: (Bool) -> Void
     let onOpenSettings: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     private var foreground: Color { Color.Theme.onPrimary }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ReminderSymbol(symbol: reminder.isDenied ? "bell.slash" : "bell.badge", pulse: pulse, color: foreground)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(reminder.title)
-                    .font(.ui(16, weight: .bold, relativeTo: .callout))
-                if reminder.isDenied {
-                    Button { onOpenSettings() } label: {
-                        Text("Öppna Inställningar")
-                            .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
-                            .underline()
+        Group {
+            if typeSize.isAccessibilitySize {
+                // Med stor text står ikonen och reglaget överst, och texten får hela bredden under dem.
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        symbol
+                        Spacer(minLength: 0)
+                        toggle
                     }
-                    .buttonStyle(.plain)
-                } else if let detail = reminder.detail {
-                    Text(detail)
-                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                        .opacity(0.9)
+                    texts
+                }
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    symbol
+                    texts
+                    Spacer(minLength: 0)
+                    toggle
                 }
             }
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-            Toggle(reminder.title, isOn: Binding(get: { reminder.isOn }, set: { onChange($0) }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(Color.Theme.brandText)
-                .disabled(reminder.isDenied)
-                // Det avstängda reglaget öppnar Inställningar, i stället för att trycket går vidare och öppnar adressen.
-                .overlay {
-                    if reminder.isDenied {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture { onOpenSettings() }
-                    }
-                }
         }
         .foregroundStyle(foreground)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.Theme.cardOverlay, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .sensoryFeedback(.impact(weight: .light), trigger: pulse)
+    }
+
+    private var symbol: some View {
+        ReminderSymbol(symbol: reminder.isDenied ? "bell.slash" : "bell.badge", pulse: pulse, color: foreground)
+    }
+
+    private var texts: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(reminder.title)
+                .font(.ui(16, weight: .bold, relativeTo: .callout))
+            if reminder.isDenied {
+                Button { onOpenSettings() } label: {
+                    Text("Öppna Inställningar")
+                        .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                        .underline()
+                }
+                .buttonStyle(.plain)
+            } else if let detail = reminder.detail {
+                Text(detail)
+                    .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                    .opacity(0.9)
+            }
+        }
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var toggle: some View {
+        Toggle(reminder.title, isOn: Binding(get: { reminder.isOn }, set: { onChange($0) }))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .tint(Color.Theme.brandText)
+            .disabled(reminder.isDenied)
+            // Det avstängda reglaget öppnar Inställningar, i stället för att trycket går vidare och öppnar adressen.
+            .overlay {
+                if reminder.isDenied {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { onOpenSettings() }
+                }
+            }
     }
 }
 

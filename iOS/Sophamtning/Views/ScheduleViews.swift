@@ -226,6 +226,8 @@ struct FullScheduleView: View {
             sourceName: nil,
             now: model.currentDate
         )
+        AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
+            .padding(.bottom, 16)
         AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
         switch detail.mode {
         case .loading:

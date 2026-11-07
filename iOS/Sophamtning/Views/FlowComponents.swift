@@ -168,3 +168,59 @@ struct HitSelection: Identifiable {
 }
 
 let tipLink = WebLink(url: URL(string: "https://sopor.hardyson.se/bidra")!)!
+
+/// Adressen och platsen på var sin rad. Adressen i radens vanliga stil, och platsen en storlek mindre med en liten
+/// platsikon. VoiceOver läser båda som en text, utan mittpunkt: "Storgatan 12, Krylbo, Avesta kommun".
+struct AddressLinesView: View {
+    let lines: HomeContent.AddressLines
+    /// Adressens storlek. Platsen är två punkter mindre.
+    let size: CGFloat
+    let addressStyle: TextStyleChoice
+    var addressColor: Color = Color.Theme.text2
+    var placeColor: Color = Color.Theme.text2
+
+    /// Textstilen som storleken följer med Dynamic Type, för adressen och för platsen en storlek ner.
+    enum TextStyleChoice {
+        case body, subheadline
+
+        var address: Font.TextStyle { self == .body ? .body : .subheadline }
+        var place: Font.TextStyle { self == .body ? .callout : .footnote }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if !lines.address.isEmpty {
+                Text(lines.address)
+                    .font(.ui(size, weight: .semibold, relativeTo: addressStyle.address))
+                    .foregroundStyle(addressColor)
+            }
+            if !lines.place.isEmpty {
+                Label {
+                    Text(lines.place)
+                        .font(.ui(size - 2, weight: .semibold, relativeTo: addressStyle.place))
+                } icon: {
+                    Image(systemName: "mappin")
+                        .font(.system(addressStyle.place, weight: .semibold))
+                        .imageScale(.small)
+                        .accessibilityHidden(true)
+                }
+                .labelStyle(PlaceLabelStyle())
+                .foregroundStyle(placeColor)
+            }
+        }
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(lines.accessibilityLabel)
+    }
+}
+
+/// Ikonen tätt intill texten, på första radens baslinje.
+private struct PlaceLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            configuration.icon
+            configuration.title
+        }
+    }
+}

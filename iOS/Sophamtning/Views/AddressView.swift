@@ -114,9 +114,7 @@ struct AddressView: View {
                 .font(.ui(34, weight: .black, relativeTo: .largeTitle))
                 .foregroundStyle(Color.Theme.text)
                 .accessibilityAddTraits(.isHeader)
-            Text(detail.subtitle)
-                .font(.ui(18, weight: .semibold, relativeTo: .body))
-                .foregroundStyle(Color.Theme.text2)
+            AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
         }
         .padding(.top, 8)
         .padding(.bottom, 20)

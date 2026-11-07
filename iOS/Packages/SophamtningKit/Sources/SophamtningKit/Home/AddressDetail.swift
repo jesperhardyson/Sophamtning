@@ -71,7 +71,8 @@ public struct AddressDetail: Equatable, Sendable {
 
     public let key: AddressKey
     public let title: String
-    public let subtitle: String
+    /// Adressen och platsen under rubriken, på var sin rad.
+    public let lines: HomeContent.AddressLines
     public let mode: Mode
     public let notice: Notice?
     public let next: HomeContent.Pickup?
@@ -150,7 +151,7 @@ public struct AddressDetail: Equatable, Sendable {
         return AddressDetail(
             key: address.key,
             title: address.displayName,
-            subtitle: entry.subtitle,
+            lines: entry.lines,
             mode: mode,
             notice: notice,
             next: next,

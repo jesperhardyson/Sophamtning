@@ -452,10 +452,7 @@ private struct AddressRow: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(entry.subtitle)
-                .font(.ui(17, weight: .semibold, relativeTo: .body))
-                .foregroundStyle(Color.Theme.text2)
-                .fixedSize(horizontal: false, vertical: true)
+            AddressLinesView(lines: entry.lines, size: 17, addressStyle: .body)
             Text(entry.summary)
                 .font(.ui(16, weight: .heavy, relativeTo: .callout))
                 .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
