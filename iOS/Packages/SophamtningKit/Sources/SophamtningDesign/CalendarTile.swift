@@ -3,12 +3,13 @@ import SwiftUI
 
 /// Kalenderbricka: månad i versaler överst, dagens nummer och veckodagen helt utskriven.
 ///
-/// Byter `date` värde vänds bladet (`CalendarFlipTimeline`), men inte när brickan visas första gången. Med Reducera rörelse
-/// tonas bladet i stället. Kortets storlek påverkas inte, eftersom bara innehållet vrids. Brickan måste behålla sin identitet
+/// Byter `date` värde bläddras bladen fram till det nya datumet, ett per dag och högst 8 (`CalendarFlipTimeline`), men inte
+/// när brickan visas första gången. Ett datum bakåt ger ett blad. Med Reducera rörelse tonas bladet i stället, en gång.
+/// Kortets storlek påverkas inte, eftersom bara innehållet vrids. Brickan måste behålla sin identitet
 /// i vyn för att kunna se ändringen. I widgetar byts brickan ut med ny post och ingen animation sker.
 ///
-/// Med `opening` visar brickan ett annat datum och vänds till `date` vid en bestämd tidpunkt. Det används bara i hemkortet vid
-/// start från början, och tillgänglighetsetiketten är `date` hela tiden.
+/// Med `opening` visar brickan ett annat datum och bläddras till `date` vid en bestämd tidpunkt. Det används bara i hemkortet
+/// vid start från början. Tillgänglighetsetiketten är `date` hela tiden, och månadsraden följer bladet som syns.
 public struct CalendarTile: View {
     let date: DayDate
     let opening: Opening?
@@ -17,17 +18,17 @@ public struct CalendarTile: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var flip: Flip?
 
-    /// En pågående vändning: datumet som visades när den började, och när den började.
+    /// En pågående bläddring: datumet som visades när den började, och när den började.
     private struct Flip: Equatable {
         let from: DayDate
         let start: Date
     }
 
-    /// Vändningen vid start från början.
+    /// Bläddringen vid start från början.
     public struct Opening: Equatable, Sendable {
-        /// Datumet som syns tills vändningen är halvvägs.
+        /// Datumet som syns tills första bladet är halvvägs.
         public let from: DayDate
-        /// När vändningen börjar, eller `nil` om det inte är bestämt än.
+        /// När bläddringen börjar, eller `nil` om det inte är bestämt än.
         public let begin: Date?
 
         public init(from: DayDate, begin: Date?) {
@@ -52,20 +53,14 @@ public struct CalendarTile: View {
         Group {
             if let opening, flip == nil {
                 if let begin = opening.begin {
-                    TimelineView(.animation) { context in
-                        let elapsed = context.date.timeIntervalSince(begin)
-                        page(showing: CalendarFlipTimeline.showsNewDate(at: elapsed) ? date : opening.from, elapsed: elapsed)
-                    }
+                    flipping(from: opening.from, begin: begin)
                 } else {
-                    page(showing: opening.from, elapsed: nil)
+                    page(showing: opening.from, elapsed: nil, pages: 1)
                 }
             } else if let flip {
-                TimelineView(.animation) { context in
-                    let elapsed = context.date.timeIntervalSince(flip.start)
-                    page(showing: CalendarFlipTimeline.showsNewDate(at: elapsed) ? date : flip.from, elapsed: elapsed)
-                }
+                flipping(from: flip.from, begin: flip.start)
             } else {
-                page(showing: date, elapsed: nil)
+                page(showing: date, elapsed: nil, pages: 1)
             }
         }
         .frame(width: width)
@@ -84,21 +79,38 @@ public struct CalendarTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(SwedishFormat.longDate(date, capitalized: false))
         .onChange(of: date) { old, _ in
-            // Vändningen vid start visar alltid det aktuella datumet som mål.
+            // Bläddringen vid start visar alltid det aktuella datumet som mål.
             guard opening == nil else { return }
-            // Visas redan en vändning tas den över från det datum som syns just nu.
-            let visible = flip.map { CalendarFlipTimeline.showsNewDate(at: Date().timeIntervalSince($0.start)) ? old : $0.from } ?? old
-            flip = Flip(from: visible, start: Date())
+            // Pågår redan en bläddring tas den över från det datum som syns just nu.
+            let now = Date()
+            let visible = flip.map {
+                CalendarFlipTimeline.shownDate(at: now.timeIntervalSince($0.start), from: $0.from, dates: dates(from: $0.from, to: old))
+            } ?? old
+            flip = Flip(from: visible, start: now)
         }
         .task(id: flip) {
-            guard flip != nil else { return }
-            try? await Task.sleep(for: .seconds(CalendarFlipTimeline.duration))
-            if !Task.isCancelled { flip = nil }
+            guard let flip else { return }
+            let pages = dates(from: flip.from, to: date).count
+            try? await Task.sleep(for: .seconds(CalendarFlipTimeline.duration(pages: pages)))
+            if !Task.isCancelled { self.flip = nil }
         }
     }
 
-    /// Bladet med givet datum. `elapsed` är tiden i vändningen, eller `nil` när inget vänds.
-    private func page(showing shown: DayDate, elapsed: TimeInterval?) -> some View {
+    private func dates(from: DayDate, to: DayDate) -> [DayDate] {
+        CalendarFlipTimeline.dates(from: from, to: to, reduceMotion: reduceMotion)
+    }
+
+    /// Bläddrar från `from` till `date`, med start vid `begin`.
+    private func flipping(from: DayDate, begin: Date) -> some View {
+        let dates = dates(from: from, to: date)
+        return TimelineView(.animation) { context in
+            let elapsed = context.date.timeIntervalSince(begin)
+            page(showing: CalendarFlipTimeline.shownDate(at: elapsed, from: from, dates: dates), elapsed: elapsed, pages: dates.count)
+        }
+    }
+
+    /// Bladet med givet datum. `elapsed` är tiden i bläddringen, eller `nil` när inget bläddras.
+    private func page(showing shown: DayDate, elapsed: TimeInterval?, pages: Int) -> some View {
         VStack(spacing: 0) {
             Text(SwedishFormat.monthUppercased(shown))
                 .font(.ui(12, weight: .heavy, relativeTo: .caption))
@@ -124,7 +136,7 @@ public struct CalendarTile: View {
             .frame(maxWidth: .infinity)
             .background(Color.Theme.surface)
         }
-        .rotation3DEffect(.degrees(reduceMotion ? 0 : elapsed.map(CalendarFlipTimeline.angle(at:)) ?? 0), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.5)
+        .rotation3DEffect(.degrees(reduceMotion ? 0 : elapsed.map { CalendarFlipTimeline.angle(at: $0, pages: pages) } ?? 0), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.5)
         .opacity(reduceMotion ? elapsed.map(CalendarFlipTimeline.opacity(at:)) ?? 1 : 1)
     }
 }

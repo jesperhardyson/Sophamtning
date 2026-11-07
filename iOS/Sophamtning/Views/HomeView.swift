@@ -47,9 +47,9 @@ struct HomeView: View {
                 }
         }
         .task(id: entrance.begin) {
-            // Starten är klar när kalenderbladet har vänts. Därefter visas brickan som vanligt.
+            // Starten är klar när kalenderbladet har bläddrats, som längst 1,2 s. Därefter visas brickan som vanligt.
             guard entrance.begin != nil else { return }
-            let flip = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion) + CalendarFlipTimeline.duration
+            let flip = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion) + CalendarFlipTimeline.longest
             guard (try? await Task.sleep(for: .seconds(flip))) != nil else { return }
             onEntranceFinished()
         }
