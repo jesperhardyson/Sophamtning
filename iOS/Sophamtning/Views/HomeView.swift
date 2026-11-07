@@ -386,28 +386,29 @@ enum HomeSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// En adress under "Fler adresser". Fraktionerna visas som ikoner, och raden läses upp med fraktionsnamnen.
+/// En adress under "Fler adresser". Kärlen visas som chips med färg, ikon och kort namn, och raden läses upp med
+/// fraktionernas hela namn.
 private struct AddressRow: View {
     let entry: HomeContent.Entry
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var isFailure: Bool {
         if case .failed = entry.status { return true }
         return false
     }
 
+    /// Namnet, platsen, datumet och påminnelsen får hela bredden, så att inga ord bryts mitt i. Chipsen står under
+    /// texten och bryts mellan chips, och pilen står till höger om dem.
     var body: some View {
-        Group {
-            if typeSize >= .xxLarge {
-                stacked
-            } else {
-                // Ikonerna och pilen bredvid namnet när namnet ryms på en rad. Annars står de under texten, så att inget
-                // ord i namnet bryts mitt i.
-                ViewThatFits(in: .horizontal) {
-                    sideBySide
-                    stacked
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                title
+                details
+            }
+            HStack(spacing: 12) {
+                fractions
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                chevron
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -416,37 +417,6 @@ private struct AddressRow: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([entry.accessibilityLabel, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
-    }
-
-    /// Ikonerna och pilen bredvid namnet, som står på en rad. Platsen, datumet och påminnelsen under får hela bredden, så att
-    /// de inte bryts i en smal spalt. De räknas inte när `ViewThatFits` väljer, eftersom de alltid får brytas mellan orden.
-    private var sideBySide: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 12) {
-                title
-                    .fixedSize()
-                Spacer(minLength: 0)
-                icons
-                chevron
-            }
-            details
-                .frame(minWidth: 0, idealWidth: 0, maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    /// Ikonerna under texten, så att namnet, platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
-    private var stacked: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                title
-                details
-            }
-            HStack(spacing: 12) {
-                icons
-                Spacer(minLength: 0)
-                chevron
-            }
-        }
     }
 
     private var title: some View {
@@ -494,18 +464,19 @@ private struct AddressRow: View {
         }
     }
 
+    /// Alla kärl för nästa tömning, som chipsen under Kommande i adressvyn.
     @ViewBuilder
-    private var icons: some View {
+    private var fractions: some View {
         switch entry.status {
         case .upcoming(let pickup):
-            HStack(spacing: 6) {
-                ForEach(pickup.fractions.prefix(3)) { fraction in
-                    FractionIconView(id: fraction.id, info: fraction.info)
+            FlowLayout(spacing: 6) {
+                ForEach(pickup.fractions) { fraction in
+                    FractionChip(id: fraction.id, info: fraction.info, short: true)
                 }
             }
             .accessibilityHidden(true)
         case .loading:
-            // Ett litet kärl i stället för ikonerna. Raden läses upp av sin egen etikett.
+            // Ett litet kärl i stället för chipsen. Raden läses upp av sin egen etikett.
             BinLoaderView(width: 48, showsText: false)
                 .accessibilityHidden(true)
         default:
