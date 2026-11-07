@@ -61,7 +61,8 @@ public struct HomeContent: Equatable, Sendable {
         public let isDenied: Bool
         /// "Påminn mig kvällen före", eller "Notiser är avstängda i iOS".
         public let title: String
-        /// Raden under: när påminnelsen kommer ("Söndag kl. 18:00"), eller Live Activity ("Live Activity söndag kl. 17:30").
+        /// Raden under: när påminnelsen kommer ("Söndag kl. 18:00"), eller en väntande Live Activity ("Live Activity söndag
+        /// kl. 17:30", och "Notis och Live Activity söndag kl. 17:30" när notisen också är på).
         public let detail: String?
 
         public init(isOn: Bool, isDenied: Bool, title: String, detail: String?) {
@@ -257,7 +258,9 @@ public struct HomeContent: Equatable, Sendable {
                 let day = StockholmClock.today(now: liveActivity.start)
                 let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: liveActivity.start)
                 let time = SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
-                return "Live Activity \(SwedishFormat.weekdayName(day)) kl. \(time)"
+                // Notis och Live Activity startar vid samma tid. Står bara aktiviteten ser det ut som att notisen är av.
+                let what = notifications ? "Notis och Live Activity" : "Live Activity"
+                return "\(what) \(SwedishFormat.weekdayName(day)) kl. \(time)"
             }
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.

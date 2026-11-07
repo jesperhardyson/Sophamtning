@@ -186,6 +186,14 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 1050)
     // Tiden kommer från aktiviteten, som kan ha lagts in före en ändring av inställningen.
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(reminderMinutes: 1200, liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
+    // Notis och Live Activity startar vid samma tid, så båda nämns.
+    #expect(try #require(content.primary).reminder?.detail == "Notis och Live Activity söndag kl. 17:30")
+}
+
+@Test func baraLiveActivityNamnerBaraLiveActivity() throws {
+    let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 1050)
+    let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
     #expect(try #require(content.primary).reminder?.detail == "Live Activity söndag kl. 17:30")
 }
 
