@@ -54,12 +54,17 @@ final class QuickActionsTests: XCTestCase {
         addAddresses(["Testgatan 1", "Testgatan 2", "Testgatan 3"])
 
         // Huvudkortet ligger över "Fler adresser".
+        XCTAssertTrue(address("Testgatan 1").waitForExistence(timeout: 5))
+        let start = address("Testgatan 1").frame.minX
         drag(address("Testgatan 1"), by: -320)
         confirmRemoval()
         waitUntil(address("Testgatan 1"), "Huvudadressen ska försvinna") { !$0.exists }
         let header = app.staticTexts["Fler adresser"]
         XCTAssertTrue(header.waitForExistence(timeout: 3))
         XCTAssertLessThan(address("Testgatan 2").frame.maxY, header.frame.minY, "Den äldsta kvarvarande ska bli huvudadress")
+        // Svepet följer inte med till den nya huvudadressen.
+        waitUntil(address("Testgatan 2"), "Den nya huvudadressen ska stå i startläget") { abs($0.frame.minX - start) < 1 }
+        XCTAssertFalse(app.buttons["svep-ta-bort"].exists, "Ingen knapp ska synas efter borttagningen")
         XCTAssertGreaterThan(address("Testgatan 3").frame.minY, header.frame.maxY)
 
         drag(address("Testgatan 2"), by: -320)
@@ -94,6 +99,63 @@ final class QuickActionsTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Kärlen"].exists, "Ett tryck på en öppen rad ska stänga den, inte öppna adressen")
     }
 
+    func testBaraEnRadArOppen() {
+        app.launch()
+        addAddresses(["Testgatan 1", "Testgatan 2"])
+        let card = address("Testgatan 1"), row = address("Testgatan 2")
+        let cardStart = card.frame.minX, rowStart = row.frame.minX
+
+        drag(row, by: -140)
+        waitUntil(row, "Raden ska stå öppen") { $0.frame.minX < rowStart - 60 }
+
+        // Ett svep på huvudkortet öppnar det och stänger raden.
+        drag(card, by: -100)
+        waitUntil(card, "Huvudkortet ska stå öppet") { $0.frame.minX < cardStart - 30 }
+        waitUntil(row, "Raden ska stängas") { abs($0.frame.minX - rowStart) < 1 }
+        XCTAssertEqual(app.buttons.matching(identifier: "svep-ta-bort").count, 1, "Bara en rad ska vara öppen")
+    }
+
+    func testScrollningStangerOppenRad() {
+        app.launch()
+        addAddresses(["Testgatan 1", "Testgatan 2"])
+        let row = address("Testgatan 2")
+        let start = row.frame.minX
+        drag(row, by: -140)
+        waitUntil(row, "Raden ska stå öppen") { $0.frame.minX < start - 60 }
+
+        let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+        from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: -200)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        waitUntil(row, "Scrollningen ska stänga raden") { abs($0.frame.minX - start) < 1 }
+        XCTAssertFalse(app.buttons["svep-ta-bort"].exists)
+    }
+
+    func testTryckUtanforStangerRadenOchGorIngetAnnat() {
+        app.launch()
+        addAddresses(["Testgatan 1", "Testgatan 2"])
+        let row = address("Testgatan 2")
+        let start = row.frame.minX
+        drag(row, by: -140)
+        waitUntil(row, "Raden ska stå öppen") { $0.frame.minX < start - 60 }
+
+        // Ett tryck på huvudkortet stänger raden utan att öppna adressen.
+        address("Testgatan 1").tap()
+        waitUntil(row, "Raden ska stängas") { abs($0.frame.minX - start) < 1 }
+        XCTAssertFalse(app.staticTexts["Kärlen"].exists, "Trycket utanför ska bara stänga raden")
+
+        // Ett tryck på Lägg till gör inte heller något annat.
+        drag(row, by: -140)
+        waitUntil(row, "Raden ska stå öppen") { $0.frame.minX < start - 60 }
+        app.buttons["Lägg till"].tap()
+        waitUntil(row, "Raden ska stängas") { abs($0.frame.minX - start) < 1 }
+        XCTAssertFalse(app.textFields["Gata och husnummer"].exists, "Trycket utanför ska inte öppna sökningen")
+
+        // Ett tryck nedanför innehållet stänger också raden.
+        drag(row, by: -140)
+        waitUntil(row, "Raden ska stå öppen") { $0.frame.minX < start - 60 }
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.97)).tap()
+        waitUntil(row, "Raden ska stängas") { abs($0.frame.minX - start) < 1 }
+    }
+
     func testVertikalScrollningFranKortet() {
         // Största textstorleken gör hemskärmen högre än skärmen.
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
@@ -123,6 +185,8 @@ final class QuickActionsTests: XCTestCase {
         XCTAssertTrue(menuItem("Notis kvällen före").exists)
         XCTAssertFalse(isOn(menuItem("Notis kvällen före")), "Notisen ska vara av från början")
         XCTAssertTrue(menuItem("Live Activity").exists, "Live Activity finns för huvudadressen")
+        // XCUITest visar inte undertexten i en meny, men den gör valet en rad högre än de andra.
+        XCTAssertGreaterThan(menuItem("Live Activity").frame.height, menuItem("Byt namn").frame.height + 10, "Live Activity ska ha en undertext")
         XCTAssertFalse(isOn(menuItem("Live Activity")), "Live Activity ska vara av från början")
         XCTAssertFalse(menuItem("Gör till huvudadress").exists, "Huvudadressen är redan huvudadress")
         XCTAssertTrue(menuItem("Ta bort").exists)

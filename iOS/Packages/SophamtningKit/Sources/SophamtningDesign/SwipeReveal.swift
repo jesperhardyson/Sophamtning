@@ -4,12 +4,24 @@ import SwiftUI
 /// Svep åt vänster på en rad, som i Mail och Påminnelser: en röd knapp kommer fram till höger, och ett fullt svep
 /// gör åtgärden direkt. Allt räknas i punkter, med negativ förskjutning åt vänster.
 public enum SwipeReveal {
-    /// Knappens bredd när raden står öppen.
-    public static let buttonWidth: CGFloat = 88
     /// Avståndet mellan raden och knappen.
     public static let gap: CGFloat = 8
-    /// Hur långt raden står åt vänster när den är öppen.
-    public static var openWidth: CGFloat { buttonWidth + gap }
+
+    /// Knappen bakom raden. Huvudkortet har en rund knapp mitt för kortet, och raderna en knapp lika hög som raden.
+    public enum ButtonShape: Sendable {
+        case fullHeight, round
+
+        /// Knappens bredd när raden står öppen. Den runda knappen är 56 pt.
+        public var buttonWidth: CGFloat {
+            switch self {
+            case .fullHeight: 88
+            case .round: 56
+            }
+        }
+
+        /// Hur långt raden står åt vänster när den är öppen.
+        public var openWidth: CGFloat { buttonWidth + SwipeReveal.gap }
+    }
 
     /// Rörelsen måste vara så här mycket mer vågrät än lodrät. Annars är det scrollning.
     static let horizontalRatio: CGFloat = 1.5
@@ -32,12 +44,12 @@ public enum SwipeReveal {
     }
 
     /// Där svepet blir fullt.
-    public static func fullSwipeDistance(width: CGFloat) -> CGFloat {
-        max(width * fullSwipeFraction, openWidth + fullSwipeMargin)
+    public static func fullSwipeDistance(width: CGFloat, shape: ButtonShape) -> CGFloat {
+        max(width * fullSwipeFraction, shape.openWidth + fullSwipeMargin)
     }
 
-    public static func isFullSwipe(offset: CGFloat, width: CGFloat) -> Bool {
-        -offset >= fullSwipeDistance(width: width)
+    public static func isFullSwipe(offset: CGFloat, width: CGFloat, shape: ButtonShape) -> Bool {
+        -offset >= fullSwipeDistance(width: width, shape: shape)
     }
 
     public enum Outcome: Equatable, Sendable {
@@ -46,10 +58,15 @@ public enum SwipeReveal {
 
     /// Vad som händer när fingret släpper. Ett fullt svep gör åtgärden. Annars öppnas raden om den, med fart, når förbi
     /// halva knappen. Ett snabbt svep öppnar alltså men tar aldrig bort.
-    public static func outcome(offset: CGFloat, velocity: CGFloat, width: CGFloat) -> Outcome {
-        if isFullSwipe(offset: offset, width: width) { return .delete }
+    public static func outcome(offset: CGFloat, velocity: CGFloat, width: CGFloat, shape: ButtonShape) -> Outcome {
+        if isFullSwipe(offset: offset, width: width, shape: shape) { return .delete }
         let projected = offset + velocity * projection
-        return -projected > openWidth / 2 ? .open : .closed
+        return -projected > shape.openWidth / 2 ? .open : .closed
+    }
+
+    /// Hur långt knappen har kommit fram, från 0 till 1 när raden står öppen. Den runda knappen tonas och skalas in med den.
+    public static func revealProgress(offset: CGFloat, shape: ButtonShape) -> CGFloat {
+        min(1, max(0, -offset / shape.openWidth))
     }
 
     /// Raden på väg till sitt läge. Med Reducera rörelse utan fjädring.

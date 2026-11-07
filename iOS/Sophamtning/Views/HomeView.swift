@@ -66,7 +66,10 @@ struct HomeView: View {
                 model.applyReminders()
             }
         }
+        // En öppen rad stängs när en adress öppnas eller stängs, och när appen byter läge.
+        .onChange(of: path) { openRow = nil }
         .onChange(of: scenePhase) { _, phase in
+            openRow = nil
             // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.
             if phase == .active {
                 model.applyReminders()
@@ -119,7 +122,10 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
+                .closesOpenSwipeRow($openRow)
             }
+            // Ett tryck nedanför innehållet stänger också den öppna raden.
+            .gesture(TapGesture().onEnded { openRow = nil }, including: openRow == nil ? .subviews : .all)
             .refreshable { await model.refreshAll(manual: true) }
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting { openRow = nil }
@@ -226,9 +232,11 @@ struct HomeView: View {
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
                 .cardEntrance(shown: !entrance.hidesCards, index: 0)
-            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
+            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, buttonShape: .round, openRow: $openRow) {
                 PrimaryCard(entry: primary, opening: opening(for: primary), onOpen: { path.append(primary.key) })
             }
+            // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
+            .id(primary.key)
             .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
@@ -240,7 +248,7 @@ struct HomeView: View {
                     .cardEntrance(shown: !entrance.hidesCards, index: 2)
                 VStack(spacing: 12) {
                     ForEach(Array(others.enumerated()), id: \.element.id) { index, entry in
-                        AddressQuickActions(model: model, key: entry.key, cornerRadius: 20, openRow: $openRow) {
+                        AddressQuickActions(model: model, key: entry.key, cornerRadius: 20, buttonShape: .fullHeight, openRow: $openRow) {
                             NavigationLink(value: entry.key) {
                                 AddressRow(entry: entry)
                             }
