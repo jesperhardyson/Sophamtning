@@ -49,9 +49,10 @@ struct HomeView: View {
                 }
         }
         .task(id: entrance.begin) {
-            // Starten är klar när kalenderbladet har bläddrats, som längst 1,2 s. Därefter visas brickan som vanligt.
+            // Starten är klar när kalenderbladet har bläddrats klart, så länge som bläddringen faktiskt tar. Därefter visas
+            // brickan som vanligt.
             guard entrance.begin != nil else { return }
-            let flip = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion) + CalendarFlipTimeline.longest
+            let flip = EntranceTimeline.flipDelay(cardIndex: Self.primaryCardIndex, reduceMotion: reduceMotion) + openingFlipDuration(content.primary)
             guard (try? await Task.sleep(for: .seconds(flip))) != nil else { return }
             onEntranceFinished()
         }
@@ -254,6 +255,14 @@ struct HomeView: View {
 
     /// Huvudkortets plats i ordningen, efter rubriken.
     private static let primaryCardIndex = 1
+
+    /// Hur länge kalenderbladet bläddras vid starten, eller 0 när det inte bläddras.
+    private func openingFlipDuration(_ primary: HomeContent.Entry?) -> TimeInterval {
+        guard case .upcoming(let pickup) = primary?.status,
+              let from = CalendarFlipTimeline.openingDate(today: StockholmClock.today(now: model.currentDate), pickup: pickup.date) else { return 0 }
+        let pages = CalendarFlipTimeline.dates(from: from, to: pickup.date, reduceMotion: reduceMotion).count
+        return CalendarFlipTimeline.duration(pages: pages, reduceMotion: reduceMotion)
+    }
 
     /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
     private func opening(for primary: HomeContent.Entry) -> CalendarTile.Opening? {

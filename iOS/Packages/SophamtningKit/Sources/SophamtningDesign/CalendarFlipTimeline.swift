@@ -1,23 +1,27 @@
 import Foundation
 import SophamtningKit
 
-/// Tidslinjen när kalenderbladet bläddras, från ett datum till ett annat. Rena funktioner av tid, så att vyn ritar från klockan
-/// och en ny bläddring kan ta över mitt i en gammal.
+/// Tidslinjen när kalenderbladet bläddras som en blockkalender, från ett datum till ett annat. Rena funktioner av tid, så att
+/// vyn ritar från klockan och en ny bläddring kan ta över mitt i en gammal.
 ///
-/// Ett blad bläddras per dag, högst 8 blad. Varje blad vänds på samma sätt: första halvan viker det gamla bladet upp till
-/// 90 grader, och i andra halvan kommer det nya fram från 90 grader. Ett blad tar 0,6 s. Flera blad går fortare per blad och
-/// bromsar in mot slutet, och allt är klart inom 1,2 s. Med Reducera rörelse tonas bladet i stället ut och in, en gång.
+/// Bladen ligger i en bunt. Blad 0 är startdatumet och ligger överst, blad `n` är tömningsdagen och ligger underst. Bladen
+/// 0 till `n - 1` viks upp kring överkanten, ett i taget men överlappande: ett nytt blad börjar cirka var 60:e ms, och
+/// avståndet växer mot slutet, så att bläddringen bromsar in mot tömningsdagen. Nästa blad ligger alltid redan under det
+/// som viks, så att inget blinkar. Ett blad tar 0,25 s och allt är klart inom 0,6 s. Med Reducera rörelse tonas brickan
+/// i stället, en gång.
 public enum CalendarFlipTimeline {
-    /// Halva vändningen när bara ett blad vänds.
-    public static let half: TimeInterval = 0.3
-    /// Ett blad.
-    public static let duration: TimeInterval = 0.6
-    /// Den längsta bläddringen, med 8 blad eller fler dagar.
-    public static let longest: TimeInterval = 1.2
+    /// Tiden ett blad tar att vikas upp.
+    public static let foldDuration: TimeInterval = 0.25
+    /// Tiden mellan de första bladen.
+    public static let firstGap: TimeInterval = 0.06
+    /// Hur mycket längre det sista mellanrummet är än det första.
+    static let slowdown = 1.5
+    /// Den längsta bläddringen, med 8 blad.
+    public static let longest: TimeInterval = 0.6
     /// Fler dagar än så bläddras med jämnt fördelade datum.
     public static let maxPages = 8
-    /// Hur mycket längre det sista bladet tar än det första.
-    static let slowdown = 2.0
+    /// Toningen med Reducera rörelse: ut och sedan in.
+    public static let fadeDuration: TimeInterval = 0.4
 
     /// Datumet bladet vänds från vid start från början: dagens datum, eller `nil` om tömningen är i dag och inget ska vändas.
     public static func openingDate(today: DayDate, pickup: DayDate) -> DayDate? {
@@ -33,62 +37,109 @@ public enum CalendarFlipTimeline {
         return (1...maxPages).map { from.adding(days: ($0 * days + maxPages / 2) / maxPages) }
     }
 
-    /// Hela bläddringen: 0,6 s för ett blad, och för fler blad lite längre, men aldrig mer än 1,2 s.
-    public static func duration(pages: Int) -> TimeInterval {
-        pages <= 1 ? duration : longest - duration / Double(pages)
-    }
-
-    /// Vilket blad som vänds vid en tidpunkt, och hur långt det kommit (0 till 1). `nil` före och efter bläddringen.
-    private static func flip(at elapsed: TimeInterval, pages: Int) -> (index: Int, progress: Double)? {
+    /// När varje blad börjar vikas upp, räknat från bläddringens start. Det första börjar direkt.
+    public static func starts(pages: Int) -> [TimeInterval] {
         let pages = max(pages, 1)
-        let total = duration(pages: pages)
-        guard elapsed > 0, elapsed < total else { return nil }
-        // Varje blad tar lite längre tid än det förra, så att bläddringen bromsar in mot tömningsdagen.
-        let weights = (0..<pages).map { pages == 1 ? 1 : 1 + (slowdown - 1) * Double($0) / Double(pages - 1) }
-        let unit = total / weights.reduce(0, +)
-        var start: TimeInterval = 0
-        for (index, weight) in weights.enumerated() {
-            let length = weight * unit
-            if elapsed < start + length || index == pages - 1 {
-                return (index, min(1, (elapsed - start) / length))
+        guard pages > 1 else { return [0] }
+        // Mellanrummen växer jämnt från det första till det sista, så att farten bromsar in.
+        let weights = (0..<(pages - 1)).map { pages == 2 ? 1 : 1 + (slowdown - 1) * Double($0) / Double(pages - 2) }
+        let gap = min(firstGap, (longest - foldDuration) / weights.reduce(0, +))
+        var starts: [TimeInterval] = [0]
+        for weight in weights { starts.append(starts.last! + weight * gap) }
+        return starts
+    }
+
+    /// Hela bläddringen: tills det sista bladet har vikts upp och tömningsdagen ligger kvar. Med Reducera rörelse toningen.
+    public static func duration(pages: Int, reduceMotion: Bool = false) -> TimeInterval {
+        reduceMotion ? fadeDuration : starts(pages: pages).last! + foldDuration
+    }
+
+    public static func isFinished(at elapsed: TimeInterval, pages: Int, reduceMotion: Bool = false) -> Bool {
+        elapsed >= duration(pages: pages, reduceMotion: reduceMotion)
+    }
+
+    /// Ett blad som håller på att vikas upp, och hur långt det kommit (0 till 1).
+    public struct Fold: Equatable, Sendable {
+        public let sheet: Int
+        public let progress: Double
+    }
+
+    /// Bladen som syns vid en tidpunkt: bladet som ligger stilla under, och bladen ovanpå som viks upp.
+    public struct Layers: Equatable, Sendable {
+        /// Det översta bladet som inte har börjat vikas. Det ligger under alla som viks.
+        public let under: Int
+        /// Bladen som viks, överst först.
+        public let folds: [Fold]
+
+        /// Bladet som ligger överst i bunten.
+        public var top: Int { folds.first?.sheet ?? under }
+    }
+
+    /// Vilka blad som syns vid en tidpunkt. Före starten ligger blad 0 ensamt, efter slutet blad `pages`.
+    public static func layers(at elapsed: TimeInterval, pages: Int) -> Layers {
+        let pages = max(pages, 1)
+        let starts = starts(pages: pages)
+        var folds: [Fold] = []
+        var under = pages
+        for (sheet, start) in starts.enumerated() {
+            guard elapsed > start else {
+                under = sheet
+                break
             }
-            start += length
+            if elapsed < start + foldDuration {
+                folds.append(Fold(sheet: sheet, progress: (elapsed - start) / foldDuration))
+            }
         }
-        return nil
+        return Layers(under: under, folds: folds)
     }
 
-    /// Hur många blad som har kommit fram: 0 visar startdatumet och `pages` det sista bladet. Bladet byts mitt i vändningen.
-    public static func currentPage(at elapsed: TimeInterval, pages: Int) -> Int {
-        if elapsed <= 0 { return 0 }
-        guard let flip = flip(at: elapsed, pages: pages) else { return max(pages, 1) }
-        return flip.progress < 0.5 ? flip.index : flip.index + 1
+    /// Datumet på ett blad: startdatumet för blad 0, och sedan bladen i `dates`.
+    public static func date(ofSheet sheet: Int, from: DayDate, dates: [DayDate]) -> DayDate {
+        sheet == 0 ? from : dates[min(sheet, dates.count) - 1]
     }
 
-    /// Datumet som syns: `from` tills första bladet är halvvägs, sedan bladen i `dates` i tur och ordning.
+    /// Datumet på det översta bladet.
     public static func shownDate(at elapsed: TimeInterval, from: DayDate, dates: [DayDate]) -> DayDate {
-        let page = min(currentPage(at: elapsed, pages: dates.count), dates.count)
-        return page == 0 ? from : dates[page - 1]
+        date(ofSheet: layers(at: elapsed, pages: dates.count).top, from: from, dates: dates)
     }
 
-    /// Vinkel i grader runt bladets övre kant.
-    public static func angle(at elapsed: TimeInterval, pages: Int = 1) -> Double {
-        guard let flip = flip(at: elapsed, pages: pages) else { return 0 }
-        let u = flip.progress
-        if u < 0.5 {
-            return -90 * CubicBezier.ease(0.42, 0, 1, 1).value(at: u / 0.5)
-        }
-        return 90 * (1 - CubicBezier.ease(0, 0, 0.58, 1).value(at: (u - 0.5) / 0.5))
+    /// Vinkeln i grader kring bladets överkant medan det viks upp: från 0 till 90, där det står på kanten och inte syns.
+    /// Positiv vinkel för underkanten mot betraktaren, som när man lyfter ett blad i en blockkalender.
+    public static func angle(progress: Double) -> Double {
+        let u = min(max(progress, 0), 1)
+        return 90 * CubicBezier.ease(0.45, 0, 0.75, 1).value(at: u)
     }
 
-    /// Toningen vid Reducera rörelse, som alltid är ett blad: bort i första halvan och in i andra.
+    /// Toningen vid Reducera rörelse: bort i första halvan och in i andra.
     public static func opacity(at elapsed: TimeInterval) -> Double {
-        guard elapsed > 0, elapsed < duration else { return 1 }
+        let half = fadeDuration / 2
+        guard elapsed > 0, elapsed < fadeDuration else { return 1 }
         let curve = CubicBezier.easeInOut
         if elapsed < half { return 1 - curve.value(at: elapsed / half) }
         return curve.value(at: (elapsed - half) / half)
     }
 
-    public static func isFinished(at elapsed: TimeInterval, pages: Int = 1) -> Bool {
-        elapsed >= duration(pages: pages)
+    /// Datumet som syns vid Reducera rörelse: startdatumet tills brickan har tonats bort.
+    public static func fadedDate(at elapsed: TimeInterval, from: DayDate, to: DayDate) -> DayDate {
+        elapsed < fadeDuration / 2 ? from : to
+    }
+
+    /// En vibration under bläddringen.
+    public struct Haptic: Equatable, Sendable {
+        public enum Kind: Equatable, Sendable {
+            /// Lätt, när ett blad börjar vikas.
+            case page
+            /// Tydligare, när det sista bladet har landat.
+            case landing
+        }
+
+        public let time: TimeInterval
+        public let kind: Kind
+    }
+
+    /// En lätt vibration per blad och en tydligare när tömningsdagen ligger kvar. Ingen med Reducera rörelse.
+    public static func haptics(pages: Int, reduceMotion: Bool) -> [Haptic] {
+        guard !reduceMotion else { return [] }
+        return starts(pages: pages).map { Haptic(time: $0, kind: .page) } + [Haptic(time: duration(pages: pages), kind: .landing)]
     }
 }

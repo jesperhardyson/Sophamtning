@@ -4,93 +4,32 @@ import Testing
 @testable import SophamtningDesign
 
 @Suite struct CalendarFlipTests {
-    @Test func bladetVandsPaTvaHalvor() {
-        #expect(CalendarFlipTimeline.duration == 2 * CalendarFlipTimeline.half)
-        // En tydlig vändning, cirka 0,6 s.
-        #expect(abs(CalendarFlipTimeline.duration - 0.6) < 0.05)
-    }
+    private func day(_ text: String) -> DayDate { DayDate(text)! }
+
+    // MARK: Start och datum
 
     @Test func vidStartVandsBladetFranDagensDatumTillTomningsdagen() {
-        let today = DayDate("2026-11-07")!
-        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: DayDate("2026-11-12")!) == today)
-        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: DayDate("2026-11-08")!) == today)
+        let today = day("2026-11-07")
+        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: day("2026-11-12")) == today)
+        #expect(CalendarFlipTimeline.openingDate(today: today, pickup: day("2026-11-08")) == today)
     }
 
     @Test func tomningIDagVandsInte() {
-        let today = DayDate("2026-11-07")!
+        let today = day("2026-11-07")
         #expect(CalendarFlipTimeline.openingDate(today: today, pickup: today) == nil)
-    }
-
-    @Test func foreOchEfterVandningenSynsRattDatumOchBladetArRakt() {
-        // Tiden är negativ medan kortet kommer in: dagens datum, rakt blad och ingen toning.
-        #expect(CalendarFlipTimeline.currentPage(at: -0.5, pages: 1) == 0)
-        #expect(CalendarFlipTimeline.angle(at: -0.5) == 0)
-        #expect(CalendarFlipTimeline.opacity(at: -0.5) == 1)
-        #expect(CalendarFlipTimeline.currentPage(at: CalendarFlipTimeline.duration, pages: 1) == 1)
-    }
-
-    @Test func bladetStartarOchSlutarRaktOchStilla() {
-        #expect(CalendarFlipTimeline.angle(at: 0) == 0)
-        #expect(CalendarFlipTimeline.angle(at: CalendarFlipTimeline.duration) == 0)
-        #expect(CalendarFlipTimeline.angle(at: 5) == 0)
-        #expect(CalendarFlipTimeline.angle(at: -1) == 0)
-    }
-
-    @Test func gamlaBladetViksUppTillNittioGrader() {
-        let half = CalendarFlipTimeline.half
-        #expect(CalendarFlipTimeline.angle(at: half - 0.0001) < -89)
-        let first = stride(from: 0.0, to: half, by: half / 20).map { CalendarFlipTimeline.angle(at: $0) }
-        #expect(zip(first, first.dropFirst()).allSatisfy { $0 >= $1 })
-    }
-
-    @Test func nyaBladetKommerInfranNittioGrader() {
-        let half = CalendarFlipTimeline.half
-        #expect(CalendarFlipTimeline.angle(at: half) == 90)
-        let second = stride(from: half, through: CalendarFlipTimeline.duration, by: half / 20).map { CalendarFlipTimeline.angle(at: $0) }
-        #expect(zip(second, second.dropFirst()).allSatisfy { $0 >= $1 })
-    }
-
-    @Test func nyttDatumVisasEfterForstaHalvan() {
-        #expect(CalendarFlipTimeline.currentPage(at: 0, pages: 1) == 0)
-        #expect(CalendarFlipTimeline.currentPage(at: CalendarFlipTimeline.half - 0.001, pages: 1) == 0)
-        #expect(CalendarFlipTimeline.currentPage(at: CalendarFlipTimeline.half, pages: 1) == 1)
-        #expect(CalendarFlipTimeline.currentPage(at: 10, pages: 1) == 1)
-    }
-
-    @Test func reduceraRorelseGerBaraToningUtanVridning() {
-        #expect(CalendarFlipTimeline.opacity(at: 0) == 1)
-        #expect(CalendarFlipTimeline.opacity(at: CalendarFlipTimeline.half) == 0)
-        #expect(CalendarFlipTimeline.opacity(at: CalendarFlipTimeline.duration) == 1)
-        let mid = CalendarFlipTimeline.opacity(at: CalendarFlipTimeline.half / 2)
-        #expect(mid > 0 && mid < 1)
-    }
-
-    @Test func klartEfterLangden() {
-        #expect(!CalendarFlipTimeline.isFinished(at: CalendarFlipTimeline.duration - 0.01))
-        #expect(CalendarFlipTimeline.isFinished(at: CalendarFlipTimeline.duration))
-    }
-
-    // MARK: Flera blad
-
-    private func day(_ text: String) -> DayDate { DayDate(text)! }
-
-    @Test func enDagGerEttBladSomForut() {
-        #expect(CalendarFlipTimeline.dates(from: day("2026-11-07"), to: day("2026-11-08"), reduceMotion: false) == [day("2026-11-08")])
-        #expect(CalendarFlipTimeline.duration(pages: 1) == 0.6)
-        #expect(CalendarFlipTimeline.duration(pages: 1) == CalendarFlipTimeline.duration)
     }
 
     @Test func ettBladPerDagUpptillAtta() {
         let from = day("2026-11-07")
-        #expect(CalendarFlipTimeline.dates(from: from, to: day("2026-11-12"), reduceMotion: false).map(\.iso)
-                == ["2026-11-08", "2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12"])
-        let eight = CalendarFlipTimeline.dates(from: from, to: day("2026-11-15"), reduceMotion: false)
-        #expect(eight == (1...8).map { from.adding(days: $0) })
+        #expect(CalendarFlipTimeline.dates(from: from, to: day("2026-11-08"), reduceMotion: false) == [day("2026-11-08")])
+        #expect(CalendarFlipTimeline.dates(from: from, to: day("2026-11-11"), reduceMotion: false).map(\.iso)
+                == ["2026-11-08", "2026-11-09", "2026-11-10", "2026-11-11"])
+        #expect(CalendarFlipTimeline.dates(from: from, to: day("2026-11-15"), reduceMotion: false) == (1...8).map { from.adding(days: $0) })
     }
 
     @Test func flerDagarGerAttaJamntFordeladeBladDarSistaArTomningsdagen() {
         let from = day("2026-11-07")
-        for days in [9, 13, 20, 31, 90] {
+        for days in [9, 13, 20, 30, 31, 90] {
             let to = from.adding(days: days)
             let dates = CalendarFlipTimeline.dates(from: from, to: to, reduceMotion: false)
             #expect(dates.count == 8, "\(days) dagar")
@@ -102,69 +41,153 @@ import Testing
     }
 
     @Test func bakatOchReduceraRorelseGerEttBlad() {
-        let from = day("2026-11-12")
-        #expect(CalendarFlipTimeline.dates(from: from, to: day("2026-11-07"), reduceMotion: false) == [day("2026-11-07")])
-        #expect(CalendarFlipTimeline.dates(from: day("2026-11-07"), to: from, reduceMotion: true) == [from])
+        #expect(CalendarFlipTimeline.dates(from: day("2026-11-12"), to: day("2026-11-07"), reduceMotion: false) == [day("2026-11-07")])
         #expect(CalendarFlipTimeline.dates(from: day("2026-11-07"), to: day("2027-01-20"), reduceMotion: true) == [day("2027-01-20")])
     }
 
-    @Test func flerBladGarFortarePerBladOchAlltArKlartInom12() {
-        var previous = CalendarFlipTimeline.duration(pages: 1)
-        for pages in 2...8 {
+    // MARK: Start per blad och total tid
+
+    @Test func bladenStartarCirkaVar60eMsOchBromsarIn() {
+        let four = CalendarFlipTimeline.starts(pages: 4)
+        #expect(four.count == 4)
+        #expect(four[0] == 0)
+        #expect(abs(four[1] - 0.06) < 0.0001)
+        let gaps = zip(four, four.dropFirst()).map { $1 - $0 }
+        #expect(zip(gaps, gaps.dropFirst()).allSatisfy { $0 < $1 }, "mellanrummen växer: \(gaps)")
+        #expect(abs(gaps.last! - 1.5 * gaps.first!) < 0.0001)
+        #expect(CalendarFlipTimeline.starts(pages: 1) == [0])
+        #expect(CalendarFlipTimeline.starts(pages: 2) == [0, 0.06])
+    }
+
+    @Test func ettBladTarEnKvartsSekundOchAllaHogst06() {
+        #expect(CalendarFlipTimeline.foldDuration == 0.25)
+        #expect(CalendarFlipTimeline.duration(pages: 1) == 0.25)
+        #expect(abs(CalendarFlipTimeline.duration(pages: 4) - 0.475) < 0.0001)
+        #expect(abs(CalendarFlipTimeline.duration(pages: 8) - 0.6) < 0.0001)
+        var previous = 0.0
+        for pages in 1...8 {
             let total = CalendarFlipTimeline.duration(pages: pages)
-            #expect(total <= 1.2, "\(pages) blad")
-            #expect(total > previous, "fler blad tar lite längre tid totalt, \(pages) blad")
-            #expect(total / Double(pages) < 0.6, "\(pages) blad")
+            #expect(total <= 0.6 + 0.0001, "\(pages) blad")
+            #expect(total >= previous, "fler blad tar aldrig kortare tid, \(pages) blad")
             previous = total
         }
+        #expect(CalendarFlipTimeline.longest == 0.6)
     }
 
-    @Test func varjeBladVisasIOrdningOchSistaBladetArTomningsdagen() {
+    @Test func attaBladHarAndaSynligaMellanrum() {
+        let starts = CalendarFlipTimeline.starts(pages: 8)
+        let gaps = zip(starts, starts.dropFirst()).map { $1 - $0 }
+        #expect(gaps.min()! >= 0.035, "\(gaps)")
+        #expect(gaps.last! > gaps.first!)
+    }
+
+    @Test func klartEfterLangden() {
+        #expect(!CalendarFlipTimeline.isFinished(at: 0.47, pages: 4))
+        #expect(CalendarFlipTimeline.isFinished(at: 0.475, pages: 4))
+        #expect(CalendarFlipTimeline.isFinished(at: 0.4, pages: 4, reduceMotion: true))
+        #expect(!CalendarFlipTimeline.isFinished(at: 0.39, pages: 4, reduceMotion: true))
+    }
+
+    // MARK: Överst och under
+
+    @Test func foreStartenLiggerForstaBladetEnsamt() {
+        for t in [-0.5, 0.0] {
+            let layers = CalendarFlipTimeline.layers(at: t, pages: 4)
+            #expect(layers.under == 0)
+            #expect(layers.folds.isEmpty)
+            #expect(layers.top == 0)
+        }
+    }
+
+    @Test func nastaBladLiggerRedanUnderDetSomViks() {
+        // 0,03 s: blad 0 viks, blad 1 ligger under.
+        let early = CalendarFlipTimeline.layers(at: 0.03, pages: 4)
+        #expect(early.folds.map(\.sheet) == [0])
+        #expect(early.under == 1)
+        #expect(early.top == 0)
+        // 0,15 s: tre blad viks samtidigt och överlappar, blad 3 ligger under.
+        let mid = CalendarFlipTimeline.layers(at: 0.15, pages: 4)
+        #expect(mid.folds.map(\.sheet) == [0, 1, 2])
+        #expect(mid.under == 3)
+        #expect(mid.folds[0].progress > mid.folds[1].progress)
+        // Det sista bladet viks och tömningsdagen ligger under.
+        let late = CalendarFlipTimeline.layers(at: 0.4, pages: 4)
+        #expect(late.folds.map(\.sheet) == [3])
+        #expect(late.under == 4)
+    }
+
+    @Test func varjeTidpunktHarEttBladUnderSomInteViks() {
+        for pages in 1...8 {
+            let total = CalendarFlipTimeline.duration(pages: pages)
+            for t in stride(from: -0.05, through: total + 0.05, by: 0.001) {
+                let layers = CalendarFlipTimeline.layers(at: t, pages: pages)
+                #expect(layers.under >= 0 && layers.under <= pages)
+                #expect(layers.folds.allSatisfy { $0.sheet < layers.under && $0.progress > 0 && $0.progress < 1 })
+            }
+        }
+    }
+
+    @Test func efterSlutetLiggerTomningsdagenEnsam() {
+        let layers = CalendarFlipTimeline.layers(at: CalendarFlipTimeline.duration(pages: 8), pages: 8)
+        #expect(layers.under == 8)
+        #expect(layers.folds.isEmpty)
+    }
+
+    @Test func varjeDatumLiggerOverstIOrdningOchSistaArTomningsdagen() {
         let from = day("2026-11-07")
-        let dates = CalendarFlipTimeline.dates(from: from, to: day("2026-11-12"), reduceMotion: false)
+        let dates = CalendarFlipTimeline.dates(from: from, to: day("2026-11-11"), reduceMotion: false)
         let total = CalendarFlipTimeline.duration(pages: dates.count)
-        let shown = stride(from: -0.1, through: total + 0.1, by: 0.002).map { CalendarFlipTimeline.shownDate(at: $0, from: from, dates: dates) }
-        // Varje datum visas, i ordning, och inget annat.
-        var distinct: [DayDate] = []
-        for date in shown where distinct.last != date { distinct.append(date) }
-        #expect(distinct == [from] + dates)
-        #expect(CalendarFlipTimeline.shownDate(at: total, from: from, dates: dates) == day("2026-11-12"))
-        #expect(CalendarFlipTimeline.isFinished(at: total, pages: dates.count))
-        #expect(!CalendarFlipTimeline.isFinished(at: total - 0.01, pages: dates.count))
-    }
-
-    @Test func bladetBytsMittIVarjeVandning() {
-        let pages = 5
-        let samples = stride(from: 0.0, through: CalendarFlipTimeline.duration(pages: pages), by: 0.001).map {
-            (page: CalendarFlipTimeline.currentPage(at: $0, pages: pages), angle: CalendarFlipTimeline.angle(at: $0, pages: pages))
+        var underDates: [DayDate] = []
+        for t in stride(from: -0.1, through: total + 0.1, by: 0.001) {
+            let under = CalendarFlipTimeline.date(ofSheet: CalendarFlipTimeline.layers(at: t, pages: dates.count).under, from: from, dates: dates)
+            if underDates.last != under { underDates.append(under) }
         }
-        // Där bladet byts står det på kanten: vinkeln hoppar från nästan -90 till 90.
-        for (before, after) in zip(samples, samples.dropFirst()) where after.page != before.page {
-            #expect(after.page == before.page + 1)
-            #expect(before.angle < -80 && after.angle > 80)
-        }
-        #expect(samples.allSatisfy { $0.angle >= -90 && $0.angle <= 90 })
-        #expect(samples.first!.angle == 0 && samples.last!.angle == 0)
-    }
-
-    @Test func sistaBladetGarLangsammareAnDetForsta() {
-        let pages = 8
-        let times = stride(from: 0.0, through: CalendarFlipTimeline.duration(pages: pages), by: 0.0005).map { ($0, CalendarFlipTimeline.currentPage(at: $0, pages: pages)) }
-        let changes = zip(times, times.dropFirst()).filter { $0.1 != $1.1 }.map { $1.0 }
-        #expect(changes.count == pages)
-        let gaps = zip(changes, changes.dropFirst()).map { $1 - $0 }
-        #expect(gaps.last! > gaps.first! * 1.5, "bromsar in mot slutet: \(gaps)")
-        // Inget blad är så kort att det inte syns, även med 8 blad.
-        #expect(gaps.min()! > 0.08)
+        #expect(underDates == [from] + dates)
+        #expect(CalendarFlipTimeline.shownDate(at: total, from: from, dates: dates) == day("2026-11-11"))
+        #expect(CalendarFlipTimeline.shownDate(at: 0, from: from, dates: dates) == from)
     }
 
     @Test func manadsradenFoljerMedOverManadsskiftet() {
-        let from = day("2026-11-28")
-        let dates = CalendarFlipTimeline.dates(from: from, to: day("2026-12-03"), reduceMotion: false)
-        let total = CalendarFlipTimeline.duration(pages: dates.count)
-        let shown = Set(stride(from: 0.0, through: total, by: 0.002).map { CalendarFlipTimeline.shownDate(at: $0, from: from, dates: dates) })
-        #expect(shown.contains(day("2026-11-30")))
-        #expect(shown.contains(day("2026-12-01")))
-        #expect(SwedishFormat.monthUppercased(day("2026-11-30")) != SwedishFormat.monthUppercased(day("2026-12-01")))
+        let from = day("2026-11-07")
+        let dates = CalendarFlipTimeline.dates(from: from, to: day("2026-12-07"), reduceMotion: false)
+        let shown = (0...dates.count).map { CalendarFlipTimeline.date(ofSheet: $0, from: from, dates: dates) }
+        #expect(shown.first == from)
+        #expect(shown.last == day("2026-12-07"))
+        #expect(Set(shown.map { SwedishFormat.monthUppercased($0) }) == ["NOV", "DEC"])
+    }
+
+    // MARK: Vinkel och toning
+
+    @Test func bladetViksUppFranRaktTillKanten() {
+        #expect(CalendarFlipTimeline.angle(progress: 0) == 0)
+        #expect(CalendarFlipTimeline.angle(progress: 1) == 90)
+        let angles = stride(from: 0.0, through: 1, by: 0.05).map { CalendarFlipTimeline.angle(progress: $0) }
+        #expect(zip(angles, angles.dropFirst()).allSatisfy { $0 <= $1 })
+    }
+
+    @Test func reduceraRorelseGerEnToning() {
+        #expect(CalendarFlipTimeline.opacity(at: 0) == 1)
+        #expect(CalendarFlipTimeline.opacity(at: 0.2) == 0)
+        #expect(CalendarFlipTimeline.opacity(at: 0.4) == 1)
+        let from = day("2026-11-07"), to = day("2026-11-11")
+        #expect(CalendarFlipTimeline.fadedDate(at: 0.19, from: from, to: to) == from)
+        #expect(CalendarFlipTimeline.fadedDate(at: 0.2, from: from, to: to) == to)
+        #expect(CalendarFlipTimeline.duration(pages: 8, reduceMotion: true) == 0.4)
+    }
+
+    // MARK: Vibrationer
+
+    @Test func enLattVibrationPerBladOchEnTydligareNarDetLandar() {
+        for pages in [1, 4, 8] {
+            let haptics = CalendarFlipTimeline.haptics(pages: pages, reduceMotion: false)
+            #expect(haptics.filter { $0.kind == .page }.count == pages)
+            #expect(haptics.filter { $0.kind == .landing }.count == 1)
+            #expect(haptics.last == .init(time: CalendarFlipTimeline.duration(pages: pages), kind: .landing))
+            #expect(haptics.filter { $0.kind == .page }.map(\.time) == CalendarFlipTimeline.starts(pages: pages))
+        }
+    }
+
+    @Test func ingenVibrationMedReduceraRorelse() {
+        #expect(CalendarFlipTimeline.haptics(pages: 4, reduceMotion: true).isEmpty)
     }
 }
