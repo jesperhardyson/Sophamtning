@@ -46,7 +46,7 @@ final class CoreFlowTests: XCTestCase {
         // Ingen adress matchar, och orten har områden i stället för adresser.
         field.typeText("okänd gata 1, Avesta")
 
-        let choose = app.buttons["Välj område i Avesta"]
+        let choose = app.buttons["Välj område i Avesta kommun"]
         XCTAssertTrue(choose.waitForExistence(timeout: 10))
         choose.tap()
 
@@ -68,8 +68,8 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(again.waitForExistence(timeout: 5))
         again.tap()
         again.typeText("okänd gata 1, Avesta")
-        XCTAssertTrue(app.buttons["Välj område i Avesta"].waitForExistence(timeout: 10))
-        app.buttons["Välj område i Avesta"].tap()
+        XCTAssertTrue(app.buttons["Välj område i Avesta kommun"].waitForExistence(timeout: 10))
+        app.buttons["Välj område i Avesta kommun"].tap()
         let sameArea = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
         XCTAssertTrue(sameArea.waitForExistence(timeout: 5))
         sameArea.tap()

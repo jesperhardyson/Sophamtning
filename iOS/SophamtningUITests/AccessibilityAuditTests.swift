@@ -50,7 +50,7 @@ final class AccessibilityAuditTests: XCTestCase {
         tap(app.buttons["Gata och husnummer"])
         type("okänd gata 1, Avesta", in: app.textFields["Gata och husnummer"])
         audit("sokning-ingen-traff")
-        tap(app.buttons["Välj område i Avesta"])
+        tap(app.buttons["Välj område i Avesta kommun"])
         audit("omrade-lista")
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch)
         // Bekräftelsearket granskas i stort läge. I läget 0,7 skalas arket ned, och då räknas all text i det som klippt.

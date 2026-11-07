@@ -24,6 +24,7 @@ struct SearchView: View {
     @State private var updating = false
     @State private var latest = LatestOnly()
     @State private var latestAreas = LatestOnly()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollView {
@@ -153,43 +154,51 @@ struct SearchView: View {
                     .padding(.bottom, 20)
             }
             if case .found(let place, let areas)? = outcome.areas {
+                // Knappen kommer ofta efter träffarna, och glider då in i stället för att skjuta ned listan i ett ryck.
                 areaButton(place: place, areas: areas)
                     .padding(.bottom, 20)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
             let rows = visibleHits(hits)
             if !rows.isEmpty {
                 Text(rows.count == 1 ? "1 träff" : "\(rows.count) träffar")
                     .font(.ui(17, weight: .heavy, relativeTo: .body))
                     .foregroundStyle(Color.Theme.text2)
+                    .contentTransition(.numericText())
                     .padding(.bottom, 12)
                 ResultList {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { offset, hit in
+                    // Varje rad behåller sin plats i svaret som identitet, så att en bortfiltrerad områdesrad inte
+                    // startar om de andra radernas inträde.
+                    ForEach(Array(rows.enumerated()), id: \.element.offset) { position, row in
                         // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
                         VStack(spacing: 0) {
-                            if offset > 0 { ResultDivider() }
-                            Button { choose(hit) } label: { row(hit) }
+                            if position > 0 { ResultDivider() }
+                            Button { choose(row.element) } label: { self.row(row.element) }
                                 .buttonStyle(.pressable)
                         }
-                        .rowEntranceOnAppear(index: offset)
+                        .rowEntranceOnAppear(index: position)
                     }
                 }
-                // Nya träffar börjar om från första raden. Samma träffar igen gör ingenting.
-                .id(rows)
+                // Nya träffar börjar om från första raden. Samma träffar igen, eller samma med en områdesrad mindre,
+                // gör ingenting.
+                .id(hits)
             }
         }
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: outcome.areas)
     }
 
-    /// Träffarna utan områdesrader för en kommun vars områden redan nås med knappen.
-    private func visibleHits(_ hits: [SearchHit]) -> [SearchHit] {
-        guard case .found(_, let areas)? = outcome.areas else { return hits }
+    /// Träffarna, med sin plats i svaret, utan områdesrader för en kommun vars områden redan nås med knappen.
+    private func visibleHits(_ hits: [SearchHit]) -> [EnumeratedSequence<[SearchHit]>.Element] {
+        let all = Array(hits.enumerated())
+        guard case .found(_, let areas)? = outcome.areas else { return all }
         let kommuner = Set(areas.map(\.kommun))
-        return hits.filter { !($0.isArea && kommuner.contains($0.kommun)) }
+        return all.filter { !($0.element.isArea && kommuner.contains($0.element.kommun)) }
     }
 
     /// "Välj område i X": samma knapp och flöde vid träffar som vid noll träffar.
     private func areaButton(place: String, areas: [SearchHit]) -> some View {
         NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas)) {
-            PrimaryButtonLabel(title: "Välj område i \(shortKommunName(areas[0].kommun))")
+            PrimaryButtonLabel(title: "Välj område i \(kommunDisplayName(areas[0].kommun))")
         }
         .buttonStyle(.pressable)
     }
@@ -204,7 +213,7 @@ struct SearchView: View {
                 Text(hit.street)
                     .font(.ui(20, weight: .heavy, relativeTo: .headline))
                     .foregroundStyle(Color.Theme.text)
-                Text(hit.locality.isEmpty ? hit.kommun : "\(hit.locality), \(hit.kommun)")
+                Text(hit.locality.isEmpty ? kommunDisplayName(hit.kommun) : "\(hit.locality), \(kommunDisplayName(hit.kommun))")
                     .font(.ui(16, weight: .semibold, relativeTo: .callout))
                     .foregroundStyle(Color.Theme.text2)
                 if let detail = hit.detail {

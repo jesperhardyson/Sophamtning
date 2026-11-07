@@ -388,10 +388,13 @@ private struct AddressRow: View {
 
     var body: some View {
         Group {
-            if typeSize.isAccessibilitySize {
-                // Ikonerna under texten, så att platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
+            if typeSize >= .xxLarge {
+                // Ikonerna under texten, så att namnet, platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
                 VStack(alignment: .leading, spacing: 12) {
-                    texts
+                    VStack(alignment: .leading, spacing: 4) {
+                        title
+                        details
+                    }
                     HStack(spacing: 12) {
                         icons
                         Spacer(minLength: 0)
@@ -399,11 +402,17 @@ private struct AddressRow: View {
                     }
                 }
             } else {
-                HStack(spacing: 12) {
-                    texts
-                    Spacer(minLength: 0)
-                    icons
-                    chevron
+                // Ikonerna och pilen bredvid namnet. Platsen, datumet och påminnelsen under får hela bredden, så att
+                // de inte bryts i en smal spalt.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 12) {
+                        title
+                            .layoutPriority(1)
+                        Spacer(minLength: 0)
+                        icons
+                        chevron
+                    }
+                    details
                 }
             }
         }
@@ -412,14 +421,18 @@ private struct AddressRow: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([entry.accessibilityLabel, entry.reminderText].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityLabel([entry.accessibilityLabel, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
     }
 
-    private var texts: some View {
+    private var title: some View {
+        Text(entry.title)
+            .font(.ui(22, weight: .heavy, relativeTo: .title3))
+            .foregroundStyle(Color.Theme.text)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(entry.title)
-                .font(.ui(22, weight: .heavy, relativeTo: .title3))
-                .foregroundStyle(Color.Theme.text)
             Text(entry.subtitle)
                 .font(.ui(17, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text2)
@@ -428,21 +441,31 @@ private struct AddressRow: View {
                 .font(.ui(16, weight: .heavy, relativeTo: .callout))
                 .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
                 .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
-            // Bara när notis är på för adressen, med samma text som huvudkortet. Ingen klocka när notis är av.
-            if let reminder = entry.reminderText {
+            // Bara när notis är på för adressen. Ingen klocka när notis är av.
+            if let reminder = entry.rowReminder {
                 Label {
-                    Text(reminder)
+                    Text(reminder.text)
                         .font(.ui(15, weight: .bold, relativeTo: .subheadline))
                         .foregroundStyle(Color.Theme.text2)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
-                    Image(systemName: "bell.fill")
+                    Image(systemName: reminderIcon(reminder))
                         .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(Color.Theme.brandText)
+                        .foregroundStyle(reminder == .denied ? Color.Theme.text2 : Color.Theme.brandText)
                 }
                 .labelStyle(.titleAndIcon)
                 .padding(.top, 2)
             }
+        }
+    }
+
+    /// Ifylld klocka för en planerad påminnelse, överstruken när iOS inte tillåter notiser, och huvudkortets klocka när
+    /// kvällens påminnelse redan passerat.
+    private func reminderIcon(_ reminder: HomeContent.RowReminder) -> String {
+        switch reminder {
+        case .scheduled: "bell.fill"
+        case .denied: "bell.slash"
+        case .missed: "bell.badge"
         }
     }
 

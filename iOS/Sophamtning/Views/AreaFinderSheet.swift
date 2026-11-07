@@ -233,7 +233,7 @@ struct AreaFinderSheet: View {
     private func listCard(_ hit: SearchHit, showKommun: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if showKommun {
-                Text(hit.kommun)
+                Text(kommunDisplayName(hit.kommun))
                     .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.brandText)
             }
