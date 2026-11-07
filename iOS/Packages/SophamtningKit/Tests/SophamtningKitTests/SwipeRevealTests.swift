@@ -141,8 +141,23 @@ import Testing
 
     @Test func radenFoljerFingretForeGransen() {
         let limit = SwipeReveal.fullSwipeDistance(width: width)
+        #expect(SwipeReveal.trackedOffset(-(limit - 1), width: width) == -(limit - 1))
         #expect(SwipeReveal.displayedOffset(-(limit - 1), width: width) == -(limit - 1))
         #expect(SwipeReveal.displayedOffset(-open, width: width) == -open)
+    }
+
+    @Test func forbiGransenDampasRorelsenSomEttGummiband() {
+        // Som i Påminnelser: förbi gränsen följer raden fingret trögt, med en tredjedel av rörelsen.
+        let limit = SwipeReveal.fullSwipeDistance(width: width)
+        #expect(SwipeReveal.overshootDamping == 0.3)
+        #expect(abs(SwipeReveal.trackedOffset(-limit - 10, width: width) - (-limit - 3)) < 0.001)
+        #expect(SwipeReveal.trackedOffset(-limit, width: width) == -limit)
+    }
+
+    @Test func sprangetArSomIPaminnelser() {
+        #expect(SwipeReveal.fullSwipeJump == 72)
+        #expect(SwipeReveal.jumpOffset(isFullSwipe: false, width: width) == 0)
+        #expect(SwipeReveal.jumpOffset(isFullSwipe: true, width: width) == -72)
     }
 
     @Test func forbiGransenHopparKnappenTillFullBredd() {
@@ -160,7 +175,7 @@ import Testing
         let after = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-limit, width: width), width: width)
         #expect(before.content == .center)
         #expect(after.content == .leading)
-        #expect(SwipeReveal.buttonLayout(offset: -width, width: width).content == .leading)
+        #expect(SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-width, width: width), width: width).content == .leading)
     }
 
     @Test func tillbakaUnderGransenKrymperKnappen() {
@@ -170,8 +185,12 @@ import Testing
     }
 
     @Test func sprangetGarInteForbiRaden() {
-        #expect(SwipeReveal.displayedOffset(-width, width: width) == -width)
-        #expect(SwipeReveal.displayedOffset(-width + 10, width: width) == -width)
+        // Med fingret längst bort, och på en smal rad där språnget inte får plats helt.
+        for rowWidth in [width, 220, SwipeReveal.fullSwipeDistance(width: 0)] {
+            let shown = SwipeReveal.displayedOffset(-rowWidth, width: rowWidth)
+            #expect(shown >= -rowWidth)
+            #expect(SwipeReveal.jumpOffset(isFullSwipe: true, width: rowWidth) <= 0)
+        }
     }
 
     @Test func sprangetFjadrarUtomMedReduceraRorelse() {

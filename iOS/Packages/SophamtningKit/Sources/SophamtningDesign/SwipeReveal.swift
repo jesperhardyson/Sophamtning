@@ -72,15 +72,31 @@ public enum SwipeReveal {
         min(1, max(0, -offset / openWidth))
     }
 
-    /// Hur mycket längre raden hoppar när svepet blir fullt, så att kapseln växer till full bredd. Påminnelser hoppar
-    /// också förbi fingret.
-    public static let fullSwipeJump: CGFloat = 48
+    /// Hur mycket längre raden hoppar när svepet blir fullt, så att kapseln växer till full bredd. Uppmätt i
+    /// Påminnelser, där raden hamnar ungefär 70 pt före fingret.
+    public static let fullSwipeJump: CGFloat = 72
+    /// Förbi gränsen för fullt svep följer raden fingret med den här andelen av rörelsen, som ett gummiband.
+    public static let overshootDamping: CGFloat = 0.3
 
-    /// Radens förskjutning som den visas. Förbi gränsen för fullt svep hoppar raden ett stycke längre än fingret, och
-    /// tillbaka när fingret drar under gränsen. Raden går aldrig längre än sin egen bredd.
+    /// Den del av radens förskjutning som följer fingret. Före gränsen för fullt svep 1:1, och förbi den dämpad.
+    public static func trackedOffset(_ offset: CGFloat, width: CGFloat) -> CGFloat {
+        let limit = fullSwipeDistance(width: width)
+        guard -offset > limit else { return offset }
+        return -limit + (offset + limit) * overshootDamping
+    }
+
+    /// Språnget, som läggs till `trackedOffset` förbi gränsen. Det fjädrar för sig, så att fingret inte avbryter det.
+    /// Raden går aldrig längre än sin egen bredd, så på en smal rad blir språnget kortare.
+    public static func jumpOffset(isFullSwipe: Bool, width: CGFloat) -> CGFloat {
+        guard isFullSwipe else { return 0 }
+        let room = width + trackedOffset(-width, width: width)
+        return -min(fullSwipeJump, max(0, room))
+    }
+
+    /// Radens förskjutning som den visas: den del som följer fingret plus språnget. Förbi gränsen för fullt svep
+    /// hoppar raden ett stycke längre än fingret, och tillbaka när fingret drar under gränsen.
     public static func displayedOffset(_ offset: CGFloat, width: CGFloat) -> CGFloat {
-        guard isFullSwipe(offset: offset, width: width) else { return offset }
-        return max(-width, offset - fullSwipeJump)
+        trackedOffset(offset, width: width) + jumpOffset(isFullSwipe: isFullSwipe(offset: offset, width: width), width: width)
     }
 
     /// Var ikonen och texten står i kapseln.

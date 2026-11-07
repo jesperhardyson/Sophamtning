@@ -187,7 +187,13 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Fingrets förskjutning.
     @State private var offset: CGFloat = 0
+    /// Språnget förbi gränsen för fullt svep. Ett eget tillstånd med egen `.offset`, så att nästa rörelse med fingret
+    /// inte avbryter fjädern.
+    @State private var jumpOffset: CGFloat = 0
+    /// Om raden har hoppat förbi gränsen. Ändras i samma fjäder som språnget, så att ikonen och texten följer med.
+    @State private var jumped = false
     @State private var start: CGFloat = 0
     @State private var dragging = false
     @State private var width: CGFloat = 0
@@ -196,9 +202,9 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
 
     private var isFullSwipe: Bool { width > 0 && SwipeReveal.isFullSwipe(offset: offset, width: width) }
 
-    /// Där raden visas. Förbi gränsen för fullt svep hoppar den längre än fingret, så att kapseln växer till full bredd.
-    private var shownOffset: CGFloat {
-        width > 0 ? SwipeReveal.displayedOffset(offset, width: width) : offset
+    /// Den del av förskjutningen som följer fingret, dämpad förbi gränsen för fullt svep.
+    private var trackedOffset: CGFloat {
+        width > 0 ? SwipeReveal.trackedOffset(offset, width: width) : offset
     }
 
     /// Ett tryck på raden stänger den öppna raden, den här eller en annan, i stället för att öppna adressen.
@@ -217,7 +223,8 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
                         .accessibilityHidden(true)
                 }
             }
-            .offset(x: shownOffset)
+            .offset(x: trackedOffset)
+            .offset(x: jumpOffset)
             .background(alignment: .trailing) { deleteButton }
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
             .gesture(SwipePan(isOpen: offset < 0, onChange: { changed($0) }, onEnd: { ended($0) }, onCancel: { cancelled() }))
@@ -230,40 +237,19 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
             .anchorPreference(key: SwipeRowBounds.self, value: .bounds) { [$0] }
     }
 
-    /// Kapseln som i Påminnelser: 34 pt hög, mitt för raden, med papperskorgen och texten bredvid varandra i systemets
-    /// typsnitt. Den fyller ytan bredvid raden. Ikonen och texten står i mitten, och vid kanten mot raden förbi gränsen
-    /// för fullt svep. Den tonas och skalas in med svepet, och med Reducera rörelse tonas den bara in.
+    /// Kapseln som i Påminnelser. Den är en egen vy som animerar språnget för sig, så att fingret inte avbryter fjädern.
     private var deleteButton: some View {
-        let layout = SwipeReveal.buttonLayout(offset: shownOffset, width: width)
-        let progress = SwipeReveal.revealProgress(offset: offset)
-        return Button(action: onDelete) {
-            HStack(spacing: 6) {
-                Image(systemName: "trash.fill")
-                    .accessibilityHidden(true)
-                Text("Ta bort")
-            }
-            .font(.footnote)
-            // Växer inte längre än till andra tillgänglighetsstorleken. Med stor text krymps ikonen och texten
-            // tillsammans, så att de ryms i kapseln utan att kapas.
-            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
-            .fixedSize()
-            .onGeometryChange(for: CGFloat.self, of: \.size.width) { labelWidth = $0 }
-            .scaleEffect(SwipeReveal.labelScale(width: labelWidth))
-            .frame(width: min(labelWidth, SwipeReveal.labelMaxWidth))
-            .foregroundStyle(.white)
-            .padding(.horizontal, SwipeReveal.contentPadding)
-            .frame(width: layout.width, height: SwipeReveal.buttonHeight, alignment: layout.content == .leading ? .leading : .center)
-            .background(Color.Theme.destructive, in: Capsule())
-            // Tryckytan är hela den synliga kapseln, och minst 44 pt hög.
-            .frame(height: SwipeReveal.tapHeight)
-            .contentShape(Rectangle())
-        }
-        .scaleEffect(reduceMotion ? 1 : progress)
-        .opacity(offset < 0 ? progress : 0)
-        .frame(maxHeight: .infinity)
-        // VoiceOver når borttagningen med en åtgärd på raden. Knappen läses bara när raden står öppen.
-        .accessibilityHidden(offset >= 0)
-        .accessibilityIdentifier("svep-ta-bort")
+        SwipeDeleteCapsule(
+            trackedOffset: trackedOffset,
+            jump: jumpOffset,
+            width: width,
+            content: jumped ? .leading : .center,
+            progress: SwipeReveal.revealProgress(offset: offset),
+            isShown: offset < 0,
+            reduceMotion: reduceMotion,
+            labelWidth: $labelWidth,
+            onDelete: { onDelete() }
+        )
     }
 
     private func changed(_ translation: CGFloat) {
@@ -272,13 +258,14 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
             start = offset
             openRow = id
         }
-        let next = SwipeReveal.offset(start: start, translation: translation, width: width)
-        let crosses = width > 0 && SwipeReveal.isFullSwipe(offset: next, width: width) != isFullSwipe
-        if crosses {
-            // Språnget till full bredd och tillbaka fjädrar. Fingret följs utan animation däremellan.
-            withAnimation(SwipeReveal.jump(reduceMotion: reduceMotion)) { offset = next }
-        } else {
-            offset = next
+        offset = SwipeReveal.offset(start: start, translation: translation, width: width)
+        if isFullSwipe != jumped {
+            // Språnget till full bredd och tillbaka fjädrar för sig. Fingret följs utan animation.
+            let full = isFullSwipe
+            withAnimation(SwipeReveal.jump(reduceMotion: reduceMotion)) {
+                jumped = full
+                jumpOffset = SwipeReveal.jumpOffset(isFullSwipe: full, width: width)
+            }
         }
     }
 
@@ -307,7 +294,67 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
     }
 
     private func settle(at target: CGFloat) {
-        withAnimation(SwipeReveal.settle(reduceMotion: reduceMotion)) { offset = target }
+        withAnimation(SwipeReveal.settle(reduceMotion: reduceMotion)) {
+            offset = target
+            jumpOffset = 0
+            jumped = false
+        }
+    }
+}
+
+/// Kapseln som i Påminnelser: 34 pt hög, mitt för raden, med papperskorgen och texten bredvid varandra i systemets
+/// typsnitt. Den fyller ytan bredvid raden. Ikonen och texten står i mitten, och vid kanten mot raden förbi gränsen för
+/// fullt svep. Den tonas och skalas in med svepet, och med Reducera rörelse tonas den bara in.
+///
+/// Bredden räknas av `trackedOffset + jump`. Bara `jump` animeras, så att en ny rörelse med fingret, som ändrar
+/// `trackedOffset` utan animation, inte avbryter språngets fjäder.
+// `@preconcurrency`: SwiftUI läser `animatableData` på huvudtråden, som vyn i övrigt.
+private struct SwipeDeleteCapsule: View, @preconcurrency Animatable {
+    let trackedOffset: CGFloat
+    var jump: CGFloat
+    let width: CGFloat
+    let content: SwipeReveal.ContentPosition
+    let progress: CGFloat
+    let isShown: Bool
+    let reduceMotion: Bool
+    @Binding var labelWidth: CGFloat
+    let onDelete: () -> Void
+
+    var animatableData: CGFloat {
+        get { jump }
+        set { jump = newValue }
+    }
+
+    var body: some View {
+        let layout = SwipeReveal.buttonLayout(offset: trackedOffset + jump, width: width)
+        Button(action: { onDelete() }) {
+            HStack(spacing: 6) {
+                Image(systemName: "trash.fill")
+                    .accessibilityHidden(true)
+                Text("Ta bort")
+            }
+            .font(.footnote)
+            // Växer inte längre än till andra tillgänglighetsstorleken. Med stor text krymps ikonen och texten
+            // tillsammans, så att de ryms i kapseln utan att kapas.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+            .fixedSize()
+            .onGeometryChange(for: CGFloat.self, of: \.size.width) { labelWidth = $0 }
+            .scaleEffect(SwipeReveal.labelScale(width: labelWidth))
+            .frame(width: min(labelWidth, SwipeReveal.labelMaxWidth))
+            .foregroundStyle(.white)
+            .padding(.horizontal, SwipeReveal.contentPadding)
+            .frame(width: layout.width, height: SwipeReveal.buttonHeight, alignment: content == .leading ? .leading : .center)
+            .background(Color.Theme.destructive, in: Capsule())
+            // Tryckytan är hela den synliga kapseln, och minst 44 pt hög.
+            .frame(height: SwipeReveal.tapHeight)
+            .contentShape(Rectangle())
+        }
+        .scaleEffect(reduceMotion ? 1 : progress)
+        .opacity(isShown ? progress : 0)
+        .frame(maxHeight: .infinity)
+        // VoiceOver når borttagningen med en åtgärd på raden. Knappen läses bara när raden står öppen.
+        .accessibilityHidden(!isShown)
+        .accessibilityIdentifier("svep-ta-bort")
     }
 }
 
