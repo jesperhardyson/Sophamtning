@@ -89,7 +89,9 @@ struct AreaPickerView: View {
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
-                saveFailed = !save(hit, in: model, onSaved: onSaved)
+                let saved = save(hit, in: model, onSaved: onSaved)
+                saveFailed = !saved
+                return saved
             }, onOther: { chosen = nil })
         }
     }

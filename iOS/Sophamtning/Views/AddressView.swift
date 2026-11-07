@@ -311,9 +311,12 @@ struct AddressView: View {
             sectionTitle("Kommande")
             ResultList {
                 ForEach(Array(detail.rows.enumerated()), id: \.element.id) { index, row in
-                    if index > 0 { ResultDivider() }
-                    scheduleRow(row)
-                        .rowEntrance(shown: rowsRevealed || !playsRowEntrance, index: index)
+                    // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
+                    VStack(spacing: 0) {
+                        if index > 0 { ResultDivider() }
+                        scheduleRow(row)
+                    }
+                    .rowEntrance(shown: rowsRevealed || !playsRowEntrance, index: index)
                 }
             }
             .onScrollVisibilityChange(threshold: 0.02) { visible in

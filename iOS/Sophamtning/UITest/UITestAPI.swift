@@ -2,7 +2,7 @@
 import Foundation
 import SophamtningKit
 
-/// Stubben som UI-testerna startar appen med (`-uitest`). Den svarar med kopior av testdata ur `UITestData/`
+/// Stubben som UI-testerna startar appen med (`-uitest` eller `-uitest-intrade`). Den svarar med kopior av testdata ur `UITestData/`
 /// och gör aldrig något nätanrop. Filerna och den här koden ingår bara i Debug-bygget.
 struct UITestAPI: SoporAPI {
     /// Dagen då testdatat skrevs. Alla datum flyttas så att schemat alltid ligger framåt från i dag.
@@ -58,12 +58,19 @@ struct UITestAPI: SoporAPI {
 }
 
 enum UITestSupport {
-    static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
+    /// Som `-uitest`, men inträdet körs och lagringen från förra starten ligger kvar. Paketet känner inte till argumentet,
+    /// så i ett Release-bygge gör det ingenting.
+    private static let entranceArgument = "-uitest-intrade"
 
-    /// En tom lagring i en egen katalog, så att varje testkörning börjar från noll och inget delas med riktig data.
-    static func freshStore() -> LocalStore {
+    private static var runsEntrance: Bool { ProcessInfo.processInfo.arguments.contains(entranceArgument) }
+
+    static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") || runsEntrance }
+
+    /// En lagring i en egen katalog, där inget delas med riktig data. Varje testkörning börjar från noll, utom med
+    /// `-uitest-intrade`, som startar om appen med det som förra starten sparade.
+    static func store() -> LocalStore {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("uitest-store", isDirectory: true)
-        try? FileManager.default.removeItem(at: directory)
+        if !runsEntrance { try? FileManager.default.removeItem(at: directory) }
         return LocalStore(directory: directory)
     }
 }

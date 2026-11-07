@@ -26,7 +26,7 @@ struct SophamtningApp: App {
         #if DEBUG
         if UITestSupport.isActive {
             // UI-testerna får en stubb, en tom lagring och inga notiser. Koden finns bara i Debug-bygget.
-            return AppModel(api: UITestAPI(), store: UITestSupport.freshStore())
+            return AppModel(api: UITestAPI(), store: UITestSupport.store())
         }
         #endif
         return AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() })

@@ -14,6 +14,8 @@ struct AreaFinderSheet: View {
     @State private var showCalendar = true
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
+    /// Ökar när Hitta område har startat en fråga, för den lätta vibrationen.
+    @State private var finds = 0
 
     init(model: AppModel, place: String, onSaved: @escaping () -> Void, onOther: @escaping () -> Void) {
         self.model = model
@@ -63,8 +65,9 @@ struct AreaFinderSheet: View {
                     Button {
                         withAnimation(.snappy) { showCalendar = false }
                         finder.find()
+                        finds += 1
                     } label: { PrimaryButtonLabel(title: "Hitta område") }
-                        .buttonStyle(.pressableWithHaptic)
+                        .buttonStyle(.pressable)
                         .padding(.top, 8)
                 }
                 result
@@ -86,10 +89,13 @@ struct AreaFinderSheet: View {
         .presentationDetents([.fraction(0.8), .large])
         .presentationDragIndicator(.visible)
         .onDisappear { finder.cancel() }
+        .sensoryFeedback(.impact(weight: .light), trigger: finds)
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
-                saveFailed = !save(hit, in: model, onSaved: onSaved)
+                let saved = save(hit, in: model, onSaved: onSaved)
+                saveFailed = !saved
+                return saved
             }, onOther: { chosen = nil })
         }
     }

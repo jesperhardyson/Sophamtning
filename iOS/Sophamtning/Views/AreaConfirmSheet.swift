@@ -6,8 +6,11 @@ import SwiftUI
 struct AreaConfirmSheet: View {
     let saveFailed: Bool
     let hit: SearchHit
-    let onSave: () -> Void
+    /// Sparar området och svarar om det gick.
+    let onSave: () -> Bool
     let onOther: () -> Void
+    /// Ökar när området har sparats, för den lätta vibrationen.
+    @State private var saves = 0
 
     var body: some View {
         // Rullbart, så att Spara området går att nå även med största textstorlek.
@@ -43,8 +46,10 @@ struct AreaConfirmSheet: View {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: saveFailedMessage)
                         .padding(.top, 12)
                 }
-                Button(action: onSave) { PrimaryButtonLabel(title: "Spara området") }
-                    .buttonStyle(.pressableWithHaptic)
+                Button {
+                    if onSave() { saves += 1 }
+                } label: { PrimaryButtonLabel(title: "Spara området") }
+                    .buttonStyle(.pressable)
                     .padding(.top, 24)
                 Button(action: onOther) {
                     Text("Välj ett annat område")
@@ -63,5 +68,6 @@ struct AreaConfirmSheet: View {
         .background(Color.Theme.surface.ignoresSafeArea())
         .presentationDetents([.fraction(0.7), .large])
         .presentationDragIndicator(.visible)
+        .sensoryFeedback(.impact(weight: .light), trigger: saves)
     }
 }

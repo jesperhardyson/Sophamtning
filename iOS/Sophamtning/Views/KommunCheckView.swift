@@ -25,6 +25,8 @@ struct KommunCheckView: View {
     @State private var result = KommunResult(answer: .empty, areas: [])
     @State private var latest = LatestOnly()
     @State private var webLink: WebLink?
+    /// Ökar när Sök din adress har tryckts, för den lätta vibrationen.
+    @State private var searches = 0
     private let index = try? PlaceIndex.bundled()
 
     var body: some View {
@@ -54,6 +56,7 @@ struct KommunCheckView: View {
         .background(Color.Theme.bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Trigger(query: query, attempt: attempt)) { await update() }
+        .sensoryFeedback(.impact(weight: .light), trigger: searches)
     }
 
     // MARK: Hämtning
@@ -143,7 +146,9 @@ struct KommunCheckView: View {
                 NavigationLink(value: AddRoute.search(source: row.sourceId)) {
                     PrimaryButtonLabel(title: "Sök din adress")
                 }
-                .buttonStyle(.pressableWithHaptic)
+                .buttonStyle(.pressable)
+                // Länken har ingen egen åtgärd. Ett tryck som övergår i rullning räknas inte.
+                .simultaneousGesture(TapGesture().onEnded { searches += 1 })
             }
         }
         .padding(16)

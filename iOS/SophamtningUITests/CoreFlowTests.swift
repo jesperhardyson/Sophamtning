@@ -95,11 +95,79 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertEqual(liveActivity.value as? String, "0", "Live Activity ska vara avstängd från början")
     }
 
+    // MARK: Inträdet
+
+    func testInstradetTomtLageVisarKorten() {
+        relaunchWithEntrance()
+        waitUntilHittable(app.buttons["Gata och husnummer"], "Korten i det tomma läget ska komma in")
+    }
+
+    func testInstradetMedAdressVisarKortetOchSchemaraderna() {
+        addAddress()
+        XCTAssertTrue(homeCard.waitForExistence(timeout: 5))
+        relaunchWithEntrance()
+        waitUntilHittable(homeCard, "Hemkortet ska komma in")
+
+        homeCard.tap()
+        // Listan ligger nedanför skärmen när vyn öppnas, och raderna väntar tills den syns. Bara de 8 första raderna
+        // kommer in, så raden som prövas är den första under rubriken.
+        let title = app.staticTexts["Kommande"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        for _ in 0..<6 where !(title.isHittable && title.frame.maxY < app.frame.midY) { app.swipeUp() }
+        let row = app.otherElements.matching(NSPredicate(format: "label CONTAINS %@", ". Plastförpackningar")).element(boundBy: 0)
+        XCTAssertTrue(row.exists, "Schemaraderna ska finnas")
+        XCTAssertGreaterThan(row.frame.minY, title.frame.maxY, "Raden ska vara den första under rubriken")
+        XCTAssertLessThan(row.frame.minY - title.frame.maxY, 120, "Raden ska vara den första under rubriken")
+        // En rad med full genomskinlighet finns kvar och går att träffa, så bara pixlarna visar om den syns.
+        waitUntilDrawn(row, "Schemaraderna ska synas efter scrollning")
+    }
+
     // MARK: Hjälpare
+
+    /// Startar om appen med det som sparats, och med introt och korten som vid en vanlig start.
+    private func relaunchWithEntrance() {
+        app.terminate()
+        app.launchArguments = ["-uitest-intrade", "-AppleLanguages", "(sv)", "-AppleLocale", "sv_SE"]
+        app.launch()
+    }
+
+    /// Introt tar 1,2 s och korten kommer in medan det lämnar, så elementet ska gå att trycka på inom 3 s.
+    private func waitUntilHittable(_ element: XCUIElement, _ message: String) {
+        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: element)
+        wait(for: [hittable], timeout: 3)
+        XCTAssertTrue(element.isHittable, message)
+    }
 
     /// Huvudkortet på hemskärmen.
     private var homeCard: XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch
+    }
+
+    /// Väntar tills elementet har synligt innehåll i skärmbilden, och inte bara en tom bakgrund.
+    private func waitUntilDrawn(_ element: XCUIElement, _ message: String) {
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline {
+            if hasContent(element.screenshot().image) { return }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTFail(message)
+    }
+
+    /// Sant om någon pixel skiljer sig tydligt från den första, som är bakgrunden.
+    private func hasContent(_ image: UIImage) -> Bool {
+        guard let source = image.cgImage else { return false }
+        let width = source.width, height = source.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { bytes -> Bool in
+            guard let context = CGContext(data: bytes.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn, pixels.count >= 4 else { return false }
+        let first = Array(pixels[0..<3])
+        return stride(from: 0, to: pixels.count, by: 4).contains { offset in
+            (0..<3).contains { abs(Int(pixels[offset + $0]) - Int(first[$0])) > 64 }
+        }
     }
 
     private func open(_ label: String) {

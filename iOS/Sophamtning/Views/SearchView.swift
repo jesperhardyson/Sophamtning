@@ -56,7 +56,9 @@ struct SearchView: View {
         .sheet(item: $chosenArea) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
-                saveFailed = !save(hit, in: model, onSaved: onSaved)
+                let saved = save(hit, in: model, onSaved: onSaved)
+                saveFailed = !saved
+                return saved
             }, onOther: { chosenArea = nil })
         }
     }
@@ -183,10 +185,13 @@ struct SearchView: View {
                 .padding(.bottom, 12)
             ResultList {
                 ForEach(Array(hits.enumerated()), id: \.offset) { offset, hit in
-                    if offset > 0 { ResultDivider() }
-                    Button { choose(hit) } label: { row(hit) }
-                        .buttonStyle(.pressable)
-                        .rowEntranceOnAppear(index: offset)
+                    // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
+                    VStack(spacing: 0) {
+                        if offset > 0 { ResultDivider() }
+                        Button { choose(hit) } label: { row(hit) }
+                            .buttonStyle(.pressable)
+                    }
+                    .rowEntranceOnAppear(index: offset)
                 }
             }
             // Nya träffar börjar om från första raden. Samma träffar igen gör ingenting.

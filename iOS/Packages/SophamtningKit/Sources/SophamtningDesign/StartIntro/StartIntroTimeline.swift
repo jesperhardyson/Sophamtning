@@ -25,9 +25,10 @@ public enum StartIntroTimeline {
     static let finalScale = 0.6
     /// Bakgrunden går undan snabbt, så att korten syns medan de glider upp.
     static let backgroundFadeEnd: TimeInterval = 1.05
-    /// Logotypen tonas ut lite senare och krymper över hemskärmen, så att krympningen hinner synas.
+    /// Logotypen tonas ut lite senare och krymper över hemskärmen, så att krympningen hinner synas. Den är borta vid 1,1 s,
+    /// så att den inte står kvar ovanpå hemkortet.
     static let logoFadeStart: TimeInterval = 0.9
-    static let logoFadeEnd: TimeInterval = 1.2
+    static let logoFadeEnd: TimeInterval = 1.1
 
     /// Med Reducera rörelse: en kort stund stilla och sedan en enkel toning.
     static let reducedDuration: TimeInterval = 0.5

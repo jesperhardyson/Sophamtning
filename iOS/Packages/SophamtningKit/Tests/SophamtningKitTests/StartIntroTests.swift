@@ -80,7 +80,10 @@ import Testing
     @Test func allaStegArKlaraSenast12() {
         #expect(StartIntroTimeline.ringEnd <= 1.2)
         #expect(StartIntroTimeline.bounceEnd <= 1.2)
-        #expect(StartIntroTimeline.logoFadeEnd <= 1.2)
+        #expect(StartIntroTimeline.logoFadeEnd == 1.1)
+        // Logotypen får inte stå kvar ovanpå hemkortet.
+        #expect(StartIntroTimeline.frame(at: 1.1, reduceMotion: false).logoOpacity == 0)
+        #expect(StartIntroTimeline.frame(at: 1.0, reduceMotion: false).logoOpacity > 0)
         #expect(StartIntroTimeline.isFinished(at: 1.2, reduceMotion: false))
         #expect(!StartIntroTimeline.isFinished(at: 1.19, reduceMotion: false))
     }
@@ -134,6 +137,7 @@ import Testing
 
     @Test func visasInteMedUiTest() {
         #expect(!StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: ["Sophamtning", "-uitest"], alreadyShown: false))
+        #expect(StartIntroTimeline.shouldPlay(voiceOverRunning: false, arguments: ["Sophamtning", "-uitest-intrade"], alreadyShown: false))
     }
 
     @Test func visasBaraEnGangPerProcess() {

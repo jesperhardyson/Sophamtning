@@ -26,8 +26,9 @@ import Testing
     }
 
     @Test func vandningenBorjarNarKortetKommitIn() {
-        let delay = EntranceTimeline.flipDelay(cardIndex: 1, reduceMotion: false)
-        #expect(delay == EntranceTimeline.cardDelay(index: 1, reduceMotion: false) + EntranceTimeline.cardDuration)
+        // Huvudkortet är andra kortet i ordningen: 60 ms väntan och 0,45 s glidning.
+        #expect(abs(EntranceTimeline.flipDelay(cardIndex: 1, reduceMotion: false) - 0.51) < 0.0001)
+        #expect(abs(EntranceTimeline.flipDelay(cardIndex: 1, reduceMotion: true) - 0.2) < 0.0001)
     }
 
     // MARK: En gång per process
@@ -36,6 +37,8 @@ import Testing
         #expect(StartEntrance.shouldPlay(arguments: ["Sophamtning"], alreadyPlayed: false))
         #expect(!StartEntrance.shouldPlay(arguments: ["Sophamtning"], alreadyPlayed: true))
         #expect(!StartEntrance.shouldPlay(arguments: ["Sophamtning", "-uitest"], alreadyPlayed: false))
+        // Testet av inträdet har testdata men låter korten komma in.
+        #expect(StartEntrance.shouldPlay(arguments: ["Sophamtning", "-uitest-intrade"], alreadyPlayed: false))
     }
 
     @Test func enStartBorjarEnGangOchAldrigOm() {

@@ -48,21 +48,15 @@ public enum PressMotion {
 
 /// Knappar, kort och rader som går att trycka på. Rörelsen sker bara i ritningen, så den fördröjer aldrig trycket.
 public struct PressableButtonStyle: ButtonStyle {
-    /// Lätt vibration vid nedtryck, på de viktiga knapparna.
-    let haptic: Bool
-
-    public init(haptic: Bool = false) {
-        self.haptic = haptic
-    }
+    public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
-        PressableLabel(configuration: configuration, haptic: haptic)
+        PressableLabel(configuration: configuration)
     }
 }
 
 private struct PressableLabel: View {
     let configuration: ButtonStyleConfiguration
-    let haptic: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -71,13 +65,11 @@ private struct PressableLabel: View {
             .scaleEffect(PressMotion.scale(pressed: pressed, reduceMotion: reduceMotion))
             .opacity(PressMotion.opacity(pressed: pressed, reduceMotion: reduceMotion))
             .animation(Motion.press(reduceMotion: reduceMotion), value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { old, new in haptic && new && !old }
     }
 }
 
 extension ButtonStyle where Self == PressableButtonStyle {
     public static var pressable: PressableButtonStyle { PressableButtonStyle() }
-    public static var pressableWithHaptic: PressableButtonStyle { PressableButtonStyle(haptic: true) }
 }
 
 extension View {
@@ -93,8 +85,14 @@ extension View {
     }
 
     /// En rad som kommer in första gången den visas. Tillståndet ligger i raden, så vid retur till listan händer inget.
+    /// Rader efter de första står stilla och får inget tillstånd, så att långa listor inte kostar mer än korta.
+    @ViewBuilder
     public func rowEntranceOnAppear(index: Int) -> some View {
-        modifier(RowAppearModifier(index: index))
+        if EntranceTimeline.animatesRow(index: index) {
+            modifier(RowAppearModifier(index: index))
+        } else {
+            self
+        }
     }
 
     /// Dagar kvar och liknande: siffrorna rullar när texten ändras, men inte när den visas första gången.
