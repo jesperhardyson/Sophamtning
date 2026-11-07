@@ -16,6 +16,8 @@ struct AddressView: View {
     @State private var renaming = false
     @State private var newName = ""
     @State private var confirmingRemoval = false
+    @State private var notificationPulse = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .headline) private var dateWidth: CGFloat = 100
 
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }
@@ -70,7 +72,8 @@ struct AddressView: View {
                     .padding(.bottom, 16)
                 }
                 header(detail)
-                notice(detail)
+                Group { notice(detail) }
+                    .transition(.opacity)
                 switch detail.mode {
                 case .loading:
                     BinLoaderView(textColor: Color.Theme.text)
@@ -78,18 +81,23 @@ struct AddressView: View {
                         .padding(.vertical, 24)
                         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .padding(.top, 20)
+                        .transition(.opacity)
                 case .unavailable:
                     EmptyView()
                 case .noUpcoming:
                     noUpcoming(detail)
+                        .transition(.opacity)
                 case .schedule:
-                    schedule(detail)
+                    Group { schedule(detail) }
+                        .transition(.opacity)
                 }
                 if detail.mode == .schedule || detail.mode == .noUpcoming {
                     reminders(detail)
                 }
                 footer(detail)
             }
+            .animation(Motion.transition(reduceMotion: reduceMotion), value: detail.mode)
+            .animation(Motion.transition(reduceMotion: reduceMotion), value: detail.notice)
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
@@ -190,6 +198,7 @@ struct AddressView: View {
                     Text(bin.daysText)
                         .font(.ui(16, weight: .heavy, relativeTo: .callout))
                         .foregroundStyle(Color.Theme.brandText)
+                        .rollingNumbers(value: bin.daysText, reduceMotion: reduceMotion)
                         .fixedSize()
                 }
                 .padding(.vertical, 10)
@@ -211,6 +220,7 @@ struct AddressView: View {
                     .minimumScaleFactor(0.7)
                     .lineLimit(2)
                     .foregroundStyle(Color.Theme.text)
+                    .rollingNumbers(value: next.headline, reduceMotion: reduceMotion)
                 Text(next.longDate)
                     .font(.ui(17, weight: .semibold, relativeTo: .body))
                     .foregroundStyle(Color.Theme.text2)
@@ -251,49 +261,31 @@ struct AddressView: View {
             LiveActivityNotices(model: model, edge: .bottom)
         }
         VStack(spacing: 0) {
-            toggleRow(
+            ReminderToggleRow(
                 title: "Notis kvällen före",
                 text: detail.reminderText,
+                symbol: "bell.badge",
+                pulse: notificationPulse,
                 isOn: Binding(
                     get: { address.map { model.remindersOn(for: $0) } ?? false },
                     set: { on in
                         model.clearStorageError()
-                        Task { _ = await model.setNotifications(on, for: key) }
+                        Task {
+                            let result = await model.setNotifications(on, for: key)
+                            // Bara när notiserna faktiskt slogs på, aldrig när iOS nekar eller valet stängs av.
+                            if on, result == .granted { notificationPulse += 1 }
+                        }
                     }
                 )
             )
             // Live Activity gäller bara huvudadressen.
             if detail.isPrimary {
                 ResultDivider()
-                toggleRow(
-                    title: "Live Activity",
-                    text: detail.liveActivityText,
-                    isOn: Binding(
-                        get: { model.settings.liveActivityOn },
-                        set: { model.clearStorageError(); model.setLiveActivity($0) }
-                    )
-                )
+                LiveActivityToggleRow(model: model, text: detail.liveActivityText)
             }
         }
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
-    }
-
-    private func toggleRow(title: String, text: String, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                    .foregroundStyle(Color.Theme.text)
-                Text(text)
-                    .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                    .foregroundStyle(Color.Theme.text2)
-            }
-        }
-        .toggleStyle(.switch)
-        .tint(Color.Theme.primary)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
     }
 
     // MARK: Kommande och fot

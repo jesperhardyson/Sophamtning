@@ -92,23 +92,7 @@ struct SettingsView: View {
                     }
                 }
                 ResultDivider()
-                Toggle(isOn: Binding(
-                    get: { model.settings.liveActivityOn },
-                    set: { model.clearStorageError(); model.setLiveActivity($0) }
-                )) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Live Activity")
-                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                            .foregroundStyle(Color.Theme.text)
-                        Text(AddressDetail.liveActivityText(settings: model.settings))
-                            .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                            .foregroundStyle(Color.Theme.text2)
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.Theme.primary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                LiveActivityToggleRow(model: model, text: AddressDetail.liveActivityText(settings: model.settings))
             }
             .buttonStyle(.plain)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))

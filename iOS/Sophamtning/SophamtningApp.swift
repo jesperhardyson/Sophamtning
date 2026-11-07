@@ -6,6 +6,7 @@ import UserNotifications
 @main
 struct SophamtningApp: App {
     @State private var model: AppModel
+    @State private var showsIntro = StartIntroState.claim()
 
     init() {
         Fonts.register()
@@ -20,6 +21,11 @@ struct SophamtningApp: App {
     var body: some Scene {
         WindowGroup {
             HomeView(model: model)
+                .overlay {
+                    if showsIntro {
+                        StartIntroView { showsIntro = false }
+                    }
+                }
         }
     }
 }

@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49713674AF12521818193251 /* AreaFinderSheet.swift */; };
+		0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */; };
 		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
 		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
 		350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F19D55CC253C38C359298A /* SettingsView.swift */; };
 		38E701A1BF92551CAC2D2E42 /* PickupLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C8419AD422B35F3FFBD5521 /* PickupLiveActivity.swift */; };
+		38E9E5062ABB95267BEE75CA /* ReminderToggleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */; };
 		3FB48805DDC512F2A9B27890 /* NextPickupWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8AF412C35614825019257CF /* NextPickupWidget.swift */; };
 		40CA8A61C89A6CF1A6D268C5 /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 456CA478F3DAA6359F968AE6 /* LiveActivityScheduler.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
@@ -81,6 +83,8 @@
 		7F307C543EEA02E99659E697 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
+		8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartIntroView.swift; sourceTree = "<group>"; };
+		A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderToggleRow.swift; sourceTree = "<group>"; };
 		A8AF412C35614825019257CF /* NextPickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPickupWidget.swift; sourceTree = "<group>"; };
 		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
 		AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowComponents.swift; sourceTree = "<group>"; };
@@ -208,8 +212,10 @@
 				DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */,
 				E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */,
 				A9662238FFEB7754E74086AF /* PrimaryCard.swift */,
+				A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */,
 				4D5502E2E1A53F977DC24C47 /* SearchView.swift */,
 				C2F19D55CC253C38C359298A /* SettingsView.swift */,
+				8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -363,9 +369,11 @@
 				90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */,
 				F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */,
 				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
+				38E9E5062ABB95267BEE75CA /* ReminderToggleRow.swift in Sources */,
 				EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */,
 				350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */,
 				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,
+				0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

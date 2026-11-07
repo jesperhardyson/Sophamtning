@@ -643,6 +643,29 @@ private func overdue(_ f: Fixture) {
     #expect(!f.notifications.dates.contains("2026-11-09"))
 }
 
+@Test @MainActor func avslutadMenFortfarandeVisadAktivitetOmstartasInteOchRorInteReserven() async throws {
+    let f = try Fixture(now: sundayEvening)
+    let model = f.model()
+    await apply(model)
+    let id = try #require(f.activities.ids.first)
+    f.activities.promote()
+    await apply(model)
+    // Utställt trycks: valet sparas, och aktiviteten avslutas men visas med bock i tre sekunder till.
+    try f.store.markPlacedOut(PlacedOut(key: homeKey, date: monday), today: DayDate("2026-11-08")!)
+    f.activities.setPhase(.ended, id: id)
+    f.log.clear()
+    for _ in 0..<2 {
+        await apply(model)
+        await apply(f.model())
+    }
+    // Den räknas inte som befintlig, startas inte om, tas inte bort eller uppdateras, och ingen reserv läggs tillbaka.
+    #expect(model.currentLiveActivity?.pickupDate != monday)
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
+    #expect(!f.log.all.contains { $0.hasPrefix("remove") || $0.hasPrefix("update") })
+    #expect(!f.log.all.contains { $0.hasPrefix("start \(monday.iso)") })
+    #expect(!f.notifications.dates.contains("2026-11-09"))
+}
+
 @Test @MainActor func gamlaPosterRensasVidPlanering() async throws {
     let f = try Fixture()
     try f.store.setPlacedOut([PlacedOut(key: homeKey, date: DayDate("2026-11-01")!), PlacedOut(key: homeKey, date: monday)])

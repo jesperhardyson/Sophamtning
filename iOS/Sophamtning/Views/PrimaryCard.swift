@@ -8,7 +8,19 @@ struct PrimaryCard: View {
     let entry: HomeContent.Entry
     let onOpen: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var foreground: Color { Color.Theme.onPrimary }
+
+    /// Vilket läge kortet visar. Ett byte tonas mjukt, men ändrade uppgifter i samma läge gör ingen övergång.
+    private var phase: Int {
+        switch entry.status {
+        case .upcoming: 0
+        case .loading: 1
+        case .noUpcoming: 2
+        case .failed: 3
+        }
+    }
 
     var body: some View {
         Button(action: onOpen) { card }
@@ -30,11 +42,14 @@ struct PrimaryCard: View {
             header
             switch entry.status {
             case .upcoming(let pickup):
-                nextPickup(pickup)
-                fractions(pickup)
-                if let text = entry.reminderText {
-                    reminderRow(text)
+                Group {
+                    nextPickup(pickup)
+                    fractions(pickup)
+                    if let text = entry.reminderText {
+                        reminderRow(text)
+                    }
                 }
+                .transition(.opacity)
             case .loading:
                 // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
                 // Texten under är dekoration, och VoiceOver läser "Hämtar schema".
@@ -42,17 +57,22 @@ struct PrimaryCard: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .transition(.opacity)
             case .noUpcoming, .failed:
                 Text(entry.summary)
                     .font(.ui(20, weight: .heavy, relativeTo: .title3))
                     .foregroundStyle(foreground)
+                    .transition(.opacity)
             }
             if entry.refreshFailed {
                 Text("Kunde inte uppdatera schemat. Visar det senast hämtade.")
                     .font(.ui(13, weight: .semibold, relativeTo: .footnote))
                     .foregroundStyle(foreground.opacity(0.85))
+                    .transition(.opacity)
             }
         }
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
@@ -94,6 +114,7 @@ struct PrimaryCard: View {
                     .font(.ui(32, weight: .heavy, relativeTo: .title))
                     .minimumScaleFactor(0.7)
                     .lineLimit(2)
+                    .rollingNumbers(value: pickup.headline, reduceMotion: reduceMotion)
                 Text(pickup.longDate)
                     .font(.ui(17, weight: .bold, relativeTo: .body))
             }

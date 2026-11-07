@@ -2,10 +2,22 @@ import SophamtningKit
 import SwiftUI
 
 /// Kalenderbricka: månad i versaler överst, dagens nummer och veckodagen helt utskriven.
+///
+/// Byter `date` värde vänds bladet (`CalendarFlipTimeline`), men inte när brickan visas första gången. Med Reducera rörelse
+/// tonas bladet i stället. Kortets storlek påverkas inte, eftersom bara innehållet vrids. Brickan måste behålla sin identitet
+/// i vyn för att kunna se ändringen. I widgetar byts brickan ut med ny post och ingen animation sker.
 public struct CalendarTile: View {
     let date: DayDate
     @ScaledMetric(relativeTo: .largeTitle) private var width: CGFloat = 78
     @ScaledMetric(relativeTo: .caption) private var headerHeight: CGFloat = 26
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var flip: Flip?
+
+    /// En pågående vändning: datumet som visades när den började, och när den började.
+    private struct Flip: Equatable {
+        let from: DayDate
+        let start: Date
+    }
 
     public init(date: DayDate) {
         self.date = date
@@ -19,30 +31,15 @@ public struct CalendarTile: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            Text(SwedishFormat.monthUppercased(date))
-                .font(.ui(12, weight: .heavy, relativeTo: .caption))
-                .foregroundStyle(Color.Theme.onPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .frame(maxWidth: .infinity, minHeight: headerHeight)
-                .background(Color.Theme.primary)
-            VStack(spacing: 0) {
-                Text(SwedishFormat.dayNumber(date))
-                    .font(.brand(38, relativeTo: .largeTitle))
-                    .foregroundStyle(Color.Theme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                Text(SwedishFormat.weekdayName(date))
-                    .font(.ui(12, weight: .bold, relativeTo: .caption))
-                    .foregroundStyle(Color.Theme.text2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+        Group {
+            if let flip {
+                TimelineView(.animation) { context in
+                    let elapsed = context.date.timeIntervalSince(flip.start)
+                    page(showing: CalendarFlipTimeline.showsNewDate(at: elapsed) ? date : flip.from, elapsed: elapsed)
+                }
+            } else {
+                page(showing: date, elapsed: nil)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
-            .background(Color.Theme.surface)
         }
         .frame(width: width)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -59,6 +56,47 @@ public struct CalendarTile: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(SwedishFormat.longDate(date, capitalized: false))
+        .onChange(of: date) { old, _ in
+            // Visas redan en vändning tas den över från det datum som syns just nu.
+            let visible = flip.map { CalendarFlipTimeline.showsNewDate(at: Date().timeIntervalSince($0.start)) ? old : $0.from } ?? old
+            flip = Flip(from: visible, start: Date())
+        }
+        .task(id: flip) {
+            guard flip != nil else { return }
+            try? await Task.sleep(for: .seconds(CalendarFlipTimeline.duration))
+            if !Task.isCancelled { flip = nil }
+        }
+    }
+
+    /// Bladet med givet datum. `elapsed` är tiden i vändningen, eller `nil` när inget vänds.
+    private func page(showing shown: DayDate, elapsed: TimeInterval?) -> some View {
+        VStack(spacing: 0) {
+            Text(SwedishFormat.monthUppercased(shown))
+                .font(.ui(12, weight: .heavy, relativeTo: .caption))
+                .foregroundStyle(Color.Theme.onPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity, minHeight: headerHeight)
+                .background(Color.Theme.primary)
+            VStack(spacing: 0) {
+                Text(SwedishFormat.dayNumber(shown))
+                    .font(.brand(38, relativeTo: .largeTitle))
+                    .foregroundStyle(Color.Theme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                Text(SwedishFormat.weekdayName(shown))
+                    .font(.ui(12, weight: .bold, relativeTo: .caption))
+                    .foregroundStyle(Color.Theme.text2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .background(Color.Theme.surface)
+        }
+        .rotation3DEffect(.degrees(reduceMotion ? 0 : elapsed.map(CalendarFlipTimeline.angle(at:)) ?? 0), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.5)
+        .opacity(reduceMotion ? elapsed.map(CalendarFlipTimeline.opacity(at:)) ?? 1 : 1)
     }
 }
 

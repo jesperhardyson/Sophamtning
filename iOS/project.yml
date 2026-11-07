@@ -42,7 +42,10 @@ targets:
           - se.hardyson.sophamtning.refresh
         UIBackgroundModes:
           - fetch
-        UILaunchScreen: {}
+        # Stillbilden som visas direkt vid start. Introt i appen tar över med exakt samma bild.
+        UILaunchScreen:
+          UIImageName: LaunchLogo
+          UIColorName: LaunchBackground
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.hardyson.sophamtning
