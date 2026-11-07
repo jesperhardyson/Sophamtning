@@ -1,26 +1,29 @@
 import CoreGraphics
 import SwiftUI
 
-/// Svep åt vänster på en rad, som i Mail och Påminnelser: en röd knapp kommer fram till höger, och ett fullt svep
-/// gör åtgärden direkt. Allt räknas i punkter, med negativ förskjutning åt vänster.
+/// Svep åt vänster på en rad, som i Påminnelser i iOS 26: en röd kapsel med papperskorg och text kommer fram till
+/// höger, och ett fullt svep gör åtgärden direkt. Allt räknas i punkter, med negativ förskjutning åt vänster. Måtten är
+/// uppmätta i Påminnelser.
 public enum SwipeReveal {
-    /// Avståndet mellan raden och knappen.
-    public static let gap: CGFloat = 8
+    /// Avståndet mellan raden och kapseln.
+    public static let gap: CGFloat = 10
+    /// Kapselns bredd i vila, när raden står öppen.
+    public static let buttonWidth: CGFloat = 91
+    /// Kapselns höjd. Den står mitt för raden, på huvudkortet och på raderna.
+    public static let buttonHeight: CGFloat = 34
+    /// Höjden som tar emot tryck, större än kapseln.
+    public static let tapHeight: CGFloat = 44
+    /// Avståndet från kapselns kant till ikonen och texten när de står vid kanten.
+    public static let contentPadding: CGFloat = 16
+    /// Hur långt raden står åt vänster när den är öppen.
+    public static var openWidth: CGFloat { buttonWidth + gap }
+    /// Ytan för ikonen och texten inuti kapseln i vila.
+    public static var labelMaxWidth: CGFloat { buttonWidth - 2 * contentPadding }
 
-    /// Knappen bakom raden. Huvudkortet har en rund knapp mitt för kortet, och raderna en knapp lika hög som raden.
-    public enum ButtonShape: Sendable {
-        case fullHeight, round
-
-        /// Knappens bredd när raden står öppen. Den runda knappen är 56 pt.
-        public var buttonWidth: CGFloat {
-            switch self {
-            case .fullHeight: 88
-            case .round: 56
-            }
-        }
-
-        /// Hur långt raden står åt vänster när den är öppen.
-        public var openWidth: CGFloat { buttonWidth + SwipeReveal.gap }
+    /// Hur mycket ikonen och texten krymps, tillsammans, för att rymmas i kapseln med stor text. `width` är deras bredd
+    /// i full storlek.
+    public static func labelScale(width: CGFloat) -> CGFloat {
+        width > labelMaxWidth ? labelMaxWidth / width : 1
     }
 
     /// Rörelsen måste vara så här mycket mer vågrät än lodrät. Annars är det scrollning.
@@ -44,12 +47,12 @@ public enum SwipeReveal {
     }
 
     /// Där svepet blir fullt.
-    public static func fullSwipeDistance(width: CGFloat, shape: ButtonShape) -> CGFloat {
-        max(width * fullSwipeFraction, shape.openWidth + fullSwipeMargin)
+    public static func fullSwipeDistance(width: CGFloat) -> CGFloat {
+        max(width * fullSwipeFraction, openWidth + fullSwipeMargin)
     }
 
-    public static func isFullSwipe(offset: CGFloat, width: CGFloat, shape: ButtonShape) -> Bool {
-        -offset >= fullSwipeDistance(width: width, shape: shape)
+    public static func isFullSwipe(offset: CGFloat, width: CGFloat) -> Bool {
+        -offset >= fullSwipeDistance(width: width)
     }
 
     public enum Outcome: Equatable, Sendable {
@@ -58,50 +61,55 @@ public enum SwipeReveal {
 
     /// Vad som händer när fingret släpper. Ett fullt svep gör åtgärden. Annars öppnas raden om den, med fart, når förbi
     /// halva knappen. Ett snabbt svep öppnar alltså men tar aldrig bort.
-    public static func outcome(offset: CGFloat, velocity: CGFloat, width: CGFloat, shape: ButtonShape) -> Outcome {
-        if isFullSwipe(offset: offset, width: width, shape: shape) { return .delete }
+    public static func outcome(offset: CGFloat, velocity: CGFloat, width: CGFloat) -> Outcome {
+        if isFullSwipe(offset: offset, width: width) { return .delete }
         let projected = offset + velocity * projection
-        return -projected > shape.openWidth / 2 ? .open : .closed
+        return -projected > openWidth / 2 ? .open : .closed
     }
 
-    /// Hur långt knappen har kommit fram, från 0 till 1 när raden står öppen. Den runda knappen tonas och skalas in med den.
-    public static func revealProgress(offset: CGFloat, shape: ButtonShape) -> CGFloat {
-        min(1, max(0, -offset / shape.openWidth))
+    /// Hur långt kapseln har kommit fram, från 0 till 1 när raden står öppen. Kapseln tonas och skalas in med den.
+    public static func revealProgress(offset: CGFloat) -> CGFloat {
+        min(1, max(0, -offset / openWidth))
     }
 
-    /// Hur mycket längre raden hoppar när svepet blir fullt, så att knappen växer till full bredd.
+    /// Hur mycket längre raden hoppar när svepet blir fullt, så att kapseln växer till full bredd. Påminnelser hoppar
+    /// också förbi fingret.
     public static let fullSwipeJump: CGFloat = 48
 
     /// Radens förskjutning som den visas. Förbi gränsen för fullt svep hoppar raden ett stycke längre än fingret, och
     /// tillbaka när fingret drar under gränsen. Raden går aldrig längre än sin egen bredd.
-    public static func displayedOffset(_ offset: CGFloat, width: CGFloat, shape: ButtonShape) -> CGFloat {
-        guard isFullSwipe(offset: offset, width: width, shape: shape) else { return offset }
+    public static func displayedOffset(_ offset: CGFloat, width: CGFloat) -> CGFloat {
+        guard isFullSwipe(offset: offset, width: width) else { return offset }
         return max(-width, offset - fullSwipeJump)
     }
 
-    /// Knappens bredd och var ikonen ligger, räknat från knappens vänsterkant.
+    /// Var ikonen och texten står i kapseln.
+    public enum ContentPosition: Equatable, Sendable {
+        /// I mitten, före gränsen för fullt svep.
+        case center
+        /// Vid kanten mot raden, förbi gränsen.
+        case leading
+    }
+
+    /// Kapselns bredd och var ikonen och texten står.
     public struct ButtonLayout: Equatable, Sendable {
         public let width: CGFloat
-        /// Var ikonen (och texten) börjar. Noll när ikonen ligger vid radens kant, och negativ när knappen är smalare än
-        /// sin vilobredd och ikonen ligger mot skärmkanten, delvis under raden.
-        public let contentOffset: CGFloat
+        public let content: ContentPosition
 
-        public init(width: CGFloat, contentOffset: CGFloat) {
+        public init(width: CGFloat, content: ContentPosition) {
             self.width = width
-            self.contentOffset = contentOffset
+            self.content = content
         }
     }
 
-    /// Knappen fyller den frilagda ytan, med `gap` till raden, och ikonen följer radens kant. Den runda knappen är rund
-    /// tills ytan blir bredare än den, och växer sedan till en kapsel. Den höga knappen kommer fram under raden.
-    public static func buttonLayout(offset: CGFloat, shape: ButtonShape) -> ButtonLayout {
+    /// Kapseln fyller den frilagda ytan, med `gap` till raden, men är aldrig smalare än i vila. Ikonen och texten står i
+    /// mitten, och vid kanten mot raden förbi gränsen för fullt svep. `offset` är förskjutningen som den visas.
+    public static func buttonLayout(offset: CGFloat, width: CGFloat) -> ButtonLayout {
         let revealed = max(0, -offset - gap)
-        switch shape {
-        case .round:
-            return ButtonLayout(width: max(shape.buttonWidth, revealed), contentOffset: 0)
-        case .fullHeight:
-            return ButtonLayout(width: revealed, contentOffset: min(0, revealed - shape.buttonWidth))
-        }
+        return ButtonLayout(
+            width: max(buttonWidth, revealed),
+            content: isFullSwipe(offset: offset, width: width) ? .leading : .center
+        )
     }
 
     /// Språnget till full bredd och tillbaka. Med Reducera rörelse ändras bara bredden, utan fjädring.

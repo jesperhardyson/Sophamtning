@@ -6,7 +6,7 @@ import Testing
 /// Svep åt vänster på en adress på hemskärmen, som i Mail och Påminnelser.
 @Suite struct SwipeRevealTests {
     private let width: CGFloat = 354
-    private let open = SwipeReveal.ButtonShape.fullHeight.openWidth
+    private let open = SwipeReveal.openWidth
 
     // MARK: Riktning
 
@@ -48,133 +48,130 @@ import Testing
         #expect(SwipeReveal.offset(start: 0, translation: -900, width: width) == -width)
     }
 
+    // MARK: Knappen
+
+    @Test func kapselnArSomIPaminnelser() {
+        // Uppmätt i Påminnelser i iOS 26: 34 pt hög, 91 pt bred i vila och 10 pt från raden.
+        #expect(SwipeReveal.buttonHeight == 34)
+        #expect(SwipeReveal.buttonWidth == 91)
+        #expect(SwipeReveal.gap == 10)
+        #expect(SwipeReveal.openWidth == 101)
+        #expect(SwipeReveal.contentPadding == 16)
+    }
+
+    @Test func tryckytanArMinst44Punkter() {
+        #expect(SwipeReveal.tapHeight >= 44)
+        #expect(SwipeReveal.tapHeight >= SwipeReveal.buttonHeight)
+    }
+
+    @Test func ikonenOchTextenKrymperTillsammansNarDeInteRyms() {
+        // Ytan inuti kapseln i vila är 91 - 2 · 16 = 59 pt.
+        #expect(SwipeReveal.labelMaxWidth == 59)
+        #expect(SwipeReveal.labelScale(width: 56) == 1)
+        #expect(SwipeReveal.labelScale(width: 59) == 1)
+        #expect(SwipeReveal.labelScale(width: 118) == 0.5)
+        // Innan bredden är uppmätt krymper inget.
+        #expect(SwipeReveal.labelScale(width: 0) == 1)
+    }
+
     // MARK: Fullt svep
 
     @Test func fulltSvepEfterMerAnHalvaRaden() {
-        let limit = SwipeReveal.fullSwipeDistance(width: width, shape: .fullHeight)
+        let limit = SwipeReveal.fullSwipeDistance(width: width)
         #expect(limit == width * 0.6)
-        #expect(!SwipeReveal.isFullSwipe(offset: -(limit - 1), width: width, shape: .fullHeight))
-        #expect(SwipeReveal.isFullSwipe(offset: -limit, width: width, shape: .fullHeight))
+        #expect(!SwipeReveal.isFullSwipe(offset: -(limit - 1), width: width))
+        #expect(SwipeReveal.isFullSwipe(offset: -limit, width: width))
     }
 
     @Test func fulltSvepAlltidLangreAnKnappen() {
         // På en smal rad ligger gränsen ändå en bit efter den öppna knappen.
-        #expect(SwipeReveal.fullSwipeDistance(width: 150, shape: .fullHeight) > open)
-        #expect(!SwipeReveal.isFullSwipe(offset: -open, width: 150, shape: .fullHeight))
+        #expect(SwipeReveal.fullSwipeDistance(width: 150) > open)
+        #expect(!SwipeReveal.isFullSwipe(offset: -open, width: 150))
     }
 
     // MARK: När fingret släpper
 
     @Test func fulltSvepTarBort() {
-        #expect(SwipeReveal.outcome(offset: -width * 0.7, velocity: 0, width: width, shape: .fullHeight) == .delete)
+        #expect(SwipeReveal.outcome(offset: -width * 0.7, velocity: 0, width: width) == .delete)
         // Även om fingret vänder i slutet: gränsen är passerad.
-        #expect(SwipeReveal.outcome(offset: -width * 0.7, velocity: 400, width: width, shape: .fullHeight) == .delete)
+        #expect(SwipeReveal.outcome(offset: -width * 0.7, velocity: 400, width: width) == .delete)
     }
 
     @Test func merAnHalvaKnappenOppnar() {
-        #expect(SwipeReveal.outcome(offset: -open * 0.6, velocity: 0, width: width, shape: .fullHeight) == .open)
-        #expect(SwipeReveal.outcome(offset: -open * 0.4, velocity: 0, width: width, shape: .fullHeight) == .closed)
+        #expect(SwipeReveal.outcome(offset: -open * 0.6, velocity: 0, width: width) == .open)
+        #expect(SwipeReveal.outcome(offset: -open * 0.4, velocity: 0, width: width) == .closed)
     }
 
     @Test func ettSnabbtSvepOppnarMenTarInteBort() {
-        #expect(SwipeReveal.outcome(offset: -20, velocity: -1500, width: width, shape: .fullHeight) == .open)
+        #expect(SwipeReveal.outcome(offset: -20, velocity: -1500, width: width) == .open)
     }
 
     @Test func ettSnabbtSvepAtHogerStanger() {
-        #expect(SwipeReveal.outcome(offset: -open, velocity: 1500, width: width, shape: .fullHeight) == .closed)
+        #expect(SwipeReveal.outcome(offset: -open, velocity: 1500, width: width) == .closed)
     }
 
     @Test func stillastaendeVidOppnaKnappenForblirOppen() {
-        #expect(SwipeReveal.outcome(offset: -open, velocity: 0, width: width, shape: .fullHeight) == .open)
+        #expect(SwipeReveal.outcome(offset: -open, velocity: 0, width: width) == .open)
     }
 
-    // MARK: Rund knapp
+    // MARK: Knappen kommer fram
 
-    @Test func rundKnappOppnasEfterHalvaSinBredd() {
-        let round = SwipeReveal.ButtonShape.round.openWidth
-        #expect(round < open)
-        #expect(SwipeReveal.outcome(offset: -round * 0.6, velocity: 0, width: width, shape: .round) == .open)
-        #expect(SwipeReveal.outcome(offset: -round * 0.4, velocity: 0, width: width, shape: .round) == .closed)
-        // Samma läge räcker inte för den höga knappen.
-        #expect(SwipeReveal.outcome(offset: -round * 0.6, velocity: 0, width: width, shape: .fullHeight) == .closed)
-    }
-
-    @Test func rundKnappFulltSvepLangreAnKnappen() {
-        let round = SwipeReveal.ButtonShape.round.openWidth
-        #expect(SwipeReveal.fullSwipeDistance(width: 150, shape: .round) > round)
-        #expect(!SwipeReveal.isFullSwipe(offset: -round, width: 150, shape: .round))
-        #expect(SwipeReveal.outcome(offset: -width * 0.7, velocity: 0, width: width, shape: .round) == .delete)
-    }
-
-    @Test func rundKnappTonasInMedSvepet() {
-        let round = SwipeReveal.ButtonShape.round.openWidth
-        #expect(SwipeReveal.revealProgress(offset: 0, shape: .round) == 0)
-        #expect(SwipeReveal.revealProgress(offset: -round / 2, shape: .round) == 0.5)
-        #expect(SwipeReveal.revealProgress(offset: -round, shape: .round) == 1)
+    @Test func knappenTonasInMedSvepet() {
+        #expect(SwipeReveal.revealProgress(offset: 0) == 0)
+        #expect(SwipeReveal.revealProgress(offset: -open / 2) == 0.5)
+        #expect(SwipeReveal.revealProgress(offset: -open) == 1)
         // Ett längre svep gör den inte större.
-        #expect(SwipeReveal.revealProgress(offset: -round * 3, shape: .round) == 1)
+        #expect(SwipeReveal.revealProgress(offset: -open * 3) == 1)
     }
 
-    // MARK: Knappen fyller ytan
-
-    @Test func radensKnappFyllerDenFrilagdaYtan() {
-        // Knappen ligger 8 pt från raden och fyller resten av ytan, med ikonen och texten vid radens kant.
-        let wide = SwipeReveal.buttonLayout(offset: -200, shape: .fullHeight)
-        #expect(wide.width == 192)
-        #expect(wide.contentOffset == 0)
-        // Vid öppen rad är knappen lika bred som förut.
-        #expect(SwipeReveal.buttonLayout(offset: -open, shape: .fullHeight) == .init(width: 88, contentOffset: 0))
+    @Test func knappenArEnKapselIVila() {
+        // Smalare yta än knappen: kapseln har sin vilobredd, med ikonen och texten i mitten.
+        #expect(SwipeReveal.buttonLayout(offset: -20, width: width) == .init(width: 91, content: .center))
+        #expect(SwipeReveal.buttonLayout(offset: -open, width: width) == .init(width: 91, content: .center))
     }
 
-    @Test func radensKnappKommerFramUnderRaden() {
-        // Smalare än knappen: ikonen och texten ligger mot skärmkanten och syns allt mer.
-        let narrow = SwipeReveal.buttonLayout(offset: -40, shape: .fullHeight)
-        #expect(narrow.width == 32)
-        #expect(narrow.contentOffset == -56)
-        #expect(SwipeReveal.buttonLayout(offset: 0, shape: .fullHeight) == .init(width: 0, contentOffset: -88))
-    }
-
-    @Test func rundKnappArRundIVila() {
-        let round = SwipeReveal.ButtonShape.round
-        #expect(SwipeReveal.buttonLayout(offset: -20, shape: round) == .init(width: 56, contentOffset: 0))
-        #expect(SwipeReveal.buttonLayout(offset: -round.openWidth, shape: round) == .init(width: 56, contentOffset: 0))
-    }
-
-    @Test func rundKnappVaxerTillEnKapsel() {
-        // Bredare yta än knappen: en kapsel som fyller ytan, med ikonen vid kortets kant.
-        let capsule = SwipeReveal.buttonLayout(offset: -200, shape: .round)
-        #expect(capsule.width == 192)
-        #expect(capsule.contentOffset == 0)
+    @Test func kapselnVaxerMedFingret() {
+        // Bredare yta: kapseln fyller ytan, 10 pt från raden, och ikonen och texten står kvar i mitten.
+        let wide = SwipeReveal.buttonLayout(offset: -180, width: width)
+        #expect(wide.width == 170)
+        #expect(wide.content == .center)
     }
 
     // MARK: Språnget vid fullt svep
 
     @Test func radenFoljerFingretForeGransen() {
-        for shape in [SwipeReveal.ButtonShape.fullHeight, .round] {
-            let limit = SwipeReveal.fullSwipeDistance(width: width, shape: shape)
-            #expect(SwipeReveal.displayedOffset(-(limit - 1), width: width, shape: shape) == -(limit - 1))
-            #expect(SwipeReveal.displayedOffset(-open, width: width, shape: shape) == -open)
-        }
+        let limit = SwipeReveal.fullSwipeDistance(width: width)
+        #expect(SwipeReveal.displayedOffset(-(limit - 1), width: width) == -(limit - 1))
+        #expect(SwipeReveal.displayedOffset(-open, width: width) == -open)
     }
 
     @Test func forbiGransenHopparKnappenTillFullBredd() {
-        let limit = SwipeReveal.fullSwipeDistance(width: width, shape: .fullHeight)
-        let before = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-(limit - 1), width: width, shape: .fullHeight), shape: .fullHeight)
-        let after = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-limit, width: width, shape: .fullHeight), shape: .fullHeight)
-        #expect(SwipeReveal.displayedOffset(-limit, width: width, shape: .fullHeight) == -limit - SwipeReveal.fullSwipeJump)
+        let limit = SwipeReveal.fullSwipeDistance(width: width)
+        let before = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-(limit - 1), width: width), width: width)
+        let after = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-limit, width: width), width: width)
+        #expect(SwipeReveal.displayedOffset(-limit, width: width) == -limit - SwipeReveal.fullSwipeJump)
         #expect(abs(after.width - before.width - (SwipeReveal.fullSwipeJump + 1)) < 0.001)
-        #expect(after.contentOffset == 0)
+    }
+
+    @Test func forbiGransenStarIkonenVidRadensKant() {
+        // Som i Påminnelser: ikonen och texten flyttar från mitten till kanten mot raden, och tillbaka under gränsen.
+        let limit = SwipeReveal.fullSwipeDistance(width: width)
+        let before = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-(limit - 1), width: width), width: width)
+        let after = SwipeReveal.buttonLayout(offset: SwipeReveal.displayedOffset(-limit, width: width), width: width)
+        #expect(before.content == .center)
+        #expect(after.content == .leading)
+        #expect(SwipeReveal.buttonLayout(offset: -width, width: width).content == .leading)
     }
 
     @Test func tillbakaUnderGransenKrymperKnappen() {
-        let limit = SwipeReveal.fullSwipeDistance(width: width, shape: .round)
-        #expect(SwipeReveal.displayedOffset(-limit, width: width, shape: .round) < -limit)
-        #expect(SwipeReveal.displayedOffset(-limit + 2, width: width, shape: .round) == -limit + 2)
+        let limit = SwipeReveal.fullSwipeDistance(width: width)
+        #expect(SwipeReveal.displayedOffset(-limit, width: width) < -limit)
+        #expect(SwipeReveal.displayedOffset(-limit + 2, width: width) == -limit + 2)
     }
 
     @Test func sprangetGarInteForbiRaden() {
-        #expect(SwipeReveal.displayedOffset(-width, width: width, shape: .fullHeight) == -width)
-        #expect(SwipeReveal.displayedOffset(-width + 10, width: width, shape: .round) == -width)
+        #expect(SwipeReveal.displayedOffset(-width, width: width) == -width)
+        #expect(SwipeReveal.displayedOffset(-width + 10, width: width) == -width)
     }
 
     @Test func sprangetFjadrarUtomMedReduceraRorelse() {

@@ -238,7 +238,7 @@ struct HomeView: View {
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
                 .cardEntrance(shown: !entrance.hidesCards, index: 0)
-            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, buttonShape: .round, openRow: $openRow) {
+            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
                 PrimaryCard(entry: primary, opening: opening(for: primary), onOpen: { path.append(primary.key) })
             }
             // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
@@ -254,7 +254,7 @@ struct HomeView: View {
                     .cardEntrance(shown: !entrance.hidesCards, index: 2)
                 VStack(spacing: 12) {
                     ForEach(Array(others.enumerated()), id: \.element.id) { index, entry in
-                        AddressQuickActions(model: model, key: entry.key, cornerRadius: 20, buttonShape: .fullHeight, openRow: $openRow) {
+                        AddressQuickActions(model: model, key: entry.key, cornerRadius: 20, openRow: $openRow) {
                             NavigationLink(value: entry.key) {
                                 AddressRow(entry: entry)
                             }
