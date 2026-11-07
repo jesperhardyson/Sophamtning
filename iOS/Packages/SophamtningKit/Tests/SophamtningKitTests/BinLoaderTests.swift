@@ -102,6 +102,53 @@ import Testing
         #expect(mid > 0.5 && mid < 1) // ease-out
     }
 
+    // MARK: Ett varv i tomt läge
+
+    @Test func ettVarvTar18Sekunder() {
+        #expect(BinLoaderTimeline.roundDuration == 1.8)
+        #expect(BinLoaderTimeline.isPlayingRound(elapsed: 0, reduceMotion: false))
+        #expect(BinLoaderTimeline.isPlayingRound(elapsed: 1.79, reduceMotion: false))
+        #expect(!BinLoaderTimeline.isPlayingRound(elapsed: 1.8, reduceMotion: false))
+        #expect(!BinLoaderTimeline.isPlayingRound(elapsed: -0.1, reduceMotion: false))
+    }
+
+    @Test func varvetFoljerSlingansForstaVarv() {
+        // Mitt i varvet är locket öppet och fraktionen syns, som i slingans första varv.
+        let pose = BinLoaderTimeline.roundPose(round: 0, elapsed: 0.36 * 1.8, reduceMotion: false)
+        #expect(pose.lidAngle == BinLoaderTimeline.lidAngle(at: 0.36))
+        #expect(pose.lidIsBehindBody)
+        #expect(pose.bodySway == -3)
+        #expect(pose.fraction.opacity == 1 && pose.fraction.index == 0)
+    }
+
+    @Test func slutlagetArStangtLock() {
+        for elapsed in [1.8, 2.5, 100] {
+            let pose = BinLoaderTimeline.roundPose(round: 4, elapsed: elapsed, reduceMotion: false)
+            #expect(pose == .resting)
+        }
+        // Före start står det också still.
+        #expect(BinLoaderTimeline.roundPose(round: 0, elapsed: -1, reduceMotion: false) == .resting)
+        #expect(BinLoaderTimeline.Pose.resting.lidAngle == 0)
+        #expect(!BinLoaderTimeline.Pose.resting.lidIsBehindBody)
+        #expect(BinLoaderTimeline.Pose.resting.bodySway == 0)
+        #expect(BinLoaderTimeline.Pose.resting.fraction.opacity == 0)
+        // Precis före slutet är locket redan stängt och kärlet nästan stilla.
+        let end = BinLoaderTimeline.roundPose(round: 0, elapsed: 1.799, reduceMotion: false)
+        #expect(end.lidAngle == 0 && !end.lidIsBehindBody && abs(end.bodySway) < 0.01)
+    }
+
+    @Test func nastaVarvGerNastaFraktion() {
+        let kinds = (0..<4).map { BinLoaderTimeline.roundPose(round: $0, elapsed: 0.36 * 1.8, reduceMotion: false).fraction.index }
+        #expect(kinds == [0, 1, 2, 0])
+    }
+
+    @Test func reduceraRorelseGerIngetVarv() {
+        #expect(!BinLoaderTimeline.isPlayingRound(elapsed: 0.5, reduceMotion: true))
+        for elapsed in [0, 0.36 * 1.8, 1.0, 1.8] {
+            #expect(BinLoaderTimeline.roundPose(round: 1, elapsed: elapsed, reduceMotion: true) == .resting)
+        }
+    }
+
     // MARK: Texterna
 
     @Test func texternaStammerMedWebben() {

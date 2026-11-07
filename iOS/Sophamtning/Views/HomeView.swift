@@ -289,12 +289,22 @@ struct HomeView: View {
         return CalendarTile.Opening(from: from, begin: entrance.begin?.addingTimeInterval(delay))
     }
 
+    /// När kärlet i tomt läge spelar sitt första varv: när kortet har kommit in efter introt, direkt utan start från början,
+    /// och inte medan korten väntar på introt.
+    private var emptyBinFirstRound: Date? {
+        if entrance.hidesCards { return nil }
+        guard let begin = entrance.begin else { return .distantPast }
+        return begin.addingTimeInterval(EntranceTimeline.flipDelay(cardIndex: 0, reduceMotion: reduceMotion))
+    }
+
     private var empty: some View {
         VStack(alignment: .leading, spacing: 0) {
-            BrandSymbol()
+            // Kärlet spelar ett varv när det har kommit in, och efter introt. Ytan ovanför kärlet är till för fraktionen
+            // som faller, så kärlet står ungefär där logotypen stod.
+            BinRoundView(firstRound: emptyBinFirstRound)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 24)
-                .padding(.bottom, 36)
+                .padding(.top, -24)
+                .padding(.bottom, 33)
                 .cardEntrance(shown: !entrance.hidesCards, index: 0)
             Text("När töms dina kärl?")
                 .font(.brand(34, relativeTo: .largeTitle))
