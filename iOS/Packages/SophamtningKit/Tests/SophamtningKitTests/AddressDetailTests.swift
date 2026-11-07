@@ -343,17 +343,40 @@ private func periodSchedule(_ events: [PickupEvent], until: String?, reason: Str
 }
 
 @Test func periodenGallerHelaSistaDagenISverige() throws {
-    let schedule = try periodSchedule([], until: "2026-11-06")
-    // 23:30 svensk tid den sista dagen: perioden gäller fortfarande.
+    let schedule = try periodSchedule([event("2026-11-06", ["rest"])], until: "2026-11-06")
+    // 23:30 svensk tid den sista dagen: perioden gäller fortfarande, och dagens hämtning visas.
     let late = detail(schedule, now: StockholmClock.date(on: DayDate("2026-11-06")!, minutes: 23 * 60 + 30))
+    #expect(late.mode == .schedule)
     #expect(late.schedulePeriod?.text == "Schemat gäller till 6 november 2026.")
-    #expect(late.noUpcomingMessage.message == "Schemat kan ta slut tills kommunen har publicerat nästa period.")
     // 00:30 svensk tid dagen efter, som är kvällen före i New York: perioden har passerat.
     let after = detail(schedule, now: StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 30))
+    #expect(after.mode == .noUpcoming)
     #expect(after.schedulePeriod == nil)
     #expect(after.noUpcomingMessage.message.hasPrefix("Schemat gällde till 6 november 2026"))
 }
 
 @Test func datumMedArUtanVeckodag() {
     #expect(SwedishFormat.dayMonthYear(DayDate("2027-01-10")!) == "10 januari 2027")
+}
+
+@Test func utanFlerHamtningarForeSlutetSagerKortetHurLangtSchematGaller() throws {
+    // Sista hämtningen har passerat, men perioden gäller fortfarande: kortet och raden får inte motsäga varandra.
+    let result = detail(try periodSchedule([event("2026-11-02", ["rest"])], until: "2027-01-10"))
+    #expect(result.mode == .noUpcoming)
+    #expect(result.noUpcomingMessage == AddressDetail.NoUpcomingMessage(
+        title: "Inga kommande hämtningar",
+        message: "Inga fler hämtningar i schemat, som gäller till 10 januari 2027. Avesta Vatten publicerar hämtschemat ett år i taget."
+    ))
+    // Perioden står i kortet, så den separata raden visas inte en gång till.
+    #expect(result.schedulePeriod == nil)
+    let noReason = detail(try periodSchedule([], until: "2027-01-10", reason: nil))
+    #expect(noReason.noUpcomingMessage.message == "Inga fler hämtningar i schemat, som gäller till 10 januari 2027.")
+}
+
+@Test func passeradPeriodMedHamtningarEfterIDagVisarIngenRad() throws {
+    // Källans data säger emot sig själv: hämtningar efter en period som har passerat. Schemat visas, men ingen rad.
+    let result = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: "2026-11-05"))
+    #expect(result.mode == .schedule)
+    #expect(result.next?.date == DayDate("2026-11-09"))
+    #expect(result.schedulePeriod == nil)
 }

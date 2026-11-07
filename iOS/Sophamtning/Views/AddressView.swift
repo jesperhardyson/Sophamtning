@@ -124,14 +124,10 @@ struct AddressView: View {
         AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
     }
 
-    @ViewBuilder
+    /// Hur långt schemat gäller står i kortet, så raden under **Kommande** behövs inte här.
     private func noUpcoming(_ detail: AddressDetail) -> some View {
         NoUpcomingCard(message: detail.noUpcomingMessage)
             .padding(.bottom, 4)
-        if let period = detail.schedulePeriod {
-            SchedulePeriodView(line: period)
-                .padding(.top, 12)
-        }
     }
 
     // MARK: Schema

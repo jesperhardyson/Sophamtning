@@ -198,20 +198,25 @@ public struct AddressDetail: Equatable, Sendable {
         )
     }
 
-    /// Raden visas när källan anger en period som inte har passerat och schemat visas. Live-källor har ingen period.
+    /// Raden visas när källan anger en period som inte har passerat och det finns kommande hämtningar. Utan kommande
+    /// hämtningar står perioden i meddelandet i stället, så att texterna inte motsäger varandra. Live-källor har ingen
+    /// period.
     static func periodLine(_ period: SchedulePeriod?, mode: Mode, today: DayDate) -> SchedulePeriodLine? {
-        guard let period, period.until >= today, mode == .schedule || mode == .noUpcoming else { return nil }
+        guard let period, period.until >= today, mode == .schedule else { return nil }
         return SchedulePeriodLine(text: "Schemat gäller till \(SwedishFormat.dayMonthYear(period.until)).", reason: cleanReason(period.reason))
     }
 
-    /// Utan kommande hämtningar. Har perioden passerat har källan inte publicerat nästa period än, och källans orsak
-    /// står med. Det säger aldrig att adressen saknas.
+    /// Utan kommande hämtningar. Gäller perioden fortfarande finns inga fler hämtningar i det publicerade schemat. Har den
+    /// passerat har källan inte publicerat nästa period än. Källans orsak står med. Det säger aldrig att adressen saknas.
     static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate) -> NoUpcomingMessage {
         let title = "Inga kommande hämtningar"
-        guard let period, period.until < today else {
+        guard let period else {
             return NoUpcomingMessage(title: title, message: "Schemat kan ta slut tills kommunen har publicerat nästa period.")
         }
-        let base = "Schemat gällde till \(SwedishFormat.dayMonthYear(period.until)), och källan har inte publicerat nästa period än."
+        let until = SwedishFormat.dayMonthYear(period.until)
+        let base = period.until < today
+            ? "Schemat gällde till \(until), och källan har inte publicerat nästa period än."
+            : "Inga fler hämtningar i schemat, som gäller till \(until)."
         return NoUpcomingMessage(title: title, message: [base, cleanReason(period.reason)].compactMap { part in part }.joined(separator: " "))
     }
 
