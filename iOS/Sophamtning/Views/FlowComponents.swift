@@ -161,11 +161,6 @@ func capitalizedFirst(_ text: String) -> String {
     text.prefix(1).uppercased() + text.dropFirst()
 }
 
-/// "Avesta kommun" blir "Avesta". Namn utan ordet "kommun" lämnas som de är.
-func shortKommunName(_ name: String) -> String {
-    name.hasSuffix(" kommun") ? String(name.dropLast(" kommun".count)) : name
-}
-
 /// En träff som valts, med ett id som skiljer träffar från olika källor åt.
 struct HitSelection: Identifiable {
     let hit: SearchHit

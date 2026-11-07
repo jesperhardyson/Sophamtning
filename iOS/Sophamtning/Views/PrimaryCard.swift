@@ -105,16 +105,18 @@ struct PrimaryCard: View {
                         .opacity(0.9)
                 }
             } else {
-                HStack(spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: "house")
                         .font(.system(.body, weight: .semibold))
                         .accessibilityHidden(true)
-                    AdaptiveStack(spacing: 8, verticalSpacing: 2) {
+                    // Platsen under namnet, så att den får hela bredden. Den bryts i stället för att kapas.
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(entry.title)
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
                         Text(entry.subtitle)
                             .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                             .opacity(0.9)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")

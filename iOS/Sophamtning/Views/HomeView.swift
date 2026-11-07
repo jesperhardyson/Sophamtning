@@ -374,6 +374,7 @@ enum HomeSheet: String, Identifiable {
 private struct AddressRow: View {
     let entry: HomeContent.Entry
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var isFailure: Bool {
         if case .failed = entry.status { return true }
@@ -381,44 +382,88 @@ private struct AddressRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(entry.title)
-                    .font(.ui(22, weight: .heavy, relativeTo: .title3))
-                    .foregroundStyle(Color.Theme.text)
-                Text(entry.subtitle)
-                    .font(.ui(17, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
-                Text(entry.summary)
-                    .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
-                    .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
-            }
-            Spacer(minLength: 0)
-            switch entry.status {
-            case .upcoming(let pickup):
-                HStack(spacing: 6) {
-                    ForEach(pickup.fractions.prefix(3)) { fraction in
-                        FractionIconView(id: fraction.id, info: fraction.info)
+        Group {
+            if typeSize.isAccessibilitySize {
+                // Ikonerna under texten, så att platsen och påminnelsen får hela bredden och inga ord bryts mitt i.
+                VStack(alignment: .leading, spacing: 12) {
+                    texts
+                    HStack(spacing: 12) {
+                        icons
+                        Spacer(minLength: 0)
+                        chevron
                     }
                 }
-                .accessibilityHidden(true)
-            case .loading:
-                // Ett litet kärl i stället för ikonerna. Raden läses upp av sin egen etikett.
-                BinLoaderView(width: 48, showsText: false)
-                    .accessibilityHidden(true)
-            default:
-                EmptyView()
+            } else {
+                HStack(spacing: 12) {
+                    texts
+                    Spacer(minLength: 0)
+                    icons
+                    chevron
+                }
             }
-            Image(systemName: "chevron.right")
-                .foregroundStyle(Color.Theme.text2)
-                .accessibilityHidden(true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entry.accessibilityLabel)
+        .accessibilityLabel([entry.accessibilityLabel, entry.reminderText].compactMap { $0 }.joined(separator: ", "))
+    }
+
+    private var texts: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(entry.title)
+                .font(.ui(22, weight: .heavy, relativeTo: .title3))
+                .foregroundStyle(Color.Theme.text)
+            Text(entry.subtitle)
+                .font(.ui(17, weight: .semibold, relativeTo: .body))
+                .foregroundStyle(Color.Theme.text2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(entry.summary)
+                .font(.ui(16, weight: .heavy, relativeTo: .callout))
+                .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
+                .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
+            // Bara när notis är på för adressen, med samma text som huvudkortet. Ingen klocka när notis är av.
+            if let reminder = entry.reminderText {
+                Label {
+                    Text(reminder)
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "bell.fill")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Color.Theme.brandText)
+                }
+                .labelStyle(.titleAndIcon)
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var icons: some View {
+        switch entry.status {
+        case .upcoming(let pickup):
+            HStack(spacing: 6) {
+                ForEach(pickup.fractions.prefix(3)) { fraction in
+                    FractionIconView(id: fraction.id, info: fraction.info)
+                }
+            }
+            .accessibilityHidden(true)
+        case .loading:
+            // Ett litet kärl i stället för ikonerna. Raden läses upp av sin egen etikett.
+            BinLoaderView(width: 48, showsText: false)
+                .accessibilityHidden(true)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .foregroundStyle(Color.Theme.text2)
+            .accessibilityHidden(true)
     }
 }
 

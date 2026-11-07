@@ -39,11 +39,13 @@ public struct HomeContent: Equatable, Sendable {
     public struct Entry: Equatable, Sendable, Identifiable {
         public let key: AddressKey
         public let title: String
+        /// Platsen: gatan eller området, orten och kommunens korta namn. "Storgatan 12, Krylbo · Avesta".
         public let subtitle: String
         public let status: Status
         /// Senaste försöket att uppdatera misslyckades, men ett äldre schema visas.
         public let refreshFailed: Bool
-        /// Bara för huvudkortet. `nil` när det inte finns någon kommande hämtning.
+        /// Raden för påminnelse. `nil` när det inte finns någon kommande hämtning. På raderna under "Fler adresser" bara
+        /// när notis är på för adressen, och utan Live Activity, som bara gäller huvudadressen.
         public let reminderText: String?
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
@@ -72,7 +74,17 @@ public struct HomeContent: Equatable, Sendable {
         }
         let others = addresses
             .filter { $0.key != primaryAddress?.key }
-            .map { entry($0, schedule: schedules[$0.key], settings: settings, today: today, now: now, withReminder: false, remindersAllowed: remindersAllowed, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: nil, reserveAt: nil) }
+            .map { address in
+                // Samma regel som huvudkortet, men utan Live Activity och reservnotis. "Påminnelsen har passerat" räknas
+                // här, eftersom Utställt och väntande aktiviteter bara finns för huvudadressen.
+                var notificationsOnly = settings
+                notificationsOnly.liveActivityOn = false
+                let schedule = schedules[address.key]
+                let missed = address.notificationsOn && remindersAllowed
+                    ? AddressDetail.missedReminder(events: schedule?.response?.events ?? [], settings: settings, now: now)
+                    : nil
+                return entry(address, schedule: schedule, settings: notificationsOnly, today: today, now: now, withReminder: address.notificationsOn, remindersAllowed: remindersAllowed, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: missed, reserveAt: nil)
+            }
         return HomeContent(primary: primary, others: others)
     }
 
@@ -100,12 +112,24 @@ public struct HomeContent: Equatable, Sendable {
         return Entry(
             key: address.key,
             title: address.displayName,
-            subtitle: [address.street, address.locality].filter { !$0.isEmpty }.joined(separator: ", "),
+            subtitle: subtitle(for: address),
             status: status,
             refreshFailed: refreshFailed,
             reminderText: reminder,
             summary: summary
         )
+    }
+
+    /// Gatan eller områdets namn, orten och kommunens korta namn: "Storgatan 12, Krylbo · Avesta". Kommunen utelämnas när
+    /// den heter som orten, utan hänsyn till skiftläge: "Stationsgatan 12, Uppsala".
+    public static func subtitle(for address: SavedAddress) -> String {
+        let street = address.street.trimmingCharacters(in: .whitespacesAndNewlines)
+        let locality = address.locality.trimmingCharacters(in: .whitespacesAndNewlines)
+        let kommun = shortKommunName(address.kommun.trimmingCharacters(in: .whitespacesAndNewlines))
+        let place = [street, locality].filter { !$0.isEmpty }.joined(separator: ", ")
+        let sameAsLocality = kommun.compare(locality, options: .caseInsensitive, locale: Locale(identifier: "sv_SE")) == .orderedSame
+        guard !kommun.isEmpty, !sameAsLocality else { return place }
+        return place.isEmpty ? kommun : "\(place) · \(kommun)"
     }
 
     private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {
