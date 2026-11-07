@@ -46,29 +46,32 @@ struct AreaPickerView: View {
                 }
                 ResultList {
                     ForEach(Array(hits.enumerated()), id: \.offset) { offset, hit in
-                        if offset > 0 { ResultDivider() }
-                        Button { saveFailed = false; chosen = HitSelection(hit: hit) } label: {
-                            HStack(spacing: 12) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(hit.street)
-                                        .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                                        .foregroundStyle(Color.Theme.text)
-                                        .multilineTextAlignment(.leading)
-                                    if let detail = hit.detail {
-                                        Text(detail)
-                                            .font(.ui(16, weight: .semibold, relativeTo: .callout))
-                                            .foregroundStyle(Color.Theme.text2)
+                        // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
+                        VStack(spacing: 0) {
+                            if offset > 0 { ResultDivider() }
+                            Button { saveFailed = false; chosen = HitSelection(hit: hit) } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(hit.street)
+                                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                                            .foregroundStyle(Color.Theme.text)
                                             .multilineTextAlignment(.leading)
+                                        if let detail = hit.detail {
+                                            Text(detail)
+                                                .font(.ui(16, weight: .semibold, relativeTo: .callout))
+                                                .foregroundStyle(Color.Theme.text2)
+                                                .multilineTextAlignment(.leading)
+                                        }
                                     }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
                                 }
-                                Spacer(minLength: 0)
-                                Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 16)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.pressable)
                         }
-                        .buttonStyle(.pressable)
                         .rowEntranceOnAppear(index: offset)
                     }
                 }

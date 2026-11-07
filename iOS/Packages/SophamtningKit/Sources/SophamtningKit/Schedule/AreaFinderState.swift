@@ -28,6 +28,14 @@ public enum AreaFinderState: Equatable, Sendable {
             return .multiple(response.addresses)
         }
     }
+
+    /// Sant när minst ett område hittades. Då, och bara då, vibrerar arket.
+    public var foundAreas: Bool {
+        switch self {
+        case .match, .multiple: true
+        case .idle, .searching, .noPickup, .outsideSchedule, .failed: false
+        }
+    }
 }
 
 /// Texterna om tömningarna. Datum utan veckodag.

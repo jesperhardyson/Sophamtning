@@ -36,7 +36,7 @@ Animationerna är byggda och inspelade i simulatorn, men simulatorn har ingen ha
   - Inget hackar i 120 Hz, och varje blad hinner synas.
 - [ ] **6. Tryck.** Knappar och rader fjädrar lite när de trycks ned (skala 0,96), och med Reducera rörelse tonar de i stället. Rörelsen fördröjer aldrig trycket. Kontrollera särskilt rader i listor som går att rulla: iOS kan där vänta lite med nedtrycket, och det ska inte kännas som en fördröjning.
   - **Snabba tryck:** tryck snabbt och kort på huvudkortet, en sökträff och en primärknapp. Fjädringen syns även vid ett mycket kort tryck, och varje tryck går igenom. Tryck flera gånger i snabb följd på samma knapp: inget hänger sig och inget öppnas två gånger.
-  - **De tre vibrationerna** kommer när åtgärden utförs, inte vid nedtryck: **Spara området** (bara när området sparats), **Hitta område** (när frågan startar) och **Sök din adress** (när sökningen öppnas). En sökträff som sparas direkt vibrerar också, när sparandet lyckats.
+  - **De tre vibrationerna** kommer när åtgärden utförs, inte vid nedtryck: **Spara området** (när området sparats, också när arket stängs samtidigt), **Hitta område** (när områden hittats, inte vid fel eller noll träffar) och **Sök din adress** (när sökningen öppnas). En sökträff som sparas direkt vibrerar också, när sparandet lyckats.
   - **Ingen vibration** när ett finger vilar på någon av knapparna och sedan rullar listan eller arket, när fingret dras bort från knappen innan det släpps, eller när sparandet misslyckas. Ett misslyckat sparande är svårt att framkalla, så notera om det fallet inte prövats.
 - [ ] **7. Listor.** Sökresultat, områden och schemarader tonar in ett efter ett (de 8 första, 40 ms emellan), och inte när listan redan visats. Schemaraderna väntar tills listan syns. Skriv en adress i sökningen och ändra söktexten medan träffarna visas: träffarna startar om. Noteras: blinkar listans ruta tom till en kort stund när träffarna byts? Det är känt, och Jesper avgör om det är för mycket.
 - [ ] **8. Känslan i rörelsen.** Titta på 120 Hz-flödet i introt, hemskärmens inträde och vändningen. Inget hackar, och inget känns segt. Vibrationerna i punkt 1, 6 och 11 kommer vid rätt ögonblick och inte oftare än de ska.
@@ -95,7 +95,7 @@ Punkterna har nummer efter listans övriga, så att hänvisningarna ovan och ned
 
 ## Kvällar
 
-Kräver att en schemalagd tömning ligger dagen efter varje kväll, och att telefonen får vara orörd över natten. Det blir **fem kvällar**, eftersom en aktivitet bara kan startas en gång per tömning och varje prov kräver en egen start: kväll 1 (Live Activity och reserv), kväll 2 (Utställt), kväll 3 (Tyst läge), kväll 4 (Fokus) och kväll 5 (nekade notiser). Tyst läge och Fokus kan inte prövas samma kväll. Notisen med appen avslutad (punkt 41 och 42) prövas på en annan adress än huvudadressen under kväll 1, så den kräver ingen kväll för sig. Ha nätet påslaget om inget annat anges.
+Kräver att en schemalagd tömning ligger dagen efter varje kväll, och att telefonen får vara orörd över natten. Det blir **fem kvällar**, eftersom en aktivitet bara kan startas en gång per tömning och varje prov kräver en egen start: kväll 1 (Live Activity och reserv), kväll 2 (Utställt), kväll 3 (Tyst läge), kväll 4 (Fokus) och kväll 5 (nekade notiser). Tyst läge och Fokus kan inte prövas samma kväll. Notisen med appen avslutad (punkt 41) prövas på en annan adress än huvudadressen under kväll 1, så den kräver ingen kväll för sig. Punkt 42 gäller flera kvällar och följs upp efter hand. Ha nätet påslaget om inget annat anges.
 
 Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på notis och Live Activity, ställ in en tid då telefonen är låst, och **öppna appen en sista gång** för att planeringen ska köras. Avsluta appen genom att svepa bort den. Lås telefonen.
 
@@ -127,7 +127,9 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 
 ### Notis med appen avslutad (under kväll 1, på en annan adress)
 
-- [ ] **41. Notis kvällen före.** Slå på bara notis (inte Live Activity) på en annan adress än huvudadressen, med tömning dagen efter. Notisen kommer vid vald tid kvällen före, med adress, fraktioner och datum, och appen avslutad. Beräknade datum står med **ca**, och en varning från källan följer med. Tryck på den: appen öppnas.
+- [ ] **41. Notis kvällen före.** Slå på bara notis (inte Live Activity) på en annan adress än huvudadressen, med tömning dagen efter. Notisen kommer vid vald tid kvällen före, med adress, fraktioner och datum, och appen avslutad. Beräknade datum står med **ca**, och en varning från källan följer med. Har ingen adress med tömning dagen efter "ca" eller en varning: notera det, och kontrollera **ca** och varningen i adressvyn i stället. Tryck på notisen: appen öppnas.
+### Notiser för flera adresser (över flera kvällar)
+
 - [ ] **42. Flera adresser.** Slå på notis för tre adresser med olika datum. Varje adress får sin notis vid rätt kväll och inga dubbletter. Högst 60 notiser är schemalagda samtidigt, de närmaste först. Notisen för en adress som tagits bort kommer inte.
 
 ### Morgonen efter

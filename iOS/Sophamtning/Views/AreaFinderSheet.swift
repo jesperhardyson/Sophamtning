@@ -14,8 +14,6 @@ struct AreaFinderSheet: View {
     @State private var showCalendar = true
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
-    /// Ökar när Hitta område har startat en fråga, för den lätta vibrationen.
-    @State private var finds = 0
 
     init(model: AppModel, place: String, onSaved: @escaping () -> Void, onOther: @escaping () -> Void) {
         self.model = model
@@ -65,7 +63,6 @@ struct AreaFinderSheet: View {
                     Button {
                         withAnimation(.snappy) { showCalendar = false }
                         finder.find()
-                        finds += 1
                     } label: { PrimaryButtonLabel(title: "Hitta område") }
                         .buttonStyle(.pressable)
                         .padding(.top, 8)
@@ -89,7 +86,8 @@ struct AreaFinderSheet: View {
         .presentationDetents([.fraction(0.8), .large])
         .presentationDragIndicator(.visible)
         .onDisappear { finder.cancel() }
-        .sensoryFeedback(.impact(weight: .light), trigger: finds)
+        // Lätt vibration när områden hittats. Inget vid fel eller noll träffar.
+        .sensoryFeedback(.impact(weight: .light), trigger: finder.state) { _, state in state.foundAreas }
         .sheet(item: $chosen) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {

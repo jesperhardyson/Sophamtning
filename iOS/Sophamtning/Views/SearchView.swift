@@ -24,8 +24,6 @@ struct SearchView: View {
     @State private var updating = false
     @State private var latest = LatestOnly()
     @State private var latestAreas = LatestOnly()
-    /// Ökar när en träff har sparats, för den lätta vibrationen.
-    @State private var saves = 0
 
     var body: some View {
         ScrollView {
@@ -46,7 +44,6 @@ struct SearchView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Trigger(query: query, attempt: attempt)) { await search() }
         .onChange(of: query) { saveFailed = false }
-        .sensoryFeedback(.impact(weight: .light), trigger: saves)
         .sheet(item: $chosenArea) { selection in
             let hit = selection.hit
             AreaConfirmSheet(saveFailed: saveFailed, hit: hit, onSave: {
@@ -230,8 +227,8 @@ struct SearchView: View {
             saveFailed = false
             chosenArea = HitSelection(hit: hit)
         } else {
+            // Vibrationen spelas av hemskärmen när sparandet lyckats.
             saveFailed = !save(hit, in: model, onSaved: onSaved)
-            if !saveFailed { saves += 1 }
         }
     }
 

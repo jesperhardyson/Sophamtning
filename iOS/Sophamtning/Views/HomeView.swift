@@ -18,6 +18,9 @@ struct HomeView: View {
     @State private var confirmingStartOver = false
     /// Adressen som står öppen efter ett svep. Bara en åt gången, och scrollning stänger den.
     @State private var openRow: AddressKey?
+    /// Ökar när en adress eller ett område har sparats. Räknaren ligger här, eftersom arket stängs i samma
+    /// uppdatering, så att den lätta vibrationen alltid hinner spelas.
+    @State private var saves = 0
 
     private var content: HomeContent {
         HomeContent.make(
@@ -79,6 +82,7 @@ struct HomeView: View {
                 BackgroundRefresh.schedule()
             }
         }
+        .sensoryFeedback(.impact(weight: .light), trigger: saves)
         .sheet(item: $sheet, onDismiss: { replacing = nil }) { sheet in
             switch sheet {
             case .settings: SettingsView(model: model, onClose: { self.sheet = nil })
@@ -141,6 +145,7 @@ struct HomeView: View {
                 model.replace(old, with: new)
             }
             sheet = nil
+            saves += 1
             Task { await model.refreshAll(manual: false) }
         })
     }
