@@ -42,9 +42,15 @@ struct HomeView: View {
 
     var body: some View {
         let content = content
+        let filled = content.primary != nil && model.storageProblem == nil
         NavigationStack(path: $path) {
             screen(content)
-                .toolbar(.hidden, for: .navigationBar)
+                // Systemets fält: stor rubrik som krymper vid scroll, och knapparna i systemets glas. Tomt läge och
+                // lagringsfel har ingen rubrik i fältet, bara knappen för inställningar.
+                .navigationTitle(filled ? "Sophämtning" : "")
+                // Alltid stort läge: iOS byter inte läge när det tomma läget blir ifyllt medan vyn visas.
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar { homeToolbar(filled: filled) }
                 .navigationDestination(for: AddressKey.self) { key in
                     AddressView(model: model, key: key, onSearchAgain: {
                         path = []
@@ -96,48 +102,45 @@ struct HomeView: View {
     }
 
     private func screen(_ content: HomeContent) -> some View {
-        ZStack {
-            Color.Theme.bg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if model.storageProblem == nil { toolbar(showsAdd: content.primary != nil) }
-                    if let error = model.lastStorageError {
-                        // Ett felmeddelande i flödet, inte en ruta som stör mitt i användningen.
-                        Button { model.clearStorageError() } label: {
-                            MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
-                        }
-                        .buttonStyle(.pressable)
-                        .padding(.top, 12)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                if let error = model.lastStorageError {
+                    // Ett felmeddelande i flödet, inte en ruta som stör mitt i användningen.
+                    Button { model.clearStorageError() } label: {
+                        MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                     }
-                    if let error = model.reminderError, model.storageProblem == nil, content.primary != nil {
-                        // Samma meddelande som i adressvyn, så att ett fel efter ett val i snabbmenyn syns.
-                        MessageCard(style: .warning, icon: "bell.slash", title: "Påminnelser saknas", message: error)
-                            .padding(.top, 12)
-                    }
-                    if let problem = model.storageProblem {
-                        // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
-                        storageProblem(problem)
-                    } else if let primary = content.primary {
-                        LiveActivityNotices(model: model, edge: .top, showsError: false)
-                        filled(primary: primary, others: content.others)
-                    } else {
-                        empty
-                    }
-                    disclaimer
-                        // Sist i ordningen, oavsett hur många kort det finns.
-                        .cardEntrance(shown: !entrance.hidesCards, index: min(2 + content.others.count + 1, 6))
+                    .buttonStyle(.pressable)
+                    .padding(.top, 12)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-                .closesOpenSwipeRow($openRow)
+                if let error = model.reminderError, model.storageProblem == nil, content.primary != nil {
+                    // Samma meddelande som i adressvyn, så att ett fel efter ett val i snabbmenyn syns.
+                    MessageCard(style: .warning, icon: "bell.slash", title: "Påminnelser saknas", message: error)
+                        .padding(.top, 12)
+                }
+                if let problem = model.storageProblem {
+                    // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
+                    storageProblem(problem)
+                } else if let primary = content.primary {
+                    LiveActivityNotices(model: model, edge: .top, showsError: false)
+                    filled(primary: primary, others: content.others)
+                } else {
+                    empty
+                }
+                disclaimer
+                    // Sist i ordningen, oavsett hur många kort det finns.
+                    .cardEntrance(shown: !entrance.hidesCards, index: min(2 + content.others.count + 1, 6))
             }
-            // Ett tryck nedanför innehållet stänger också den öppna raden.
-            .gesture(TapGesture().onEnded { openRow = nil }, including: openRow == nil ? .subviews : .all)
-            .refreshable { await model.refreshAll(manual: true) }
-            .onScrollPhaseChange { _, phase in
-                if phase == .interacting { openRow = nil }
-            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .closesOpenSwipeRow($openRow)
         }
+        // Ett tryck nedanför innehållet stänger också den öppna raden.
+        .gesture(TapGesture().onEnded { openRow = nil }, including: openRow == nil ? .subviews : .all)
+        .refreshable { await model.refreshAll(manual: true) }
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { openRow = nil }
+        }
+        .background(Color.Theme.bg.ignoresSafeArea())
     }
 
     /// Adressflödet. Efter en sparad adress stängs arket, och hemskärmen hämtar schemat.
@@ -205,41 +208,28 @@ struct HomeView: View {
         }
     }
 
-    private func toolbar(showsAdd: Bool) -> some View {
-        HStack(spacing: 12) {
-            Spacer()
-            roundButton("gearshape", label: "Inställningar") { sheet = .settings }
-            if showsAdd {
-                roundButton("plus", label: "Lägg till") { sheet = .add }
+    /// Knapparna uppe till höger delar en glaskapsel. Vid lagringsfel finns inga knappar.
+    @ToolbarContentBuilder
+    private func homeToolbar(filled: Bool) -> some ToolbarContent {
+        if filled {
+            // Den stora rubriken i appens typsnitt, med inträdet som korten. I det lilla fältet vid scroll står
+            // `navigationTitle`.
+            ToolbarItem(placement: .largeTitle) {
+                HomeTitle(shown: !entrance.hidesCards)
             }
         }
-        .padding(.top, 8)
-    }
-
-    private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(.body, weight: .semibold))
-                .foregroundStyle(Color.Theme.text)
-                .frame(width: 44, height: 44)
-                .background(Color.Theme.surface, in: Circle())
-                .overlay(Circle().strokeBorder(Color.Theme.border))
+        if model.storageProblem == nil {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { sheet = .settings } label: { Label("Inställningar", systemImage: "gearshape") }
+                if filled {
+                    Button { sheet = .add } label: { Label("Lägg till", systemImage: "plus") }
+                }
+            }
         }
-        .buttonStyle(.pressable)
-        .accessibilityLabel(label)
     }
 
     private func filled(primary: HomeContent.Entry, others: [HomeContent.Entry]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Sophämtning")
-                .font(.brand(40, relativeTo: .largeTitle))
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .foregroundStyle(Color.Theme.text)
-                .padding(.top, 20)
-                .padding(.bottom, 20)
-                .accessibilityAddTraits(.isHeader)
-                .cardEntrance(shown: !entrance.hidesCards, index: 0)
             AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
                 PrimaryCard(
                     entry: primary,
@@ -252,6 +242,7 @@ struct HomeView: View {
             }
             // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
             .id(primary.key)
+            .padding(.top, 8)
             .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
@@ -402,6 +393,27 @@ struct HomeView: View {
             .font(.ui(15, weight: .semibold, relativeTo: .footnote))
             .foregroundStyle(Color.Theme.text2)
             .padding(.top, 32)
+    }
+}
+
+/// Den stora rubriken "Sophämtning" i systemets fält, i Fredoka som resten av appens rubriker. Den kommer in först av
+/// allt, före korten.
+private struct HomeTitle: View {
+    let shown: Bool
+
+    var body: some View {
+        Text("Sophämtning")
+            .font(.brand(34, relativeTo: .largeTitle))
+            .lineLimit(1)
+            // Krymper hellre än kapas med största text. Höjden är textens egen, så att fältet inte trycker ihop den.
+            .minimumScaleFactor(0.5)
+            .fixedSize(horizontal: false, vertical: true)
+            .foregroundStyle(Color.Theme.text)
+            // Samma marginal som korten under.
+            .padding(.leading, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+            .cardEntrance(shown: shown, index: 0)
     }
 }
 

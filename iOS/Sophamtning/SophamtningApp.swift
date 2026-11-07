@@ -14,6 +14,7 @@ struct SophamtningApp: App {
         _showsIntro = State(initialValue: start.intro)
         _entrance = State(initialValue: StartEntrance(plays: start.cards))
         Fonts.register()
+        NavigationBarStyle.apply()
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
         let model = Self.makeModel(version: version)

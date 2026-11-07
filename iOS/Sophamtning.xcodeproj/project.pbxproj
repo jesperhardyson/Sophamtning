@@ -13,6 +13,7 @@
 		308FCF41D38DC3CF0AEF87E8 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5660BEC19750E351ACA4A617 /* SophamtningKit */; };
 		33943D3D10E96911C582FCCD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E97966D4E1386A76326E42 /* HomeView.swift */; };
 		350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F19D55CC253C38C359298A /* SettingsView.swift */; };
+		36AF968C4B69A20A0BB8D53B /* NavigationBarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7080212AF771CAC98595E3B2 /* NavigationBarStyle.swift */; };
 		38E701A1BF92551CAC2D2E42 /* PickupLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C8419AD422B35F3FFBD5521 /* PickupLiveActivity.swift */; };
 		38E9E5062ABB95267BEE75CA /* ReminderToggleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */; };
 		3FB48805DDC512F2A9B27890 /* NextPickupWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8AF412C35614825019257CF /* NextPickupWidget.swift */; };
@@ -100,6 +101,7 @@
 		57C37502C561147857F00418 /* uitest-kallor.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-kallor.json"; sourceTree = "<group>"; };
 		69E3159073675AD584A68EDF /* QuickActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsTests.swift; sourceTree = "<group>"; };
 		69F7D16F04135196630E9D02 /* uitest-sok.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-sok.json"; sourceTree = "<group>"; };
+		7080212AF771CAC98595E3B2 /* NavigationBarStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationBarStyle.swift; sourceTree = "<group>"; };
 		7F307C543EEA02E99659E697 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
@@ -168,6 +170,7 @@
 			children = (
 				D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */,
 				456CA478F3DAA6359F968AE6 /* LiveActivityScheduler.swift */,
+				7080212AF771CAC98595E3B2 /* NavigationBarStyle.swift */,
 				7F307C543EEA02E99659E697 /* NotificationPresenter.swift */,
 				4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */,
 			);
@@ -431,6 +434,7 @@
 				6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */,
 				40CA8A61C89A6CF1A6D268C5 /* LiveActivityScheduler.swift in Sources */,
 				F47926D875185CAAF6E327B2 /* MarkPlacedOutIntent.swift in Sources */,
+				36AF968C4B69A20A0BB8D53B /* NavigationBarStyle.swift in Sources */,
 				90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */,
 				F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */,
 				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
