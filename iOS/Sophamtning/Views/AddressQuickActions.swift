@@ -106,12 +106,13 @@ struct AddressQuickActions<Content: View>: View {
         if !address.isPrimary {
             Button { makePrimary() } label: { Label("Gör till huvudadress", systemImage: "house") }
         }
-        Toggle(isOn: Binding(get: { model.remindersOn(for: address) }, set: setNotifications)) {
+        // Closures i stället för metodreferenser: Swift 6.3 i Xcode 26.6 kraschar på omvandlingen av en metod till `set:`.
+        Toggle(isOn: Binding(get: { model.remindersOn(for: address) }, set: { setNotifications($0) })) {
             Label("Notis kvällen före", systemImage: "bell.badge")
         }
         // Live Activity gäller bara huvudadressen. Avstängda i iOS visas överst på hemskärmen, och fel på hemkortet.
         if address.isPrimary {
-            Toggle(isOn: Binding(get: { model.settings.liveActivityOn }, set: setLiveActivity)) {
+            Toggle(isOn: Binding(get: { model.settings.liveActivityOn }, set: { setLiveActivity($0) })) {
                 Label("Live Activity", systemImage: "iphone.radiowaves.left.and.right")
             }
         }
@@ -196,7 +197,7 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
             .offset(x: offset)
             .background(alignment: .trailing) { deleteButton }
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
-            .gesture(SwipePan(isOpen: offset < 0, onChange: changed, onEnd: ended))
+            .gesture(SwipePan(isOpen: offset < 0, onChange: { changed($0) }, onEnd: { ended($0) }))
             .sensoryFeedback(.impact(weight: .light), trigger: isFullSwipe) { _, full in full }
             .onChange(of: openRow) { _, row in
                 // En annan rad öppnades, eller hemskärmen scrollades.
