@@ -228,12 +228,11 @@ struct AddressView: View {
     @ViewBuilder
     private func bins(_ detail: AddressDetail) -> some View {
         sectionTitle("Kärlen")
-        let large = typeSize.isAccessibilitySize
         ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: BinCardMetrics.spacing) {
                 ForEach(Array(detail.bins.enumerated()), id: \.element.id) { index, bin in
+                    // Kortet väljer själv sin bredd efter namnet.
                     BinCard(bin: bin)
-                        .containerRelativeFrame(.horizontal, count: large ? 5 : 7, span: large ? 4 : 3, spacing: 12)
                         .rowEntrance(shown: binsRevealed || !entrancePlays || voiceOver, index: index)
                 }
             }

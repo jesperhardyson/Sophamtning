@@ -106,23 +106,34 @@ struct ScheduleList: View {
 }
 
 /// Kort för ett kärl: ikon, namn, dagar kvar och datum. Läses som ett element av VoiceOver.
+/// Kortet är minst 3/7 av bredden och blir bredare, högst 2/3, när ett ord i namnet inte ryms i full storlek.
 struct BinCard: View {
     let bin: AddressDetail.Bin
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// Bredden det längsta ordet i namnet behöver i full storlek.
+    @State private var wordWidth: CGFloat = 0
+
+    private var words: [String] {
+        bin.info.name.split(whereSeparator: \.isWhitespace).map(String.init)
+    }
 
     /// Lika många rader som namnet har ord, högst tre.
     private var nameLines: Int {
-        min(max(bin.info.name.split(whereSeparator: \.isWhitespace).count, 1), 3)
+        min(max(words.count, 1), 3)
     }
+
+    private var nameFont: Font { .ui(17, weight: .heavy, relativeTo: .headline) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             FractionIconView(id: bin.id, info: bin.info)
             VStack(alignment: .leading, spacing: 2) {
-                // Högst en rad per ord, så att ett långt ord ("Pappersförpackningar") krymper i stället för att brytas mitt i.
+                // Högst en rad per ord, så att ett ord aldrig bryts mitt i. Ryms ordet inte ens i det bredaste kortet
+                // krymper det, i stället för att brytas.
                 Text(bin.info.name)
-                    .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                    .font(nameFont)
                     .foregroundStyle(Color.Theme.text)
                     .lineLimit(nameLines)
                     .minimumScaleFactor(0.4)
@@ -136,12 +147,34 @@ struct BinCard: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(BinCardMetrics.horizontalPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(alignment: .topLeading) { wordMeasure }
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(bin.accessibilityLabel)
+        .containerRelativeFrame(.horizontal) { length, _ in
+            BinCardMetrics.width(
+                container: length,
+                content: wordWidth + BinCardMetrics.horizontalPadding * 2,
+                accessibilitySize: typeSize.isAccessibilitySize
+            )
+        }
+    }
+
+    /// Orden i namnet i full storlek, osynliga och utan plats i layouten. Det bredaste bestämmer kortets bredd. Bara
+    /// bredden mäts, typsnittet följer alltid textstorleken.
+    private var wordMeasure: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                Text(word).font(nameFont).lineLimit(1).fixedSize()
+            }
+        }
+        .fixedSize()
+        .hidden()
+        .accessibilityHidden(true)
+        .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.size.width }, action: { width in wordWidth = width })
     }
 }
 
