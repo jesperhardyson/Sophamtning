@@ -44,20 +44,8 @@ struct AddressView: View {
         .toolbar { if let address { ToolbarItem(placement: .primaryAction) { moreMenu(address) } } }
         .task { sources = await model.sourceList() }
         .inAppBrowser(item: $link)
-        .alert("Byt namn", isPresented: $renaming) {
-            TextField("Namn", text: $newName)
-            Button("Spara") { rename() }
-                .disabled(AddressList.validName(newName) == nil)
-            Button("Avbryt", role: .cancel) {}
-        } message: {
-            Text("Namnet får vara högst \(AddressList.maxNameLength) tecken.")
-        }
-        .confirmationDialog("Ta bort adressen?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
-            Button("Ta bort", role: .destructive) { remove() }
-            Button("Avbryt", role: .cancel) {}
-        } message: {
-            Text("Adressen, det sparade schemat och dess påminnelser tas bort från telefonen.")
-        }
+        .renameAddressAlert(isPresented: $renaming, name: $newName) { rename() }
+        .removeAddressConfirmation(isPresented: $confirmingRemoval) { remove() }
     }
 
     // MARK: Innehåll

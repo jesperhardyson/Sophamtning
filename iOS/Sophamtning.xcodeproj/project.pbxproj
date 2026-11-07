@@ -27,6 +27,7 @@
 		6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */; };
 		70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
+		76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */; };
 		90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F307C543EEA02E99659E697 /* NotificationPresenter.swift */; };
 		920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83C77BCFF8F5F3C97D1E11A /* UITestAPI.swift */; };
 		9392F46D1606F5A50029A130 /* MarkPlacedOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */; };
@@ -37,6 +38,7 @@
 		D7CED481ACFED9008E352189 /* uitest-omraden.json in Resources */ = {isa = PBXBuildFile; fileRef = 34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */; };
 		D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */; };
 		D829D046905BD3FA5C15762E /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */; };
+		D9CC6F196E7BF4D16BA2BB8E /* QuickActionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E3159073675AD584A68EDF /* QuickActionsTests.swift */; };
 		E52B35185576088B07E7F7AA /* AddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */; };
 		E8809D7C66D5ED4E729C59D1 /* CoreFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */; };
 		EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */; };
@@ -92,11 +94,13 @@
 		4D5502E2E1A53F977DC24C47 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressView.swift; sourceTree = "<group>"; };
 		57C37502C561147857F00418 /* uitest-kallor.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-kallor.json"; sourceTree = "<group>"; };
+		69E3159073675AD584A68EDF /* QuickActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsTests.swift; sourceTree = "<group>"; };
 		69F7D16F04135196630E9D02 /* uitest-sok.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-sok.json"; sourceTree = "<group>"; };
 		7F307C543EEA02E99659E697 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
 		8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartIntroView.swift; sourceTree = "<group>"; };
+		8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressQuickActions.swift; sourceTree = "<group>"; };
 		8E9D6D1E5D975FA6247DDC60 /* uitest-adress.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-adress.json"; sourceTree = "<group>"; };
 		A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderToggleRow.swift; sourceTree = "<group>"; };
 		A8AF412C35614825019257CF /* NextPickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPickupWidget.swift; sourceTree = "<group>"; };
@@ -228,6 +232,7 @@
 				D049414B36508C1128F2BAAA /* .gitkeep */,
 				140BBB80224770A99801765F /* AccessibilityAuditTests.swift */,
 				398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */,
+				69E3159073675AD584A68EDF /* QuickActionsTests.swift */,
 			);
 			path = SophamtningUITests;
 			sourceTree = "<group>";
@@ -243,6 +248,7 @@
 		BFCFD7497233AB9A4F5792CD /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */,
 				519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */,
 				863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */,
 				49713674AF12521818193251 /* AreaFinderSheet.swift */,
@@ -395,6 +401,7 @@
 			files = (
 				57E68D47DC84227704A88456 /* AccessibilityAuditTests.swift in Sources */,
 				E8809D7C66D5ED4E729C59D1 /* CoreFlowTests.swift in Sources */,
+				D9CC6F196E7BF4D16BA2BB8E /* QuickActionsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,6 +409,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */,
 				E52B35185576088B07E7F7AA /* AddressView.swift in Sources */,
 				D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */,
 				0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */,

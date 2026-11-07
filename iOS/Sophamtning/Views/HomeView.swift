@@ -16,6 +16,8 @@ struct HomeView: View {
     @State private var replacing: AddressKey?
     @State private var knownKeys: Set<AddressKey> = []
     @State private var confirmingStartOver = false
+    /// Adressen som står öppen efter ett svep. Bara en åt gången, och scrollning stänger den.
+    @State private var openRow: AddressKey?
 
     private var content: HomeContent {
         HomeContent.make(
@@ -96,6 +98,11 @@ struct HomeView: View {
                         .buttonStyle(.pressable)
                         .padding(.top, 12)
                     }
+                    if let error = model.reminderError, model.storageProblem == nil, content.primary != nil {
+                        // Samma meddelande som i adressvyn, så att ett fel efter ett val i snabbmenyn syns.
+                        MessageCard(style: .warning, icon: "bell.slash", title: "Påminnelser saknas", message: error)
+                            .padding(.top, 12)
+                    }
                     if let problem = model.storageProblem {
                         // En fil som inte går att läsa är inte ett tomt läge: inget är raderat, och inget skrivs över.
                         storageProblem(problem)
@@ -113,6 +120,9 @@ struct HomeView: View {
                 .padding(.bottom, 24)
             }
             .refreshable { await model.refreshAll(manual: true) }
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting { openRow = nil }
+            }
         }
     }
 
@@ -215,8 +225,10 @@ struct HomeView: View {
                 .padding(.bottom, 20)
                 .accessibilityAddTraits(.isHeader)
                 .cardEntrance(shown: !entrance.hidesCards, index: 0)
-            PrimaryCard(entry: primary, opening: opening(for: primary), onOpen: { path.append(primary.key) })
-                .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
+            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
+                PrimaryCard(entry: primary, opening: opening(for: primary), onOpen: { path.append(primary.key) })
+            }
+            .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
                     .font(.ui(22, weight: .heavy, relativeTo: .title2))
@@ -227,10 +239,12 @@ struct HomeView: View {
                     .cardEntrance(shown: !entrance.hidesCards, index: 2)
                 VStack(spacing: 12) {
                     ForEach(Array(others.enumerated()), id: \.element.id) { index, entry in
-                        NavigationLink(value: entry.key) {
-                            AddressRow(entry: entry)
+                        AddressQuickActions(model: model, key: entry.key, cornerRadius: 20, openRow: $openRow) {
+                            NavigationLink(value: entry.key) {
+                                AddressRow(entry: entry)
+                            }
+                            .buttonStyle(.pressable)
                         }
-                        .buttonStyle(.pressable)
                         .cardEntrance(shown: !entrance.hidesCards, index: 3 + index)
                     }
                 }
