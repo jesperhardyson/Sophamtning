@@ -217,7 +217,7 @@ struct FullScheduleView: View {
             .refreshable { await model.refreshAll(manual: true) }
         }
         .navigationTitle("Hela schemat")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .task { sources = await model.sourceList() }
         .inAppBrowser(item: $link)
     }

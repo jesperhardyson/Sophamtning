@@ -80,7 +80,7 @@ final class QuickActionsTests: XCTestCase {
         addAddresses(["Testgatan 1", "Testgatan 2"])
         address("Testgatan 1").tap()
         XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 5), "Huvudkortet ska öppna adressvyn")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["BackButton"].firstMatch.tap()
 
         address("Testgatan 2").tap()
         XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 5), "Raden ska öppna adressvyn")

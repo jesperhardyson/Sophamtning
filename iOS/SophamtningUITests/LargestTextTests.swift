@@ -32,9 +32,9 @@ final class LargestTextTests: XCTestCase {
         wait(for: [hittable], timeout: 10)
         card.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: card.frame.width / 2, dy: 400)).tap()
         XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
-        // Huvudadressen heter "Hemma".
-        let title = app.staticTexts["Hemma"]
-        checkFits("adress", title: title)
+        // Rubriken "Hemma" står i systemets fält. Adressen och platsen under den börjar vid marginalen.
+        let lines = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Testgatan 1, Uppsala")).firstMatch
+        checkFits("adress", title: lines)
 
         // Hela schemat.
         let link = app.buttons["Hela schemat"]
@@ -54,7 +54,9 @@ final class LargestTextTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(title.frame.minX, 24 - 0.5, "\(screen): rubriken ska börja vid marginalen", file: file, line: line)
         let bins = binBand()
         guard let root = try? app.snapshot() else { return XCTFail("\(screen): ingen ögonblicksbild", file: file, line: line) }
-        for element in flatten(root) where element.frame.maxX > width + 0.5 && !element.frame.isEmpty {
+        // Systemets toning under navigeringsfältet i iOS 26 är bredare än fönstret, men är inget av appens element.
+        for element in flatten(root) where element.frame.maxX > width + 0.5 && !element.frame.isEmpty
+            && element.identifier != "AdditionalDimmingOverlay" {
             let frame = element.frame
             if let bins, frame.minY >= bins.lowerBound - 1, frame.maxY <= bins.upperBound + 1 { continue }
             XCTFail("\(screen): \(element.elementType.rawValue) '\(element.label)' slutar vid \(frame.maxX), fönstret är \(width) brett", file: file, line: line)

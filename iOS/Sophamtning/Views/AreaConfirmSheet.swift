@@ -11,6 +11,22 @@ struct AreaConfirmSheet: View {
     let onOther: () -> Void
 
     var body: some View {
+        // Systemets fält med systemets stängknapp, som stänger arket utan att spara. Frågan står som rubrik i
+        // innehållet, eftersom systemets stora rubrik kapas med största text i stället för att brytas.
+        NavigationStack {
+            content
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Stäng", systemImage: "xmark", role: .close) { onOther() }
+                    }
+                }
+        }
+        .presentationDetents([.fraction(0.7), .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var content: some View {
         // Rullbart, och Spara området står fast längst ned, så att knappen alltid syns, också i halv höjd och med
         // största textstorlek.
         ScrollView {
@@ -19,7 +35,6 @@ struct AreaConfirmSheet: View {
                     .font(.ui(28, weight: .heavy, relativeTo: .title))
                     .foregroundStyle(Color.Theme.text)
                     .accessibilityAddTraits(.isHeader)
-                    .padding(.top, 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(hit.street)
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
@@ -67,7 +82,5 @@ struct AreaConfirmSheet: View {
                 .padding(.vertical, 8)
         }
         .background(Color.Theme.surface.ignoresSafeArea())
-        .presentationDetents([.fraction(0.7), .large])
-        .presentationDragIndicator(.visible)
     }
 }

@@ -37,8 +37,8 @@ struct AddFlowView: View {
         .toolbar {
             if isRoot {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onClose) { Image(systemName: "xmark") }
-                        .accessibilityLabel("Stäng")
+                    // Systemets stängknapp i glas, som i iOS 26.
+                    Button("Stäng", systemImage: "xmark", role: .close) { onClose() }
                 }
             }
         }

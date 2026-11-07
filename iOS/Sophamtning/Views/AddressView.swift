@@ -42,14 +42,17 @@ struct AddressView: View {
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }
 
     var body: some View {
-        ZStack {
-            Color.Theme.bg.ignoresSafeArea()
+        Group {
             if let address {
                 content(for: address)
+            } else {
+                Color.clear
             }
         }
-        .navigationTitle("Adress")
-        .navigationBarTitleDisplayMode(.inline)
+        .background(Color.Theme.bg.ignoresSafeArea())
+        // Systemets fält: adressens namn som stor rubrik, som krymper vid scroll, systemets tillbakaknapp och ···.
+        .navigationTitle(address?.displayName ?? "")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar { if let address { ToolbarItem(placement: .primaryAction) { moreMenu(address) } } }
         .task { sources = await model.sourceList() }
         .inAppBrowser(item: $link)
@@ -108,16 +111,10 @@ struct AddressView: View {
         .refreshable { await model.refreshAll(manual: true) }
     }
 
+    /// Adressen och platsen under den stora rubriken i fältet.
     private func header(_ detail: AddressDetail) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(detail.title)
-                .font(.ui(34, weight: .black, relativeTo: .largeTitle))
-                .foregroundStyle(Color.Theme.text)
-                .accessibilityAddTraits(.isHeader)
-            AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
-        }
-        .padding(.top, 8)
-        .padding(.bottom, 20)
+        AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
+            .padding(.bottom, 20)
     }
 
     // MARK: Lägen

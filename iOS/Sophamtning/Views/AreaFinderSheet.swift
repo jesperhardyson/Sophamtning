@@ -44,13 +44,30 @@ struct AreaFinderSheet: View {
     private static let expanded = PresentationDetent.large
 
     var body: some View {
+        // Systemets fält med systemets stängknapp. Frågan står som rubrik i innehållet, eftersom den är för lång för
+        // fältet.
+        NavigationStack {
+            content
+                .navigationTitle("Hitta område")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Stäng", systemImage: "xmark", role: .close) { onOther() }
+                    }
+                }
+        }
+        .presentationDetents([AreaFinderSheet.compact, AreaFinderSheet.expanded], selection: $detent)
+        .presentationDragIndicator(.visible)
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text("När tömdes ditt kärl senast?")
                     .font(.ui(28, weight: .heavy, relativeTo: .title))
                     .foregroundStyle(Color.Theme.text)
                     .accessibilityAddTraits(.isHeader)
-                    .padding(.top, 28)
+                    .padding(.top, 8)
                 Text("Varje hämtdag hör till ett område, så datumet visar vilket som gäller.")
                     .font(.ui(18, weight: .semibold, relativeTo: .body))
                     .foregroundStyle(Color.Theme.text2)
@@ -88,8 +105,6 @@ struct AreaFinderSheet: View {
         // Den primära knappen står fast längst ned, ovanför hemindikatorn, och innehållet scrollar ovanför.
         .safeAreaBar(edge: .bottom) { primaryBar }
         .background(Color.Theme.surface.ignoresSafeArea())
-        .presentationDetents([AreaFinderSheet.compact, AreaFinderSheet.expanded], selection: $detent)
-        .presentationDragIndicator(.visible)
         .onChange(of: showCalendar) { _, shown in calendarChanged(shown) }
         .onChange(of: detent) { _, new in
             // Ett läge som appen inte satte kommer från användaren.

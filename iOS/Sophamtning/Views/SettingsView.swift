@@ -49,11 +49,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Inställningar")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onClose) { Image(systemName: "xmark") }
-                        .accessibilityLabel("Stäng")
+                    // Systemets stängknapp i glas, som i iOS 26.
+                    Button("Stäng", systemImage: "xmark", role: .close) { onClose() }
                 }
             }
             .navigationDestination(for: SettingsRoute.self) { route in
@@ -273,7 +273,7 @@ private struct ReminderTimeView: View {
             }
         }
         .navigationTitle("Påminnelsetid")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -306,7 +306,7 @@ private struct PrimaryAddressView: View {
             }
         }
         .navigationTitle("Huvudadress")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -378,7 +378,7 @@ private struct SourcesView: View {
         .background(Color.Theme.bg.ignoresSafeArea())
         .inAppBrowser(item: $webLink)
         .navigationTitle("Datakällor")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 
     /// En källa: namnet och kommunerna, och under dem länkarna. Varje länk tar emot sitt eget tryck.

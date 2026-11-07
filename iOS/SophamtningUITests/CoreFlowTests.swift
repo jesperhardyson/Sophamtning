@@ -58,7 +58,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Stämmer området?"].waitForExistence(timeout: 5))
         app.buttons["Välj ett annat område"].tap()
         // Tillbaka till sökningen, där arket kan stängas.
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["BackButton"].firstMatch.tap()
         close()
         XCTAssertTrue(app.staticTexts["När töms dina kärl?"].waitForExistence(timeout: 5), "Inget får sparas före Spara området")
 

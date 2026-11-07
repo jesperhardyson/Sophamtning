@@ -23,14 +23,9 @@ struct AreaPickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Välj område")
-                    .font(.brand(40, relativeTo: .largeTitle))
-                    .minimumScaleFactor(0.5)
-                    .foregroundStyle(Color.Theme.text)
-                    .accessibilityAddTraits(.isHeader)
                 if let notice {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
-                        .padding(.top, 20)
+                        .padding(.top, 8)
                 }
                 if place != nil {
                     finderRow
@@ -81,7 +76,9 @@ struct AreaPickerView: View {
             .padding(.bottom, 24)
         }
         .background(Color.Theme.bg.ignoresSafeArea())
-        .navigationTitle(title)
+        // "Välj område" och kommunen under, i systemets fält, som de andra sidorna i arket.
+        .navigationTitle("Välj område")
+        .navigationSubtitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .inAppBrowser(item: $webLink)
         .sheet(isPresented: $finderOpen) {

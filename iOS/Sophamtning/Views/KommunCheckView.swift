@@ -32,6 +32,7 @@ struct KommunCheckView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                // Frågan är för lång för systemets stora rubrik, som inte bryts, så den står först i innehållet.
                 Text("Finns min kommuns hämtningsschema?")
                     .font(.brand(34, relativeTo: .largeTitle))
                     .minimumScaleFactor(0.5)

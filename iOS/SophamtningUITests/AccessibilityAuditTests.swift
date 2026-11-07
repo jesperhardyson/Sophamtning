@@ -57,7 +57,7 @@ final class AccessibilityAuditTests: XCTestCase {
         expandSheet()
         audit("omrade-bekrafta")
         tap(app.buttons["Välj ett annat område"])
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["BackButton"].firstMatch.tap()
         tap(app.buttons["Stäng"])
 
         // Kommunfrågan.
@@ -83,7 +83,7 @@ final class AccessibilityAuditTests: XCTestCase {
         app.swipeUp()
         app.swipeUp()
         audit("adress-nedre")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["BackButton"].firstMatch.tap()
 
         tap(app.buttons["Inställningar"])
         audit("installningar")
@@ -91,7 +91,7 @@ final class AccessibilityAuditTests: XCTestCase {
         audit("installningar-nedre")
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Påminnelsetid")).firstMatch)
         audit("paminnelsetid")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["BackButton"].firstMatch.tap()
         app.swipeUp()
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Datakällor")).firstMatch)
         audit("datakallor")
