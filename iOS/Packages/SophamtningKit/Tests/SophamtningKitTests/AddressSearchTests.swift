@@ -209,3 +209,12 @@ private func empty() -> SearchResponse { SearchResponse(addresses: [], failed: [
         #expect(got.all == [SearchOutcome(state: .failed(.sourceUnavailable), areas: nil)])
     }
 }
+
+@Test func omradenFoljerMedSinaKallor() async throws {
+    let sources = [AreaSource(id: "avesta", name: "Avesta Vatten och Avfall", explanation: "Förklaring.", help: "Hjälp.")]
+    let api = SearchAPI(search: { _ in empty() }, areas: { place in
+        place == "Avesta" ? SearchResponse(addresses: avestaAreas, failed: [], sources: sources) : empty()
+    })
+    let result = try await AreaLookup.run(query: "okänd gata 1, Avesta", api: api)
+    #expect(result == .found(place: "Avesta", areas: avestaAreas, sources: sources))
+}

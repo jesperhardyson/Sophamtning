@@ -152,9 +152,9 @@ struct SearchView: View {
                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: saveFailedMessage)
                     .padding(.bottom, 20)
             }
-            if case .found(let place, let areas)? = outcome.areas {
+            if case .found(let place, let areas, let areaSources)? = outcome.areas {
                 // Knappen kommer ofta efter träffarna, och glider då in i stället för att skjuta ned listan i ett ryck.
-                areaButton(place: place, areas: areas)
+                areaButton(place: place, areas: areas, sources: areaSources)
                     .padding(.bottom, 20)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -189,14 +189,14 @@ struct SearchView: View {
     /// Träffarna, med sin plats i svaret, utan områdesrader för en kommun vars områden redan nås med knappen.
     private func visibleHits(_ hits: [SearchHit]) -> [EnumeratedSequence<[SearchHit]>.Element] {
         let all = Array(hits.enumerated())
-        guard case .found(_, let areas)? = outcome.areas else { return all }
+        guard case .found(_, let areas, _)? = outcome.areas else { return all }
         let kommuner = Set(areas.map(\.kommun))
         return all.filter { !($0.element.isArea && kommuner.contains($0.element.kommun)) }
     }
 
     /// "Välj område i X": samma knapp och flöde vid träffar som vid noll träffar.
-    private func areaButton(place: String, areas: [SearchHit]) -> some View {
-        NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas)) {
+    private func areaButton(place: String, areas: [SearchHit], sources: [AreaSource]) -> some View {
+        NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas, sources: sources)) {
             PrimaryButtonLabel(title: "Välj område i \(kommunDisplayName(areas[0].kommun))")
         }
         .buttonStyle(.pressable)
@@ -239,8 +239,8 @@ struct SearchView: View {
     }
 
     private func noHits() -> some View {
-        var found: (place: String, areas: [SearchHit])?
-        if case .found(let place, let areas)? = outcome.areas, !areas.isEmpty { found = (place, areas) }
+        var found: (place: String, areas: [SearchHit], sources: [AreaSource])?
+        if case .found(let place, let areas, let areaSources)? = outcome.areas, !areas.isEmpty { found = (place, areas, areaSources) }
         return VStack(spacing: 0) {
             Image(systemName: "mappin.slash")
                 .font(.system(size: 44))
@@ -259,7 +259,7 @@ struct SearchView: View {
                     .foregroundStyle(Color.Theme.text2)
                     .multilineTextAlignment(.center)
                     .padding(.top, 10)
-                areaButton(place: found.place, areas: found.areas)
+                areaButton(place: found.place, areas: found.areas, sources: found.sources)
                     .padding(.top, 24)
             } else if outcome.areas == .failed {
                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Kunde inte hämta områden",

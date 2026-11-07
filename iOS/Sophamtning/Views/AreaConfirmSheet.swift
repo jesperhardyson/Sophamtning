@@ -10,6 +10,9 @@ struct AreaConfirmSheet: View {
     let onSave: () -> Void
     let onOther: () -> Void
 
+    /// Alla platser visas när användaren fäller ut listan. Från början står den korta raden, så att knapparna syns.
+    @State private var allPlaces = false
+
     var body: some View {
         // Systemets fält med systemets stängknapp, som stänger arket utan att spara. Frågan står som rubrik i
         // innehållet, eftersom systemets stora rubrik kapas med största text i stället för att brytas.
@@ -35,20 +38,11 @@ struct AreaConfirmSheet: View {
                     .font(.ui(28, weight: .heavy, relativeTo: .title))
                     .foregroundStyle(Color.Theme.text)
                     .accessibilityAddTraits(.isHeader)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(hit.street)
-                        .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                        .foregroundStyle(Color.Theme.text)
-                    if let detail = hit.detail {
-                        Text(detail)
-                            .font(.ui(17, weight: .semibold, relativeTo: .body))
-                            .foregroundStyle(Color.Theme.text2)
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .padding(.top, 20)
+                area
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .padding(.top, 20)
                 if let notice = hit.notice {
                     Text(notice)
                         .font(.ui(18, weight: .semibold, relativeTo: .body))
@@ -82,5 +76,23 @@ struct AreaConfirmSheet: View {
                 .padding(.vertical, 8)
         }
         .background(Color.Theme.surface.ignoresSafeArea())
+    }
+
+    /// Området, och en knapp som fäller ut alla platser när den korta raden inte visar alla. VoiceOver läser alla
+    /// platser direkt.
+    private var area: some View {
+        let content = AreaRowContent.make(hit)
+        return VStack(alignment: .leading, spacing: 8) {
+            AreaDetailsView(content: content, showsAllPlaces: allPlaces, labelBackground: Color.Theme.surface)
+            if content.hidesPlaces {
+                Button { withAnimation(.snappy) { allPlaces.toggle() } } label: {
+                    Text(allPlaces ? "Visa färre platser" : content.showAllPlacesText)
+                        .font(.ui(16, weight: .heavy, relativeTo: .callout))
+                        .foregroundStyle(Color.Theme.primary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.pressable)
+            }
+        }
     }
 }

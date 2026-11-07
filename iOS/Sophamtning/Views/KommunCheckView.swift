@@ -11,10 +11,11 @@ struct KommunCheckView: View {
         var attempt: Int
     }
 
-    /// Svaret och, för en täckt kommun, områdena som `/omraden` gav.
+    /// Svaret och, för en täckt kommun, områdena och källorna som `/omraden` gav.
     private struct KommunResult {
         var answer: KommunAnswer
         var areas: [SearchHit]
+        var areaSources: [AreaSource] = []
     }
 
     @State private var query = ""
@@ -84,8 +85,8 @@ struct KommunCheckView: View {
             let answer = KommunChecker.check(text, index: index, sources: sources)
             guard case .covered(let row, _) = answer else { return KommunResult(answer: answer, areas: []) }
             // Misslyckas anropet erbjuds adresssökning i stället för områdesval.
-            let areas = (try? await model.api.areas(place: shortKommunName(row.name)).addresses) ?? []
-            return KommunResult(answer: answer, areas: areas)
+            let response = try? await model.api.areas(place: shortKommunName(row.name))
+            return KommunResult(answer: answer, areas: response?.addresses ?? [], areaSources: response?.sources ?? [])
         }
         // Nil: ett nyare anrop har startat. Avbruten: texten ändrades, och en ny uppgift tar över.
         guard let outcome, !Task.isCancelled else { return }
@@ -139,7 +140,7 @@ struct KommunCheckView: View {
                 }
             }
             if hasAreas {
-                NavigationLink(value: AddRoute.areas(title: row.name, place: shortKommunName(row.name), hits: result.areas)) {
+                NavigationLink(value: AddRoute.areas(title: row.name, place: shortKommunName(row.name), hits: result.areas, sources: result.areaSources)) {
                     PrimaryButtonLabel(title: "Välj område i \(kommunDisplayName(row.name))")
                 }
                 .buttonStyle(.pressable)

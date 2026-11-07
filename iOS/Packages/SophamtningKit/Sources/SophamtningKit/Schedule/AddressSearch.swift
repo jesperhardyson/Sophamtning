@@ -2,8 +2,8 @@ import Foundation
 
 /// Vad `/omraden` gav för orterna i söktexten.
 public enum AreaLookup: Equatable, Sendable {
-    /// `place` är orten som gav områdena.
-    case found(place: String, areas: [SearchHit])
+    /// `place` är orten som gav områdena. `sources` är källorna som svarade, med förklaringen till områdesvalet.
+    case found(place: String, areas: [SearchHit], sources: [AreaSource] = [])
     /// Ingen ort gav områden, och inget anrop misslyckades.
     case notFound
     /// Inga områden, och minst ett anrop misslyckades. Det betyder inte att kommunen saknar områdesval.
@@ -23,7 +23,7 @@ public enum AreaLookup: Equatable, Sendable {
             try Task.checkCancellation()
             do {
                 let response = try await api.areas(place: place)
-                if !response.addresses.isEmpty { return .found(place: place, areas: response.addresses) }
+                if !response.addresses.isEmpty { return .found(place: place, areas: response.addresses, sources: response.sources) }
                 if !response.failed.isEmpty { failed = true }
             } catch APIError.badRequest {
                 // 400: orten gick inte att tolka. Inget tekniskt fel, bara inga områden för den.

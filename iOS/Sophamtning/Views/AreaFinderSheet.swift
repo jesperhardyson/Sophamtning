@@ -265,15 +265,8 @@ struct AreaFinderSheet: View {
             Text("Det här bör vara ditt område")
                 .font(.ui(16, weight: .heavy, relativeTo: .callout))
                 .foregroundStyle(Color.Theme.brandText)
-            Text(hit.street)
-                .font(.ui(24, weight: .heavy, relativeTo: .title2))
-                .foregroundStyle(Color.Theme.text)
+            AreaDetailsView(content: AreaRowContent.make(hit), titleSize: 24, titleStyle: .title2, labelBackground: Color.Theme.surface)
                 .padding(.top, 8)
-            if let detail = hit.detail {
-                Text(detail)
-                    .font(.ui(17, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
-            }
             Text(AreaFinderText.check(hit.pickups, today: finder.latestSelectable))
                 .font(.ui(18, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text)
@@ -302,16 +295,7 @@ struct AreaFinderSheet: View {
                     .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.brandText)
             }
-            Text(hit.street)
-                .font(.ui(22, weight: .heavy, relativeTo: .title3))
-                .foregroundStyle(Color.Theme.text)
-                .multilineTextAlignment(.leading)
-            if let detail = hit.detail {
-                Text(detail)
-                    .font(.ui(17, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
-                    .multilineTextAlignment(.leading)
-            }
+            AreaDetailsView(content: AreaRowContent.make(hit), titleSize: 22, titleStyle: .title3, labelBackground: Color.Theme.surface)
             if let summary = AreaFinderText.summary(hit.pickups, today: finder.latestSelectable) {
                 Text(summary)
                     .font(.ui(17, weight: .semibold, relativeTo: .body))

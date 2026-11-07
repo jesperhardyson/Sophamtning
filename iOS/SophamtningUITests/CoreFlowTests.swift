@@ -81,6 +81,39 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["När töms dina kärl?"].exists)
     }
 
+    func testOmradeslistanVisarDetaljerOchKallansForklaring() {
+        open("Gata och husnummer")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("okänd gata 1, Avesta")
+        open("Välj område i Avesta kommun")
+
+        // Källans förklaring står överst, och hjälpraden med telefonnumret under.
+        XCTAssertTrue(app.staticTexts["Avesta Vatten publicerar sophämtningen per område, men inte vilka adresser som hör till vilket område."].waitForExistence(timeout: 5))
+        let help = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "0226-64 55 00")).firstMatch
+        XCTAssertTrue(help.exists, "Hjälpraden ska synas")
+
+        // Raden läses som en enhet med etikett, dag och alla platser, också de som den korta raden inte visar.
+        let area = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Askön, Nyhyttan m.fl., Område 1, Måndag, udda vecka.")).firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 5))
+        XCTAssertTrue(area.label.contains("Platser: Askön, Nyhyttan"))
+        XCTAssertTrue(area.label.contains("Högbo och Rutbo"), "VoiceOver ska läsa hela listan med platser")
+
+        // Ett område med platser som har en annan dag läser också dem.
+        let other = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Bodgatan (onsdag, jämn vecka)")).firstMatch
+        XCTAssertTrue(other.exists, "Platser med andra dagar ska visas")
+
+        // Bekräftelsen visar alla platser när listan fälls ut.
+        area.tap()
+        XCTAssertTrue(app.staticTexts["Stämmer området?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Välj ett annat område"].isHittable, "Knapparna ska synas utan att listan fällts ut")
+        app.buttons["Visa alla 18 platser"].tap()
+        XCTAssertTrue(app.buttons["Visa färre platser"].waitForExistence(timeout: 5))
+        let details = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Högbo och Rutbo")).firstMatch
+        XCTAssertTrue(details.exists, "Bekräftelsen ska visa hela listan med platser")
+    }
+
     func testHittaOmradeKnappenSynsNarKalendernArUtfalld() {
         open("Gata och husnummer")
         let field = app.textFields["Gata och husnummer"]
