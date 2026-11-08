@@ -183,6 +183,38 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(line.label.contains("Avesta Vatten publicerar hämtschemat ett år i taget."), "Orsaken ska stå under raden")
     }
 
+    func testSchematSomSnartSlutarVisarRutanOchRadenPaHem() {
+        // Avestas schema gäller bara 10 dagar till.
+        app.terminate()
+        app.launchArguments += ["-uitest-schemat-slutar"]
+        app.launch()
+        open("Gata och husnummer")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("okänd gata 1, Avesta")
+        open("Välj område i Avesta kommun")
+        let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 5))
+        area.tap()
+        open("Spara området")
+
+        // Hemkortet: en kort rad utan år. Kortet läses som en enhet.
+        let card = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        XCTAssertTrue(card.label.contains("Schemat slutar "), "Hemkortet ska säga att schemat slutar")
+        card.tap()
+
+        // Adressvyn: rutan med orsaken och att nya tider visas när källan publicerar dem.
+        XCTAssertTrue(app.staticTexts["Kommande"].waitForExistence(timeout: 5))
+        let box = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Schemat tar snart slut")).firstMatch
+        for _ in 0..<4 where !box.exists { app.swipeUp() }
+        XCTAssertTrue(box.waitForExistence(timeout: 5), "Rutan ska synas när schemat slutar inom 14 dagar")
+        XCTAssertTrue(box.label.contains("Avesta Vatten publicerar hämtschemat ett år i taget."))
+        XCTAssertTrue(box.label.contains("Nya tider visas när källan publicerar dem."))
+        XCTAssertFalse(box.label.localizedCaseInsensitiveContains("påminnelse"), "Inget löfte om påminnelser")
+    }
+
     func testHittaOmradeKnappenSynsNarKalendernArUtfalld() {
         open("Gata och husnummer")
         let field = app.textFields["Gata och husnummer"]

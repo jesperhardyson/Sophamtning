@@ -92,6 +92,7 @@ struct PrimaryCard: View {
                 Group {
                     nextPickup(pickup)
                     fractions(pickup)
+                    scheduleEnding
                 }
                 .transition(.opacity)
             case .loading:
@@ -176,6 +177,23 @@ struct PrimaryCard: View {
             }
             .foregroundStyle(foreground)
             .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// "Schemat slutar 10 jan" under kärlen, när schemat tar slut inom 14 dagar. Raden bryts hellre än att tränga undan
+    /// något, och VoiceOver läser den som en del av kortet.
+    @ViewBuilder
+    private var scheduleEnding: some View {
+        if let ending = entry.scheduleEnding {
+            Label {
+                Text(ending.shortText)
+                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+            } icon: {
+                Image(systemName: "calendar.badge.clock")
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(foreground.opacity(0.9))
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 

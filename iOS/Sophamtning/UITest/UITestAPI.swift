@@ -26,13 +26,26 @@ struct UITestAPI: SoporAPI {
 
     func address(url: URL) async throws -> AddressResponse {
         // Avesta har ett schema som gäller till ett visst datum. Testgatan är en live-källa utan sådant.
-        if url.path.contains("/adress/avesta/") { return try Self.load("uitest-adress-avesta") }
+        if url.path.contains("/adress/avesta/") {
+            let response: AddressResponse = try Self.load("uitest-adress-avesta")
+            return UITestSupport.endsSoon ? Self.endingSoon(response) : response
+        }
         return try Self.load("uitest-adress")
     }
 
     func sources() async throws -> SourcesResponse {
         let all: SourcesResponse = try Self.load("uitest-kallor")
         return SourcesResponse(sources: all.sources.filter { !$0.testData }, fractions: all.fractions)
+    }
+
+    /// Samma schema, men med sista dagen 10 dagar fram, så att rutan och raden om att schemat slutar syns.
+    private static func endingSoon(_ response: AddressResponse) -> AddressResponse {
+        let until = StockholmClock.today(now: Date()).adding(days: 10)
+        return AddressResponse(
+            today: response.today, address: response.address, next: response.next, summary: response.summary,
+            events: response.events, bins: response.bins, fractions: response.fractions, links: response.links,
+            updatedAt: response.updatedAt, schedule: SchedulePeriod(until: until, reason: response.schedule?.reason)
+        )
     }
 
     private static func load<Response: Decodable>(_ name: String) throws -> Response {
@@ -65,6 +78,9 @@ enum UITestSupport {
     private static let entranceArgument = "-uitest-intrade"
 
     private static var runsEntrance: Bool { ProcessInfo.processInfo.arguments.contains(entranceArgument) }
+
+    /// `-uitest-schemat-slutar`: Avestas schema gäller bara 10 dagar till.
+    static var endsSoon: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-schemat-slutar") }
 
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") || runsEntrance }
 

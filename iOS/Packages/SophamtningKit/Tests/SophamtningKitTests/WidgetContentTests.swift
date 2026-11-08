@@ -272,3 +272,48 @@ private func setReadable(_ readable: Bool, in directory: URL) throws {
     #expect(data.content(at: now) == .noSchedule(name: "Hemma"))
     #expect(data.reloadDate(after: now) == nil)
 }
+
+// MARK: Schemat slutar
+
+private func endingSchedule(until: String?, events: [PickupEvent] = [event("2026-11-09", ["rest"])]) -> CachedSchedule {
+    var cached = schedule(events)
+    let base = cached.response!
+    cached.response = AddressResponse(today: base.today, address: base.address, next: [], summary: "", events: events, bins: [], fractions: base.fractions, links: base.links, updatedAt: base.updatedAt, schedule: until.map { SchedulePeriod(until: DayDate($0)!, reason: nil) })
+    return cached
+}
+
+@Test func widgetenVisarNarSchematSlutarInomFjortonDagar() {
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: endingSchedule(until: "2026-11-20"), now: now)?.shortText == "Schemat slutar 20 nov")
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: endingSchedule(until: "2026-11-21"), now: now) == nil)
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: endingSchedule(until: "2026-11-06"), now: now)?.daysLeft == 0)
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: endingSchedule(until: "2026-11-05"), now: now) == nil)
+}
+
+@Test func widgetenVisarInteRadenForLivekallorUtanSchemaOchUtanHamtningar() {
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: endingSchedule(until: nil), now: now) == nil)
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: nil, now: now) == nil)
+    #expect(WidgetContent.scheduleEnding(addresses: [], schedule: endingSchedule(until: "2026-11-20"), now: now) == nil)
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: endingSchedule(until: "2026-11-10", events: [event("2026-11-01", ["rest"])]), now: now) == nil)
+}
+
+@Test func widgetenRaknarRadenFranTidslinjensTid() {
+    // Raden försvinner av sig själv när dagarna går, utan att appen sparar något. Den 21 november är 15 dagar kvar i dag
+    // och 14 dagar kvar i morgon.
+    let cached = endingSchedule(until: "2026-11-21")
+    let tomorrow = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 0)
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: cached, now: now) == nil)
+    #expect(WidgetContent.scheduleEnding(addresses: [home], schedule: cached, now: tomorrow)?.daysLeft == 14)
+}
+
+@Test func widgetdataFranLagringenGerRadenOchGammalSparadDataUtanFaltetGarBra() throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    try store.setAddresses([home])
+    try store.setSchedule(endingSchedule(until: "2026-11-20"), for: home.key)
+    #expect(WidgetData.read(from: store).scheduleEnding(at: now)?.shortText == "Schemat slutar 20 nov")
+    // Sparad data utan `schedule` avkodas utan fel och ger ingen rad.
+    try store.setSchedule(schedule([event("2026-11-09", ["rest"])]), for: home.key)
+    let old = WidgetData.read(from: store)
+    #expect(old.scheduleEnding(at: now) == nil)
+    guard case .pickup = old.content(at: now) else { Issue.record("Väntade kommande hämtning"); return }
+}

@@ -130,6 +130,9 @@ public struct HomeContent: Equatable, Sendable {
         /// Radens påminnelse under "Fler adresser". Bara när notis är på för adressen och en hämtning kommer, och utan
         /// Live Activity, som bara gäller huvudadressen. Alltid `nil` på huvudkortet.
         public let rowReminder: RowReminder?
+        /// "Schemat slutar 10 jan" när schemat tar slut inom 14 dagar. Bara med kommande hämtningar, och aldrig för
+        /// live-källor.
+        public let scheduleEnding: ScheduleEnding?
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
 
@@ -142,6 +145,7 @@ public struct HomeContent: Equatable, Sendable {
             if case .upcoming(let pickup) = status {
                 parts.append(pickup.fractions.map(\.info.name).joined(separator: ", "))
             }
+            if let scheduleEnding { parts.append(scheduleEnding.spokenText) }
             // De hårda mellanslagen gäller bara radbrytningen. VoiceOver och Röststyrning får vanliga mellanslag.
             return parts.joined(separator: ", ").replacingOccurrences(of: "\u{00A0}", with: " ")
         }
@@ -179,9 +183,11 @@ public struct HomeContent: Equatable, Sendable {
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
         var rowReminder: RowReminder?
         var primaryReminder: PrimaryReminder?
+        var scheduleEnding: ScheduleEnding?
         let summary: String
         switch status {
         case .upcoming(let pickup):
+            scheduleEnding = ScheduleEnding.make(schedule?.response?.schedule, today: today)
             // Hårt mellanslag före mittpunkten, så att den aldrig börjar en rad.
             summary = SwedishFormat.estimated(
                 "\(SwedishFormat.shortDate(pickup.date))\u{00A0}· \(SwedishFormat.relative(days: pickup.daysUntil))",
@@ -216,6 +222,7 @@ public struct HomeContent: Equatable, Sendable {
             refreshFailed: refreshFailed,
             reminder: primaryReminder,
             rowReminder: rowReminder,
+            scheduleEnding: scheduleEnding,
             summary: summary
         )
     }

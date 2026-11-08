@@ -596,3 +596,38 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     #expect(reminder.title == "Påminn mig kvällen före")
     #expect(reminder.detail == nil)
 }
+
+// MARK: Schemat slutar
+
+private func endingSchedule(until: String?, events: [PickupEvent] = [event("2026-11-09", ["rest"])], lastError: APIError? = nil) -> CachedSchedule {
+    var cached = schedule(events, lastError: lastError)
+    let base = cached.response!
+    cached.response = AddressResponse(today: base.today, address: base.address, next: [], summary: "", events: events, bins: [], fractions: base.fractions, links: base.links, updatedAt: base.updatedAt, schedule: until.map { SchedulePeriod(until: DayDate($0)!, reason: "Orsak.") })
+    return cached
+}
+
+private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
+    let address = SavedAddress.fixture(key: AddressKey(source: "x", id: "a"), isPrimary: true)
+    return HomeContent.make(addresses: [address], schedules: cached.map { [address.key: $0] } ?? [:], settings: ReminderSettings(), now: now)
+}
+
+@Test func hemkortetVisarNarSchematSlutarInomFjortonDagar() {
+    // Fredag 6 november: 20 november är 14 dagar kvar, 21 november 15.
+    #expect(endingHome(endingSchedule(until: "2026-11-20")).primary?.scheduleEnding?.shortText == "Schemat slutar 20 nov")
+    #expect(endingHome(endingSchedule(until: "2026-11-21")).primary?.scheduleEnding == nil)
+    #expect(endingHome(endingSchedule(until: "2026-11-06")).primary?.scheduleEnding?.daysLeft == 0)
+    #expect(endingHome(endingSchedule(until: "2026-11-05")).primary?.scheduleEnding == nil)
+}
+
+@Test func hemkortetVisarInteRadenForLivekallorEllerUtanSchema() {
+    #expect(endingHome(endingSchedule(until: nil)).primary?.scheduleEnding == nil)
+    #expect(endingHome(nil).primary?.scheduleEnding == nil)
+}
+
+@Test func hemkortetVisarInteRadenUtanKommandeHamtningar() {
+    #expect(endingHome(endingSchedule(until: "2026-11-10", events: [event("2026-11-01", ["rest"])])).primary?.scheduleEnding == nil)
+}
+
+@Test func hemkortetVisarRadenOckssaMedEttSparatSchemaEfterFel() {
+    #expect(endingHome(endingSchedule(until: "2026-11-20", lastError: .sourceUnavailable)).primary?.scheduleEnding != nil)
+}
