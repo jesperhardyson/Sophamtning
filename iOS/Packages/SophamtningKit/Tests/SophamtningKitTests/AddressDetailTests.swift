@@ -342,6 +342,29 @@ private func periodSchedule(_ events: [PickupEvent], until: String?, reason: Str
     #expect(noReason.noUpcomingMessage.message == "Schemat gällde till 5 november 2026, och källan har inte publicerat nästa period än.")
 }
 
+@Test func sparatSchemaEfterFelSagerInteAttKallanSaknarNastaPeriod() throws {
+    // Hämtningen misslyckades och ett sparat schema med passerad period visas. Nästa period kan finnas hos källan utan
+    // att ha kommit fram, så kortet säger bara vad det senast hämtade schemat säger.
+    var failed = try periodSchedule([event("2026-11-01", ["rest"])], until: "2026-11-05")
+    failed.lastError = .network
+    let result = detail(failed)
+    #expect(result.mode == .noUpcoming)
+    #expect(result.notice == .savedShown(fetched: "Hämtat i dag 12:00 från Uppsala Vatten."))
+    #expect(result.noUpcomingMessage == AddressDetail.NoUpcomingMessage(
+        title: "Inga kommande hämtningar",
+        message: "Det senast hämtade schemat gällde till 5 november 2026. Avesta Vatten publicerar hämtschemat ett år i taget."
+    ))
+    #expect(!result.noUpcomingMessage.message.contains("inte publicerat"))
+    // Utan period, som för live-källor, inte heller att schemat har tagit slut hos kommunen.
+    var live = try periodSchedule([], until: nil)
+    live.lastError = .network
+    #expect(detail(live).noUpcomingMessage.message == "Det senast hämtade schemat har inga fler hämtningar.")
+    // En period som gäller fortfarande är densamma som utan fel.
+    var current = try periodSchedule([], until: "2027-01-10", reason: nil)
+    current.lastError = .network
+    #expect(detail(current).noUpcomingMessage.message == "Inga fler hämtningar i schemat, som gäller till 10 januari 2027.")
+}
+
 @Test func helaSchematHarNamnetForstOchAdressvynUnderRubriken() throws {
     let area = SavedAddress(key: key, url: address.url, street: "Kaplansgården, Jularbo m.fl.", locality: "", kommun: "Avesta kommun", detail: nil, selection: "area", displayName: "Kaplansgården, Jularbo m.fl.", isPrimary: false, addedAt: address.addedAt)
     let result = detail(nil, address: area)

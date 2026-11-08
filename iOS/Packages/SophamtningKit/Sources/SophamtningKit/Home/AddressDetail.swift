@@ -191,7 +191,7 @@ public struct AddressDetail: Equatable, Sendable {
             bins: bins,
             rows: scheduleRows,
             schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
-            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today),
+            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
             reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
@@ -211,20 +211,27 @@ public struct AddressDetail: Equatable, Sendable {
 
     /// Utan kommande hämtningar. Gäller perioden fortfarande finns inga fler hämtningar i det publicerade schemat. Har den
     /// passerat har källan inte publicerat nästa period än. Källans orsak står med. Det säger aldrig att adressen saknas.
-    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate) -> NoUpcomingMessage {
+    /// Visas ett sparat schema efter ett fel (`afterError`) kan nästa period finnas hos källan utan att ha kommit fram,
+    /// så då står bara vad det senast hämtade schemat säger, aldrig att något saknas hos källan.
+    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate, afterError: Bool = false) -> NoUpcomingMessage {
         let title = "Inga kommande hämtningar"
         guard let period else {
-            return NoUpcomingMessage(title: title, message: "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+            let message = afterError
+                ? "Det senast hämtade schemat har inga fler hämtningar."
+                : "Schemat kan ta slut tills kommunen har publicerat nästa period."
+            return NoUpcomingMessage(title: title, message: message)
         }
         let until = SwedishFormat.dayMonthYear(period.until)
-        let base = period.until < today
-            ? "Schemat gällde till \(until), och källan har inte publicerat nästa period än."
-            : "Inga fler hämtningar i schemat, som gäller till \(until)."
-        return NoUpcomingMessage(title: title, message: [base, cleanReason(period.reason)].compactMap { part in part }.joined(separator: " "))
-    }
-
-    private static func cleanReason(_ reason: String?) -> String? {
-        reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let base: String
+        if period.until >= today {
+            base = "Inga fler hämtningar i schemat, som gäller till \(until)."
+        } else if afterError {
+            base = "Det senast hämtade schemat gällde till \(until)."
+        } else {
+            base = "Schemat gällde till \(until), och källan har inte publicerat nästa period än."
+        }
+        let reason = period.reason?.trimmedNonEmpty
+        return NoUpcomingMessage(title: title, message: [base, reason].compactMap { part in part }.joined(separator: " "))
     }
 
     /// Klockslaget för ett ögonblick i svensk tid, "18:45".
