@@ -22,6 +22,14 @@ private func ids(_ query: String, in list: [SearchHit] = hits) -> [String] {
         #expect(ids("   ") == ["1", "2", "3"])
     }
 
+    @Test func enEnsamBokstavFiltrerarInte() {
+        // Som på webben filtreras det först från 2 tecken. Trimmat räknas, så " k " är en bokstav.
+        #expect(ids("k") == ["1", "2", "3"])
+        #expect(ids(" k ") == ["1", "2", "3"])
+        #expect(ids("kr") == ["2"])
+        #expect(ids(" kr ") == ["2"])
+    }
+
     @Test func namnetMatcharUtanSkiftlage() {
         #expect(ids("KRYLBO") == ["2"])
         #expect(ids("kaplans") == ["3"])

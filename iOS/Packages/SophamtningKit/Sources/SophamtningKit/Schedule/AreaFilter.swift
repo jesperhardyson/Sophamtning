@@ -7,18 +7,23 @@ public enum AreaFilter {
     /// Småord i områdesnamn ("m.fl.", "och", "del av"). De går inte att söka på, annars ger "fl" nästan alla områden.
     private static let fillerWords: Set<String> = ["m", "fl", "och", "del", "av", "om", "by"]
 
-    /// Träffarna i samma ordning som listan. Ett tomt fält ger alla.
+    /// Kortaste frågan som filtrerar, som på webben.
+    public static let minimumLength = 2
+
+    /// Träffarna i samma ordning som listan. Ett tomt fält, eller en fråga på färre än 2 tecken, ger alla.
     public static func filter(_ hits: [SearchHit], query: String) -> [SearchHit] {
+        // Som på webben filtreras det först från 2 tecken. Ett enda tecken ger alla områden.
+        guard query.trimmingCharacters(in: .whitespacesAndNewlines).count >= minimumLength else { return hits }
         let normalized = normalize(query)
         guard !normalized.isEmpty else { return hits }
         // Småord i frågan räknas inte, och en fråga med bara småord ger inga träffar.
-        let tokens = normalized.split(separator: " ").map(String.init).filter { token in !fillerWords.contains(token) }
+        let tokens = normalized.split(separator: " ").map { part in String(part) }.filter { token in !fillerWords.contains(token) }
         guard !tokens.isEmpty else { return [] }
         return hits.filter { hit in matches(tokens, hit) }
     }
 
     private static func matches(_ tokens: [String], _ hit: SearchHit) -> Bool {
-        let words = fields(of: hit).flatMap { field in normalize(field).split(separator: " ").map(String.init) }
+        let words = fields(of: hit).flatMap { field in normalize(field).split(separator: " ").map { part in String(part) } }
             .filter { word in !fillerWords.contains(word) }
         return tokens.allSatisfy { token in words.contains { word in word.hasPrefix(token) } }
     }
