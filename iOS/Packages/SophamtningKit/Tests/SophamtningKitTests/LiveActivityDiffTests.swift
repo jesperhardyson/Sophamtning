@@ -205,12 +205,12 @@ private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity]
     let plain = content()
     #expect(plain.subtitle == "Hemma · måndag 9 november")
     #expect(plain.shortDate == "Mån 9 nov")
-    #expect(plain.compactDate == "Mån 9")
+    #expect(plain.compactDate == "Mån")
     #expect(plain.fractionsLine == "Hemma: Restavfall")
     let estimated = content(estimated: true)
     #expect(estimated.subtitle == "Hemma · ca måndag 9 november")
     #expect(estimated.shortDate == "ca mån 9 nov")
-    #expect(estimated.compactDate == "ca mån 9")
+    #expect(estimated.compactDate == "ca mån")
 }
 
 @Test func aktivitetensTextSagerAldrigIMorgon() throws {

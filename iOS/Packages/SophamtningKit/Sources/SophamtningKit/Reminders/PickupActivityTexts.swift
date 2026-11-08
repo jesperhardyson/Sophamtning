@@ -24,9 +24,11 @@ extension PickupActivityContent {
         estimated ? "ca " + shortDateText.lowercased() : shortDateText
     }
 
-    /// "Mån 9", eller "ca mån 9". För Dynamic Islands kompakta läge.
+    /// "Mån", eller "ca mån". För Dynamic Islands kompakta läge, där ett längre datum gör ön så bred att statusraden trängs
+    /// undan. Veckodagen räcker, eftersom aktiviteten bara lever kvällen före. Hela datumet syns i de andra lägena.
     public var compactDate: String {
-        shortDate.split(separator: " ").dropLast().joined(separator: " ")
+        let weekday = shortDateText.split(separator: " ").first.map { String($0) } ?? shortDateText
+        return estimated ? "ca " + weekday.lowercased() : weekday
     }
 
     /// "Restavfall, Matavfall och Glas".
