@@ -118,6 +118,8 @@ private func firstDay(_ fractions: [FractionPickup]) -> [FractionPickup] {
 }
 
 /// Allt widgeten visar som en mening, för VoiceOver. Alla fraktioner med namn, också de som bara syns som ikoner.
+/// "Schemat slutar …" ingår också när `ViewThatFits` har utelämnat raden för att den inte ryms: det är avsiktligt, eftersom
+/// informationen är viktig och VoiceOver inte har någon platsbrist.
 private func spokenSummary(name: String, relative: String, shortDate: String, fractions: [FractionPickup], entry: NextPickupEntry) -> String {
     let today = firstDay(fractions).map { entry.info(for: $0.fraction).name }.joined(separator: ", ")
     let later = fractions.dropFirst(firstDay(fractions).count).map {
