@@ -174,8 +174,11 @@ public struct Address: Codable, Hashable, Sendable {
     public let detail: String?
     public let selection: String
     public let notice: String?
+    /// Områdets detaljer när `selection` är "area". `nil` för vanliga adresser och live-källor, när källans områdesdata
+    /// inte kunde läsas, i äldre svar och sparad data utan fältet, och när fältet är trasigt.
+    public let area: AreaDetails?
 
-    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?) {
+    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?, area: AreaDetails? = nil) {
         self.id = id
         self.street = street
         self.locality = locality
@@ -184,6 +187,7 @@ public struct Address: Codable, Hashable, Sendable {
         self.detail = detail
         self.selection = selection
         self.notice = notice
+        self.area = area
     }
 }
 
@@ -455,6 +459,8 @@ extension Address {
         detail = try c.decodeIfPresent(String.self, forKey: .detail)
         selection = try c.decodeIfPresent(String.self, forKey: .selection) ?? "address"
         notice = try c.decodeIfPresent(String.self, forKey: .notice)
+        // Trasiga detaljer ger ingen ruta. De får inte fälla hela adressvaret.
+        area = (try? c.decodeIfPresent(AreaDetails.self, forKey: .area)).flatMap { $0 }
     }
 }
 

@@ -126,6 +126,8 @@ public struct AddressDetail: Equatable, Sendable {
     /// Rutan när schemat tar slut inom 14 dagar. Bara med kommande hämtningar: utan dem säger meddelandet nedan hur långt
     /// schemat gäller. `nil` för live-källor och efter att perioden har passerat.
     public let scheduleEnding: ScheduleEnding?
+    /// Rutan "Vissa gator har en annan hämtdag" för ett område med avvikande gator. `nil` när raderna saknas.
+    public let otherDays: OtherDaysNote?
     /// Meddelandet i läget `noUpcoming`. Har källans period passerat säger det att nästa period inte är publicerad än.
     public let noUpcomingMessage: NoUpcomingMessage
     /// "Hämtat i dag 09:12", längst ned i kortet för källan, eller `nil` när schemat aldrig hämtats.
@@ -195,6 +197,7 @@ public struct AddressDetail: Equatable, Sendable {
             rows: scheduleRows,
             schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
             scheduleEnding: mode == .schedule ? ScheduleEnding.make(response?.schedule, today: today) : nil,
+            otherDays: OtherDaysNote.make(response?.address.area),
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
