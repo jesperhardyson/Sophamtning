@@ -50,11 +50,11 @@ UI-testerna tar 15–20 minuter som hel svit. Kör därför bara de UI-tester so
 
 ## Releaser
 
-Releaser ska skötas med Release Please (googleapis/release-please-action), med versionstypen `simple`. Flödet byggs i ärende #27 och är inte på plats än.
+Releaser sköts med Release Please (googleapis/release-please-action), med versionstypen `simple`, i `.github/workflows/release.yml`. Spec: `docs/specs/2026-11-08-release.md`.
 
 - Release Please läser commit-meddelandena på `main`: `feat:` höjer minor, `fix:` höjer patch och `!` höjer major. Andra typer ger ingen release och syns inte i changelogen.
 - Repot squash-mergar, så PR-titeln blir commit-meddelandet på `main`. Titeln måste därför följa formatet ovan.
 - Release Please håller en öppen release-PR med nästa version i `version.txt` och `CHANGELOG.md`. När den mergas skapas taggen `vX.Y.Z` och en GitHub Release.
-- Taggen startar bygget till TestFlight. Varje uppladdning godkänns av Jesper, och App Store-inskickning görs bara efter hans godkännande.
-- Appens version (`MARKETING_VERSION` i `iOS/project.yml`) ska alltid vara densamma som i `version.txt`. Release Please uppdaterar den. Ändra aldrig version eller changelog för hand.
+- När release-PR:en mergas startar jobbet TestFlight i samma körning. Det väntar på Jespers godkännande i miljön `testflight`, och laddar sedan upp till App Store Connect. App Store-inskickning görs bara efter hans godkännande. En uppladdning kan göras om med Actions > Release > Run workflow och taggen.
+- Appens version (`MARKETING_VERSION` i `iOS/Config/Version.xcconfig`) ska alltid vara densamma som i `version.txt`. Release Please uppdaterar båda. Byggnumret räknas fram i jobbet. Ändra aldrig version eller changelog för hand.
 - Ändringar i specen godkänns av Jesper innan bygget fortsätter.

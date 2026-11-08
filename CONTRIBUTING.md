@@ -28,7 +28,7 @@ Mindre rättningar behöver bara en pull request.
 
 1. Forka repot och skapa en gren: `fix/kort-beskrivning` eller `feature/kort-beskrivning`.
 2. Skriv tester och gör ändringen.
-3. Öppna en pull request med titeln `fix: Beskrivning` eller `feat: Beskrivning` och fyll i mallen. Titeln följer [Conventional Commits](https://www.conventionalcommits.org/sv/v1.0.0/), eftersom den blir commit-meddelandet på `main` och styr versionen. Ändringar i bara dokumentation får `docs:`.
+3. Öppna en pull request med titeln `fix: Beskrivning` eller `feat: Beskrivning` och fyll i mallen. Titeln följer [Conventional Commits](https://www.conventionalcommits.org/sv/v1.0.0/), eftersom den blir commit-meddelandet på `main` och styr versionen. Ändringar i bara dokumentation får `docs:`. Releaser görs inte för hand: Release Please håller en release-PR med nästa version, och när den mergas laddas appen upp till TestFlight efter godkännande.
 
 `main` är skyddad. Ändringar går via pull request, och förvaltaren granskar dem.
 
