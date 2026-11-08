@@ -21,7 +21,8 @@ struct AreaPickerView: View {
 
     /// Områdena som matchar sökfältet, i listans ordning. Ett tomt fält visar alla.
     private var visibleHits: [SearchHit] { AreaFilter.filter(hits, query: query) }
-    private var isSearching: Bool { !trimmedQuery.isEmpty }
+    /// Samma gräns som filtret: med ett enda tecken visas hela listan, och då står varningen och förklaringen kvar.
+    private var isSearching: Bool { trimmedQuery.count >= AreaFilter.minimumLength }
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
