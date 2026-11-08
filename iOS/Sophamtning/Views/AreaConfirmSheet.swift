@@ -26,13 +26,15 @@ struct AreaConfirmSheet: View {
                     }
                 }
         }
-        .presentationDetents([.fraction(0.7), .large])
+        // Arket öppnas i full höjd, så att hela innehållet syns i vanlig textstorlek: området med platser och andra dagar,
+        // varningen och båda knapparna. Ett ark som slutar mitt i texten visar inte att det går att scrolla.
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
     private var content: some View {
-        // Rullbart, och Spara området står fast längst ned, så att knappen alltid syns, också i halv höjd och med
-        // största textstorlek.
+        // Rullbart, och Spara området står fast längst ned, så att knappen alltid syns, också med största textstorlek.
+        // Är innehållet ändå längre blinkar rullningslisten när arket öppnas, så att det syns att det finns mer.
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Stämmer området?")
@@ -69,6 +71,7 @@ struct AreaConfirmSheet: View {
             .padding(.bottom, 24)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .scrollIndicatorsFlash(onAppear: true)
         .safeAreaBar(edge: .bottom) {
             // Vibrationen spelas av hemskärmen, som finns kvar när arket stängs.
             Button { onSave() } label: { PrimaryButtonLabel(title: "Spara området") }
