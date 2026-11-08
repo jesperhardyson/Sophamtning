@@ -150,6 +150,7 @@ final class CoreFlowTests: XCTestCase {
         // Tomt fält ger alla områden igen.
         search.clearAndTypeText("")
         XCTAssertTrue(askon.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Du väljer området själv"].waitForExistence(timeout: 5), "Varningen ska komma tillbaka")
     }
 
     func testSchematGallerTillVisasForAvestaMenInteForLivekalla() {
@@ -206,12 +207,15 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(card.label.contains("Schemat slutar "), "Hemkortet ska säga att schemat slutar")
         card.tap()
 
-        // Adressvyn: rutan med orsaken och att nya tider visas när källan publicerar dem.
+        // Adressvyn: orsaken står en gång, under raden "Schemat gäller till", och rutan säger att nya tider visas när källan
+        // publicerar dem.
         XCTAssertTrue(app.staticTexts["Kommande"].waitForExistence(timeout: 5))
         let box = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Schemat tar snart slut")).firstMatch
         for _ in 0..<4 where !box.exists { app.swipeUp() }
         XCTAssertTrue(box.waitForExistence(timeout: 5), "Rutan ska synas när schemat slutar inom 14 dagar")
-        XCTAssertTrue(box.label.contains("Avesta Vatten publicerar hämtschemat ett år i taget."))
+        XCTAssertFalse(box.label.contains("Avesta Vatten publicerar"), "Orsaken ska inte upprepas i rutan")
+        let reason = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Avesta Vatten publicerar hämtschemat ett år i taget.")).firstMatch
+        XCTAssertTrue(reason.exists, "Orsaken ska stå under raden Schemat gäller till")
         XCTAssertTrue(box.label.contains("Nya tider visas när källan publicerar dem."))
         XCTAssertFalse(box.label.localizedCaseInsensitiveContains("påminnelse"), "Inget löfte om påminnelser")
     }
