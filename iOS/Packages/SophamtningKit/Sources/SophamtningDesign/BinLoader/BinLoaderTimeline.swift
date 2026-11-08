@@ -103,6 +103,48 @@ public enum BinLoaderTimeline {
         }
     }
 
+    // MARK: Hela kärlet i en bild
+
+    /// Kärlets läge i en bild: locket, om det ligger bakom kroppen, gungningen och fraktionen.
+    public struct Pose: Equatable, Sendable {
+        public let lidAngle: Double
+        public let lidIsBehindBody: Bool
+        public let bodySway: Double
+        public let fraction: FractionState
+
+        /// Stilla med stängt lock och utan fraktion.
+        public static let resting = Pose(
+            lidAngle: 0,
+            lidIsBehindBody: false,
+            bodySway: 0,
+            fraction: FractionState(index: 0, opacity: 0, x: 0, y: 0, rotation: 0)
+        )
+    }
+
+    /// Slingans läge, `elapsed` sekunder efter att den startade.
+    public static func loopPose(at elapsed: TimeInterval) -> Pose {
+        let p = progress(at: elapsed)
+        return Pose(lidAngle: lidAngle(at: p), lidIsBehindBody: lidIsBehindBody(at: p), bodySway: bodySway(at: p), fraction: fractionState(at: elapsed))
+    }
+
+    // MARK: Ett varv i tomt läge
+
+    /// Ett varv i tomt läge är lika långt som ett varv i slingan.
+    public static let roundDuration: TimeInterval = period
+
+    /// Sant medan ett varv pågår, `elapsed` sekunder efter att det startade. Med Reducera rörelse spelas inget varv.
+    public static func isPlayingRound(elapsed: TimeInterval, reduceMotion: Bool) -> Bool {
+        !reduceMotion && elapsed >= 0 && elapsed < roundDuration
+    }
+
+    /// Kärlets läge under ett varv. `round` räknar varven och ger fraktionen, så att varje varv visar nästa.
+    /// Före och efter varvet, och med Reducera rörelse, står kärlet stilla med stängt lock.
+    public static func roundPose(round: Int, elapsed: TimeInterval, reduceMotion: Bool) -> Pose {
+        guard isPlayingRound(elapsed: elapsed, reduceMotion: reduceMotion) else { return .resting }
+        // Samma bild som slingans varv nummer `round`, så att fraktionen byts likadant.
+        return loopPose(at: Double(max(round, 0)) * period + elapsed)
+    }
+
     // MARK: Text och inträde
 
     /// Textens opacitet (`karl-text`: 0 till 1 vid 15 %, 1 till 0 från 85 %, `ease-in-out`).

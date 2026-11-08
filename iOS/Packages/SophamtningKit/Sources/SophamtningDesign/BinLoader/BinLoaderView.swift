@@ -75,15 +75,23 @@ public struct BinLoaderView: View {
         }
     }
 
-    /// Kärlet ritas i SVG:ns eget mått (360 × 560) och skalas till `width`.
     private func bin(elapsed: TimeInterval, animated: Bool) -> some View {
-        let progress = animated ? BinLoaderTimeline.progress(at: elapsed) : 0
-        let behind = animated && BinLoaderTimeline.lidIsBehindBody(at: progress)
+        BinFigure(pose: animated ? BinLoaderTimeline.loopPose(at: elapsed) : .resting, width: width)
+    }
+}
+
+/// Kärlet i ett givet läge. Ritas i SVG:ns eget mått (360 × 560) och skalas till `width`. Delas av slingan och tomt läge.
+struct BinFigure: View {
+    let pose: BinLoaderTimeline.Pose
+    let width: CGFloat
+
+    var body: some View {
         let box = BinArtwork.viewBox
         let scale = width / box.width
         let hinge = BinArtwork.local(BinArtwork.hinge)
         let pivot = BinArtwork.local(BinArtwork.bodyPivot)
-        let lid = lid(angle: animated ? BinLoaderTimeline.lidAngle(at: progress) : 0, hinge: hinge)
+        let behind = pose.lidIsBehindBody
+        let lid = lid(angle: pose.lidAngle, hinge: hinge)
         return ZStack(alignment: .topLeading) {
             Ellipse()
                 .fill(Color.Theme.surface2)
@@ -91,12 +99,12 @@ public struct BinLoaderView: View {
                 .offset(x: BinArtwork.local(BinArtwork.shadow.origin).x, y: BinArtwork.local(BinArtwork.shadow.origin).y)
             ZStack(alignment: .topLeading) {
                 if behind { lid }
-                if animated { fraction(BinLoaderTimeline.fractionState(at: elapsed)) }
+                if pose.fraction.opacity > 0 { fraction(pose.fraction) }
                 parts(BinArtwork.bodyParts)
                 if !behind { lid }
             }
             .rotationEffect(
-                .degrees(animated ? BinLoaderTimeline.bodySway(at: progress) : 0),
+                .degrees(pose.bodySway),
                 anchor: UnitPoint(x: pivot.x / box.width, y: pivot.y / box.height)
             )
         }

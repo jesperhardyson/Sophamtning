@@ -45,4 +45,37 @@ private func resp(_ hits: [SearchHit], failed: [String]) -> SearchResponse {
         #expect(SearchState.place(in: "kvarnvägen") == nil)
         #expect(SearchState.place(in: "  kvarnvägen   3   södra  avesta ") == "södra avesta")
     }
+
+    @Test func ortkandidaterMedKommatecken() {
+        #expect(SearchState.placeCandidates(in: "Bergslagsgatan, Avesta") == ["Avesta"])
+    }
+
+    @Test func ortkandidaterUtanKommatecken() {
+        #expect(SearchState.placeCandidates(in: "Bergslagsgatan Avesta") == ["Bergslagsgatan Avesta", "Avesta"])
+        #expect(SearchState.placeCandidates(in: "Storgatan Upplands Väsby") == ["Upplands Väsby", "Väsby"])
+    }
+
+    @Test func ortkandidaterEfterHusnummer() {
+        #expect(SearchState.placeCandidates(in: "Bergslagsgatan 1 Avesta") == ["Avesta"])
+        #expect(SearchState.placeCandidates(in: "Bergslagsgatan 12 B Avesta") == ["Avesta"])
+    }
+
+    @Test func ortkandidaterForBaraOrt() {
+        #expect(SearchState.placeCandidates(in: "Avesta") == ["Avesta"])
+        #expect(SearchState.placeCandidates(in: "Säter") == ["Säter"])
+        #expect(SearchState.placeCandidates(in: "Upplands Väsby") == ["Upplands Väsby", "Väsby"])
+        #expect(SearchState.placeCandidates(in: " avesta ") == ["avesta"])
+    }
+
+    @Test func ortkandidaterKraverTvaTecken() {
+        #expect(SearchState.placeCandidates(in: "a").isEmpty)
+        #expect(SearchState.placeCandidates(in: "").isEmpty)
+        #expect(SearchState.placeCandidates(in: "Storgatan B") == ["Storgatan B"])
+    }
+
+    @Test func ortkandidaterHarHogstTvaOrd() {
+        #expect(SearchState.placeCandidates(in: "Storgatan 3, Södra Avesta by").isEmpty)
+        #expect(SearchState.placeCandidates(in: "Storgatan 3 Södra Avesta by").isEmpty)
+        #expect(SearchState.placeCandidates(in: "Storgatan 3").isEmpty)
+    }
 }

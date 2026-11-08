@@ -29,6 +29,16 @@ public enum SwedishFormat {
         "\(longDate(day, capitalized: true)) \(day.year)"
     }
 
+    /// "10 januari 2027", utan veckodag.
+    public static func dayMonthYear(_ day: DayDate) -> String {
+        "\(day.day) \(months[day.month - 1]) \(day.year)"
+    }
+
+    /// Månaden helt utskriven, "januari".
+    public static func monthName(_ day: DayDate) -> String {
+        months[day.month - 1]
+    }
+
     /// "13 okt", utan veckodag.
     public static func dayMonth(_ day: DayDate) -> String {
         "\(day.day) \(shortMonths[day.month - 1])"
@@ -55,10 +65,12 @@ public enum SwedishFormat {
         return "\(weekday.prefix(1).uppercased() + weekday.dropFirst()) \(day.day) \(shortMonths[day.month - 1])"
     }
 
+    /// "i dag", "i morgon", "i övermorgon" och från tre dagar "om 3 dagar".
     public static func relative(days: Int) -> String {
         switch days {
         case 0: "i dag"
         case 1: "i morgon"
+        case 2: "i övermorgon"
         default: "om \(days) dagar"
         }
     }

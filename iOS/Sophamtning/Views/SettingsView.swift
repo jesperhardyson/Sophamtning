@@ -3,9 +3,7 @@ import SophamtningKit
 import SwiftUI
 import UIKit
 
-/// Länken till integritetspolicyn. Policyn publiceras under `sopor.hardyson.se`, men sidan finns inte än: adressen visar
-/// webbplatsens reservsida. Länken är dold tills sidan skapas i uppgift 15, och då ändras konstanten till `true`.
-let privacyPageExists = false
+/// Länken till integritetspolicyn på `sopor.hardyson.se`.
 let privacyLink = WebLink(url: URL(string: "https://sopor.hardyson.se/integritet")!)!
 
 private enum SettingsRoute: Hashable {
@@ -33,7 +31,7 @@ struct SettingsView: View {
                             Button { model.clearStorageError() } label: {
                                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.pressable)
                             .padding(.top, 8)
                         }
                         reminders
@@ -46,16 +44,16 @@ struct SettingsView: View {
                         )
                         .padding(.top, 24)
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, PageMargin.horizontal)
                     .padding(.bottom, 32)
                 }
             }
             .navigationTitle("Inställningar")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onClose) { Image(systemName: "xmark") }
-                        .accessibilityLabel("Stäng")
+                    // Systemets stängknapp i glas, som i iOS 26.
+                    Button("Stäng", systemImage: "xmark", role: .close) { onClose() }
                 }
             }
             .navigationDestination(for: SettingsRoute.self) { route in
@@ -92,25 +90,9 @@ struct SettingsView: View {
                     }
                 }
                 ResultDivider()
-                Toggle(isOn: Binding(
-                    get: { model.settings.liveActivityOn },
-                    set: { model.clearStorageError(); model.setLiveActivity($0) }
-                )) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Live Activity")
-                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                            .foregroundStyle(Color.Theme.text)
-                        Text(AddressDetail.liveActivityText(settings: model.settings))
-                            .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                            .foregroundStyle(Color.Theme.text2)
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.Theme.primary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                LiveActivityToggleRow(model: model, text: AddressDetail.liveActivityText(settings: model.settings))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
             LiveActivityNotices(model: model, edge: .top)
@@ -130,18 +112,16 @@ struct SettingsView: View {
             heading("Om appen")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.sources) {
-                    SettingsRow(title: "Datakällor", value: sourceCount.map(String.init) ?? "")
+                    SettingsRow(title: "Datakällor", value: sourceCount.map { String($0) } ?? "")
                 }
-                if privacyPageExists {
-                    ResultDivider()
-                    Button { link = privacyLink } label: {
-                        SettingsRow(title: "Integritet", value: "")
-                    }
+                ResultDivider()
+                Button { link = privacyLink } label: {
+                    SettingsRow(title: "Integritet", value: "")
                 }
                 ResultDivider()
                 SettingsRow(title: "Version", value: version, showsChevron: false)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         }
@@ -186,7 +166,7 @@ struct LiveActivityNotices: View {
                             .font(.ui(17, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.primary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                 }
                 if let error {
                     MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Live Activity saknas", message: error)
@@ -205,14 +185,18 @@ private struct SettingsRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(title)
-                .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                .foregroundStyle(Color.Theme.text)
-            Spacer(minLength: 8)
-            if !value.isEmpty {
-                Text(value)
-                    .font(.ui(19, weight: .semibold, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text2)
+            AdaptiveStack(spacing: 8, verticalSpacing: 2) {
+                Text(title)
+                    .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                    .foregroundStyle(Color.Theme.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                Spacer(minLength: 8)
+                if !value.isEmpty {
+                    Text(value)
+                        .font(.ui(19, weight: .semibold, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text2)
+                }
             }
             if showsChevron {
                 Image(systemName: "chevron.right")
@@ -253,7 +237,7 @@ private struct ChoiceRow: View {
             .frame(minHeight: 52)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -272,7 +256,7 @@ private struct ReminderTimeView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                     ResultList {
                         ForEach(Array(times.enumerated()), id: \.element) { index, minutes in
@@ -284,12 +268,12 @@ private struct ReminderTimeView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
             }
         }
         .navigationTitle("Påminnelsetid")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -305,7 +289,7 @@ private struct PrimaryAddressView: View {
                         Button { model.clearStorageError() } label: {
                             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                     ResultList {
                         ForEach(Array(model.addresses.enumerated()), id: \.element.key) { index, address in
@@ -317,77 +301,104 @@ private struct PrimaryAddressView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
             }
         }
         .navigationTitle("Huvudadress")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
-/// Källorna från `/kallor`, som en enkel lista, och Wikidata för ortlistan.
+/// Källorna från `/kallor` i en vanlig iOS-lista: namnet, kommunerna källan täcker och länkarna till webbplatsen och
+/// kontakten. Testdata visas inte. Sist står Wikidata för ortlistan.
 private struct SourcesView: View {
     let sources: [Source]?
     let loading: Bool
     let onRetry: () async -> Void
 
+    @State private var webLink: WebLink?
+
     var body: some View {
-        ZStack {
-            Color.Theme.bg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let sources {
-                        let shown = sources.filter { !$0.testData }
+        Group {
+            if let sources {
+                let shown = sources.filter { !$0.testData }
+                List {
+                    Section {
+                        ForEach(shown, id: \.id) { source in
+                            sourceRow(source)
+                        }
+                    } header: {
                         Text("Schemat hämtas från \(shown.count) källor.")
                             .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(Color.Theme.text2)
-                        ResultList {
-                            ForEach(Array(shown.enumerated()), id: \.element.id) { index, source in
-                                if index > 0 { ResultDivider() }
-                                row(source.name)
-                            }
-                            ResultDivider()
-                            row("Wikidata (CC0)", detail: "Ortlistan för kommunfrågan")
-                        }
-                    } else if loading {
-                        // Medan listan hämtas visas ingen felruta.
-                        HStack(spacing: 12) {
-                            ProgressView()
-                            Text("Hämtar källor…")
-                                .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                            .textCase(nil)
+                    }
+                    Section {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Wikidata (CC0)")
+                                .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                                .foregroundStyle(Color.Theme.text)
+                            Text("Ortlistan för kommunfrågan")
+                                .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                                 .foregroundStyle(Color.Theme.text2)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    } else {
-                        MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
-                        Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                        .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
                     }
+                    .listRowBackground(Color.Theme.surface)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if loading {
+                            // Medan listan hämtas visas ingen felruta.
+                            HStack(spacing: 12) {
+                                ProgressView()
+                                Text("Hämtar källor…")
+                                    .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                                    .foregroundStyle(Color.Theme.text2)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        } else {
+                            MessageCard(style: .warning, icon: "icloud.slash", title: "Kunde inte hämta källistan", message: "Försök igen om en stund.")
+                            Button { Task { await onRetry() } } label: { PrimaryButtonLabel(title: "Försök igen") }
+                                .buttonStyle(.pressable)
+                        }
+                    }
+                    .padding(.horizontal, PageMargin.horizontal)
+                    .padding(.vertical, 16)
+                }
             }
         }
+        .background(Color.Theme.bg.ignoresSafeArea())
+        .inAppBrowser(item: $webLink)
         .navigationTitle("Datakällor")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 
-    private func row(_ title: String, detail: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                .foregroundStyle(Color.Theme.text)
-            if let detail {
-                Text(detail)
+    /// En källa: namnet och kommunerna, och under dem länkarna. Varje länk tar emot sitt eget tryck.
+    private func sourceRow(_ source: Source) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source.name)
+                    .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                    .foregroundStyle(Color.Theme.text)
+                Text(source.kommunerText)
                     .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.text2)
             }
+            .accessibilityElement(children: .combine)
+            ForEach(SourceLink.links(for: source, kommunInfo: nil)) { link in
+                // Källans namn i etiketten, så att VoiceOver säger vilken källa länken hör till.
+                SourceLinkButton(link: link, webLink: $webLink, source: source.name)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .accessibilityElement(children: .combine)
+        .padding(.vertical, 6)
+        .listRowBackground(Color.Theme.surface)
     }
 }

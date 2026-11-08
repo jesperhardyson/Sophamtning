@@ -1,0 +1,713 @@
+{
+  "apiVersion": "1",
+  "sources": [
+    {
+      "id": "avesta",
+      "name": "Avesta Vatten och Avfall",
+      "url": "https://www.avestavatten.se",
+      "kommuner": [
+        {
+          "code": "2084",
+          "name": "Avesta kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "sater",
+      "name": "Säters kommun",
+      "url": "https://sater.se",
+      "kommuner": [
+        {
+          "code": "2082",
+          "name": "Säters kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "uppsala",
+      "name": "Uppsala Vatten",
+      "url": "https://www.uppsalavatten.se",
+      "kommuner": [
+        {
+          "code": "0380",
+          "name": "Uppsala kommun"
+        }
+      ],
+      "testData": false,
+      "contact": {
+        "phone": {
+          "number": "+46187279400",
+          "display": "018-727 94 00"
+        },
+        "email": "kundservice@uppsalavatten.se",
+        "page": "https://www.uppsalavatten.se/kontakt",
+        "checkedAt": "2026-11-07",
+        "checkedUrl": "https://www.uppsalavatten.se/kontakt"
+      }
+    },
+    {
+      "id": "orebro",
+      "name": "Örebro kommun",
+      "url": "https://www.orebro.se",
+      "kommuner": [
+        {
+          "code": "1880",
+          "name": "Örebro kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "vafab",
+      "name": "Vafab Miljö",
+      "url": "https://www.vafabmiljo.se",
+      "kommuner": [
+        {
+          "code": "1980",
+          "name": "Västerås kommun"
+        },
+        {
+          "code": "0381",
+          "name": "Enköpings kommun"
+        },
+        {
+          "code": "0331",
+          "name": "Heby kommun"
+        },
+        {
+          "code": "1981",
+          "name": "Sala kommun"
+        },
+        {
+          "code": "1982",
+          "name": "Fagersta kommun"
+        },
+        {
+          "code": "1983",
+          "name": "Köpings kommun"
+        },
+        {
+          "code": "1984",
+          "name": "Arboga kommun"
+        },
+        {
+          "code": "1960",
+          "name": "Kungsörs kommun"
+        },
+        {
+          "code": "1961",
+          "name": "Hallstahammars kommun"
+        },
+        {
+          "code": "1962",
+          "name": "Norbergs kommun"
+        },
+        {
+          "code": "1904",
+          "name": "Skinnskattebergs kommun"
+        },
+        {
+          "code": "1907",
+          "name": "Surahammars kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "june",
+      "name": "June Avfall & Miljö",
+      "url": "https://www.juneavfall.se",
+      "kommuner": [
+        {
+          "code": "0680",
+          "name": "Jönköpings kommun"
+        },
+        {
+          "code": "0643",
+          "name": "Habo kommun"
+        },
+        {
+          "code": "0642",
+          "name": "Mullsjö kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "boras",
+      "name": "Borås Energi och Miljö",
+      "url": "https://www.borasem.se",
+      "kommuner": [
+        {
+          "code": "1490",
+          "name": "Borås kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "lund",
+      "name": "Lunds kommun",
+      "url": "https://lund.se",
+      "kommuner": [
+        {
+          "code": "1281",
+          "name": "Lunds kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "nacka",
+      "name": "Nacka vatten och avfall",
+      "url": "https://www.nvoa.se",
+      "kommuner": [
+        {
+          "code": "0182",
+          "name": "Nacka kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "gotland",
+      "name": "Region Gotland",
+      "url": "https://www.gotland.se",
+      "kommuner": [
+        {
+          "code": "0980",
+          "name": "Gotlands kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "skelleftea",
+      "name": "Skellefteå kommun",
+      "url": "https://skelleftea.se",
+      "kommuner": [
+        {
+          "code": "2482",
+          "name": "Skellefteå kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "ssam",
+      "name": "SSAM",
+      "url": "https://www.ssam.se",
+      "kommuner": [
+        {
+          "code": "0780",
+          "name": "Växjö kommun"
+        },
+        {
+          "code": "0764",
+          "name": "Alvesta kommun"
+        },
+        {
+          "code": "0761",
+          "name": "Lessebo kommun"
+        },
+        {
+          "code": "0763",
+          "name": "Tingsryds kommun"
+        },
+        {
+          "code": "0760",
+          "name": "Uppvidinge kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "kretslopp-sydost",
+      "name": "Kretslopp Sydost",
+      "url": "https://www.kretsloppsydost.se",
+      "kommuner": [
+        {
+          "code": "0880",
+          "name": "Kalmar kommun"
+        },
+        {
+          "code": "0881",
+          "name": "Nybro kommun"
+        },
+        {
+          "code": "0862",
+          "name": "Emmaboda kommun"
+        },
+        {
+          "code": "0834",
+          "name": "Torsås kommun"
+        },
+        {
+          "code": "0840",
+          "name": "Mörbylånga kommun"
+        },
+        {
+          "code": "0885",
+          "name": "Borgholms kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "varberg",
+      "name": "VIVAB Varberg",
+      "url": "https://www.vivab.info",
+      "kommuner": [
+        {
+          "code": "1383",
+          "name": "Varbergs kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "falkenberg",
+      "name": "VIVAB Falkenberg",
+      "url": "https://www.vivab.info",
+      "kommuner": [
+        {
+          "code": "1382",
+          "name": "Falkenbergs kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "partille",
+      "name": "Partille kommun",
+      "url": "https://www.partille.se",
+      "kommuner": [
+        {
+          "code": "1402",
+          "name": "Partille kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "kungalv",
+      "name": "Kungälvs kommun",
+      "url": "https://www.kungalv.se",
+      "kommuner": [
+        {
+          "code": "1482",
+          "name": "Kungälvs kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "boden",
+      "name": "Bodens kommun",
+      "url": "https://www.boden.se",
+      "kommuner": [
+        {
+          "code": "2582",
+          "name": "Bodens kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "danderyd",
+      "name": "Danderyds kommun",
+      "url": "https://www.danderyd.se",
+      "kommuner": [
+        {
+          "code": "0162",
+          "name": "Danderyds kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "lycksele",
+      "name": "Lycksele kommun",
+      "url": "https://www.lycksele.se",
+      "kommuner": [
+        {
+          "code": "2481",
+          "name": "Lycksele kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "kiruna",
+      "name": "Tekniska Verken i Kiruna",
+      "url": "https://www.tekniskaverkenikiruna.se",
+      "kommuner": [
+        {
+          "code": "2584",
+          "name": "Kiruna kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "lidkoping",
+      "name": "Lidköpings kommun",
+      "url": "https://www.lidkoping.se",
+      "kommuner": [
+        {
+          "code": "1494",
+          "name": "Lidköpings kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "orust",
+      "name": "Orust kommun",
+      "url": "https://www.orust.se",
+      "kommuner": [
+        {
+          "code": "1421",
+          "name": "Orust kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "ljungby",
+      "name": "Ljungby kommun",
+      "url": "https://www.ljungby.se",
+      "kommuner": [
+        {
+          "code": "0781",
+          "name": "Ljungby kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "mark",
+      "name": "Marks kommun",
+      "url": "https://www.mark.se",
+      "kommuner": [
+        {
+          "code": "1463",
+          "name": "Marks kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "herrljunga-vargarda",
+      "name": "Remondis (Herrljunga och Vårgårda)",
+      "url": "https://www.remondis.se",
+      "kommuner": [
+        {
+          "code": "1466",
+          "name": "Herrljunga kommun"
+        },
+        {
+          "code": "1442",
+          "name": "Vårgårda kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "ale",
+      "name": "Ale kommun",
+      "url": "https://www.ale.se",
+      "kommuner": [
+        {
+          "code": "1440",
+          "name": "Ale kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "stenungsund",
+      "name": "Stenungsunds kommun",
+      "url": "https://www.stenungsund.se",
+      "kommuner": [
+        {
+          "code": "1415",
+          "name": "Stenungsunds kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "lidingo",
+      "name": "Lidingö stad",
+      "url": "https://lidingo.se",
+      "kommuner": [
+        {
+          "code": "0186",
+          "name": "Lidingö kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "varmdo",
+      "name": "Värmdö kommun",
+      "url": "https://www.varmdo.se",
+      "kommuner": [
+        {
+          "code": "0120",
+          "name": "Värmdö kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "stockholm",
+      "name": "Stockholm Vatten och Avfall",
+      "url": "https://www.stockholmvattenochavfall.se",
+      "kommuner": [
+        {
+          "code": "0180",
+          "name": "Stockholms kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "vasyd",
+      "name": "VA Syd",
+      "url": "https://www.vasyd.se",
+      "kommuner": [
+        {
+          "code": "1280",
+          "name": "Malmö kommun"
+        },
+        {
+          "code": "1231",
+          "name": "Burlövs kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "nsr",
+      "name": "NSR",
+      "url": "https://nsr.se",
+      "kommuner": [
+        {
+          "code": "1283",
+          "name": "Helsingborgs kommun"
+        },
+        {
+          "code": "1292",
+          "name": "Ängelholms kommun"
+        },
+        {
+          "code": "1284",
+          "name": "Höganäs kommun"
+        },
+        {
+          "code": "1278",
+          "name": "Båstads kommun"
+        },
+        {
+          "code": "1260",
+          "name": "Bjuvs kommun"
+        },
+        {
+          "code": "1277",
+          "name": "Åstorps kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "srv",
+      "name": "SRV återvinning",
+      "url": "https://www.srvatervinning.se",
+      "kommuner": [
+        {
+          "code": "0126",
+          "name": "Huddinge kommun"
+        },
+        {
+          "code": "0127",
+          "name": "Botkyrka kommun"
+        },
+        {
+          "code": "0136",
+          "name": "Haninge kommun"
+        },
+        {
+          "code": "0192",
+          "name": "Nynäshamns kommun"
+        },
+        {
+          "code": "0128",
+          "name": "Salems kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "kristianstad",
+      "name": "Renhållningen Kristianstad",
+      "url": "https://renhallningen-kristianstad.se",
+      "kommuner": [
+        {
+          "code": "1290",
+          "name": "Kristianstads kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "hassleholm",
+      "name": "Hässleholm Miljö",
+      "url": "https://hassleholmmiljo.se",
+      "kommuner": [
+        {
+          "code": "1293",
+          "name": "Hässleholms kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "uddevalla",
+      "name": "Uddevalla Energi",
+      "url": "https://www.uddevallaenergi.se",
+      "kommuner": [
+        {
+          "code": "1485",
+          "name": "Uddevalla kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "msva",
+      "name": "Mittsverige Vatten & Avfall",
+      "url": "https://www.msva.se",
+      "kommuner": [
+        {
+          "code": "2281",
+          "name": "Sundsvalls kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "telge",
+      "name": "Telge Återvinning",
+      "url": "https://www.telge.se",
+      "kommuner": [
+        {
+          "code": "0181",
+          "name": "Södertälje kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "borlange",
+      "name": "Borlänge Energi",
+      "url": "https://www.borlange-energi.se",
+      "kommuner": [
+        {
+          "code": "2081",
+          "name": "Borlänge kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "osteraker",
+      "name": "Roslagsvatten",
+      "url": "https://roslagsvatten.se",
+      "kommuner": [
+        {
+          "code": "0117",
+          "name": "Österåkers kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "ekero",
+      "name": "Roslagsvatten",
+      "url": "https://roslagsvatten.se",
+      "kommuner": [
+        {
+          "code": "0125",
+          "name": "Ekerö kommun"
+        }
+      ],
+      "testData": false
+    },
+    {
+      "id": "vaxholm",
+      "name": "Roslagsvatten",
+      "url": "https://roslagsvatten.se",
+      "kommuner": [
+        {
+          "code": "0187",
+          "name": "Vaxholms stad"
+        }
+      ],
+      "testData": false
+    }
+  ],
+  "fractions": {
+    "rest": {
+      "name": "Restavfall",
+      "short": "Rest",
+      "color": "#474C48",
+      "icon": "trash-2"
+    },
+    "papper": {
+      "name": "Pappersförpackningar",
+      "short": "Papper",
+      "color": "#2E5E86",
+      "icon": "package"
+    },
+    "plast": {
+      "name": "Plastförpackningar",
+      "short": "Plast",
+      "color": "#A8431F",
+      "icon": "cup-soda"
+    },
+    "glas": {
+      "name": "Glas",
+      "short": "Glas",
+      "color": "#1F6A7A",
+      "icon": "wine"
+    },
+    "metall": {
+      "name": "Metall",
+      "short": "Metall",
+      "color": "#6B4F7A",
+      "icon": "cylinder"
+    },
+    "tidningar": {
+      "name": "Tidningar",
+      "short": "Tidn.",
+      "color": "#2E5E86",
+      "icon": "newspaper"
+    },
+    "karl": {
+      "name": "Kärl",
+      "short": "Kärl",
+      "color": "#526158",
+      "icon": "container"
+    },
+    "mat": {
+      "name": "Matavfall",
+      "short": "Mat",
+      "color": "#7A4A1E",
+      "icon": "apple"
+    }
+  }
+}

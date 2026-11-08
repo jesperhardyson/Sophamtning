@@ -27,6 +27,7 @@ private func day(_ iso: String) -> DayDate {
     #expect(SwedishFormat.shortDate(day("2026-11-09")) == "Mån 9 nov")
     #expect(SwedishFormat.relative(days: 0) == "i dag")
     #expect(SwedishFormat.relative(days: 1) == "i morgon")
+    #expect(SwedishFormat.relative(days: 2) == "i övermorgon")
     #expect(SwedishFormat.relative(days: 3) == "om 3 dagar")
     #expect(SwedishFormat.estimated("tors 12 nov", true) == "ca tors 12 nov")
 }

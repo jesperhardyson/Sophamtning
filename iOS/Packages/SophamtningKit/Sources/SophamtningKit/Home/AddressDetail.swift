@@ -34,36 +34,103 @@ public struct AddressDetail: Equatable, Sendable {
         public let info: FractionInfo
         /// "Mån 9 nov", eller "ca tors 12 nov" när datumet är beräknat.
         public let dateText: String
-        /// "om 3 dagar", "i morgon" eller "i dag".
+        /// "om 3 dagar", "i övermorgon", "i morgon" eller "i dag".
         public let daysText: String
+
+        /// Kortet för kärlet läses som en enhet: "Restavfall, om 3 dagar, Mån 9 nov".
+        public var accessibilityLabel: String {
+            [info.name, daysText, dateText].joined(separator: ", ")
+        }
+    }
+
+    /// Raden om hur långt schemat gäller, nära de kommande tömningarna.
+    public struct SchedulePeriodLine: Equatable, Sendable {
+        /// "Schemat gäller till 10 januari 2027."
+        public let text: String
+        /// Källans förklaring i mindre text, som källan skrev den, eller `nil`.
+        public let reason: String?
+
+        public init(text: String, reason: String?) {
+            self.text = text
+            self.reason = reason
+        }
+    }
+
+    /// Meddelandet när schemat inte har några hämtningar från och med i dag.
+    public struct NoUpcomingMessage: Equatable, Sendable {
+        public let title: String
+        public let message: String
+
+        public init(title: String, message: String) {
+            self.title = title
+            self.message = message
+        }
     }
 
     /// En dag i schemat. Flera fraktioner samma dag visas som chips.
     public struct Row: Equatable, Sendable, Identifiable {
         public let date: DayDate
         public let dateText: String
+        /// Datumbrickan: "11" och "NOV".
+        public let dayNumber: String
+        public let month: String
+        /// "om 5 dagar", "i övermorgon", "i morgon" eller "i dag", med "ca" först när datumet är beräknat. Räknat från i dag.
+        public let daysText: String
+        /// Kort form för raden: "om 5 d", "i morgon" eller "i dag", med "ca" först när datumet är beräknat.
+        public let shortDaysText: String
         public let fractions: [HomeContent.FractionItem]
         /// "Flyttad från mån 16 nov", eller källans orsak när ursprungsdatumet saknas.
         public let deviation: String?
         public let warning: String?
         public var id: DayDate { date }
 
+        var withoutWarning: Row {
+            Row(date: date, dateText: dateText, dayNumber: dayNumber, month: month, daysText: daysText, shortDaysText: shortDaysText, fractions: fractions, deviation: deviation, warning: nil)
+        }
+
         public var accessibilityLabel: String {
-            ([dateText, fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
+            (["\(dateText), \(daysText)", fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
         }
     }
 
     public let key: AddressKey
     public let title: String
-    public let subtitle: String
+    /// Adressen och platsen under rubriken, på var sin rad. Rubriken är adressens namn.
+    public let lines: HomeContent.AddressLines
+    /// Namnet, adressen och platsen, för Hela schemat, där rubriken inte är adressens namn.
+    public let namedLines: HomeContent.AddressLines
     public let mode: Mode
     public let notice: Notice?
     public let next: HomeContent.Pickup?
     /// Varning för nästa hämtning, som visas i en egen ruta.
     public let nextWarning: String?
     public let bins: [Bin]
+    /// Hela det kommande schemat, en rad per datum.
     public let rows: [Row]
-    /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall.", eller `nil` när schemat aldrig hämtats.
+
+    /// Hur många datum som visas under "Kommande".
+    public static let upcomingCount = 3
+
+    /// De närmaste datumen under "Kommande". Det första kan vara samma dag som nästa tömning. Dess varning står då
+    /// bara i rutan för nästa tömning (`nextWarning`), inte en gång till under raden. Avvikelsen står kvar.
+    public var upcoming: [Row] {
+        rows.prefix(Self.upcomingCount).map { row in
+            row.date == next?.date ? row.withoutWarning : row
+        }
+    }
+
+    /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
+    public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
+    /// "Schemat gäller till 10 januari 2027." med källans orsak. `nil` för live-källor och när perioden har passerat.
+    public let schedulePeriod: SchedulePeriodLine?
+    /// Rutan när schemat tar slut inom 14 dagar. Bara med kommande hämtningar: utan dem säger meddelandet nedan hur långt
+    /// schemat gäller. `nil` för live-källor och efter att perioden har passerat.
+    public let scheduleEnding: ScheduleEnding?
+    /// Rutan "Vissa gator har en annan hämtdag" för ett område med avvikande gator. `nil` när raderna saknas.
+    public let otherDays: OtherDaysNote?
+    /// Meddelandet i läget `noUpcoming`. Har källans period passerat säger det att nästa period inte är publicerad än.
+    public let noUpcomingMessage: NoUpcomingMessage
+    /// "Hämtat i dag 09:12", längst ned i kortet för källan, eller `nil` när schemat aldrig hämtats.
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
     public let webLink: URL?
@@ -93,6 +160,7 @@ public struct AddressDetail: Equatable, Sendable {
         }
 
         let fetched = fetchedText(at: schedule?.fetchedAt, sourceName: sourceName, now: now)
+        let fetchedTime = fetchedTime(at: schedule?.fetchedAt, now: now)
         let notice: Notice?
         switch schedule?.lastError {
         case .notFound: notice = .notFound
@@ -119,20 +187,58 @@ public struct AddressDetail: Equatable, Sendable {
         return AddressDetail(
             key: address.key,
             title: address.displayName,
-            subtitle: entry.subtitle,
+            lines: entry.lines,
+            namedLines: HomeContent.namedLines(for: address),
             mode: mode,
             notice: notice,
             next: next,
             nextWarning: scheduleRows.first(where: { $0.date == next?.date })?.warning,
             bins: bins,
             rows: scheduleRows,
-            fetchedText: fetched,
+            schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
+            scheduleEnding: mode == .schedule ? ScheduleEnding.make(response?.schedule, today: today) : nil,
+            otherDays: OtherDaysNote.make(response?.address.area),
+            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
+            fetchedText: fetchedTime,
             webLink: response?.links.web,
-            reminderText: reserveAt.map(reserveText) ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
             liveActivityText: liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
         )
+    }
+
+    /// Raden visas när källan anger en period som inte har passerat och det finns kommande hämtningar. Utan kommande
+    /// hämtningar står perioden i meddelandet i stället, så att texterna inte motsäger varandra. Live-källor har ingen
+    /// period.
+    static func periodLine(_ period: SchedulePeriod?, mode: Mode, today: DayDate) -> SchedulePeriodLine? {
+        guard let period, period.until >= today, mode == .schedule else { return nil }
+        return SchedulePeriodLine(text: "Schemat gäller till \(SwedishFormat.dayMonthYear(period.until)).", reason: period.reason?.trimmedNonEmpty)
+    }
+
+    /// Utan kommande hämtningar. Gäller perioden fortfarande finns inga fler hämtningar i det publicerade schemat. Har den
+    /// passerat har källan inte publicerat nästa period än. Källans orsak står med. Det säger aldrig att adressen saknas.
+    /// Visas ett sparat schema efter ett fel (`afterError`) kan nästa period finnas hos källan utan att ha kommit fram,
+    /// så då står bara vad det senast hämtade schemat säger, aldrig att något saknas hos källan.
+    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate, afterError: Bool = false) -> NoUpcomingMessage {
+        let title = "Inga kommande hämtningar"
+        guard let period else {
+            let message = afterError
+                ? "Det senast hämtade schemat har inga fler hämtningar."
+                : "Schemat kan ta slut tills kommunen har publicerat nästa period."
+            return NoUpcomingMessage(title: title, message: message)
+        }
+        let until = SwedishFormat.dayMonthYear(period.until)
+        let base: String
+        if period.until >= today {
+            base = "Inga fler hämtningar i schemat, som gäller till \(until)."
+        } else if afterError {
+            base = "Det senast hämtade schemat gällde till \(until)."
+        } else {
+            base = "Schemat gällde till \(until), och källan har inte publicerat nästa period än."
+        }
+        let reason = period.reason?.trimmedNonEmpty
+        return NoUpcomingMessage(title: title, message: [base, reason].compactMap { part in part }.joined(separator: " "))
     }
 
     /// Klockslaget för ett ögonblick i svensk tid, "18:45".
@@ -182,8 +288,15 @@ public struct AddressDetail: Equatable, Sendable {
         return "Kvällen före varje tömning kl. \(time)."
     }
 
-    /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall."
+    /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall.", i rutan när ett sparat schema visas efter ett fel.
     static func fetchedText(at fetchedAt: Date?, sourceName: String?, now: Date) -> String? {
+        guard let time = fetchedTime(at: fetchedAt, now: now) else { return nil }
+        let source = sourceName.map { " från \($0)" } ?? ""
+        return "\(time)\(source)."
+    }
+
+    /// "Hämtat i dag 09:12", "Hämtat i går 18:40" eller "Hämtat 1 nov 07:00", i svensk tid.
+    static func fetchedTime(at fetchedAt: Date?, now: Date) -> String? {
         guard let fetchedAt else { return nil }
         let day = StockholmClock.today(now: fetchedAt)
         let today = StockholmClock.today(now: now)
@@ -195,8 +308,7 @@ public struct AddressDetail: Equatable, Sendable {
         }
         let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: fetchedAt)
         let clock = SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
-        let source = sourceName.map { " från \($0)" } ?? ""
-        return "Hämtat \(when) \(clock)\(source)."
+        return "Hämtat \(when) \(clock)"
     }
 
     /// Kommande dagar, en rad per datum. Två händelser samma dag slås ihop, så att ingen fraktion eller varning tappas.
@@ -204,7 +316,7 @@ public struct AddressDetail: Equatable, Sendable {
         var order: [DayDate] = []
         var merged: [DayDate: (fractions: [String], estimated: Bool, deviation: Deviation?, warnings: [String])] = [:]
         for event in ScheduleLogic.upcoming(response.events, today: today) {
-            let warning = event.warning?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            let warning = event.warning?.trimmedNonEmpty
             if var existing = merged[event.date] {
                 for id in event.fractions where !existing.fractions.contains(id) { existing.fractions.append(id) }
                 existing.estimated = existing.estimated || event.estimated
@@ -223,21 +335,27 @@ public struct AddressDetail: Equatable, Sendable {
             return Row(
                 date: date,
                 dateText: dateText(date, estimated: entry.estimated),
+                dayNumber: SwedishFormat.dayNumber(date),
+                month: SwedishFormat.monthUppercased(date),
+                daysText: SwedishFormat.estimated(SwedishFormat.relative(days: today.days(until: date)), entry.estimated),
+                shortDaysText: SwedishFormat.estimated(shortRelative(days: today.days(until: date)), entry.estimated),
                 fractions: entry.fractions.map { HomeContent.FractionItem(id: $0, info: ScheduleLogic.displayInfo(for: $0, in: response.fractions)) },
-                deviation: entry.deviation.flatMap(deviationText),
+                deviation: entry.deviation.flatMap { deviationText($0) },
                 warning: entry.warnings.isEmpty ? nil : entry.warnings.joined(separator: " ")
             )
         }
+    }
+
+    /// "om 5 d", "i morgon" eller "i dag". Talet och d hålls ihop med hårt mellanslag, så att de aldrig hamnar på olika
+    /// rader.
+    private static func shortRelative(days: Int) -> String {
+        days > 1 ? "om \(days)\u{00A0}d" : SwedishFormat.relative(days: days)
     }
 
     private static func deviationText(_ deviation: Deviation) -> String? {
         if let original = deviation.originalDate {
             return "Flyttad från " + SwedishFormat.shortDate(original).lowercased()
         }
-        return deviation.reason.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        return deviation.reason.trimmedNonEmpty
     }
-}
-
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

@@ -1,6 +1,7 @@
 import SophamtningDesign
 import SophamtningKit
 import SwiftUI
+import UIKit
 
 // Delar som kommunfrågan, adressökningen och områdesvalet delar.
 
@@ -8,7 +9,8 @@ enum AddRoute: Hashable {
     case kommun
     case search(source: String?)
     /// `place` är platsen som områdena hämtades för. Utan plats finns inte "Hitta område med senaste tömningen".
-    case areas(title: String, place: String?, hits: [SearchHit])
+    /// `sources` är källorna som svarade, med förklaringen överst i områdesvalet.
+    case areas(title: String, place: String?, hits: [SearchHit], sources: [AreaSource])
 }
 
 /// Adressflödet i ett ark. Efter en sparad adress anropas `onSaved`, som stänger arket.
@@ -31,14 +33,15 @@ struct AddFlowView: View {
             switch route {
             case .kommun: KommunCheckView(model: model)
             case .search(let source): SearchView(model: model, presetSource: source, onSaved: onSaved)
-            case .areas(let title, let place, let hits): AreaPickerView(model: model, title: title, place: place, hits: hits, onSaved: onSaved)
+            case .areas(let title, let place, let hits, let sources):
+                AreaPickerView(model: model, title: title, place: place, hits: hits, sources: sources, onSaved: onSaved)
             }
         }
         .toolbar {
             if isRoot {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onClose) { Image(systemName: "xmark") }
-                        .accessibilityLabel("Stäng")
+                    // Systemets stängknapp i glas, som i iOS 26.
+                    Button("Stäng", systemImage: "xmark", role: .close) { onClose() }
                 }
             }
         }
@@ -66,8 +69,12 @@ struct FlowSearchField: View {
                 .focused($focused)
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(Color.Theme.text2)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Color.Theme.text2)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .padding(.trailing, -12)
                 .accessibilityLabel("Rensa")
             }
         }
@@ -80,6 +87,23 @@ struct FlowSearchField: View {
             try? await Task.sleep(for: .milliseconds(350))
             focused = true
         }
+    }
+}
+
+/// Lägger innehållet på en rad, men under varandra med tillgänglighetsstorlekar på text, så att ingen text
+/// bryts mitt i ett ord eller trängs ihop.
+struct AdaptiveStack<Content: View>: View {
+    var spacing: CGFloat = 12
+    var verticalSpacing: CGFloat?
+    var alignment: VerticalAlignment = .center
+    @ViewBuilder let content: Content
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: verticalSpacing ?? spacing))
+            : AnyLayout(HStackLayout(alignment: alignment, spacing: spacing))
+        layout { content }
     }
 }
 
@@ -140,11 +164,6 @@ func capitalizedFirst(_ text: String) -> String {
     text.prefix(1).uppercased() + text.dropFirst()
 }
 
-/// "Avesta kommun" blir "Avesta". Namn utan ordet "kommun" lämnas som de är.
-func shortKommunName(_ name: String) -> String {
-    name.hasSuffix(" kommun") ? String(name.dropLast(" kommun".count)) : name
-}
-
 /// En träff som valts, med ett id som skiljer träffar från olika källor åt.
 struct HitSelection: Identifiable {
     let hit: SearchHit
@@ -152,3 +171,132 @@ struct HitSelection: Identifiable {
 }
 
 let tipLink = WebLink(url: URL(string: "https://sopor.hardyson.se/bidra")!)!
+
+/// Adressen och platsen på var sin rad. Adressen i radens vanliga stil, och platsen en storlek mindre med en liten
+/// platsikon. Har raderna ett namn står det först, något större. VoiceOver läser allt som en text, utan mittpunkt:
+/// "Hemma, Storgatan 12, Krylbo, Avesta kommun".
+struct AddressLinesView: View {
+    let lines: HomeContent.AddressLines
+    /// Adressens storlek. Platsen är två punkter mindre.
+    let size: CGFloat
+    let addressStyle: TextStyleChoice
+    var addressColor: Color = Color.Theme.text2
+    var placeColor: Color = Color.Theme.text2
+    /// Sökträffarna har adressen som rubrik, i fetare stil.
+    var addressWeight: Font.Weight = .semibold
+
+    /// Avståndet från raderna under sidans stora rubrik till innehållet under, lika i adressvyn och i Hela schemat.
+    static let bottomSpacing: CGFloat = 20
+
+    /// Textstilen som storleken följer med Dynamic Type, för adressen och för platsen en storlek ner.
+    enum TextStyleChoice {
+        case body, subheadline
+
+        var address: Font.TextStyle { self == .body ? .body : .subheadline }
+        var place: Font.TextStyle { self == .body ? .callout : .footnote }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // Namnet står bara här där rubriken är något annat, som i Hela schemat.
+            if !lines.name.isEmpty {
+                Text(lines.name)
+                    .font(.ui(size + 2, weight: .heavy, relativeTo: addressStyle == .body ? .headline : .subheadline))
+                    .foregroundStyle(Color.Theme.text)
+            }
+            if !lines.address.isEmpty {
+                Text(lines.address)
+                    .font(.ui(size, weight: addressWeight, relativeTo: addressStyle.address))
+                    .foregroundStyle(addressColor)
+            }
+            if !lines.place.isEmpty {
+                Label {
+                    Text(lines.place)
+                        .font(.ui(size - 2, weight: .semibold, relativeTo: addressStyle.place))
+                } icon: {
+                    Image(systemName: "mappin")
+                        .font(.system(addressStyle.place, weight: .semibold))
+                        .imageScale(.small)
+                        .accessibilityHidden(true)
+                }
+                .labelStyle(PlaceLabelStyle())
+                .foregroundStyle(placeColor)
+            }
+        }
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(lines.accessibilityLabel)
+    }
+}
+
+/// Ikonen tätt intill texten, på första radens baslinje.
+private struct PlaceLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            configuration.icon
+            configuration.title
+        }
+    }
+}
+
+/// Sidmarginalen på sidor med systemets stora rubrik, så att innehållet har samma kant som rubriken. Det är systemets
+/// minsta marginal, 16 eller 20 punkter beroende på skärmen.
+@MainActor
+enum PageMargin {
+    static var horizontal: CGFloat {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { scene in scene as? UIWindowScene }
+            .flatMap { scene in scene.windows }
+        let window = windows.first { window in window.isKeyWindow } ?? windows.first
+        return window?.rootViewController?.systemMinimumLayoutMargins.leading ?? 16
+    }
+}
+
+/// En rad i en `ResultList` med en ikon i en rund platta, en titel, en förklarande rad och en chevron. Används för val som
+/// inte är en adress eller ett område: "Välj område i …" i sökningen och "Vet du inte vilket område?" i listan. Som en
+/// knapp läser VoiceOver titeln och raden under.
+struct IconPlateRowLabel: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    var horizontalPadding: CGFloat = 16
+    var verticalPadding: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var plate: CGFloat = 40
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// Plattan växer med texten men aldrig över 56 pt.
+    private var plateSize: CGFloat { min(plate, 56) }
+
+    var body: some View {
+        // Med tillgänglighetsstorlekar står plattan ovanför texten, så att orden får hela bredden och inte bryts mitt i.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
+        layout {
+            Image(systemName: icon)
+                .font(.system(.body, weight: .semibold))
+                .foregroundStyle(Color.Theme.brandText)
+                .frame(width: plateSize, height: plateSize)
+                .background(Color.Theme.brandSoft, in: Circle())
+                .accessibilityHidden(true)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.ui(18, weight: .heavy, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text)
+                    Text(subtitle)
+                        .font(.ui(16, weight: .semibold, relativeTo: .callout))
+                        .foregroundStyle(Color.Theme.text2)
+                }
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title.hasSuffix("?") ? "\(title) \(subtitle)" : "\(title). \(subtitle)")
+    }
+}

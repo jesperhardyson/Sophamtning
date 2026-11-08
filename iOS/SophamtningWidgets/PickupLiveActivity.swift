@@ -50,7 +50,7 @@ struct PickupLiveActivity: Widget {
                         HStack(spacing: 8) {
                             FractionChips(content: content)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            PlacedOutButton(attributes: context.attributes, fullWidth: false)
+                            PlacedOutControl(attributes: context.attributes, content: content)
                                 .layoutPriority(1)
                         }
                         .fixedSize(horizontal: false, vertical: true)
@@ -61,10 +61,7 @@ struct PickupLiveActivity: Widget {
                     .dynamicTypeSize(...DynamicTypeSize.large)
                 }
             } compactLeading: {
-                BinGlyph()
-                    .foregroundStyle(ThemeToken.primary.color)
-                    .environment(\.colorScheme, .dark)
-                    .accessibilityLabel(PickupActivityContent.alertTitle)
+                ActivityGlyph(placedOut: content.placedOut)
             } compactTrailing: {
                 Text(content.compactDate)
                     .font(.ui(13, weight: .heavy, relativeTo: .caption))
@@ -72,10 +69,7 @@ struct PickupLiveActivity: Widget {
                     .lineLimit(1)
                     .dynamicTypeSize(...DynamicTypeSize.large)
             } minimal: {
-                BinGlyph()
-                    .foregroundStyle(ThemeToken.primary.color)
-                    .environment(\.colorScheme, .dark)
-                    .accessibilityLabel(PickupActivityContent.alertTitle)
+                ActivityGlyph(placedOut: content.placedOut)
             }
             .keylineTint(ThemeToken.primary.color)
         }
@@ -108,7 +102,7 @@ private struct LockScreenPickup: View {
             HStack(spacing: 8) {
                 FractionChips(content: content)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                PlacedOutButton(attributes: attributes, fullWidth: false)
+                PlacedOutControl(attributes: attributes, content: content)
                     .layoutPriority(1)
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -162,28 +156,64 @@ private struct FractionChips: View {
     }
 }
 
-private struct PlacedOutButton: View {
+/// Knappen **Utställt**, eller bocken när den är tryckt. Bocken är ingen knapp och kan inte tryckas igen.
+private struct PlacedOutControl: View {
     let attributes: PickupActivityAttributes
-    let fullWidth: Bool
+    let content: PickupActivityContent
     var height: CGFloat = 40
 
     var body: some View {
-        Button(intent: MarkPlacedOutIntent(key: attributes.key, pickupDate: attributes.pickupDate)) {
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .accessibilityHidden(true)
-                Text("Utställt")
-                    .font(.ui(17, weight: .heavy, relativeTo: .headline))
-                    .lineLimit(1)
-                    .fixedSize()
+        if content.placedOut {
+            PlacedOutLabel(height: height, done: true)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Utställt")
+        } else {
+            Button(intent: MarkPlacedOutIntent(key: attributes.key, pickupDate: attributes.pickupDate)) {
+                PlacedOutLabel(height: height)
             }
-            .foregroundStyle(ThemeToken.onPrimary.color)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: height)
-            .background(ThemeToken.primary.color, in: Capsule())
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+    }
+}
+
+/// `done` är bocken efter trycket: dämpad bakgrund, så att den inte ser ut som en knapp.
+private struct PlacedOutLabel: View {
+    let height: CGFloat
+    var done = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 14, weight: .bold))
+                .accessibilityHidden(true)
+            Text("Utställt")
+                .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .foregroundStyle(done ? ThemeToken.primary.color : ThemeToken.onPrimary.color)
+        .padding(.horizontal, 14)
+        .frame(minHeight: height)
+        .background(done ? ThemeToken.primary.color.opacity(0.22) : ThemeToken.primary.color, in: Capsule())
+    }
+}
+
+/// Kärlet i kompakta och minimala Dynamic Island, och en bock när Utställt är tryckt.
+private struct ActivityGlyph: View {
+    let placedOut: Bool
+
+    var body: some View {
+        Group {
+            if placedOut {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16, weight: .bold))
+            } else {
+                BinGlyph()
+            }
+        }
+        .foregroundStyle(ThemeToken.primary.color)
+        .environment(\.colorScheme, .dark)
+        .accessibilityLabel(placedOut ? "Utställt" : PickupActivityContent.alertTitle)
     }
 }
 
@@ -204,6 +234,16 @@ private let sixFractions = PickupActivityContent(
 private func lockPreview(width: CGFloat) -> some View {
     LockScreenPickup(attributes: PickupActivityAttributes(key: AddressKey(source: "a", id: "b"), pickupDate: DayDate("2026-11-09")!, start: Date()), content: sixFractions)
         .frame(width: width, alignment: .leading)
+        .frame(maxHeight: 160)
+        .background(activityBackground)
+        .environment(\.colorScheme, .dark)
+}
+
+private let placedOutSixFractions = sixFractions.markedPlacedOut()
+
+#Preview("Utställt, 375 pt") {
+    LockScreenPickup(attributes: PickupActivityAttributes(key: AddressKey(source: "a", id: "b"), pickupDate: DayDate("2026-11-09")!, start: Date()), content: placedOutSixFractions)
+        .frame(width: 345, alignment: .leading)
         .frame(maxHeight: 160)
         .background(activityBackground)
         .environment(\.colorScheme, .dark)

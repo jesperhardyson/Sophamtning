@@ -50,6 +50,13 @@ public enum WidgetContent: Equatable, Sendable {
         }
     }
 
+    /// "Schemat slutar 10 jan" när schemat tar slut inom 14 dagar, för huvudadressen. Bara när widgeten visar en kommande
+    /// hämtning, och aldrig för live-källor. Räknas från `now`, så att raden försvinner av sig själv när dagarna går.
+    public static func scheduleEnding(addresses: [SavedAddress], schedule: CachedSchedule?, now: Date) -> ScheduleEnding? {
+        guard case .pickup = make(addresses: addresses, schedule: schedule, now: now) else { return nil }
+        return ScheduleEnding.make(schedule?.response?.schedule, today: StockholmClock.today(now: now))
+    }
+
     /// Datumet för en fraktions rad i den mellanstora widgeten: "mån 9 nov", eller "ca tors 12 nov" när det är uppskattat.
     public static func rowDate(_ pickup: FractionPickup) -> String {
         SwedishFormat.estimated(SwedishFormat.shortDate(pickup.date).lowercased(), pickup.estimated)
@@ -99,6 +106,14 @@ public struct WidgetData: Equatable, Sendable {
         switch source {
         case .unavailable: .unavailable
         case .loaded(let addresses, let schedule): WidgetContent.make(addresses: addresses, schedule: schedule, now: now)
+        }
+    }
+
+    /// Raden om att schemat tar slut, eller `nil`.
+    public func scheduleEnding(at now: Date) -> ScheduleEnding? {
+        switch source {
+        case .unavailable: nil
+        case .loaded(let addresses, let schedule): WidgetContent.scheduleEnding(addresses: addresses, schedule: schedule, now: now)
         }
     }
 

@@ -561,7 +561,7 @@ private func overdue(_ f: Fixture) {
     #expect(model.liveActivityError != nil)
     #expect(model.missedReminderText(for: home) != nil)
     let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate, remindersAllowed: true, liveActivity: model.currentLiveActivity, liveActivitiesEnabled: model.liveActivitiesEnabled, liveActivityError: model.liveActivityError, missedReminder: model.missedReminderText(for: home))
-    #expect(try #require(content.primary).reminderText == model.liveActivityError)
+    #expect(try #require(content.primary).reminder?.detail == model.liveActivityError)
 }
 
 @Test @MainActor func passeradPaminnelseVisasUtanAktivitet() async throws {
@@ -641,6 +641,58 @@ private func overdue(_ f: Fixture) {
     // Nästa tömning schemaläggs, och den utställda startas inte igen.
     #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
     #expect(!f.notifications.dates.contains("2026-11-09"))
+}
+
+@Test @MainActor func avslutadMenFortfarandeVisadAktivitetOmstartasInteOchRorInteReserven() async throws {
+    let f = try Fixture(now: sundayEvening)
+    let model = f.model()
+    await apply(model)
+    let id = try #require(f.activities.ids.first)
+    f.activities.promote()
+    await apply(model)
+    // Utställt trycks: valet sparas, och aktiviteten avslutas men visas med bock i tre sekunder till.
+    try f.store.markPlacedOut(PlacedOut(key: homeKey, date: monday), today: DayDate("2026-11-08")!)
+    f.activities.setPhase(.ended, id: id)
+    f.log.clear()
+    for _ in 0..<2 {
+        await apply(model)
+        await apply(f.model())
+    }
+    // Den räknas inte som befintlig, startas inte om, tas inte bort eller uppdateras, och ingen reserv läggs tillbaka.
+    #expect(model.currentLiveActivity?.pickupDate != monday)
+    #expect(f.activities.starts.map(\.pickupDate) == [monday, thursday])
+    #expect(!f.log.all.contains { $0.hasPrefix("remove") || $0.hasPrefix("update") })
+    #expect(!f.log.all.contains { $0.hasPrefix("start \(monday.iso)") })
+    #expect(!f.notifications.dates.contains("2026-11-09"))
+}
+
+/// Sparandet av Utställt misslyckades (posten finns inte i lagret), men aktiviteten är avslutad och visas med bock en stund till.
+@Test @MainActor func utstalltUtanSparadPostStartarInteOmOchReserventFolierBeviset() async throws {
+    // Aldrig sedd som visad: reserven ligger kvar, och samma tömning startas inte om.
+    let unseen = try Fixture()
+    let unseenModel = try await withReserve(unseen)
+    let unseenID = try #require(unseen.activities.ids.first)
+    unseen.activities.setPhase(.ended, id: unseenID)
+    unseen.log.clear()
+    for _ in 0..<2 { await apply(unseenModel); await apply(unseen.model()) }
+    #expect(unseen.store.placedOut().isEmpty)
+    #expect(unseen.activities.starts.map(\.pickupDate) == [monday, thursday])
+    #expect(!unseen.log.all.contains { $0.hasPrefix("start \(monday.iso)") })
+    reserveKvar(unseen)
+
+    // Sedd som visad innan: den bevisat visade aktiviteten släcker reserven, men startas ändå inte om.
+    let seen = try Fixture(now: sundayEvening)
+    let seenModel = seen.model()
+    await apply(seenModel)
+    let seenID = try #require(seen.activities.ids.first)
+    seen.activities.promote()
+    await apply(seenModel)
+    seen.activities.setPhase(.ended, id: seenID)
+    seen.log.clear()
+    for _ in 0..<2 { await apply(seenModel); await apply(seen.model()) }
+    #expect(seen.store.placedOut().isEmpty)
+    #expect(!seen.log.all.contains { $0.hasPrefix("start \(monday.iso)") })
+    #expect(!seen.notifications.dates.contains("2026-11-09"))
 }
 
 @Test @MainActor func gamlaPosterRensasVidPlanering() async throws {
@@ -816,7 +868,7 @@ private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_source
     // "Påminnelsen har passerat" gäller inte när en reserv ligger framför.
     #expect(model.missedReminderText(for: home) == nil)
     let content = HomeContent.make(addresses: model.addresses, schedules: model.cachedSchedules, settings: model.settings, now: model.currentDate, remindersAllowed: true, liveActivity: nil, liveActivitiesEnabled: true, liveActivityError: nil, missedReminder: nil, reserveAt: model.reserveNotificationDate(for: home))
-    #expect(try #require(content.primary).reminderText == "Reservpåminnelse kl. 18:45")
+    #expect(try #require(content.primary).reminder?.detail == "Reservpåminnelse kl. 18:45")
 }
 
 @Test @MainActor func utstalltTarBortReserventVidNastaPlanering() async throws {

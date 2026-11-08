@@ -49,7 +49,15 @@ import SophamtningKit
         #expect(ThemeToken.primary.dark == 0x4CC384)
         #expect(ThemeToken.bg.light == 0xE8F2EA)
         #expect(ThemeToken.fracPlastBg.dark == 0x3D241B)
-        #expect(ThemeToken.allCases.count == 28)
+        #expect(ThemeToken.allCases.count == 29)
+    }
+
+    @Test func reglagetPaKortetArMorktILjustOchMorkt() {
+        // Reglaget på det gröna huvudkortet: samma mörkgröna i båda lägena, som `onPrimary` i mörkt läge.
+        #expect(ThemeToken.toggleOn.light == 0x0B2416)
+        #expect(ThemeToken.toggleOn.dark == 0x0B2416)
+        #expect(resolved(Color.Theme.toggleOn, dark: false) == 0x0B2416)
+        #expect(resolved(Color.Theme.toggleOn, dark: true) == ThemeToken.onPrimary.dark)
     }
 
     @Test func kandFraktionAnvanderTematsIkonInteAPIts() {
@@ -117,6 +125,14 @@ import SophamtningKit
         #expect(resolved(Color.Theme.primary, dark: false) != resolved(Color.Theme.primary, dark: true))
     }
 
+    @Test func forstorandeAtgardArSystemetsRoda() {
+        // Systemets röda följer ljust och mörkt läge, som i Mail.
+        for dark in [false, true] {
+            #expect(resolved(Color.Theme.destructive, dark: dark) == resolved(Color.red, dark: dark))
+        }
+        #expect(resolved(Color.Theme.destructive, dark: false) != resolved(Color.Theme.destructive, dark: true))
+    }
+
     /// Katalogen i källträdet, hittad via testfilens egen sökväg.
     private static var iconCatalog: URL {
         URL(fileURLWithPath: #filePath)
@@ -168,5 +184,10 @@ import SophamtningKit
         #expect(SwedishFormat.monthUppercased(day) == "NOV")
         #expect(SwedishFormat.dayNumber(day) == "9")
         #expect(SwedishFormat.weekdayName(day) == "måndag")
+    }
+
+    @Test func kortNamnFranKallanAnnarsHelaNamnet() {
+        #expect(FractionStyle(id: "mat", info: FractionInfo(name: "Matavfall", short: "Mat", color: "#000000", icon: "apple")).shortName == "Mat")
+        #expect(FractionStyle(id: "x", info: FractionInfo(name: "Trädgård", short: "  ", color: "#000000", icon: "recycle")).shortName == "Trädgård")
     }
 }

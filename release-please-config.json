@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": false,
+  "changelog-sections": [
+    { "type": "feat", "section": "Nytt" },
+    { "type": "fix", "section": "Rättat" },
+    { "type": "perf", "section": "Snabbare" },
+    { "type": "docs", "section": "Dokumentation", "hidden": true },
+    { "type": "test", "section": "Tester", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "build", "section": "Bygge", "hidden": true },
+    { "type": "refactor", "section": "Omstrukturering", "hidden": true },
+    { "type": "chore", "section": "Övrigt", "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "release-as": "1.0.0",
+      "extra-files": [
+        { "type": "generic", "path": "iOS/Config/Version.xcconfig" }
+      ]
+    }
+  }
+}

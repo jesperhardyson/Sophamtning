@@ -14,10 +14,15 @@ public struct HomeContent: Equatable, Sendable {
         public let daysUntil: Int
         public let estimated: Bool
         public let fractions: [FractionItem]
-        /// "Om 3 dagar", "I morgon" eller "I dag", med "Ca" först när datumet är uppskattat.
+        /// "Om 3 dagar", "I övermorgon", "I morgon" eller "I dag", med "Ca" först när datumet är uppskattat.
         public let headline: String
         /// "Måndag 9 november", med "Ca" först när datumet är uppskattat.
         public let longDate: String
+
+        /// Datum, dagar kvar och kärlen i ett: "Nästa tömning. Om 3 dagar. Måndag 9 november. Restavfall, Matavfall".
+        public var accessibilityLabel: String {
+            ["Nästa tömning", headline, longDate, fractions.map(\.info.name).joined(separator: ", ")].joined(separator: ". ")
+        }
     }
 
     public enum Status: Equatable, Sendable {
@@ -31,15 +36,103 @@ public struct HomeContent: Equatable, Sendable {
         case failed(APIError)
     }
 
+    /// Påminnelsen på en rad under "Fler adresser". Notis av ger ingen rad alls.
+    public enum RowReminder: Equatable, Sendable {
+        /// Notis på och tillåten: "Påminnelse tisdag kl. 18:45", eller "Påminnelser på" utan senare tömning.
+        case scheduled(String)
+        /// Notis på för adressen, men notiser är inte tillåtna i iOS.
+        case denied
+        /// Kvällens påminnelse har redan passerat, med samma text som huvudkortet.
+        case missed(String)
+
+        public var text: String {
+            switch self {
+            case .scheduled(let text), .missed(let text): text
+            case .denied: "Notiser är avstängda i iOS"
+            }
+        }
+    }
+
+    /// Reglaget för påminnelsen på huvudkortet, som i adressvyn: av, på eller nekat i iOS.
+    public struct PrimaryReminder: Equatable, Sendable {
+        /// Notis kvällen före är på och tillåten i iOS.
+        public let isOn: Bool
+        /// iOS har nekat notiser. Reglaget är av, och en knapp öppnar Inställningar.
+        public let isDenied: Bool
+        /// "Påminn mig kvällen före", eller "Notiser är avstängda i iOS".
+        public let title: String
+        /// Raden under: när påminnelsen kommer ("Söndag kl. 18:00"), eller en väntande Live Activity ("Live Activity söndag
+        /// kl. 17:30", och "Notis och Live Activity söndag kl. 17:30" när notisen också är på).
+        public let detail: String?
+
+        public init(isOn: Bool, isDenied: Bool, title: String, detail: String?) {
+            self.isOn = isOn
+            self.isDenied = isDenied
+            self.title = title
+            self.detail = detail
+        }
+
+        static let offTitle = "Påminn mig kvällen före"
+
+        /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
+        /// "Söndag kl. 18:00" under den.
+        init(text: String, isOn: Bool, isDenied: Bool) {
+            self.isOn = isOn
+            self.isDenied = isDenied
+            title = isDenied ? RowReminder.denied.text : Self.offTitle
+            // Inbjudan är redan rubriken, och "Påminnelser på" säger bara det reglaget redan visar.
+            if text == Self.offTitle || text == "Påminnelser på" {
+                detail = nil
+            } else if text.hasPrefix("Påminnelse ") {
+                let rest = text.dropFirst("Påminnelse ".count)
+                detail = rest.prefix(1).uppercased() + rest.dropFirst()
+            } else {
+                detail = text
+            }
+        }
+    }
+
+    /// Adressen och platsen på var sin rad: "Storgatan 12" och "Krylbo · Avesta kommun". Där adressens namn inte står
+    /// i rubriken, som i Hela schemat, står namnet på en egen rad först.
+    public struct AddressLines: Equatable, Sendable {
+        /// Adressens namn, "Hemma". Tomt där namnet redan står i rubriken eller på kortet.
+        public let name: String
+        /// Gatan med nummer, eller områdets namn. Tom när adressen saknar gata eller när gatan bara upprepar namnet.
+        public let address: String
+        /// Orten och kommunen. Kommunen döljs när den bara upprepar orten.
+        public let place: String
+
+        public init(name: String = "", address: String, place: String) {
+            self.name = name
+            self.address = address
+            self.place = place
+        }
+
+        /// "Hemma, Storgatan 12, Krylbo, Avesta kommun", utan mittpunkt och med vanliga mellanslag.
+        public var accessibilityLabel: String {
+            [name, address, place.replacingOccurrences(of: "\u{00A0}· ", with: ", ")]
+                .filter { !$0.isEmpty }
+                .joined(separator: ", ")
+                .replacingOccurrences(of: "\u{00A0}", with: " ")
+        }
+    }
+
     public struct Entry: Equatable, Sendable, Identifiable {
         public let key: AddressKey
         public let title: String
-        public let subtitle: String
+        /// Adressen och platsen på var sin rad.
+        public let lines: AddressLines
         public let status: Status
         /// Senaste försöket att uppdatera misslyckades, men ett äldre schema visas.
         public let refreshFailed: Bool
-        /// Bara för huvudkortet. `nil` när det inte finns någon kommande hämtning.
-        public let reminderText: String?
+        /// Huvudkortets reglage för påminnelsen. `nil` när det inte finns någon kommande hämtning, och alltid på raderna.
+        public let reminder: PrimaryReminder?
+        /// Radens påminnelse under "Fler adresser". Bara när notis är på för adressen och en hämtning kommer, och utan
+        /// Live Activity, som bara gäller huvudadressen. Alltid `nil` på huvudkortet.
+        public let rowReminder: RowReminder?
+        /// "Schemat slutar 10 jan" när schemat tar slut inom 14 dagar. Bara med kommande hämtningar, och aldrig för
+        /// live-källor.
+        public let scheduleEnding: ScheduleEnding?
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
 
@@ -47,43 +140,73 @@ public struct HomeContent: Equatable, Sendable {
 
         /// Alla fraktioner som text, så att VoiceOver kan läsa dem även när raden bara visar ikoner.
         public var accessibilityLabel: String {
-            var parts = [title, subtitle, summary]
+            var parts = [title, lines.accessibilityLabel, summary]
             if refreshFailed { parts.append("Kunde inte uppdateras, visar senast hämtade schema") }
             if case .upcoming(let pickup) = status {
                 parts.append(pickup.fractions.map(\.info.name).joined(separator: ", "))
             }
-            return parts.joined(separator: ", ")
+            if let scheduleEnding { parts.append(scheduleEnding.spokenText) }
+            // De hårda mellanslagen gäller bara radbrytningen. VoiceOver och Röststyrning får vanliga mellanslag.
+            return parts.joined(separator: ", ").replacingOccurrences(of: "\u{00A0}", with: " ")
         }
     }
 
     public let primary: Entry?
     public let others: [Entry]
 
-    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil, reserveAt: Date? = nil) -> HomeContent {
+    /// `remindersAllowed` är sant när iOS tillåter notiser, `remindersDenied` när iOS har nekat dem. Är frågan inte ställd än
+    /// är båda falska, och raderna visar då det planerade läget.
+    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, remindersDenied: Bool = false, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil, reserveAt: Date? = nil) -> HomeContent {
         let today = StockholmClock.today(now: now)
         let primaryAddress = addresses.first(where: \.isPrimary) ?? addresses.first
         let primary = primaryAddress.map { address in
-            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, withReminder: true, remindersAllowed: remindersAllowed, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt)
+            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, asRow: false, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt)
         }
         let others = addresses
             .filter { $0.key != primaryAddress?.key }
-            .map { entry($0, schedule: schedules[$0.key], settings: settings, today: today, now: now, withReminder: false, remindersAllowed: remindersAllowed, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: nil, reserveAt: nil) }
+            .map { address in
+                // Samma regel som huvudkortet, men utan Live Activity och reservnotis. "Påminnelsen har passerat" räknas
+                // här, eftersom Utställt och väntande aktiviteter bara finns för huvudadressen.
+                var notificationsOnly = settings
+                notificationsOnly.liveActivityOn = false
+                let schedule = schedules[address.key]
+                let missed = address.notificationsOn && remindersAllowed
+                    ? AddressDetail.missedReminder(events: schedule?.response?.events ?? [], settings: settings, now: now)
+                    : nil
+                return entry(address, schedule: schedule, settings: notificationsOnly, today: today, now: now, asRow: true, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: missed, reserveAt: nil)
+            }
         return HomeContent(primary: primary, others: others)
     }
 
-    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, withReminder: Bool, remindersAllowed: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> Entry {
+    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> Entry {
         let status = status(of: schedule, today: today)
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
-        var reminder: String?
+        var rowReminder: RowReminder?
+        var primaryReminder: PrimaryReminder?
+        var scheduleEnding: ScheduleEnding?
         let summary: String
         switch status {
         case .upcoming(let pickup):
+            // Raderna under Fler adresser visar ingen sådan rad, så VoiceOver ska inte läsa den heller.
+            scheduleEnding = asRow ? nil : ScheduleEnding.make(schedule?.response?.schedule, today: today)
+            // Hårt mellanslag före mittpunkten, så att den aldrig börjar en rad.
             summary = SwedishFormat.estimated(
-                "\(SwedishFormat.shortDate(pickup.date)) · \(SwedishFormat.relative(days: pickup.daysUntil))",
+                "\(SwedishFormat.shortDate(pickup.date))\u{00A0}· \(SwedishFormat.relative(days: pickup.daysUntil))",
                 pickup.estimated
             )
-            if withReminder {
-                reminder = reminderText(notifications: address.notificationsOn && remindersAllowed, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt)
+            // Raden visar det planerade läget även när iOS inte har frågat än. Bara nekade notiser ger det nekade läget.
+            let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
+            let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
+            if !asRow {
+                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied)
+            } else if address.notificationsOn {
+                if remindersDenied {
+                    rowReminder = .denied
+                } else if let missedReminder {
+                    rowReminder = .missed(missedReminder)
+                } else {
+                    rowReminder = .scheduled(text())
+                }
             }
         case .noUpcoming:
             summary = "Inga kommande hämtningar"
@@ -95,12 +218,36 @@ public struct HomeContent: Equatable, Sendable {
         return Entry(
             key: address.key,
             title: address.displayName,
-            subtitle: [address.street, address.locality].filter { !$0.isEmpty }.joined(separator: ", "),
+            lines: lines(for: address),
             status: status,
             refreshFailed: refreshFailed,
-            reminderText: reminder,
+            reminder: primaryReminder,
+            rowReminder: rowReminder,
+            scheduleEnding: scheduleEnding,
             summary: summary
         )
+    }
+
+    /// Gatan eller områdets namn på första raden, och orten och kommunens hela namn på den andra. Ett område har hela
+    /// sitt namn som gata och ingen ort: "Kaplansgården, Jularbo m.fl." och "Avesta kommun". Kommunen utelämnas när den
+    /// bara upprepar orten, också i genitiv. Hårt mellanslag mellan gatunamn och nummer och före mittpunkten, så att
+    /// raderna aldrig bryts där. Är namnet detsamma som gatan, som för ett område som sparats med sitt namn, står gatan
+    /// inte en gång till, bara platsen.
+    public static func lines(for address: SavedAddress) -> AddressLines {
+        let trimmed = address.street.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = address.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let repeatsName = trimmed.compare(name, options: [.caseInsensitive]) == .orderedSame
+        let street = repeatsName ? "" : trimmed.replacing(/\ (?=\d)/, with: "\u{00A0}")
+        return AddressLines(address: street, place: localityAndKommun(locality: address.locality, kommun: address.kommun))
+    }
+
+    /// Som `lines(for:)`, med adressens namn på första raden. För vyer där rubriken inte är adressens namn, som Hela
+    /// schemat. Regeln om gatan tar då bara bort dubbletten: är namnet detsamma som gatan står det en gång, som namn.
+    /// Saknar adressen både namn och gata står gatan kvar, så att adressen alltid syns.
+    public static func namedLines(for address: SavedAddress) -> AddressLines {
+        let base = lines(for: address)
+        let name = address.displayName.trimmingCharacters(in: .whitespacesAndNewlines).replacing(/\ (?=\d)/, with: "\u{00A0}")
+        return AddressLines(name: name, address: base.address, place: base.place)
     }
 
     private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {
@@ -135,7 +282,9 @@ public struct HomeContent: Equatable, Sendable {
                 let day = StockholmClock.today(now: liveActivity.start)
                 let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: liveActivity.start)
                 let time = SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
-                return "Live Activity \(SwedishFormat.weekdayName(day)) kl. \(time)"
+                // Notis och Live Activity startar vid samma tid. Står bara aktiviteten ser det ut som att notisen är av.
+                let what = notifications ? "Notis och Live Activity" : "Live Activity"
+                return "\(what) \(SwedishFormat.weekdayName(day)) kl. \(time)"
             }
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.

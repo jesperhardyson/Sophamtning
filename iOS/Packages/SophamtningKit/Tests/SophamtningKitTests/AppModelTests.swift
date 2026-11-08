@@ -17,7 +17,7 @@ private final class CountingAPI: SoporAPI, @unchecked Sendable {
     init(response: AddressResponse) { self.response = response }
 
     func calls(for url: URL) -> Int { lock.withLock { counts[url, default: 0] } }
-    var totalCalls: Int { lock.withLock { counts.values.reduce(0, +) } }
+    var totalCalls: Int { lock.withLock { counts.values.reduce(0) { $0 + $1 } } }
 
     func address(url: URL) async throws -> AddressResponse {
         lock.withLock { counts[url, default: 0] += 1 }

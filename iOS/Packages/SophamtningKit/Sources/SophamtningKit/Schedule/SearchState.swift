@@ -37,6 +37,28 @@ public enum SearchState: Equatable, Sendable {
         return nonEmpty(tokens.joined(separator: " "))
     }
 
+    /// Orterna att fråga `/omraden` om, i ordning: texten efter kommatecknet, annars texten efter husnumret, och utan
+    /// nummer de två sista orden och det sista ordet (hela texten när den är ett eller två ord). Ett namn har högst två
+    /// ord och minst två tecken, och skiftläget behålls.
+    public static func placeCandidates(in query: String) -> [String] {
+        let tokens = query.split(whereSeparator: \.isWhitespace).map { String($0) }
+        let raw: [String]
+        if query.contains(",") || tokens.contains(where: { $0.first?.isNumber == true }) {
+            raw = place(in: query).map { [$0] } ?? []
+        } else {
+            var list: [String] = []
+            if tokens.count >= 2 { list.append(tokens.suffix(2).joined(separator: " ")) }
+            if let last = tokens.last { list.append(last) }
+            if tokens.count <= 2 { list.append(tokens.joined(separator: " ")) }
+            raw = list
+        }
+        var result: [String] = []
+        for name in raw where name.count >= 2 && name.split(separator: " ").count <= 2 && !result.contains(name) {
+            result.append(name)
+        }
+        return result
+    }
+
     private static func words(_ text: Substring) -> String {
         text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }

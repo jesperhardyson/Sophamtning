@@ -1,0 +1,42 @@
+{
+  "apiVersion": "1",
+  "addresses": [
+    {
+      "id": "testgatan-1_uppsala-0000001",
+      "street": "Testgatan 1",
+      "locality": "Uppsala",
+      "kommun": "Uppsala kommun",
+      "source": "uppsala",
+      "detail": null,
+      "selection": "address",
+      "notice": null,
+      "areasUrl": null,
+      "url": "https://sopor.hardyson.se/api/v1/adress/uppsala/testgatan-1_uppsala-0000001"
+    },
+    {
+      "id": "testgatan-2_uppsala-0000002",
+      "street": "Testgatan 2",
+      "locality": "Uppsala",
+      "kommun": "Uppsala kommun",
+      "source": "uppsala",
+      "detail": null,
+      "selection": "address",
+      "notice": null,
+      "areasUrl": null,
+      "url": "https://sopor.hardyson.se/api/v1/adress/uppsala/testgatan-2_uppsala-0000002"
+    },
+    {
+      "id": "testgatan-3_uppsala-0000003",
+      "street": "Testgatan 3",
+      "locality": "Uppsala",
+      "kommun": "Uppsala kommun",
+      "source": "uppsala",
+      "detail": null,
+      "selection": "address",
+      "notice": null,
+      "areasUrl": null,
+      "url": "https://sopor.hardyson.se/api/v1/adress/uppsala/testgatan-3_uppsala-0000003"
+    }
+  ],
+  "failed": []
+}

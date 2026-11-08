@@ -16,8 +16,10 @@ public struct SearchHit: Codable, Hashable, Sendable {
     public let url: URL
     /// Områdets tömningar kring datumet i `/omraden?tomning=`. `nil` när anropet saknar datum.
     public let pickups: Pickups?
+    /// Områdets detaljer från `/omraden`. `nil` för adresser, i äldre svar och när fältet är trasigt.
+    public let area: AreaDetails?
 
-    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?, areasUrl: URL?, url: URL, pickups: Pickups? = nil) {
+    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?, areasUrl: URL?, url: URL, pickups: Pickups? = nil, area: AreaDetails? = nil) {
         self.id = id
         self.street = street
         self.locality = locality
@@ -29,9 +31,85 @@ public struct SearchHit: Codable, Hashable, Sendable {
         self.areasUrl = areasUrl
         self.url = url
         self.pickups = pickups
+        self.area = area
     }
 
     public var isArea: Bool { selection == "area" }
+}
+
+/// Det som webbens områdessida visar för ett område. Varje del kan saknas eller vara trasig, och då är den tom.
+public struct AreaDetails: Codable, Hashable, Sendable {
+    /// "Måndag, udda vecka".
+    public let day: String
+    /// "Område 1", eller `nil`.
+    public let label: String?
+    /// Platserna i området, i källans ordning.
+    public let places: [String]
+    /// Platser i området som har en annan dag, som meningar.
+    public let otherDays: [String]
+    /// Det som sökningen matchar på. Visas inte.
+    public let searchTerms: [String]
+
+    public init(day: String, label: String?, places: [String], otherDays: [String] = [], searchTerms: [String] = []) {
+        self.day = day
+        self.label = label
+        self.places = places
+        self.otherDays = otherDays
+        self.searchTerms = searchTerms
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        day = ((try? c.decodeIfPresent(String.self, forKey: .day)) ?? nil) ?? ""
+        label = (try? c.decodeIfPresent(String.self, forKey: .label)) ?? nil
+        places = ((try? c.decodeIfPresent([String].self, forKey: .places)) ?? nil) ?? []
+        otherDays = ((try? c.decodeIfPresent([String].self, forKey: .otherDays)) ?? nil) ?? []
+        searchTerms = ((try? c.decodeIfPresent([String].self, forKey: .searchTerms)) ?? nil) ?? []
+    }
+}
+
+/// En källa som svarade i `/omraden`, med varför man väljer område och vart man vänder sig.
+public struct AreaSource: Codable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    /// "Avesta Vatten publicerar sophämtningen per område, men inte vilka adresser som hör till vilket område."
+    public let explanation: String?
+    /// "Osäker? Fråga Avesta Vatten på 0226-64 55 00."
+    public let help: String?
+
+    public init(id: String, name: String, explanation: String?, help: String?) {
+        self.id = id
+        self.name = name
+        self.explanation = explanation
+        self.help = help
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = ((try? c.decodeIfPresent(String.self, forKey: .name)) ?? nil) ?? ""
+        explanation = (try? c.decodeIfPresent(String.self, forKey: .explanation)) ?? nil
+        help = (try? c.decodeIfPresent(String.self, forKey: .help)) ?? nil
+    }
+}
+
+/// Hur långt källans schema gäller. Live-källor har inget sådant, och då är `schedule` `nil`.
+public struct SchedulePeriod: Codable, Hashable, Sendable {
+    /// Sista dagen som schemat täcker, i Europe/Stockholm.
+    public let until: DayDate
+    /// "Avesta Vatten publicerar hämtschemat ett år i taget.", eller `nil`.
+    public let reason: String?
+
+    public init(until: DayDate, reason: String?) {
+        self.until = until
+        self.reason = reason
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        until = try c.decode(DayDate.self, forKey: .until)
+        reason = (try? c.decodeIfPresent(String.self, forKey: .reason)) ?? nil
+    }
 }
 
 /// Tömningarna för ett område kring ett angivet datum.
@@ -54,11 +132,35 @@ public struct SearchResponse: Codable, Hashable, Sendable {
     /// Bara med `tomning`. `true`: datumet ligger inom schemat. `false`: utanför schemat.
     /// `nil`: kunde inte bedömas, eller anropet hade inget datum.
     public let dateCovered: Bool?
+    /// Källorna som svarade i `/omraden`. Tom i `/sok`, i äldre svar och när fältet är trasigt.
+    public let sources: [AreaSource]
 
-    public init(addresses: [SearchHit], failed: [String], dateCovered: Bool? = nil) {
+    public init(addresses: [SearchHit], failed: [String], dateCovered: Bool? = nil, sources: [AreaSource] = []) {
         self.addresses = addresses
         self.failed = failed
         self.dateCovered = dateCovered
+        self.sources = sources
+    }
+}
+
+extension SearchResponse {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        addresses = try c.decode([SearchHit].self, forKey: .addresses)
+        failed = try c.decode([String].self, forKey: .failed)
+        dateCovered = try c.decodeIfPresent(Bool.self, forKey: .dateCovered)
+        // En trasig källa tas bort, och ett trasigt fält ger inga källor. Det får aldrig fälla områdena.
+        let raw = (try? c.decodeIfPresent([Lenient<AreaSource>].self, forKey: .sources)) ?? nil
+        sources = (raw ?? []).compactMap { item in item.value }
+    }
+}
+
+/// Ett värde som får vara trasigt. Används där en trasig del inte ska fälla en lista.
+struct Lenient<Value: Decodable>: Decodable {
+    let value: Value?
+
+    init(from decoder: Decoder) throws {
+        value = try? Value(from: decoder)
     }
 }
 
@@ -72,8 +174,11 @@ public struct Address: Codable, Hashable, Sendable {
     public let detail: String?
     public let selection: String
     public let notice: String?
+    /// Områdets detaljer när `selection` är "area". `nil` för vanliga adresser och live-källor, när källans områdesdata
+    /// inte kunde läsas, i äldre svar och sparad data utan fältet, och när fältet är trasigt.
+    public let area: AreaDetails?
 
-    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?) {
+    public init(id: String, street: String, locality: String, kommun: String, source: String, detail: String?, selection: String, notice: String?, area: AreaDetails? = nil) {
         self.id = id
         self.street = street
         self.locality = locality
@@ -82,6 +187,7 @@ public struct Address: Codable, Hashable, Sendable {
         self.detail = detail
         self.selection = selection
         self.notice = notice
+        self.area = area
     }
 }
 
@@ -182,8 +288,10 @@ public struct AddressResponse: Codable, Hashable, Sendable {
     public let fractions: [String: FractionInfo]
     public let links: Links
     public let updatedAt: DayDate
+    /// Hur långt schemat gäller. `nil` för live-källor, i äldre svar och när fältet är trasigt.
+    public let schedule: SchedulePeriod?
 
-    public init(today: DayDate, address: Address, next: [NextPickup], summary: String, events: [PickupEvent], bins: [Bin], fractions: [String: FractionInfo], links: Links, updatedAt: DayDate) {
+    public init(today: DayDate, address: Address, next: [NextPickup], summary: String, events: [PickupEvent], bins: [Bin], fractions: [String: FractionInfo], links: Links, updatedAt: DayDate, schedule: SchedulePeriod? = nil) {
         self.today = today
         self.address = address
         self.next = next
@@ -193,6 +301,24 @@ public struct AddressResponse: Codable, Hashable, Sendable {
         self.fractions = fractions
         self.links = links
         self.updatedAt = updatedAt
+        self.schedule = schedule
+    }
+}
+
+extension AddressResponse {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        today = try c.decode(DayDate.self, forKey: .today)
+        address = try c.decode(Address.self, forKey: .address)
+        next = try c.decode([NextPickup].self, forKey: .next)
+        summary = try c.decode(String.self, forKey: .summary)
+        events = try c.decode([PickupEvent].self, forKey: .events)
+        bins = try c.decode([Bin].self, forKey: .bins)
+        fractions = try c.decode([String: FractionInfo].self, forKey: .fractions)
+        links = try c.decode(Links.self, forKey: .links)
+        updatedAt = try c.decode(DayDate.self, forKey: .updatedAt)
+        // Saknas, `null` eller trasigt: ingen rad om hur långt schemat gäller. Schemat visas ändå.
+        schedule = (try? c.decodeIfPresent(SchedulePeriod.self, forKey: .schedule)) ?? nil
     }
 }
 
@@ -212,13 +338,68 @@ public struct Source: Codable, Hashable, Sendable {
     public let url: URL
     public let kommuner: [Kommun]
     public let testData: Bool
+    /// Kontaktuppgifter, eller `nil` när inget är känt. Saknas fältet, som i äldre svar, är det också `nil`.
+    public let contact: SourceContact?
 
-    public init(id: String, name: String, url: URL, kommuner: [Kommun], testData: Bool) {
+    public init(id: String, name: String, url: URL, kommuner: [Kommun], testData: Bool, contact: SourceContact? = nil) {
         self.id = id
         self.name = name
         self.url = url
         self.kommuner = kommuner
         self.testData = testData
+        self.contact = contact
+    }
+
+    /// Kommunerna källan täcker, med hela namnen: "Avesta kommun, Hedemora kommun och Säters kommun".
+    public var kommunerText: String {
+        let names = kommuner.map { kommunDisplayName($0.name) }.filter { !$0.isEmpty }
+        guard names.count > 1 else { return names.first ?? "" }
+        return names.dropLast().joined(separator: ", ") + " och " + names[names.count - 1]
+    }
+}
+
+/// Källans kontaktuppgifter från `/kallor`. Varje del kan saknas. `checkedAt` och `checkedUrl` visas inte.
+public struct SourceContact: Codable, Hashable, Sendable {
+    public struct Phone: Codable, Hashable, Sendable {
+        /// Numret att ringa, "+46187279400".
+        public let number: String?
+        /// Numret som det visas, "018-727 94 00".
+        public let display: String?
+
+        public init(number: String?, display: String?) {
+            self.number = number
+            self.display = display
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            number = (try? c.decodeIfPresent(String.self, forKey: .number)) ?? nil
+            display = (try? c.decodeIfPresent(String.self, forKey: .display)) ?? nil
+        }
+    }
+
+    public let phone: Phone?
+    public let email: String?
+    public let page: URL?
+    public let checkedAt: DayDate?
+    public let checkedUrl: URL?
+
+    public init(phone: Phone? = nil, email: String? = nil, page: URL? = nil, checkedAt: DayDate? = nil, checkedUrl: URL? = nil) {
+        self.phone = phone
+        self.email = email
+        self.page = page
+        self.checkedAt = checkedAt
+        self.checkedUrl = checkedUrl
+    }
+
+    /// En trasig del ger bara att den delen saknas. Den får aldrig fälla källan eller listan.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        phone = (try? c.decodeIfPresent(Phone.self, forKey: .phone)) ?? nil
+        email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? nil
+        page = (try? c.decodeIfPresent(URL.self, forKey: .page)) ?? nil
+        checkedAt = (try? c.decodeIfPresent(DayDate.self, forKey: .checkedAt)) ?? nil
+        checkedUrl = (try? c.decodeIfPresent(URL.self, forKey: .checkedUrl)) ?? nil
     }
 }
 
@@ -229,6 +410,19 @@ public struct SourcesResponse: Codable, Hashable, Sendable {
     public init(sources: [Source], fractions: [String: FractionInfo]) {
         self.sources = sources
         self.fractions = fractions
+    }
+}
+
+extension Source {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        url = try c.decode(URL.self, forKey: .url)
+        kommuner = try c.decode([Kommun].self, forKey: .kommuner)
+        testData = try c.decode(Bool.self, forKey: .testData)
+        // Saknas, `null` eller trasig: ingen kontakt. Källan visas ändå.
+        contact = (try? c.decodeIfPresent(SourceContact.self, forKey: .contact)) ?? nil
     }
 }
 
@@ -249,6 +443,8 @@ extension SearchHit {
         url = try c.decode(URL.self, forKey: .url)
         // Trasiga tömningsdatum ger en träff utan datum. De får inte fälla träffen.
         pickups = (try? c.decodeIfPresent(Pickups.self, forKey: .pickups)).flatMap { $0 }
+        // Trasiga detaljer ger dagens visning med `detail`. De får inte fälla träffen.
+        area = (try? c.decodeIfPresent(AreaDetails.self, forKey: .area)).flatMap { $0 }
     }
 }
 
@@ -263,6 +459,8 @@ extension Address {
         detail = try c.decodeIfPresent(String.self, forKey: .detail)
         selection = try c.decodeIfPresent(String.self, forKey: .selection) ?? "address"
         notice = try c.decodeIfPresent(String.self, forKey: .notice)
+        // Trasiga detaljer ger ingen ruta. De får inte fälla hela adressvaret.
+        area = (try? c.decodeIfPresent(AreaDetails.self, forKey: .area)).flatMap { $0 }
     }
 }
 

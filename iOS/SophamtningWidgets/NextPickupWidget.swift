@@ -10,6 +10,8 @@ struct NextPickupEntry: TimelineEntry {
     let content: WidgetContent
     /// Fraktionernas namn och ikoner ur det sparade schemat.
     let fractionInfo: [String: FractionInfo]
+    /// "Schemat slutar 10 jan" när schemat tar slut inom 14 dagar.
+    var scheduleEnding: ScheduleEnding?
 
     func info(for id: String) -> FractionInfo {
         ScheduleLogic.displayInfo(for: id, in: fractionInfo)
@@ -48,10 +50,10 @@ struct NextPickupProvider: TimelineProvider {
 
     private func entries(data: WidgetData, now: Date) -> [NextPickupEntry] {
         if data.reloadDate(after: now) != nil {
-            return [NextPickupEntry(date: now, content: data.content(at: now), fractionInfo: data.fractionInfo)]
+            return [NextPickupEntry(date: now, content: data.content(at: now), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: now))]
         }
         return WidgetContent.timelineDates(from: now, days: Self.days).map {
-            NextPickupEntry(date: $0, content: data.content(at: $0), fractionInfo: data.fractionInfo)
+            NextPickupEntry(date: $0, content: data.content(at: $0), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: $0))
         }
     }
 }
@@ -116,12 +118,14 @@ private func firstDay(_ fractions: [FractionPickup]) -> [FractionPickup] {
 }
 
 /// Allt widgeten visar som en mening, för VoiceOver. Alla fraktioner med namn, också de som bara syns som ikoner.
+/// "Schemat slutar …" ingår också när `ViewThatFits` har utelämnat raden för att den inte ryms: det är avsiktligt, eftersom
+/// informationen är viktig och VoiceOver inte har någon platsbrist.
 private func spokenSummary(name: String, relative: String, shortDate: String, fractions: [FractionPickup], entry: NextPickupEntry) -> String {
     let today = firstDay(fractions).map { entry.info(for: $0.fraction).name }.joined(separator: ", ")
     let later = fractions.dropFirst(firstDay(fractions).count).map {
         "\(entry.info(for: $0.fraction).name) \(WidgetContent.rowDate($0))"
     }
-    return ([name, "\(capitalized(relative)), \(shortDate)", today] + (later.isEmpty ? [] : ["Senare: " + later.joined(separator: ", ")]))
+    return ([name, "\(capitalized(relative)), \(shortDate)", today] + (later.isEmpty ? [] : ["Senare: " + later.joined(separator: ", ")]) + [entry.scheduleEnding?.spokenText].compactMap { $0 })
         .joined(separator: ". ")
 }
 
@@ -134,8 +138,20 @@ private struct SmallPickup: View {
     let fractions: [FractionPickup]
 
     var body: some View {
+        // Raden om att schemat slutar står längst ned, men bara när den ryms. Annars utelämnas den hellre än att något
+        // annat klipps.
+        ViewThatFits(in: .vertical) {
+            content(showsEnding: entry.scheduleEnding != nil)
+            content(showsEnding: false)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenSummary(name: name, relative: relative, shortDate: shortDate, fractions: fractions, entry: entry))
+    }
+
+    private func content(showsEnding: Bool) -> some View {
         let shown = firstDay(fractions)
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             Text(name)
                 .font(.ui(14, weight: .bold, relativeTo: .subheadline))
                 .foregroundStyle(Color.Theme.text2)
@@ -144,7 +160,8 @@ private struct SmallPickup: View {
                 .font(.brand(28, relativeTo: .title))
                 .foregroundStyle(Color.Theme.text)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                // "Ca i övermorgon" är den längsta formen, cirka 7 procent bredare än "Ca om 12 dagar".
+                .minimumScaleFactor(0.5)
             Text(shortDate)
                 .font(.ui(16, weight: .bold, relativeTo: .callout))
                 .foregroundStyle(Color.Theme.brandText)
@@ -152,10 +169,11 @@ private struct SmallPickup: View {
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 6)
             icons(shown)
+            if showsEnding, let ending = entry.scheduleEnding {
+                EndingLine(text: ending.shortText, size: 12)
+                    .padding(.top, 6)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spokenSummary(name: name, relative: relative, shortDate: shortDate, fractions: fractions, entry: entry))
     }
 
     private func name(_ text: String, color: Color) -> some View {
@@ -207,9 +225,21 @@ private struct MediumPickup: View {
     private static let maxRows = 3
 
     var body: some View {
+        // Raden om att schemat slutar står under fraktionerna, men bara när den ryms. Annars utelämnas den hellre än att
+        // något annat klipps.
+        ViewThatFits(in: .vertical) {
+            content(showsEnding: entry.scheduleEnding != nil)
+            content(showsEnding: false)
+        }
+        .frame(maxHeight: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenSummary(name: name, relative: relative, shortDate: fractions.first.map { SwedishFormat.shortDate($0.date) } ?? "", fractions: fractions, entry: entry))
+    }
+
+    private func content(showsEnding: Bool) -> some View {
         let rows = fractions.count > Self.maxRows ? Array(fractions.prefix(Self.maxRows - 1)) : fractions
         let hidden = fractions.count - rows.count
-        HStack(alignment: .center, spacing: 16) {
+        return HStack(alignment: .center, spacing: 16) {
             if let first = fractions.first {
                 VStack(spacing: 4) {
                     CalendarTile(date: first.date)
@@ -226,7 +256,8 @@ private struct MediumPickup: View {
                     .font(.brand(24, relativeTo: .title2))
                     .foregroundStyle(Color.Theme.text)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    // "Ca i övermorgon" är den längsta formen, cirka 7 procent bredare än "Ca om 12 dagar".
+                    .minimumScaleFactor(0.5)
                 ForEach(rows, id: \.fraction) { pickup in
                     row(pickup)
                 }
@@ -235,12 +266,12 @@ private struct MediumPickup: View {
                         .font(.ui(13, weight: .bold, relativeTo: .caption))
                         .foregroundStyle(Color.Theme.text2)
                 }
+                if showsEnding, let ending = entry.scheduleEnding {
+                    EndingLine(text: ending.shortText, size: 13)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxHeight: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spokenSummary(name: name, relative: relative, shortDate: fractions.first.map { SwedishFormat.shortDate($0.date) } ?? "", fractions: fractions, entry: entry))
     }
 
     private func row(_ pickup: FractionPickup) -> some View {
@@ -259,6 +290,26 @@ private struct MediumPickup: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
+    }
+}
+
+/// "Schemat slutar 10 jan": en rad med liten ikon. Raden kortas hellre än att brytas.
+private struct EndingLine: View {
+    let text: String
+    let size: CGFloat
+
+    var body: some View {
+        Label {
+            Text(text)
+                .font(.ui(size, weight: .bold, relativeTo: .caption))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        } icon: {
+            Image(systemName: "calendar.badge.clock")
+                .font(.system(size: size, weight: .semibold))
+                .accessibilityHidden(true)
+        }
+        .foregroundStyle(Color.Theme.text2)
     }
 }
 

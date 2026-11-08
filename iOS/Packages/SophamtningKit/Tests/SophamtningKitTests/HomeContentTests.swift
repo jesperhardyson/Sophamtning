@@ -28,11 +28,12 @@ private func schedule(_ events: [PickupEvent], savedToday: String = "2026-11-06"
     return CachedSchedule(response: response, fetchedAt: now, lastAttemptAt: now, lastError: lastError)
 }
 
-private func saved(_ id: String, name: String, street: String, locality: String, primary: Bool, notifications: Bool = false) -> SavedAddress {
+private func saved(_ id: String, name: String, street: String, locality: String, kommun: String = "Avesta kommun", primary: Bool, notifications: Bool = false) -> SavedAddress {
     var value = SavedAddress.fixture(key: AddressKey(source: "x", id: id), isPrimary: primary)
     value.displayName = name
     value.street = street
     value.locality = locality
+    value.kommun = kommun
     value.notificationsOn = notifications
     return value
 }
@@ -54,7 +55,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest", "mat"])])])
     let primary = try #require(content.primary)
     #expect(primary.title == "Hemma")
-    #expect(primary.subtitle == "Storgatan 12 B, Krylbo")
+    #expect(primary.lines == HomeContent.AddressLines(address: "Storgatan\u{00A0}12 B", place: "Krylbo\u{00A0}· Avesta kommun"))
     guard case .upcoming(let pickup) = primary.status else { Issue.record("Väntade kommande hämtning"); return }
     #expect(pickup.date == monday)
     #expect(pickup.headline == "Om 3 dagar")
@@ -71,11 +72,11 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let row = try #require(content.others.first)
     #expect(content.others.count == 1)
     #expect(row.title == "Stugan")
-    #expect(row.subtitle == "Bergsvägen 4, Horndal")
-    #expect(row.summary == "Ons 18 nov · om 12 dagar")
+    #expect(row.lines == HomeContent.AddressLines(address: "Bergsvägen\u{00A0}4", place: "Horndal\u{00A0}· Avesta kommun"))
+    #expect(row.summary == "Ons 18 nov\u{00A0}· om 12 dagar")
     guard case .upcoming(let pickup) = row.status else { Issue.record("Väntade kommande hämtning"); return }
     #expect(pickup.fractions.map(\.id) == ["plast"])
-    #expect(row.accessibilityLabel == "Stugan, Bergsvägen 4, Horndal, Ons 18 nov · om 12 dagar, Plastförpackningar")
+    #expect(row.accessibilityLabel == "Stugan, Bergsvägen 4, Horndal, Avesta kommun, Ons 18 nov · om 12 dagar, Plastförpackningar")
 }
 
 @Test func dagarRaknasLokaltEjFranSparatDatum() throws {
@@ -84,6 +85,18 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let content = make([home], [home.key: schedule([event("2026-11-08", ["rest"])])], at: later)
     guard case .upcoming(let pickup) = try #require(content.primary).status else { Issue.record("Väntade kommande hämtning"); return }
     #expect(pickup.headline == "I morgon")
+}
+
+@Test func tvaDagarKvarArIOvermorgon() throws {
+    // Nu är det lördag den 7:e, och tömningen är måndag den 9:e.
+    let later = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 9 * 60)
+    let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], at: later)
+    guard case .upcoming(let pickup) = try #require(content.primary).status else { Issue.record("Väntade kommande hämtning"); return }
+    #expect(pickup.headline == "I övermorgon")
+    // Ett beräknat datum får "Ca" först.
+    let estimated = make([home], [home.key: schedule([event("2026-11-09", ["rest"], estimated: true)])], at: later)
+    guard case .upcoming(let guess) = try #require(estimated.primary).status else { Issue.record("Väntade kommande hämtning"); return }
+    #expect(guess.headline == "Ca i övermorgon")
 }
 
 @Test func hamtningIDagVisasSomIDag() throws {
@@ -100,7 +113,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     guard case .upcoming(let pickup) = try #require(content.primary).status else { Issue.record("Väntade kommande hämtning"); return }
     #expect(pickup.headline == "Ca om 3 dagar")
     #expect(pickup.longDate == "Ca måndag 9 november")
-    #expect(content.others[0].summary == "ca Ons 18 nov · om 12 dagar")
+    #expect(content.others[0].summary == "ca Ons 18 nov\u{00A0}· om 12 dagar")
 }
 
 @Test func passeratSchemaGerIngaKommandeHamtningar() throws {
@@ -108,31 +121,31 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     let primary = try #require(content.primary)
     #expect(primary.status == .noUpcoming)
     #expect(primary.summary == "Inga kommande hämtningar")
-    #expect(primary.reminderText == nil)
+    #expect(primary.reminder == nil)
 }
 
 @Test func utanPaslagenPaminnelseVisasInbjudan() throws {
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])])
-    #expect(try #require(content.primary).reminderText == "Påminn mig kvällen före")
+    #expect(try #require(content.primary).reminder?.detail == nil)
 }
 
 @Test func notisPaGerPaminnelseKvallenFore() throws {
     var on = home
     on.notificationsOn = true
     let content = make([on], [on.key: schedule([event("2026-11-09", ["rest"])])])
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+    #expect(try #require(content.primary).reminder?.detail == "Söndag kl. 18:00")
 }
 
 @Test func utanAktivitetLovasIngenLiveActivity() throws {
     // Utan någon aktivitet hos systemet påminner inget, och kortet får inte låta som att något gör det.
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(reminderMinutes: 1050, liveActivityOn: true))
-    #expect(try #require(content.primary).reminderText == "Ingen Live Activity planerad")
+    #expect(try #require(content.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
 @Test func felVidStartVisasPaKortet() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.")
-    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminder?.detail == "Kunde inte läggas in.")
 }
 
 @Test func felVidStartVisasAvenMedNotiser() throws {
@@ -141,7 +154,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.")
-    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminder?.detail == "Kunde inte läggas in.")
 }
 
 @Test func felVisasInteNarValetArAv() throws {
@@ -149,7 +162,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: false), now: now, liveActivityError: "Gammalt fel.")
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+    #expect(try #require(content.primary).reminder?.detail == "Söndag kl. 18:00")
 }
 
 @Test func passeradPaminnelseForNastaTomningVisas() throws {
@@ -157,7 +170,7 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, missedReminder: "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
-    #expect(try #require(content.primary).reminderText == "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
+    #expect(try #require(content.primary).reminder?.detail == "Tömning i morgon. Påminnelsen för i kväll har redan passerat.")
 }
 
 @Test func felGarForePasseradPaminnelse() throws {
@@ -165,13 +178,13 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivityError: "Kunde inte läggas in.", missedReminder: "Passerad.")
-    #expect(try #require(content.primary).reminderText == "Kunde inte läggas in.")
+    #expect(try #require(content.primary).reminder?.detail == "Kunde inte läggas in.")
 }
 
 @Test func passeradStarttidLovasInte() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: now.addingTimeInterval(-60)))
-    #expect(try #require(content.primary).reminderText == "Ingen Live Activity planerad")
+    #expect(try #require(content.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
 private func activity(pending: Bool, start: Date) -> ExistingActivity {
@@ -185,13 +198,21 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 1050)
     // Tiden kommer från aktiviteten, som kan ha lagts in före en ändring av inställningen.
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(reminderMinutes: 1200, liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
-    #expect(try #require(content.primary).reminderText == "Live Activity söndag kl. 17:30")
+    // Notis och Live Activity startar vid samma tid, så båda nämns.
+    #expect(try #require(content.primary).reminder?.detail == "Notis och Live Activity söndag kl. 17:30")
+}
+
+@Test func baraLiveActivityNamnerBaraLiveActivity() throws {
+    let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 1050)
+    let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
+    #expect(try #require(content.primary).reminder?.detail == "Live Activity söndag kl. 17:30")
 }
 
 @Test func startadLiveActivityVisasSomPagaende() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: false, start: now))
-    #expect(try #require(content.primary).reminderText == "Live Activity visas nu")
+    #expect(try #require(content.primary).reminder?.detail == "Live Activity visas nu")
 }
 
 @Test func utanAktivitetVisasNotisenSomForut() throws {
@@ -200,13 +221,13 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     // Starten misslyckades eller ska inte ske, och notisen är det som faktiskt påminner.
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: nil)
-    #expect(try #require(content.primary).reminderText == "Påminnelse söndag kl. 18:00")
+    #expect(try #require(content.primary).reminder?.detail == "Söndag kl. 18:00")
 }
 
 @Test func avstangdaLiveActivitiesSagsPaKortet() throws {
     let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
     let content = HomeContent.make(addresses: [home], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, liveActivitiesEnabled: false)
-    #expect(try #require(content.primary).reminderText == "Live Activities är avstängda")
+    #expect(try #require(content.primary).reminder?.detail == "Live Activities är avstängda")
 }
 
 @Test func notisValetSomIosInteTillaterVisasSomAv() throws {
@@ -214,9 +235,9 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let denied = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, remindersAllowed: false)
-    #expect(try #require(denied.primary).reminderText == "Påminn mig kvällen före")
+    #expect(try #require(denied.primary).reminder?.detail == nil)
     let liveOnly = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, remindersAllowed: false)
-    #expect(try #require(liveOnly.primary).reminderText == "Ingen Live Activity planerad")
+    #expect(try #require(liveOnly.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {
@@ -263,25 +284,361 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
 private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     var on = home
     on.notificationsOn = true
-    return try #require(make([on], [on.key: schedule(events)], at: time).primary).reminderText
+    return try #require(make([on], [on.key: schedule(events)], at: time).primary).reminder?.detail
 }
 
 @Test func tomningIDagUtanSenareHamtningGerNeutralPaminnelsetext() throws {
-    #expect(try reminder(events: [event("2026-11-06", ["rest"])], at: now) == "Påminnelser på")
+    #expect(try reminder(events: [event("2026-11-06", ["rest"])], at: now) == nil)
 }
 
 @Test func tomningIDagRaknarPaminnelsenFranNastaHamtning() throws {
     let events = [event("2026-11-06", ["rest"]), event("2026-11-09", ["mat"])]
-    #expect(try reminder(events: events, at: now) == "Påminnelse söndag kl. 18:00")
+    #expect(try reminder(events: events, at: now) == "Söndag kl. 18:00")
 }
 
 @Test func tomningIMorgonForeKlockan18GerPaminnelseSammaKvall() throws {
-    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: now) == "Påminnelse fredag kl. 18:00")
+    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: now) == "Fredag kl. 18:00")
 }
 
 @Test func tomningIMorgonEfter18GerNeutralTextOmIngenSenareFinns() throws {
     let evening = StockholmClock.date(on: today, minutes: 19 * 60)
-    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: evening) == "Påminnelser på")
+    #expect(try reminder(events: [event("2026-11-07", ["rest"])], at: evening) == nil)
     let later = [event("2026-11-07", ["rest"]), event("2026-11-12", ["mat"])]
-    #expect(try reminder(events: later, at: evening) == "Påminnelse onsdag kl. 18:00")
+    #expect(try reminder(events: later, at: evening) == "Onsdag kl. 18:00")
+}
+
+// MARK: Adress och plats på var sin rad
+
+@Test func adressenOchPlatsenPaVarSinRad() throws {
+    let street = saved("s", name: "Hemma", street: "Storgatan 12", locality: "Krylbo", primary: true)
+    // Ett område har hela namnet som gata och ingen ort, som i API:t.
+    let area = saved("a", name: "Stugan", street: "Kaplansgården, Jularbo m.fl.", locality: "", primary: false)
+    let content = make([street, area], [:])
+    #expect(try #require(content.primary).lines == HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun"))
+    #expect(content.others[0].lines == HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun"))
+}
+
+@Test func kommunenVisasInteNarDenArSammaSomOrten() throws {
+    let same = saved("u", name: "Jobbet", street: "Stationsgatan 12", locality: "Uppsala", kommun: "Uppsala kommun", primary: true)
+    #expect(try #require(make([same], [:]).primary).lines == HomeContent.AddressLines(address: "Stationsgatan\u{00A0}12", place: "Uppsala"))
+    // Utan hänsyn till skiftläge.
+    let shouting = saved("v", name: "Jobbet", street: "Stationsgatan 12", locality: "UPPSALA", kommun: "Uppsala kommun", primary: true)
+    #expect(try #require(make([shouting], [:]).primary).lines.place == "UPPSALA")
+}
+
+@Test func utanGataFinnsBaraPlatsen() throws {
+    let noStreet = saved("t", name: "Hemma", street: "", locality: "Krylbo", primary: true)
+    #expect(try #require(make([noStreet], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Krylbo\u{00A0}· Avesta kommun"))
+    let onlyKommun = saved("k", name: "Hemma", street: " ", locality: "", primary: true)
+    #expect(try #require(make([onlyKommun], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Avesta kommun"))
+}
+
+@Test func gatanUpprepasInteNarNamnetArDetsamma() throws {
+    // Ett område sparas med sitt namn, som också är gatan. Bara platsen står under namnet.
+    let area = saved("r", name: "Ringänget, Veddarsbo m.fl.", street: "Ringänget, Veddarsbo m.fl.", locality: "", primary: true)
+    let entry = try #require(make([area], [:]).primary)
+    #expect(entry.lines == HomeContent.AddressLines(address: "", place: "Avesta kommun"))
+    #expect(entry.accessibilityLabel.hasPrefix("Ringänget, Veddarsbo m.fl., Avesta kommun"))
+    // Samma sak med en gata med nummer, oavsett skiftläge och mellanslag runt omkring.
+    let street = saved("s", name: "testgatan 3", street: " Testgatan 3 ", locality: "Uppsala", kommun: "Uppsala kommun", primary: true)
+    #expect(try #require(make([street], [:]).primary).lines == HomeContent.AddressLines(address: "", place: "Uppsala"))
+    // Ett eget namn ger gatan på raden under, som förut.
+    let named = saved("n", name: "Hemma", street: "Testgatan 3", locality: "Uppsala", kommun: "Uppsala kommun", primary: true)
+    #expect(try #require(make([named], [:]).primary).lines.address == "Testgatan\u{00A0}3")
+}
+
+@Test func helaSchematVisarAlltidAdressenMedNamn() throws {
+    // Ett område som sparats med sitt namn: namnet står en gång, som namn, och platsen under. Gatan tas bort som dubblett,
+    // inte adressen.
+    let area = saved("r", name: "Ringänget, Veddarsbo m.fl.", street: "Ringänget, Veddarsbo m.fl.", locality: "", primary: true)
+    let areaLines = HomeContent.namedLines(for: area)
+    #expect(areaLines == HomeContent.AddressLines(name: "Ringänget, Veddarsbo m.fl.", address: "", place: "Avesta kommun"))
+    #expect(areaLines.accessibilityLabel == "Ringänget, Veddarsbo m.fl., Avesta kommun")
+    // En gata som sparats med gatan som namn, som alla adresser utom den första.
+    let street = saved("s", name: "Storgatan 12", street: "Storgatan 12", locality: "Krylbo", primary: false)
+    let streetLines = HomeContent.namedLines(for: street)
+    #expect(streetLines == HomeContent.AddressLines(name: "Storgatan\u{00A0}12", address: "", place: "Krylbo\u{00A0}· Avesta kommun"))
+    #expect(streetLines.accessibilityLabel == "Storgatan 12, Krylbo, Avesta kommun")
+    // Ett eget namn: namnet, gatan och platsen.
+    let named = saved("n", name: "Hemma", street: "Storgatan 12", locality: "Krylbo", primary: true)
+    let namedLines = HomeContent.namedLines(for: named)
+    #expect(namedLines == HomeContent.AddressLines(name: "Hemma", address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun"))
+    #expect(namedLines.accessibilityLabel == "Hemma, Storgatan 12, Krylbo, Avesta kommun")
+    // Ett område med eget namn.
+    let stugan = saved("a", name: "Stugan", street: "Kaplansgården, Jularbo m.fl.", locality: "", primary: false)
+    #expect(HomeContent.namedLines(for: stugan) == HomeContent.AddressLines(name: "Stugan", address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun"))
+}
+
+@Test func adressenSynsMinstEnGangOverallt() throws {
+    // Kortet, raderna och adressvyn har namnet som rubrik, och Hela schemat har det på första raden. Varje vy visar
+    // alltså namnet, och gatan när den skiljer sig från namnet.
+    let addresses = [
+        saved("r", name: "Ringänget, Veddarsbo m.fl.", street: "Ringänget, Veddarsbo m.fl.", locality: "", primary: true),
+        saved("s", name: "Storgatan 12", street: "Storgatan 12", locality: "Krylbo", primary: false),
+        saved("n", name: "Hemma", street: "Bergsvägen 4", locality: "Horndal", primary: false),
+    ]
+    let content = make(addresses, [:])
+    let entries = [try #require(content.primary)] + content.others
+    for (entry, address) in zip(entries, addresses) {
+        let plain = address.displayName
+        #expect(entry.title == plain)
+        #expect(entry.accessibilityLabel.hasPrefix(plain))
+        let street = address.street
+        #expect(entry.title == street || entry.lines.accessibilityLabel.hasPrefix(street.replacingOccurrences(of: "\u{00A0}", with: " ")))
+        let full = HomeContent.namedLines(for: address).accessibilityLabel
+        #expect(full.hasPrefix(plain))
+        #expect(full.contains(street))
+        #expect(full.hasSuffix("kommun"))
+    }
+}
+
+@Test func voiceOverLaserAdressOchPlatsUtanMittpunkt() {
+    #expect(HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun").accessibilityLabel == "Storgatan 12, Krylbo, Avesta kommun")
+    #expect(HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun").accessibilityLabel == "Kaplansgården, Jularbo m.fl., Avesta kommun")
+    #expect(HomeContent.AddressLines(address: "", place: "Uppsala").accessibilityLabel == "Uppsala")
+}
+
+@Test func kommunensKortaNamnSomISokningen() {
+    #expect(shortKommunName("Avesta kommun") == "Avesta")
+    #expect(shortKommunName("Region Gotland") == "Region Gotland")
+}
+
+@Test func kommunVisasMedHelaNamnet() {
+    #expect(kommunDisplayName("Säters kommun") == "Säters kommun")
+    #expect(kommunDisplayName(" Avesta kommun ") == "Avesta kommun")
+    #expect(kommunDisplayName("Region Gotland") == "Region Gotland")
+}
+
+@Test func kommunenUppreparOrtenAvenIGenitiv() {
+    #expect(kommunRepeatsLocality("Säters kommun", locality: "Säter"))
+    #expect(kommunRepeatsLocality("Stockholms kommun", locality: "Stockholm"))
+    #expect(kommunRepeatsLocality("Falu kommun", locality: "Falun"))
+    #expect(kommunRepeatsLocality("Uppsala kommun", locality: "Uppsala"))
+    #expect(kommunRepeatsLocality("Uppsala kommun", locality: "uppsala"))
+    #expect(!kommunRepeatsLocality("Avesta kommun", locality: "Krylbo"))
+    #expect(!kommunRepeatsLocality("Avesta kommun", locality: ""))
+    #expect(!kommunRepeatsLocality("Säters kommun", locality: "Sät"))
+}
+
+@Test func ortOchKommunSomPaKortensUndertitel() {
+    // Sökträffens rad: kommunen döljs när den bara upprepar orten, annars står hela namnet efter en mittpunkt.
+    #expect(localityAndKommun(locality: "Uppsala", kommun: "Uppsala kommun") == "Uppsala")
+    #expect(localityAndKommun(locality: "Säter", kommun: "Säters kommun") == "Säter")
+    #expect(localityAndKommun(locality: "Krylbo", kommun: "Avesta kommun") == "Krylbo\u{00A0}· Avesta kommun")
+    #expect(localityAndKommun(locality: " ", kommun: "Avesta kommun") == "Avesta kommun")
+    #expect(localityAndKommun(locality: "Krylbo", kommun: "") == "Krylbo")
+}
+
+@Test func undertitelnDoljerKommunenSomBaraUppreparOrten() throws {
+    let sater = saved("s", name: "Hemma", street: "Storgatan 3", locality: "Säter", kommun: "Säters kommun", primary: true)
+    let stockholm = saved("t", name: "Jobbet", street: "Drottninggatan 1", locality: "Stockholm", kommun: "Stockholms kommun", primary: false)
+    let falun = saved("f", name: "Stugan", street: "Åsgatan 5", locality: "Falun", kommun: "Falu kommun", primary: false)
+    let content = make([sater, stockholm, falun], [:])
+    #expect(try #require(content.primary).lines.place == "Säter")
+    #expect(content.others.map(\.lines.place) == ["Stockholm", "Falun"])
+}
+
+@Test func mittpunktenBorjarAldrigEnRad() throws {
+    let content = make([home, cabin], [home.key: schedule([event("2026-11-09", ["rest"])]), cabin.key: schedule([event("2026-11-18", ["plast"])])])
+    for entry in [try #require(content.primary)] + content.others {
+        #expect(!entry.lines.place.contains(" ·"))
+        #expect(!entry.summary.contains(" ·"))
+    }
+    // Gatunamn och nummer hålls ihop, men husets bokstav får stå kvar.
+    #expect(try #require(content.primary).lines.address == "Storgatan\u{00A0}12 B")
+}
+
+// MARK: Påminnelse på raderna
+
+private let tuesdayPickup = [event("2026-11-11", ["rest"])]
+
+@Test func radMedNotisPaVisarPlaneradPaminnelse() throws {
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let content = make([home, other], [home.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup)])
+    #expect(content.others[0].rowReminder == .scheduled("Påminnelse tisdag kl. 18:00"))
+    #expect(content.others[0].rowReminder?.text == "Påminnelse tisdag kl. 18:00")
+    // Raden har sitt läge, och huvudkortets text är bara huvudkortets.
+    #expect(content.others[0].reminder == nil)
+    #expect(content.primary?.rowReminder == nil)
+}
+
+@Test func radMedNotisAvVisarIngenPaminnelse() throws {
+    let content = make([home, cabin], [home.key: schedule(tuesdayPickup), cabin.key: schedule(tuesdayPickup)])
+    #expect(content.others[0].rowReminder == nil)
+}
+
+@Test func radMedNekadeNotiserSagerAttNotiserArAvstangda() throws {
+    var primary = home
+    primary.notificationsOn = true
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let content = HomeContent.make(addresses: [primary, other], schedules: [primary.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    #expect(content.others[0].rowReminder == .denied)
+    #expect(content.others[0].rowReminder?.text == "Notiser är avstängda i iOS")
+    // Huvudkortets reglage är av och säger att notiserna är avstängda.
+    #expect(content.primary?.reminder?.isOn == false)
+    #expect(content.primary?.reminder?.isDenied == true)
+}
+
+@Test func radMedNotisAvOchNekadeNotiserVisarIngenting() throws {
+    let content = HomeContent.make(addresses: [home, cabin], schedules: [home.key: schedule(tuesdayPickup), cabin.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    #expect(content.others[0].rowReminder == nil)
+}
+
+@Test func radNarNotiserInteArBestamdaVisarPlaneradPaminnelse() throws {
+    // iOS har inte frågat än (till exempel efter en ominstallation): inte nekat, så raden visar det planerade läget.
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let content = HomeContent.make(addresses: [home, other, cabin], schedules: [home.key: schedule(tuesdayPickup), other.key: schedule(tuesdayPickup), cabin.key: schedule(tuesdayPickup)], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: false)
+    #expect(content.others[0].rowReminder == .scheduled("Påminnelse tisdag kl. 18:00"))
+    // Notis av för adressen: ingenting.
+    #expect(content.others[1].rowReminder == nil)
+}
+
+@Test func radensPaminnelseHarIngenLiveActivity() throws {
+    // Live Activity gäller bara huvudadressen. Raden visar notisen även när Live Activity är på eller har fel.
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let pending = activity(pending: true, start: StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 17 * 60 + 30))
+    let content = HomeContent.make(addresses: [home, other], schedules: [home.key: schedule([event("2026-11-09", ["rest"])]), other.key: schedule(tuesdayPickup)], settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: pending, liveActivityError: "Kunde inte läggas in.", reserveAt: now.addingTimeInterval(3600))
+    #expect(content.others[0].rowReminder == .scheduled("Påminnelse tisdag kl. 18:00"))
+}
+
+@Test func radenRaknarFranNastaKvallSomInteHarPasserat() throws {
+    // Tömning i morgon lördag, och kvällen före (fredag 18:00) har passerat: samma text som huvudkortet.
+    let evening = StockholmClock.date(on: today, minutes: 19 * 60)
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let events = [event("2026-11-07", ["rest"]), event("2026-11-11", ["mat"])]
+    let content = make([home, other], [home.key: schedule(events), other.key: schedule(events)], at: evening)
+    #expect(content.others[0].rowReminder == .missed("Tömning i morgon. Påminnelsen för i kväll har redan passerat."))
+    // Tömning i dag: kvällen före har passerat, och påminnelsen gäller tömningen på onsdag.
+    let todayFirst = make([home, other], [home.key: schedule(tuesdayPickup), other.key: schedule([event("2026-11-06", ["rest"]), event("2026-11-11", ["mat"])])])
+    #expect(todayFirst.others[0].rowReminder == .scheduled("Påminnelse tisdag kl. 18:00"))
+    // Ingen senare tömning: samma neutrala text som huvudkortet.
+    let onlyToday = make([home, other], [home.key: schedule(tuesdayPickup), other.key: schedule([event("2026-11-06", ["rest"])])])
+    #expect(onlyToday.others[0].rowReminder == .scheduled("Påminnelser på"))
+}
+
+@Test func radUtanKommandeHamtningHarIngenPaminnelse() throws {
+    let other = saved("o", name: "Stugan", street: "Bergsvägen 4", locality: "Horndal", primary: false, notifications: true)
+    let content = make([home, other], [home.key: schedule(tuesdayPickup), other.key: schedule([event("2026-11-02", ["rest"])])])
+    #expect(content.others[0].rowReminder == nil)
+}
+
+// MARK: Reglaget för påminnelsen på huvudkortet
+
+@Test func reglagetArAvUtanPaminnelse() throws {
+    let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])])
+    let reminder = try #require(content.primary?.reminder)
+    #expect(reminder == HomeContent.PrimaryReminder(isOn: false, isDenied: false, title: "Påminn mig kvällen före", detail: nil))
+}
+
+@Test func reglagetArPaMedTidenForPaminnelsenUnder() throws {
+    var on = home
+    on.notificationsOn = true
+    let content = make([on], [on.key: schedule([event("2026-11-09", ["rest"])])])
+    let reminder = try #require(content.primary?.reminder)
+    #expect(reminder.isOn)
+    #expect(!reminder.isDenied)
+    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.detail == "Söndag kl. 18:00")
+}
+
+@Test func nekadeNotiserGerAvstangtReglageOchText() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
+    let denied = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    #expect(try #require(denied.primary?.reminder) == HomeContent.PrimaryReminder(isOn: false, isDenied: true, title: "Notiser är avstängda i iOS", detail: nil))
+    // Också när valet inte är på: reglaget går inte att slå på förrän iOS tillåter notiser.
+    let off = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    #expect(try #require(off.primary?.reminder).isDenied)
+}
+
+@Test func ejFragadeNotiserVisasSomAvUtanNekat() throws {
+    var on = home
+    on.notificationsOn = true
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false)
+    let reminder = try #require(content.primary?.reminder)
+    #expect(!reminder.isOn)
+    #expect(!reminder.isDenied)
+    #expect(reminder.title == "Påminn mig kvällen före")
+}
+
+@Test func liveActivityVisasIUndertexten() throws {
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 17 * 60 + 30)
+    let content = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
+    let reminder = try #require(content.primary?.reminder)
+    #expect(!reminder.isOn)
+    #expect(reminder.detail == "Live Activity söndag kl. 17:30")
+}
+
+@Test func passeradPaminnelseVisasIUndertexten() throws {
+    var on = home
+    on.notificationsOn = true
+    let missed = "Tömning i morgon. Påminnelsen för i kväll har redan passerat."
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, missedReminder: missed)
+    #expect(try #require(content.primary?.reminder).detail == missed)
+}
+
+@Test func raderOchKortUtanHamtningHarInteReglaget() throws {
+    let content = make([home, cabin], [
+        home.key: schedule([event("2026-11-02", ["rest"])]),
+        cabin.key: schedule([event("2026-11-18", ["plast"])]),
+    ])
+    #expect(try #require(content.primary).reminder == nil)
+    #expect(content.others[0].reminder == nil)
+}
+
+@Test func reglagetUppreparInteAttPaminnelserArPa() throws {
+    // Tömning i dag och ingen senare: reglaget säger redan att påminnelsen är på, så ingen undertext.
+    var on = home
+    on.notificationsOn = true
+    let reminder = try #require(make([on], [on.key: schedule([event("2026-11-06", ["rest"])])]).primary?.reminder)
+    #expect(reminder.isOn)
+    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.detail == nil)
+}
+
+// MARK: Schemat slutar
+
+private func endingSchedule(until: String?, events: [PickupEvent] = [event("2026-11-09", ["rest"])], lastError: APIError? = nil) -> CachedSchedule {
+    var cached = schedule(events, lastError: lastError)
+    let base = cached.response!
+    cached.response = AddressResponse(today: base.today, address: base.address, next: [], summary: "", events: events, bins: [], fractions: base.fractions, links: base.links, updatedAt: base.updatedAt, schedule: until.map { SchedulePeriod(until: DayDate($0)!, reason: "Orsak.") })
+    return cached
+}
+
+private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
+    let address = SavedAddress.fixture(key: AddressKey(source: "x", id: "a"), isPrimary: true)
+    return HomeContent.make(addresses: [address], schedules: cached.map { [address.key: $0] } ?? [:], settings: ReminderSettings(), now: now)
+}
+
+@Test func hemkortetVisarNarSchematSlutarInomFjortonDagar() {
+    // Fredag 6 november: 20 november är 14 dagar kvar, 21 november 15.
+    #expect(endingHome(endingSchedule(until: "2026-11-20")).primary?.scheduleEnding?.shortText == "Schemat slutar 20 nov")
+    #expect(endingHome(endingSchedule(until: "2026-11-21")).primary?.scheduleEnding == nil)
+    #expect(endingHome(endingSchedule(until: "2026-11-06")).primary?.scheduleEnding?.daysLeft == 0)
+    #expect(endingHome(endingSchedule(until: "2026-11-05")).primary?.scheduleEnding == nil)
+}
+
+@Test func hemkortetVisarInteRadenForLivekallorEllerUtanSchema() {
+    #expect(endingHome(endingSchedule(until: nil)).primary?.scheduleEnding == nil)
+    #expect(endingHome(nil).primary?.scheduleEnding == nil)
+}
+
+@Test func hemkortetVisarInteRadenUtanKommandeHamtningar() {
+    #expect(endingHome(endingSchedule(until: "2026-11-10", events: [event("2026-11-01", ["rest"])])).primary?.scheduleEnding == nil)
+}
+
+@Test func hemkortetVisarRadenOckssaMedEttSparatSchemaEfterFel() {
+    #expect(endingHome(endingSchedule(until: "2026-11-20", lastError: .sourceUnavailable)).primary?.scheduleEnding != nil)
+}
+
+@Test func radenUnderFlerAdresserHarIngenSchemaslutarOchVoiceOverLaserDenInte() {
+    let other = SavedAddress.fixture(key: AddressKey(source: "x", id: "b"), isPrimary: false)
+    let primary = SavedAddress.fixture(key: AddressKey(source: "x", id: "a"), isPrimary: true)
+    let ending = endingSchedule(until: "2026-11-20")
+    let content = HomeContent.make(addresses: [primary, other], schedules: [primary.key: ending, other.key: ending], settings: ReminderSettings(), now: now)
+    #expect(content.primary?.scheduleEnding != nil)
+    #expect(content.primary?.accessibilityLabel.contains("Schemat slutar") == true)
+    #expect(content.others[0].scheduleEnding == nil)
+    #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
 }
