@@ -89,7 +89,7 @@ private func areaHit(detail: String? = "Måndag, udda vecka · Område 1", area:
         let hit = try #require(try areas("omraden-detaljer").addresses.first { $0.id == "trakt-7" })
         let row = AreaRowContent.make(hit)
         #expect(row.otherDays == ["Till exempel Stallgatan och Storbogatan (måndag, udda vecka) och Bodgatan (onsdag, jämn vecka)."])
-        #expect(row.accessibilityLabel.hasSuffix("Bodgatan (onsdag, jämn vecka)."))
+        #expect(row.accessibilityLabel.hasSuffix("Vissa gator har en annan hämtdag. Till exempel Stallgatan och Storbogatan (måndag, udda vecka) och Bodgatan (onsdag, jämn vecka)."))
     }
 
     @Test func utanDetaljerVisasDagensRad() {

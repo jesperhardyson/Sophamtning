@@ -215,16 +215,17 @@ struct AreaDetailsView: View {
                     .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.text2)
             }
+            if !content.otherDays.isEmpty {
+                // Rubriken som på webben, så att raderna under har ett sammanhang.
+                Text(AreaRowContent.otherDaysHeading)
+                    .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.text2)
+                    .padding(.top, 6)
+            }
             ForEach(Array(content.otherDays.enumerated()), id: \.offset) { _, text in
-                Label {
-                    Text(text)
-                } icon: {
-                    Image(systemName: "calendar.badge.exclamationmark")
-                        .accessibilityHidden(true)
-                }
-                .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                .foregroundStyle(Color.Theme.text2)
-                .padding(.top, 2)
+                Text(text)
+                    .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.text2)
             }
         }
         .multilineTextAlignment(.leading)

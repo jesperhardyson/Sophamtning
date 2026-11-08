@@ -105,6 +105,7 @@ final class CoreFlowTests: XCTestCase {
         // Ett område med platser som har en annan dag läser också dem.
         let other = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Bodgatan (onsdag, jämn vecka)")).firstMatch
         XCTAssertTrue(other.exists, "Platser med andra dagar ska visas")
+        XCTAssertTrue(other.label.contains("Vissa gator har en annan hämtdag. Till exempel"), "Raderna ska ha rubriken som på webben")
 
         // Bekräftelsen visar alla platser först när listan fälls ut. Raden prövas som synlig text, eftersom VoiceOver-texten
         // alltid har alla platser. Den korta raden prövas inte, eftersom listan bakom arket har samma text.

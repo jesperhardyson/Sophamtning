@@ -59,11 +59,15 @@ public struct AreaRowContent: Equatable, Sendable {
         )
     }
 
+    /// Rubriken över raderna med andra dagar, som på webben.
+    public static let otherDaysHeading = "Vissa gator har en annan hämtdag"
+
     /// Hela raden som en text för VoiceOver, med alla platser: "Askön, Nyhyttan m.fl., Område 1, Måndag, udda vecka.
     /// Platser: Askön, Nyhyttan och Klintbo."
     public var accessibilityLabel: String {
         let head = [title, label, day].compactMap { part in part }.joined(separator: ", ")
-        let tail = [allPlaces.map { list in "Platser: \(list)" }].compactMap { part in part } + otherDays
+        let others = otherDays.isEmpty ? [] : [Self.otherDaysHeading] + otherDays
+        let tail = [allPlaces.map { list in "Platser: \(list)" }].compactMap { part in part } + others
         return ([head] + tail).map { part in part.hasSuffix(".") ? part : part + "." }.joined(separator: " ")
     }
 
