@@ -17,8 +17,12 @@ public struct ScheduleEnding: Equatable, Sendable {
     public let spokenText: String
     /// Rubriken i rutan.
     public let title: String
-    /// Källans orsak, om den finns, och att nya tider visas när källan publicerar dem.
+    /// Att nya tider visas när källan publicerar dem. Källans orsak står en gång, under raden "Schemat gäller till …"
+    /// precis ovanför rutan, och upprepas inte här. Påminnelser nämns inte: appen hämtar om schemat vid start, när den
+    /// öppnas och i bakgrunden när iOS tillåter det, men inget av det kan lovas, så texten lovar inget.
     public let message: String
+
+    private static let message = "Nya tider visas när källan publicerar dem."
 
     /// `nil` för live-källor (`schedule: null`), när det är mer än 14 dagar kvar och när `until` har passerat.
     public static func make(_ period: SchedulePeriod?, today: DayDate) -> ScheduleEnding? {
@@ -31,16 +35,7 @@ public struct ScheduleEnding: Equatable, Sendable {
             shortText: "Schemat slutar \(SwedishFormat.dayMonth(period.until))",
             spokenText: "Schemat slutar \(period.until.day) \(SwedishFormat.monthName(period.until))",
             title: "Schemat tar snart slut",
-            message: message(reason: period.reason?.trimmedNonEmpty)
+            message: message
         )
-    }
-
-    /// Källans orsak med punkt efter, och sedan att nya tider visas. Påminnelser nämns inte: appen hämtar om schemat vid
-    /// start, när den öppnas och i bakgrunden när iOS tillåter det, men inget av det kan lovas, så texten lovar inget.
-    private static func message(reason: String?) -> String {
-        let promise = "Nya tider visas när källan publicerar dem."
-        guard let reason else { return promise }
-        let terminated = reason.hasSuffix(".") || reason.hasSuffix("!") || reason.hasSuffix("?") ? reason : reason + "."
-        return terminated + " " + promise
     }
 }

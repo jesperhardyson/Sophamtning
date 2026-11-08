@@ -43,22 +43,18 @@ private func period(daysLeft: Int, reason: String? = "Avesta Vatten publicerar h
         #expect(ending.spokenText == "Schemat slutar 10 januari")
     }
 
-    @Test func rutanHarKallansOrsakOchSagerAttNyaTiderKommer() throws {
+    @Test func rutanSagerBaraAttNyaTiderKommer() throws {
         let ending = try #require(ScheduleEnding.make(period(daysLeft: 10), today: today))
         #expect(ending.title == "Schemat tar snart slut")
-        #expect(ending.message == "Avesta Vatten publicerar hämtschemat ett år i taget. Nya tider visas när källan publicerar dem.")
+        #expect(ending.message == "Nya tider visas när källan publicerar dem.")
     }
 
-    @Test func rutanUtanOrsak() throws {
-        let missing = try #require(ScheduleEnding.make(period(daysLeft: 10, reason: nil), today: today))
-        #expect(missing.message == "Nya tider visas när källan publicerar dem.")
-        let blank = try #require(ScheduleEnding.make(period(daysLeft: 10, reason: "  \n"), today: today))
-        #expect(blank.message == "Nya tider visas när källan publicerar dem.")
-    }
-
-    @Test func orsakenUtanPunktFarEnPunkt() throws {
-        let ending = try #require(ScheduleEnding.make(period(daysLeft: 3, reason: "Schemat gäller ett år"), today: today))
-        #expect(ending.message == "Schemat gäller ett år. Nya tider visas när källan publicerar dem.")
+    @Test func rutanUpprepaInteKallansOrsak() throws {
+        // Orsaken står redan under raden "Schemat gäller till …", så den visas en gång. Samma text med eller utan orsak.
+        let withReason = try #require(ScheduleEnding.make(period(daysLeft: 10), today: today))
+        let without = try #require(ScheduleEnding.make(period(daysLeft: 10, reason: nil), today: today))
+        #expect(withReason.message == without.message)
+        #expect(!withReason.message.contains("Avesta Vatten"))
     }
 
     @Test func lovarAldrigAttPaminnelserFortsatter() throws {
@@ -67,6 +63,8 @@ private func period(daysLeft: Int, reason: String? = "Avesta Vatten publicerar h
         #expect(!ending.message.localizedCaseInsensitiveContains("påminnelse"))
     }
 
+    // Testerna med Stockholmstid prövar att dagen räknas i Europe/Stockholm och inte i telefonens tidszon. De säger
+    // något först när sviten körs med TZ=America/New_York (`TZ=America/New_York swift test`), och körs så också.
     @Test func dagenRaknasISvenskTidOavsettTelefonensTidszon() throws {
         // 00:30 den 27 dec i Stockholm är 18:30 den 26:e i New York. Dagen är ändå den 27:e, så 10 jan är 14 dagar kvar.
         let early = StockholmClock.date(on: DayDate("2026-12-27")!, minutes: 30)

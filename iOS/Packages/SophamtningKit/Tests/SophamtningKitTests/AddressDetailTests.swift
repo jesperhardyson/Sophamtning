@@ -440,10 +440,11 @@ private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("
 @Test func rutanHarOrsakenOchSagerAttNyaTiderKommer() throws {
     let result = try ending(10)
     #expect(result.scheduleEnding?.title == "Schemat tar snart slut")
-    #expect(result.scheduleEnding?.message == "Avesta Vatten publicerar hämtschemat ett år i taget. Nya tider visas när källan publicerar dem.")
+    #expect(result.scheduleEnding?.message == "Nya tider visas när källan publicerar dem.")
     #expect(try ending(10, reason: nil).scheduleEnding?.message == "Nya tider visas när källan publicerar dem.")
-    // Raden "Schemat gäller till" står kvar bredvid.
-    #expect(result.schedulePeriod != nil)
+    // Källans orsak står en gång, under raden "Schemat gäller till", och inte i rutan.
+    #expect(result.schedulePeriod?.reason == "Avesta Vatten publicerar hämtschemat ett år i taget.")
+    #expect(result.scheduleEnding?.message.contains("Avesta Vatten") == false)
 }
 
 @Test func rutanVisasInteUtanKommandeHamtningar() throws {
@@ -459,6 +460,7 @@ private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("
     #expect(result.noUpcomingMessage.message.contains("källan har inte publicerat nästa period än"))
 }
 
+// Prövar Stockholmstid mot telefonens tidszon och säger något först med TZ=America/New_York, som sviten körs med.
 @Test func rutanRaknasISvenskTidOavsettTelefonensTidszon() throws {
     // 00:30 den 7 november i Stockholm är 18:30 den 6:e i New York. I dag är den 7:e, och 21 november är 14 dagar kvar.
     let early = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 30)
