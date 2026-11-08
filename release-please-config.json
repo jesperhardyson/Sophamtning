@@ -15,7 +15,6 @@
   ],
   "packages": {
     ".": {
-      "release-as": "1.0.0",
       "extra-files": [
         { "type": "generic", "path": "iOS/Config/Version.xcconfig" }
       ]
