@@ -25,7 +25,12 @@ cd iOS/Packages/SophamtningKit && swift test
 
 # Bygg appen
 xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+
+# Ett enskilt UI-test
+xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test -only-testing:SophamtningUITests/CoreFlowTests/testOmradeslistanGarAttSoka
 ```
+
+UI-testerna tar 15–20 minuter som hel svit. Kör därför bara de UI-tester som rör det som ändrats under arbetet, och hela sviten en gång innan PR:en görs redo eller mergas. Paketets tester och bygget körs varje gång.
 
 ## Regler
 
