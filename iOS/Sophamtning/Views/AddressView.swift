@@ -208,6 +208,11 @@ struct AddressView: View {
             SchedulePeriodView(line: period)
                 .padding(.top, 12)
         }
+        // Och när det tar slut inom 14 dagar, en ruta med orsaken och att nya tider visas när källan publicerar dem.
+        if let ending = detail.scheduleEnding {
+            MessageCard(style: .neutral, icon: "calendar.badge.clock", title: ending.title, message: ending.message)
+                .padding(.top, 12)
+        }
     }
 
     private var fullScheduleLink: some View {

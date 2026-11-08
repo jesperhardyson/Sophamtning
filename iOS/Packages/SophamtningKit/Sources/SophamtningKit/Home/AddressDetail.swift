@@ -123,6 +123,9 @@ public struct AddressDetail: Equatable, Sendable {
     public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
     /// "Schemat gäller till 10 januari 2027." med källans orsak. `nil` för live-källor och när perioden har passerat.
     public let schedulePeriod: SchedulePeriodLine?
+    /// Rutan när schemat tar slut inom 14 dagar. Bara med kommande hämtningar: utan dem säger meddelandet nedan hur långt
+    /// schemat gäller. `nil` för live-källor och efter att perioden har passerat.
+    public let scheduleEnding: ScheduleEnding?
     /// Meddelandet i läget `noUpcoming`. Har källans period passerat säger det att nästa period inte är publicerad än.
     public let noUpcomingMessage: NoUpcomingMessage
     /// "Hämtat i dag 09:12", längst ned i kortet för källan, eller `nil` när schemat aldrig hämtats.
@@ -191,6 +194,7 @@ public struct AddressDetail: Equatable, Sendable {
             bins: bins,
             rows: scheduleRows,
             schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
+            scheduleEnding: mode == .schedule ? ScheduleEnding.make(response?.schedule, today: today) : nil,
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
             fetchedText: fetchedTime,
             webLink: response?.links.web,

@@ -415,3 +415,53 @@ private func periodSchedule(_ events: [PickupEvent], until: String?, reason: Str
     #expect(result.next?.date == DayDate("2026-11-09"))
     #expect(result.schedulePeriod == nil)
 }
+
+// MARK: Schemat tar snart slut
+
+/// Fredag 6 november 2026 är i dag, så `until` 14 dagar bort är 20 november.
+private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("2026-11-09", ["rest"])], reason: String? = "Avesta Vatten publicerar hämtschemat ett år i taget.", now: Date = noon) throws -> AddressDetail {
+    let until = untilDaysFromToday.map { StockholmClock.today(now: now).adding(days: $0).iso }
+    return detail(try periodSchedule(events, until: until, reason: reason), now: now)
+}
+
+@Test func rutanVisasNarSchematHarFjortonDagarEllerMindreKvar() throws {
+    #expect(try ending(15).scheduleEnding == nil)
+    #expect(try ending(14).scheduleEnding?.daysLeft == 14)
+    #expect(try ending(1).scheduleEnding?.daysLeft == 1)
+    #expect(try ending(0).scheduleEnding?.daysLeft == 0)
+}
+
+@Test func rutanVisasInteForPasseratDatumEllerLivekallor() throws {
+    #expect(try ending(-1).scheduleEnding == nil)
+    #expect(try ending(nil).scheduleEnding == nil)
+    #expect(detail(nil).scheduleEnding == nil)
+}
+
+@Test func rutanHarOrsakenOchSagerAttNyaTiderKommer() throws {
+    let result = try ending(10)
+    #expect(result.scheduleEnding?.title == "Schemat tar snart slut")
+    #expect(result.scheduleEnding?.message == "Avesta Vatten publicerar hämtschemat ett år i taget. Nya tider visas när källan publicerar dem.")
+    #expect(try ending(10, reason: nil).scheduleEnding?.message == "Nya tider visas när källan publicerar dem.")
+    // Raden "Schemat gäller till" står kvar bredvid.
+    #expect(result.schedulePeriod != nil)
+}
+
+@Test func rutanVisasInteUtanKommandeHamtningar() throws {
+    // Då säger kortet utan hämtningar hur långt schemat gäller, så rutan skulle bara upprepa det.
+    let result = try ending(5, events: [event("2026-11-01", ["rest"])])
+    #expect(result.mode == .noUpcoming)
+    #expect(result.scheduleEnding == nil)
+}
+
+@Test func efterDatumetGallerOmgangCsTexter() throws {
+    let result = try ending(-3, events: [event("2026-11-01", ["rest"])])
+    #expect(result.scheduleEnding == nil)
+    #expect(result.noUpcomingMessage.message.contains("källan har inte publicerat nästa period än"))
+}
+
+@Test func rutanRaknasISvenskTidOavsettTelefonensTidszon() throws {
+    // 00:30 den 7 november i Stockholm är 18:30 den 6:e i New York. I dag är den 7:e, och 21 november är 14 dagar kvar.
+    let early = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 30)
+    let result = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: "2026-11-21"), now: early)
+    #expect(result.scheduleEnding?.daysLeft == 14)
+}

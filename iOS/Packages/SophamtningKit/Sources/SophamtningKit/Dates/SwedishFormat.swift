@@ -34,6 +34,11 @@ public enum SwedishFormat {
         "\(day.day) \(months[day.month - 1]) \(day.year)"
     }
 
+    /// Månaden helt utskriven, "januari".
+    public static func monthName(_ day: DayDate) -> String {
+        months[day.month - 1]
+    }
+
     /// "13 okt", utan veckodag.
     public static func dayMonth(_ day: DayDate) -> String {
         "\(day.day) \(shortMonths[day.month - 1])"
