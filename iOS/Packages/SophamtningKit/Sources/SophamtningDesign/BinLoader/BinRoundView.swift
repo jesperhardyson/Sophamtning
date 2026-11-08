@@ -12,6 +12,7 @@ public struct BinRoundView: View {
     private let maxWidth: CGFloat
     private let bubbleTip: HorizontalAlignment
     private let bubblePlacement: BinBubbleTimeline.Placement
+    private let tapTrigger: Int
     @ScaledMetric(relativeTo: .largeTitle) private var scaledWidth: CGFloat = 135
 
     /// Största bredden, så att sökfältet under kärlet inte trycks långt ned med största text.
@@ -42,12 +43,15 @@ public struct BinRoundView: View {
     ///   - maxWidth: Största bredden med stor text.
     ///   - bubbleTip: Var bubblan står i förhållande till kärlet: mitt över, eller med vänsterkanten vid kärlet.
     ///   - bubblePlacement: Om spetsen står ovanför locket eller ovanför hela kärlet.
+    ///   - tapTrigger: Ökar när något annat än kärlet ska räknas som ett tryck på det, till exempel rubriken bredvid.
+    ///     Samma spärr gäller, så att snabba tryck inte staplar.
     ///   - reduceMotion: Tvingar läget. Utan värde läses `accessibilityReduceMotion`.
-    public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, bubblePlacement: BinBubbleTimeline.Placement = .overLid, reduceMotion: Bool? = nil) {
+    public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, bubblePlacement: BinBubbleTimeline.Placement = .overLid, tapTrigger: Int = 0, reduceMotion: Bool? = nil) {
         self.firstRound = firstRound
         self.maxWidth = maxWidth
         self.bubbleTip = bubbleTip
         self.bubblePlacement = bubblePlacement
+        self.tapTrigger = tapTrigger
         reduceMotionOverride = reduceMotion
         _scaledWidth = ScaledMetric(wrappedValue: width, relativeTo: .largeTitle)
     }
@@ -59,6 +63,7 @@ public struct BinRoundView: View {
         figure
             .contentShape(BinBodyShape())
             .onTapGesture { tapped() }
+            .onChange(of: tapTrigger) { _, _ in tapped() }
             .overlay(alignment: Alignment(horizontal: bubbleTip, vertical: .top)) { bubble }
             .sensoryFeedback(.impact(weight: .light), trigger: taps)
             .task(id: firstRound) {

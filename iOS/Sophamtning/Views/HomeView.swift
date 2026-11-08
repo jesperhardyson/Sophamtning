@@ -425,9 +425,12 @@ private struct HomeTitle: View {
     /// Kärlets kropp slutar vid y 441 i SVG:ns viewBox (360 × 560 från y -110), strax ovanför skuggan.
     private static let binBaseline: CGFloat = (441 + 110) / 560
 
+    /// Ökar när rubriken trycks, och kärlet spelar då ett varv som vid tryck på kärlet.
+    @State private var titleTaps = 0
+
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 6) {
-            BinRoundView(firstRound: binFirstRound, width: 30, maxWidth: 56, bubbleTip: .leading, bubblePlacement: .aboveBin)
+            BinRoundView(firstRound: binFirstRound, width: 30, maxWidth: 56, bubbleTip: .leading, bubblePlacement: .aboveBin, tapTrigger: titleTaps)
                 // Kärlets botten står på textens baslinje.
                 .alignmentGuide(.lastTextBaseline) { d in d.height * Self.binBaseline }
                 // Pratbubblan står framför rubriken.
@@ -439,6 +442,9 @@ private struct HomeTitle: View {
                 .minimumScaleFactor(0.5)
                 .fixedSize(horizontal: false, vertical: true)
                 .foregroundStyle(Color.Theme.text)
+                // Ett tryck var som helst på rubriken är ett tryck på kärlet. Rubriken förblir en rubrik för VoiceOver.
+                .contentShape(Rectangle())
+                .onTapGesture { titleTaps += 1 }
                 // Kärlet är dolt för VoiceOver, så bara rubriken läses.
                 .accessibilityAddTraits(.isHeader)
                 // Den lilla rubriken i fältet har samma text vid scroll, så UI-testerna hittar den stora med sitt id.
