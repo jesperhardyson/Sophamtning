@@ -130,3 +130,51 @@ public struct AreaSourceNote: Equatable, Sendable, Identifiable {
         return URL(string: "tel:\(plus)\(digits)")
     }
 }
+
+/// Det som varningskortet överst i områdesvalet visar. Källans `explanation` står ordagrant, sedan en mening om att fel
+/// område kan göra att man missar tömningen, och sist källans hjälprad. Saknas `explanation` visas `notice` i dess ställe,
+/// så att varningen aldrig försvinner. När `explanation` finns visas inte `notice` här, utan i bekräftelsearket.
+public struct AreaWarning: Equatable, Sendable {
+    /// En text i kortet. Källans namn behövs bara när flera källor svarade.
+    public struct Entry: Equatable, Sendable, Identifiable {
+        public let id: String
+        public let name: String?
+        public let text: String
+    }
+
+    /// Hjälpraden, där telefonnumret går att trycka på.
+    public struct Help: Equatable, Sendable, Identifiable {
+        public let id: String
+        public let name: String?
+        public let text: AttributedString
+    }
+
+    public static let title = "Du väljer området själv"
+    public static let consequence = "Väljer du fel område kan du missa din tömning."
+
+    /// Källans förklaring, eller `notice` när ingen källa har någon förklaring.
+    public let explanations: [Entry]
+    public let helps: [Help]
+
+    /// `nil` när det varken finns förklaring, `notice` eller hjälprad. Då har inte områdesvalet något att varna för.
+    public static func make(notice: String?, notes: [AreaSourceNote]) -> AreaWarning? {
+        let named = notes.count > 1
+        var explanations = notes.compactMap { note -> Entry? in
+            note.explanation.map { text in Entry(id: note.id, name: named ? note.name : nil, text: text) }
+        }
+        if explanations.isEmpty, let notice = notice?.trimmedNonEmpty {
+            explanations = [Entry(id: "notice", name: nil, text: notice)]
+        }
+        let helps = notes.compactMap { note -> Help? in
+            note.help.map { text in Help(id: note.id, name: named ? note.name : nil, text: text) }
+        }
+        guard !explanations.isEmpty || !helps.isEmpty else { return nil }
+        return AreaWarning(explanations: explanations, helps: helps)
+    }
+
+    /// Hela kortet som en text för VoiceOver.
+    public var accessibilityLabel: String {
+        let parts = explanations.map { entry in entry.text } + [Self.consequence] + helps.map { help in String(help.text.characters) }
+        return ([Self.title] + parts).map { part in part.hasSuffix(".") ? part : part + "." }.joined(separator: " ")
+    }
+}

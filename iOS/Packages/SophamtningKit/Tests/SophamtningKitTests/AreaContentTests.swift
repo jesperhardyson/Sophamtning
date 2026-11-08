@@ -151,3 +151,42 @@ private func areaHit(detail: String? = "Måndag, udda vecka · Område 1", area:
         #expect(AreaSourceNote.telURL("12") == nil)
     }
 }
+
+@Suite struct AreaWarningTests {
+    private let avesta = AreaSource(id: "avesta", name: "Avesta Vatten", explanation: "Avesta publicerar per område.", help: "Fråga på 0226-64 55 00.")
+    private let notice = "Adresser publiceras inte."
+
+    @Test func forklaringenVisasOrdagrantOchNoticeVisasInte() throws {
+        let warning = try #require(AreaWarning.make(notice: notice, notes: AreaSourceNote.notes([avesta])))
+        #expect(warning.explanations.map(\.text) == ["Avesta publicerar per område."])
+        #expect(warning.helps.count == 1)
+        #expect(!warning.accessibilityLabel.contains(notice))
+        #expect(warning.accessibilityLabel.contains(AreaWarning.consequence))
+    }
+
+    @Test func saknasForklaringenVisasNotice() throws {
+        let onlyHelp = AreaSource(id: "avesta", name: "Avesta Vatten", explanation: nil, help: "Fråga på 0226-64 55 00.")
+        let warning = try #require(AreaWarning.make(notice: notice, notes: AreaSourceNote.notes([onlyHelp])))
+        #expect(warning.explanations.map(\.text) == [notice])
+        #expect(warning.helps.count == 1)
+    }
+
+    @Test func utanKallorVisasNoticeEnsam() throws {
+        let warning = try #require(AreaWarning.make(notice: notice, notes: []))
+        #expect(warning.explanations.map(\.text) == [notice])
+        #expect(warning.helps.isEmpty)
+    }
+
+    @Test func utanNoticeOchKallorFinnsInteKortet() {
+        #expect(AreaWarning.make(notice: nil, notes: []) == nil)
+        #expect(AreaWarning.make(notice: "  ", notes: []) == nil)
+    }
+
+    @Test func flerKallorVisasMedNamn() throws {
+        let other = AreaSource(id: "sater", name: "Säter", explanation: "Säter publicerar per område.", help: nil)
+        let warning = try #require(AreaWarning.make(notice: nil, notes: AreaSourceNote.notes([avesta, other])))
+        #expect(warning.explanations.map(\.name) == ["Avesta Vatten", "Säter"])
+        let single = try #require(AreaWarning.make(notice: nil, notes: AreaSourceNote.notes([avesta])))
+        #expect(single.explanations.first?.name == nil)
+    }
+}

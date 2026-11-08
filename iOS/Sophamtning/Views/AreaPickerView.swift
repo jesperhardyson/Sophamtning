@@ -2,7 +2,7 @@ import SophamtningDesign
 import SophamtningKit
 import SwiftUI
 
-/// "Välj område": områdena för en kommun, med API:ts `notice`, källans förklaring och länk till vilka platser som ingår.
+/// "Välj område": ett varningskort med källans förklaring, sedan listan med Hitta område som första rad och områdena.
 struct AreaPickerView: View {
     let model: AppModel
     let title: String
@@ -15,7 +15,6 @@ struct AreaPickerView: View {
 
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
-    @State private var webLink: WebLink?
     @State private var finderOpen = false
     @State private var query = ""
 
@@ -26,37 +25,17 @@ struct AreaPickerView: View {
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
-    private var sourceNotes: [AreaSourceNote] { AreaSourceNote.notes(sources) }
-    /// Ingen länk visas när ingen träff har en giltig https-adress.
-    private var areasLink: WebLink? { hits.lazy.compactMap(\.areasUrl).compactMap { WebLink(url: $0) }.first }
+    /// Kortet överst: källans förklaring, eller `notice` när förklaringen saknas. `notice` står oförändrad i bekräftelsearket.
+    private var warning: AreaWarning? { AreaWarning.make(notice: notice, notes: AreaSourceNote.notes(sources)) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Under en sökning visas bara träffarna, som i systemets egna sökningar. Varningen visas igen när fältet töms
-                // och står i bekräftelsearket (`notice`), så den går inte förlorad.
-                if !isSearching {
-                    if let notice {
-                        MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
-                            .padding(.top, 8)
-                    }
-                    // Som på webben: varför man väljer område, och vart man vänder sig. Saknas källorna visas inget kort.
-                    if !sourceNotes.isEmpty {
-                        AreaSourceNotesView(notes: sourceNotes)
-                            .padding(.top, notice == nil ? 8 : 16)
-                    }
-                    if place != nil {
-                        finderRow
-                            .padding(.top, 20)
-                    }
-                    if let areasLink {
-                        Button { webLink = areasLink } label: {
-                            Label("Vilka platser ingår i områdena?", systemImage: "arrow.up.right.square")
-                                .font(.ui(17, weight: .heavy, relativeTo: .body))
-                                .foregroundStyle(Color.Theme.primary)
-                        }
-                        .padding(.top, 20)
-                    }
+                // och `notice` står i bekräftelsearket, så den går inte förlorad.
+                if !isSearching, let warning {
+                    AreaWarningCard(warning: warning)
+                        .padding(.top, 8)
                 }
                 let visible = visibleHits
                 if visible.isEmpty {
@@ -70,11 +49,16 @@ struct AreaPickerView: View {
                         .accessibilityAddTraits(.isStaticText)
                     // Vägen vidare när sökningen inte ger något.
                     if place != nil {
-                        finderRow
+                        ResultList { finderRow }
                             .padding(.top, 20)
                     }
                 } else {
                     ResultList {
+                        // Hitta område är listans första rad, i samma stil som områdena. Under en sökning visas bara träffarna.
+                        if !isSearching, place != nil {
+                            finderRow
+                            ResultDivider()
+                        }
                         // Områdets id är unikt i listan, så raden behåller sin identitet när filtret ändras.
                         ForEach(Array(visible.enumerated()), id: \.element.id) { offset, hit in
                             // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
@@ -109,7 +93,6 @@ struct AreaPickerView: View {
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Sök område, ort eller gata")
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
-        .inAppBrowser(item: $webLink)
         .sheet(isPresented: $finderOpen) {
             if let place {
                 AreaFinderSheet(model: model, place: place, onSaved: onSaved, onOther: { finderOpen = false })
@@ -129,76 +112,62 @@ private extension AreaPickerView {
     /// "Vet du inte vilket område?" Öppnar arket där senaste tömningen pekar ut området.
     var finderRow: some View {
         Button { finderOpen = true } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "calendar.badge.magnifyingglass")
-                    .font(.system(.title2))
-                    .foregroundStyle(Color.Theme.brandText)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Vet du inte vilket område?")
-                        .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                    Text("Hitta det med din senaste tömning")
-                        .font(.ui(17, weight: .semibold, relativeTo: .body))
-                }
-                .foregroundStyle(Color.Theme.brandText)
-                .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(Color.Theme.brandText)
-                    .accessibilityHidden(true)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.Theme.brandSoft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .contentShape(Rectangle())
+            IconPlateRowLabel(icon: "calendar.badge.magnifyingglass", title: "Vet du inte vilket område?",
+                              subtitle: "Hitta det med din senaste tömning")
         }
         .buttonStyle(.pressable)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Vet du inte vilket område? Hitta det med din senaste tömning")
     }
 }
 
-/// Källans förklaring i områdesvalet, med webbens rubrik: varför man väljer område, och en hjälprad där telefonnumret
-/// går att trycka på. Texterna står som källan skrev dem.
-struct AreaSourceNotesView: View {
-    let notes: [AreaSourceNote]
+/// Ett kort i varningsstilen överst i områdesvalet: källans förklaring (eller `notice` när den saknas), att fel område kan
+/// ge en missad tömning och källans hjälprad, där telefonnumret går att trycka på. Texterna står som källan skrev dem.
+struct AreaWarningCard: View {
+    let warning: AreaWarning
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 18
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Storlekarna följer meddelandekortet ovanför, så att långa ord som "sophämtningen" får plats på en rad också
-            // med största text.
-            Text("Därför väljer du område i stället för adress")
-                .font(.ui(16, weight: .heavy, relativeTo: .subheadline))
-                .foregroundStyle(Color.Theme.text)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-            ForEach(notes) { note in
-                VStack(alignment: .leading, spacing: 8) {
-                    // Källans namn behövs bara när flera källor svarade.
-                    if notes.count > 1 {
-                        Text(note.name)
-                            .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
-                            .foregroundStyle(Color.Theme.brandText)
-                            .accessibilityAddTraits(.isHeader)
-                    }
-                    if let explanation = note.explanation {
-                        Text(explanation)
-                            .font(.ui(15, weight: .semibold, relativeTo: .footnote))
-                            .foregroundStyle(Color.Theme.text)
-                    }
-                    if let help = note.help {
-                        Text(help)
-                            .font(.ui(15, weight: .semibold, relativeTo: .footnote))
-                            .foregroundStyle(Color.Theme.text2)
-                            .tint(Color.Theme.primary)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: iconSize))
+                .foregroundStyle(Color.Theme.warn)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(AreaWarning.title)
+                    .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.warn)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(warning.explanations) { entry in
+                    VStack(alignment: .leading, spacing: 2) {
+                        // Källans namn behövs bara när flera källor svarade.
+                        if let name = entry.name {
+                            Text(name)
+                                .font(.ui(14, weight: .heavy, relativeTo: .footnote))
+                                .foregroundStyle(Color.Theme.text)
+                        }
+                        Text(entry.text)
                     }
                 }
-                .fixedSize(horizontal: false, vertical: true)
+                Text(AreaWarning.consequence)
+                    .fontWeight(.heavy)
+                ForEach(warning.helps) { help in
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let name = help.name {
+                            Text(name)
+                                .font(.ui(14, weight: .heavy, relativeTo: .footnote))
+                        }
+                        Text(help.text).tint(Color.Theme.primary)
+                    }
+                }
             }
+            .font(.ui(14, weight: .semibold, relativeTo: .footnote))
+            .foregroundStyle(Color.Theme.text)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color.Theme.warnBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 }
 
