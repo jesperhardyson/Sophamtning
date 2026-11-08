@@ -19,6 +19,8 @@ public final class AppModel {
     /// När källistan senast försökte hämtas utan att lyckas, så att inte varje tangenttryck hämtar på nytt.
     @ObservationIgnored private var failedSourcesAt: Date?
     @ObservationIgnored private let now: @Sendable () -> Date
+    /// Appens version och bygge, till exempel "1.0.1 (301)". Sparas med källistan.
+    @ObservationIgnored private let appVersion: String?
     /// Den senaste köade uppdateringen. Nästa väntar på den, så att två anrop aldrig hämtar samtidigt.
     @ObservationIgnored private var queue: Task<Void, Never>?
     /// Systemets tillstånd för notiser, senast läst. Läses om av `applyReminders()`.
@@ -56,7 +58,8 @@ public final class AppModel {
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
     private var scheduleRevision = 0
 
-    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}) {
+    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}, appVersion: String? = nil) {
+        self.appVersion = appVersion
         self.scheduler = scheduler
         self.activities = activities
         self.widgetReloader = widgetReloader
@@ -267,13 +270,14 @@ public final class AppModel {
     static let sourcesMaxAge: TimeInterval = 24 * 3600
     static let sourcesRetryAfter: TimeInterval = 3600
 
-    /// Källistan för kommunfrågan: den sparade om den är högst ett dygn gammal, annars hämtas en ny.
+    /// Källistan för kommunfrågan: den sparade om den är högst ett dygn gammal och hämtades av samma appversion,
+    /// annars hämtas en ny.
     /// Misslyckas hämtningen används den sparade listan, även om den är äldre. `nil` när inget är sparat och
     /// hämtningen misslyckas, och det betyder "okänt", aldrig "inga källor".
     public func sourceList() async -> [Source]? {
         let saved = store.sources()
         let current = now()
-        if let saved, current.timeIntervalSince(saved.fetchedAt) < Self.sourcesMaxAge {
+        if let saved, saved.appVersion == appVersion, current.timeIntervalSince(saved.fetchedAt) < Self.sourcesMaxAge {
             return saved.response.sources
         }
         // Finns en gammal lista väntar vi med nästa försök. Utan lista försöker vi varje gång, för Försök igen.
@@ -284,7 +288,7 @@ public final class AppModel {
             let fresh = try await api.sources()
             failedSourcesAt = nil
             // Listan är bara en cache. Går den inte att spara hämtas den på nytt nästa gång.
-            try? store.setSources(CachedSources(response: fresh, fetchedAt: current))
+            try? store.setSources(CachedSources(response: fresh, fetchedAt: current, appVersion: appVersion))
             return fresh.sources
         } catch {
             // Ett avbrott (texten ändrades, skärmen stängdes) är inget misslyckande och skjuter inte upp nästa hämtning.

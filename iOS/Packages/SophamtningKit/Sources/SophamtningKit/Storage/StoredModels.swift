@@ -91,9 +91,13 @@ public struct PlacedOut: Hashable, Codable, Sendable {
 public struct CachedSources: Hashable, Codable, Sendable {
     public var response: SourcesResponse
     public var fetchedAt: Date
+    /// Appens version och bygge när listan hämtades. En ny version hämtar listan direkt, så att fält som
+    /// versionen visar för första gången syns utan att vänta ett dygn. `nil` i listor sparade före fältet.
+    public var appVersion: String?
 
-    public init(response: SourcesResponse, fetchedAt: Date) {
+    public init(response: SourcesResponse, fetchedAt: Date, appVersion: String? = nil) {
         self.response = response
         self.fetchedAt = fetchedAt
+        self.appVersion = appVersion
     }
 }
