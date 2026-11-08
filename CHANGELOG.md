@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/jesperhardyson/Sophamtning/compare/v1.0.1...v1.0.2) (2026-11-08)
+
+
+### Rättat
+
+* Dynamic Island visar bara veckodagen i kompakt läge ([#34](https://github.com/jesperhardyson/Sophamtning/issues/34)) ([9141848](https://github.com/jesperhardyson/Sophamtning/commit/9141848a67a04d9c2cfb6d323c58964547f13f67))
+
 ## [1.0.1](https://github.com/jesperhardyson/Sophamtning/compare/v1.0.0...v1.0.1) (2026-11-08)
 
 
