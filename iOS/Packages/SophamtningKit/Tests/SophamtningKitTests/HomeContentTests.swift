@@ -631,3 +631,14 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
 @Test func hemkortetVisarRadenOckssaMedEttSparatSchemaEfterFel() {
     #expect(endingHome(endingSchedule(until: "2026-11-20", lastError: .sourceUnavailable)).primary?.scheduleEnding != nil)
 }
+
+@Test func radenUnderFlerAdresserHarIngenSchemaslutarOchVoiceOverLaserDenInte() {
+    let other = SavedAddress.fixture(key: AddressKey(source: "x", id: "b"), isPrimary: false)
+    let primary = SavedAddress.fixture(key: AddressKey(source: "x", id: "a"), isPrimary: true)
+    let ending = endingSchedule(until: "2026-11-20")
+    let content = HomeContent.make(addresses: [primary, other], schedules: [primary.key: ending, other.key: ending], settings: ReminderSettings(), now: now)
+    #expect(content.primary?.scheduleEnding != nil)
+    #expect(content.primary?.accessibilityLabel.contains("Schemat slutar") == true)
+    #expect(content.others[0].scheduleEnding == nil)
+    #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
+}

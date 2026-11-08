@@ -187,7 +187,8 @@ public struct HomeContent: Equatable, Sendable {
         let summary: String
         switch status {
         case .upcoming(let pickup):
-            scheduleEnding = ScheduleEnding.make(schedule?.response?.schedule, today: today)
+            // Raderna under Fler adresser visar ingen sådan rad, så VoiceOver ska inte läsa den heller.
+            scheduleEnding = asRow ? nil : ScheduleEnding.make(schedule?.response?.schedule, today: today)
             // Hårt mellanslag före mittpunkten, så att den aldrig börjar en rad.
             summary = SwedishFormat.estimated(
                 "\(SwedishFormat.shortDate(pickup.date))\u{00A0}· \(SwedishFormat.relative(days: pickup.daysUntil))",
