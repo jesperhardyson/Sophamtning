@@ -1,0 +1,42 @@
+name: App Store-text
+
+# Lägger in versionens avsnitt ur changelogen som utkast i "Nyheter i den här versionen", när App Store-versionen
+# har skapats i App Store Connect. Text som redan står där skrivs aldrig över. Se docs/specs/2026-11-08-release.md.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Taggen vars changelog ska användas, till exempel v1.0.1"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: testflight
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Nyheter i den här versionen
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$ASC_KEY_P8" | base64 --decode > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+          trap 'rm -f "$ASC_KEY_PATH"' EXIT
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt==2.13.0" "cryptography==49.0.0"
+          "$RUNNER_TEMP/venv/bin/python" scripts/release_notes.py appstore \
+            --version "${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
