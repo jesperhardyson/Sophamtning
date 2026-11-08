@@ -132,8 +132,10 @@ struct AreaSourceNotesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Storlekarna följer meddelandekortet ovanför, så att långa ord som "sophämtningen" får plats på en rad också
+            // med största text.
             Text("Därför väljer du område i stället för adress")
-                .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                .font(.ui(16, weight: .heavy, relativeTo: .subheadline))
                 .foregroundStyle(Color.Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -148,12 +150,12 @@ struct AreaSourceNotesView: View {
                     }
                     if let explanation = note.explanation {
                         Text(explanation)
-                            .font(.ui(17, weight: .semibold, relativeTo: .body))
+                            .font(.ui(15, weight: .semibold, relativeTo: .footnote))
                             .foregroundStyle(Color.Theme.text)
                     }
                     if let help = note.help {
                         Text(help)
-                            .font(.ui(16, weight: .semibold, relativeTo: .callout))
+                            .font(.ui(15, weight: .semibold, relativeTo: .footnote))
                             .foregroundStyle(Color.Theme.text2)
                             .tint(Color.Theme.primary)
                     }
@@ -161,7 +163,7 @@ struct AreaSourceNotesView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(20)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
