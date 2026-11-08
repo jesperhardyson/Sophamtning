@@ -7,9 +7,6 @@ public struct OtherDaysNote: Equatable, Sendable {
     /// Raderna ordagrant, utan blanka rader. Aldrig tom.
     public let rows: [String]
 
-    /// Hela rutan som en mening för VoiceOver: rubriken, och sedan raderna, som redan är meningar.
-    public var accessibilityLabel: String { heading + ". " + rows.joined(separator: " ") }
-
     /// `nil` när området saknas, `otherDays` är tom eller bara har blanka rader.
     public static func make(_ area: AreaDetails?) -> OtherDaysNote? {
         let rows = (area?.otherDays ?? []).compactMap { text in text.trimmedNonEmpty }

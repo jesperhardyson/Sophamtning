@@ -46,7 +46,6 @@ private func area(_ otherDays: Any?) -> [String: Any] {
         let note = try #require(OtherDaysNote.make(AreaDetails(day: "x", label: nil, places: [], otherDays: ["Rad ett.", "Rad två."])))
         #expect(note.heading == "Vissa gator har en annan hämtdag")
         #expect(note.rows == ["Rad ett.", "Rad två."])
-        #expect(note.accessibilityLabel == "Vissa gator har en annan hämtdag. Rad ett. Rad två.")
     }
 
     @Test func blankaRaderRensasBort() throws {
