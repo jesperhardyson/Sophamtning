@@ -50,13 +50,20 @@ final class AccessibilityAuditTests: XCTestCase {
         tap(app.buttons["Gata och husnummer"])
         type("okänd gata 1, Avesta", in: app.textFields["Gata och husnummer"])
         audit("sokning-ingen-traff")
-        tap(app.buttons["Välj område i Avesta kommun"])
+        tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Välj område i Avesta kommun")).firstMatch)
         audit("omrade-lista")
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch)
         // Bekräftelsearket öppnas i stort läge, så det granskas som det är.
         audit("omrade-bekrafta")
         tap(app.buttons["Välj ett annat område"])
         app.buttons["BackButton"].firstMatch.tap()
+        // Adresser och områdesval i samma svar: raden Välj område i egen grupp ovanför träffarna.
+        let field = app.textFields["Gata och husnummer"]
+        field.tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 30))
+        type("testgatan 1, avesta", in: field)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Välj område i Avesta kommun")).firstMatch.exists)
+        audit("sokning-omrade-och-traffar")
         tap(app.buttons["Stäng"])
 
         // Kommunfrågan.

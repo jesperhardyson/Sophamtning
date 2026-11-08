@@ -46,9 +46,7 @@ final class CoreFlowTests: XCTestCase {
         // Ingen adress matchar, och orten har områden i stället för adresser.
         field.typeText("okänd gata 1, Avesta")
 
-        let choose = app.buttons["Välj område i Avesta kommun"]
-        XCTAssertTrue(choose.waitForExistence(timeout: 10))
-        choose.tap()
+        openAreaPicker()
 
         let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 5))
@@ -68,8 +66,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(again.waitForExistence(timeout: 5))
         again.tap()
         again.typeText("okänd gata 1, Avesta")
-        XCTAssertTrue(app.buttons["Välj område i Avesta kommun"].waitForExistence(timeout: 10))
-        app.buttons["Välj område i Avesta kommun"].tap()
+        openAreaPicker()
         let sameArea = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
         XCTAssertTrue(sameArea.waitForExistence(timeout: 5))
         sameArea.tap()
@@ -87,11 +84,14 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("okänd gata 1, Avesta")
-        open("Välj område i Avesta kommun")
+        openAreaPicker()
 
-        // Varningen står kvar, och källans förklaring står under sin rubrik med hjälpraden och telefonnumret.
-        XCTAssertTrue(app.staticTexts["Du väljer området själv"].waitForExistence(timeout: 5), "Varningen med notice ska stå kvar")
-        XCTAssertTrue(app.staticTexts["Därför väljer du område i stället för adress"].exists)
+        // Ett kort med rubriken, källans förklaring, meningen om missad tömning och hjälpraden med telefonnumret. `notice`
+        // visas inte här när förklaringen finns, och länken till platserna är borta.
+        XCTAssertTrue(app.staticTexts["Du väljer området själv"].waitForExistence(timeout: 5), "Varningskortet ska stå överst")
+        XCTAssertTrue(app.staticTexts["Väljer du fel område kan du missa din tömning."].exists)
+        XCTAssertFalse(app.staticTexts["Därför väljer du område i stället för adress"].exists)
+        XCTAssertFalse(app.buttons["Vilka platser ingår i områdena?"].exists)
         XCTAssertTrue(app.staticTexts["Avesta Vatten publicerar sophämtningen per område, men inte vilka adresser som hör till vilket område."].waitForExistence(timeout: 5))
         let help = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "0226-64 55 00")).firstMatch
         XCTAssertTrue(help.exists, "Hjälpraden ska synas")
@@ -119,20 +119,41 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Visa färre platser"].exists)
     }
 
+    func testOmradesradenStarOvanforTraffarnaIEgenGrupp() {
+        open("Gata och husnummer")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        // Både adresser (Testgatan) och områdesval (Avesta) i samma svar.
+        field.typeText("testgatan 1, Avesta")
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Välj område i Avesta kommun")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        let count = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH %@", "träffar")).firstMatch
+        XCTAssertTrue(count.waitForExistence(timeout: 5))
+        XCTAssertLessThan(row.frame.minY, count.frame.minY, "Områdesraden ska stå ovanför träffarna")
+        XCTAssertFalse(app.buttons["Välj område i Avesta kommun"].exists, "Den gröna knappen är borta")
+        row.tap()
+        XCTAssertTrue(app.staticTexts["Du väljer området själv"].waitForExistence(timeout: 5))
+    }
+
     func testOmradeslistanGarAttSoka() {
         open("Gata och husnummer")
         let field = app.textFields["Gata och husnummer"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("okänd gata 1, Avesta")
-        open("Välj område i Avesta kommun")
+        openAreaPicker()
 
-        // Systemets sökfält står överst, och varningen står kvar under det.
+        // Systemets sökfält står överst, och varningskortet under det.
         let search = app.searchFields["Sök område, ort eller gata"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Du väljer området själv"].exists, "Varningen ska stå kvar")
+        XCTAssertTrue(app.staticTexts["Du väljer området själv"].exists, "Varningskortet ska stå överst")
         let askon = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Askön, Nyhyttan")).firstMatch
         XCTAssertTrue(askon.waitForExistence(timeout: 5))
+        // Hitta område är listans första rad, ovanför områdena.
+        let finderRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Vet du inte vilket område?")).firstMatch
+        XCTAssertTrue(finderRow.exists)
+        XCTAssertLessThan(finderRow.frame.minY, askon.frame.minY, "Hitta område ska vara första raden")
 
         // En plats som bara står i listan över platser hittar rätt område.
         search.tap()
@@ -145,7 +166,8 @@ final class CoreFlowTests: XCTestCase {
         search.clearAndTypeText("zzz")
         XCTAssertTrue(app.staticTexts["Inga områden matchar ”zzz”."].waitForExistence(timeout: 5))
         XCTAssertFalse(askon.exists)
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Vet du inte vilket område?")).firstMatch.exists)
+        XCTAssertTrue(finderRow.exists)
+        XCTAssertFalse(app.staticTexts["Du väljer området själv"].exists, "Kortet döljs under sökning")
 
         // Tomt fält ger alla områden igen.
         search.clearAndTypeText("")
@@ -170,7 +192,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("okänd gata 1, Avesta")
-        open("Välj område i Avesta kommun")
+        openAreaPicker()
         let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 5))
         area.tap()
@@ -195,7 +217,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("okänd gata 1, Avesta")
-        open("Välj område i Avesta kommun")
+        openAreaPicker()
         let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 5))
         area.tap()
@@ -226,7 +248,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("okänd gata 1, Avesta")
-        open("Välj område i Avesta kommun")
+        openAreaPicker()
         let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 5))
         area.tap()
@@ -256,7 +278,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("okänd gata 1, Avesta")
-        open("Välj område i Avesta kommun")
+        openAreaPicker()
         let finder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Vet du inte vilket område?")).firstMatch
         XCTAssertTrue(finder.waitForExistence(timeout: 5))
         finder.tap()
@@ -368,6 +390,14 @@ final class CoreFlowTests: XCTestCase {
         let button = app.buttons[label]
         XCTAssertTrue(button.waitForExistence(timeout: 10), "Hittar inte \(label)")
         button.tap()
+    }
+
+    /// Raden "Välj område i Avesta kommun" i sökresultaten. Den läses som en knapp med titeln och förklaringen.
+    private func openAreaPicker() {
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Välj område i Avesta kommun")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Hittar inte raden Välj område i Avesta kommun")
+        XCTAssertTrue(row.label.contains("Här finns schemat per område, inte per adress."))
+        row.tap()
     }
 
     private func close() {
