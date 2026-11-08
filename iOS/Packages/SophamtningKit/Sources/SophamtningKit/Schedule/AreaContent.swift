@@ -41,19 +41,19 @@ public struct AreaRowContent: Equatable, Sendable {
     public var showAllPlacesText: String { "Visa alla \(placeCount) platser" }
 
     public static func make(_ hit: SearchHit) -> AreaRowContent {
-        let detail = clean(hit.detail)
-        guard let area = hit.area, let day = clean(area.day) else {
+        let detail = hit.detail?.trimmedNonEmpty
+        guard let area = hit.area, let day = area.day.trimmedNonEmpty else {
             // Inga detaljer: dagens visning, med namnet och `detail`.
             return AreaRowContent(title: hit.street, label: nil, day: detail, places: nil, allPlaces: nil, otherDays: [])
         }
-        let places = area.places.compactMap { place in clean(place) }
+        let places = area.places.compactMap { place in place.trimmedNonEmpty }
         return AreaRowContent(
             title: hit.street,
-            label: clean(area.label),
+            label: area.label?.trimmedNonEmpty,
             day: day,
             places: shortPlaces(places),
             allPlaces: places.isEmpty ? nil : listText(places),
-            otherDays: area.otherDays.compactMap { text in clean(text) },
+            otherDays: area.otherDays.compactMap { text in text.trimmedNonEmpty },
             placeCount: places.count,
             detailed: true
         )
@@ -79,11 +79,6 @@ public struct AreaRowContent: Equatable, Sendable {
         guard items.count > 1 else { return items.first ?? "" }
         return items.dropLast().joined(separator: ", ") + " och " + items[items.count - 1]
     }
-
-    private static func clean(_ text: String?) -> String? {
-        guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
-        return trimmed
-    }
 }
 
 /// Källans förklaring överst i områdesvalet. Texterna visas som källan skrev dem.
@@ -100,8 +95,8 @@ public struct AreaSourceNote: Equatable, Sendable, Identifiable {
         var seen = Set<String>()
         return sources.compactMap { source in
             guard seen.insert(source.id).inserted else { return nil }
-            let explanation = clean(source.explanation)
-            let help = clean(source.help)
+            let explanation = source.explanation?.trimmedNonEmpty
+            let help = source.help?.trimmedNonEmpty
             guard explanation != nil || help != nil else { return nil }
             return AreaSourceNote(id: source.id, name: source.name, explanation: explanation, help: help.map { text in linkingPhoneNumbers(text) })
         }
@@ -129,10 +124,5 @@ public struct AreaSourceNote: Equatable, Sendable, Identifiable {
         guard digits.count >= 5 else { return nil }
         let plus = number.trimmingCharacters(in: .whitespaces).hasPrefix("+") ? "+" : ""
         return URL(string: "tel:\(plus)\(digits)")
-    }
-
-    private static func clean(_ text: String?) -> String? {
-        guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
-        return trimmed
     }
 }

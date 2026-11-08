@@ -311,22 +311,12 @@ struct HomeView: View {
     /// Tid efter sista bladets landning innan starten avslutas.
     private static let landingMargin: TimeInterval = 0.05
 
-    /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
     /// Samma flöde som reglaget i adressvyn: frågan om tillstånd ställs bara när valet slås på.
     private func setNotifications(_ on: Bool, for key: AddressKey) {
-        model.clearStorageError()
-        Task {
-            let result = await model.setNotifications(on, for: key)
-            // Bara när notiserna faktiskt slogs på, aldrig när iOS nekar eller valet stängs av.
-            if on, result == .granted { reminderPulse += 1 }
-        }
+        model.toggleNotifications(on, for: key, onTurnedOn: { reminderPulse += 1 })
     }
 
-    private func openNotificationSettings() {
-        guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }
-        Task { await UIApplication.shared.open(url) }
-    }
-
+    /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
     private func opening(for primary: HomeContent.Entry) -> CalendarTile.Opening? {
         guard entrance.allowsOpeningFlip, case .upcoming(let pickup) = primary.status,
               let from = CalendarFlipTimeline.openingDate(today: StockholmClock.today(now: model.currentDate), pickup: pickup.date) else { return nil }

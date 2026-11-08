@@ -285,14 +285,7 @@ struct AddressView: View {
                 pulse: notificationPulse,
                 isOn: Binding(
                     get: { address.map { model.remindersOn(for: $0) } ?? false },
-                    set: { on in
-                        model.clearStorageError()
-                        Task {
-                            let result = await model.setNotifications(on, for: key)
-                            // Bara när notiserna faktiskt slogs på, aldrig när iOS nekar eller valet stängs av.
-                            if on, result == .granted { notificationPulse += 1 }
-                        }
-                    }
+                    set: { on in model.toggleNotifications(on, for: key, onTurnedOn: { notificationPulse += 1 }) }
                 )
             )
             // Live Activity gäller bara huvudadressen.
@@ -309,13 +302,8 @@ struct AddressView: View {
 
     /// Kortet för källan som ansvarar för hämtningen.
     private func footer(_ detail: AddressDetail) -> some View {
-        SourceCard(
-            name: sourceName(key.source, in: sources),
-            links: SourceLink.links(for: sources?.first { $0.id == key.source }, kommunInfo: detail.webLink),
-            fetched: detail.mode == .loading ? nil : detail.fetchedText,
-            webLink: $link
-        )
-        .padding(.top, 28)
+        SourceCard(source: key.source, sources: sources, detail: detail, webLink: $link)
+            .padding(.top, 28)
     }
 
     private func sectionTitle(_ title: String) -> some View {
@@ -352,10 +340,5 @@ struct AddressView: View {
         model.remove(key)
         // Gick borttagningen inte att spara är adressen kvar, och felet visas här.
         if address == nil { dismiss() }
-    }
-
-    private func openNotificationSettings() {
-        guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }
-        Task { await UIApplication.shared.open(url) }
     }
 }

@@ -11,6 +11,15 @@ struct SourceCard: View {
     let fetched: String?
     @Binding var webLink: WebLink?
 
+    /// Kortet för en adress, likadant i adressvyn och i hela schemat. Tiden för hämtningen visas inte medan schemat
+    /// hämtas första gången.
+    init(source: String, sources: [Source]?, detail: AddressDetail, webLink: Binding<WebLink?>) {
+        name = sourceName(source, in: sources)
+        links = SourceLink.links(for: sources?.first { candidate in candidate.id == source }, kommunInfo: detail.webLink)
+        fetched = detail.mode == .loading ? nil : detail.fetchedText
+        _webLink = webLink
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {

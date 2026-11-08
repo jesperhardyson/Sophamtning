@@ -78,10 +78,7 @@ struct AddressQuickActions<Content: View>: View {
         }
         // Snabbmenyn stängs när ett val görs, så nekad behörighet visas här i stället för i en rad som inte syns.
         .alert("Notiser är avstängda", isPresented: $notificationsDenied) {
-            Button("Öppna Inställningar") {
-                guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }
-                Task { await UIApplication.shared.open(url) }
-            }
+            Button("Öppna Inställningar") { openNotificationSettings() }
             Button("OK", role: .cancel) {}
         } message: {
             Text("Du har stängt av notiser för Sophämtning i iOS.")

@@ -304,11 +304,11 @@ public enum ReminderPlanner {
         var byDate: [DayDate: Pickup] = [:]
         for event in ScheduleLogic.upcoming(response.events, today: today) where !event.fractions.isEmpty {
             guard let existing = byDate[event.date] else {
-                byDate[event.date] = Pickup(date: event.date, fractions: unique(event.fractions), estimated: event.estimated, warning: cleaned(event.warning))
+                byDate[event.date] = Pickup(date: event.date, fractions: unique(event.fractions), estimated: event.estimated, warning: event.warning?.trimmedNonEmpty)
                 continue
             }
             // Två händelser samma dag slås ihop, så att ingen fraktion eller varning tappas.
-            let warnings = [existing.warning, cleaned(event.warning)].compactMap { $0 }
+            let warnings = [existing.warning, event.warning?.trimmedNonEmpty].compactMap { $0 }
             byDate[event.date] = Pickup(
                 date: event.date,
                 fractions: unique(existing.fractions + event.fractions),
@@ -336,10 +336,5 @@ public enum ReminderPlanner {
     private static func unique<T: Hashable>(_ values: [T]) -> [T] {
         var seen = Set<T>()
         return values.filter { seen.insert($0).inserted }
-    }
-
-    private static func cleaned(_ warning: String?) -> String? {
-        guard let trimmed = warning?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
-        return trimmed
     }
 }

@@ -250,13 +250,8 @@ struct FullScheduleView: View {
             SchedulePeriodView(line: period)
                 .padding(.top, 12)
         }
-        SourceCard(
-            name: sourceName(key.source, in: sources),
-            links: SourceLink.links(for: sources?.first { $0.id == key.source }, kommunInfo: detail.webLink),
-            fetched: detail.mode == .loading ? nil : detail.fetchedText,
-            webLink: $link
-        )
-        .padding(.top, 28)
+        SourceCard(source: key.source, sources: sources, detail: detail, webLink: $link)
+            .padding(.top, 28)
     }
 
     /// Adressen togs bort, eller adresserna går inte att läsa just nu. Ett läsfel får aldrig se ut som en borttagen adress.

@@ -203,7 +203,7 @@ public struct AddressDetail: Equatable, Sendable {
     /// period.
     static func periodLine(_ period: SchedulePeriod?, mode: Mode, today: DayDate) -> SchedulePeriodLine? {
         guard let period, period.until >= today, mode == .schedule else { return nil }
-        return SchedulePeriodLine(text: "Schemat gäller till \(SwedishFormat.dayMonthYear(period.until)).", reason: cleanReason(period.reason))
+        return SchedulePeriodLine(text: "Schemat gäller till \(SwedishFormat.dayMonthYear(period.until)).", reason: period.reason?.trimmedNonEmpty)
     }
 
     /// Utan kommande hämtningar. Gäller perioden fortfarande finns inga fler hämtningar i det publicerade schemat. Har den
@@ -299,7 +299,7 @@ public struct AddressDetail: Equatable, Sendable {
         var order: [DayDate] = []
         var merged: [DayDate: (fractions: [String], estimated: Bool, deviation: Deviation?, warnings: [String])] = [:]
         for event in ScheduleLogic.upcoming(response.events, today: today) {
-            let warning = event.warning?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            let warning = event.warning?.trimmedNonEmpty
             if var existing = merged[event.date] {
                 for id in event.fractions where !existing.fractions.contains(id) { existing.fractions.append(id) }
                 existing.estimated = existing.estimated || event.estimated
@@ -339,10 +339,6 @@ public struct AddressDetail: Equatable, Sendable {
         if let original = deviation.originalDate {
             return "Flyttad från " + SwedishFormat.shortDate(original).lowercased()
         }
-        return deviation.reason.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        return deviation.reason.trimmedNonEmpty
     }
-}
-
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
 }
