@@ -44,7 +44,7 @@ jobs:
         github.event_name == 'workflow_dispatch'
       )
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 75
     environment: testflight
     permissions:
       contents: read
@@ -109,6 +109,22 @@ jobs:
             -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      # Versionens avsnitt ur changelogen blir "Vad ska testas" i TestFlight. Steget väntar tills Apple har
+      # bearbetat bygget. Misslyckas det är uppladdningen ändå klar, och texten kan läggas in för hand.
+      - name: Vad ska testas
+        continue-on-error: true
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt==2.13.0" "cryptography==49.0.0"
+          "$RUNNER_TEMP/venv/bin/python" scripts/testflight_notes.py \
+            --version "${TAG#v}" --build "$BUILD_NUMBER" --notes-file "$RUNNER_TEMP/notes.md"
 
       - name: Ta bort nyckeln
         if: always()
