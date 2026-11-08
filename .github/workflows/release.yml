@@ -1,15 +1,17 @@
 name: Release
 
 # Release Please håller en release-PR med nästa version. När den mergas skapas taggen och en GitHub Release, och
-# TestFlight-jobbet väntar på Jespers godkännande i miljön testflight. Se docs/specs/2026-11-08-release.md.
+# TestFlight-jobbet väntar på Jespers godkännande i miljön testflight. Startas workflowen för hand utan tagg blir det ett
+# testbygge från den valda grenen. Se docs/specs/2026-11-08-release.md.
 on:
   push:
     branches: [main]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Befintlig tagg att ladda upp igen, till exempel v1.0.0"
-        required: true
+        description: "Befintlig tagg att ladda upp igen, till exempel v1.0.0. Lämna tomt för ett testbygge från grenen ovan."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -37,7 +39,7 @@ jobs:
 
   testflight:
     needs: release-please
-    # Körs bara när en release skapades, eller för hand med en befintlig tagg.
+    # Körs bara när en release skapades, eller för hand: med en befintlig tagg, eller utan tagg för ett testbygge.
     if: >-
       !cancelled() && (
         (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
@@ -50,10 +52,13 @@ jobs:
       contents: read
     env:
       TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+      TEST_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.tag == '' }}
     steps:
+      # Testbygget tar grenens commit. Hela historiken och taggarna behövs för texten i TestFlight.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ env.TAG || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       # Xcode 26.6 är senaste stabila Xcode på macos-26 och har iOS 26-SDK.
@@ -72,6 +77,17 @@ jobs:
       - name: Byggnummer
         run: echo "BUILD_NUMBER=$(( ${{ github.run_number }} * 100 + ${{ github.run_attempt }} ))" >> "$GITHUB_ENV"
 
+      # En release har taggens version. Ett testbygge får nästa patchversion efter version.txt, som bara sätts i bygget.
+      - name: Version
+        run: |
+          if [ "$TEST_BUILD" = "true" ]; then
+            IFS=. read -r major minor patch < version.txt
+            version="$major.$minor.$((patch + 1))"
+          else
+            version="${TAG#v}"
+          fi
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+
       # Nyckeln läses från env och skrivs till en fil som tas bort i sista steget. Den skrivs aldrig ut.
       - name: App Store Connect-nyckel
         env:
@@ -85,7 +101,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          echo "Version $TAG, byggnummer $BUILD_NUMBER"
+          echo "Version $APP_VERSION, byggnummer $BUILD_NUMBER, testbygge $TEST_BUILD"
           xcodebuild archive \
             -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -configuration Release \
             -destination generic/platform=iOS \
@@ -94,7 +110,7 @@ jobs:
             -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+            MARKETING_VERSION="$APP_VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Ladda upp till App Store Connect
         env:
@@ -110,8 +126,9 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
-      # Versionens avsnitt ur changelogen blir "Vad ska testas" i TestFlight. Steget väntar tills Apple har
-      # bearbetat bygget. Misslyckas det är uppladdningen ändå klar, och texten kan läggas in för hand.
+      # Versionens avsnitt ur changelogen blir "Vad ska testas" i TestFlight. Ett testbygge får grenen, commiten och
+      # commit-rubrikerna sedan senaste taggen. Steget väntar tills Apple har bearbetat bygget. Misslyckas det är
+      # uppladdningen ändå klar, och texten kan läggas in för hand.
       - name: Vad ska testas och Nyheter
         continue-on-error: true
         env:
@@ -120,15 +137,26 @@ jobs:
           ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"
+          if [ "$TEST_BUILD" = "true" ]; then
+            last_tag="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+            {
+              echo "Testbygge från $GITHUB_REF_NAME ($(git rev-parse --short HEAD))"
+              echo
+              git log --no-merges --format='* %s' ${last_tag:+"$last_tag..HEAD"} | sed -E 's/ \(#[0-9]+\)$//'
+            } > "$RUNNER_TEMP/notes.md"
+          else
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"
+          fi
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt==2.13.0" "cryptography==49.0.0"
           "$RUNNER_TEMP/venv/bin/python" scripts/release_notes.py testflight \
-            --version "${TAG#v}" --build "$BUILD_NUMBER" --notes-file "$RUNNER_TEMP/notes.md"
+            --version "$APP_VERSION" --build "$BUILD_NUMBER" --notes-file "$RUNNER_TEMP/notes.md"
           # Utkast till "Nyheter i den här versionen", om App Store-versionen redan finns. Annars görs det senare
-          # med workflowen App Store-text.
-          "$RUNNER_TEMP/venv/bin/python" scripts/release_notes.py appstore \
-            --version "${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
+          # med workflowen App Store-text. Testbyggen går bara till TestFlight.
+          if [ "$TEST_BUILD" != "true" ]; then
+            "$RUNNER_TEMP/venv/bin/python" scripts/release_notes.py appstore \
+              --version "$APP_VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
 
       - name: Ta bort nyckeln
         if: always()
@@ -139,7 +167,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: Sophamtning-${{ env.TAG }}-${{ env.BUILD_NUMBER }}
+          name: Sophamtning-${{ env.APP_VERSION }}-${{ env.BUILD_NUMBER }}
           path: ${{ runner.temp }}/Sophamtning.xcarchive
           if-no-files-found: ignore
           retention-days: 30

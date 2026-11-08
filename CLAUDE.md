@@ -56,5 +56,6 @@ Releaser sköts med Release Please (googleapis/release-please-action), med versi
 - Repot squash-mergar, så PR-titeln blir commit-meddelandet på `main`. Titeln måste därför följa formatet ovan.
 - Release Please håller en öppen release-PR med nästa version i `version.txt` och `CHANGELOG.md`. När den mergas skapas taggen `vX.Y.Z` och en GitHub Release.
 - När release-PR:en mergas startar jobbet TestFlight i samma körning. Det väntar på Jespers godkännande i miljön `testflight`, och laddar sedan upp till App Store Connect. App Store-inskickning görs bara efter hans godkännande. En uppladdning kan göras om med Actions > Release > Run workflow och taggen.
+- Ett testbygge görs med Actions > Release > Run workflow, med en gren vald och tomt taggfält. Det får nästa patchversion efter `version.txt` och ändrar ingen fil i repot.
 - Appens version (`MARKETING_VERSION` i `iOS/Config/Version.xcconfig`) ska alltid vara densamma som i `version.txt`. Release Please uppdaterar båda. Byggnumret räknas fram i jobbet. Ändra aldrig version eller changelog för hand.
 - Ändringar i specen godkänns av Jesper innan bygget fortsätter.
