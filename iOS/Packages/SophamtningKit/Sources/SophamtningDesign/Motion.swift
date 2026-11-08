@@ -7,6 +7,12 @@ public enum Motion {
         reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.3)
     }
 
+    /// Något som fälls ut eller ihop, som kalendern i Hitta område och alla platser i bekräftelsen. Med Reducera rörelse
+    /// ingen animation, så att innehållet under inte glider.
+    public static func expand(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .snappy
+    }
+
     /// Siffror som rullar, till exempel dagar kvar.
     public static func number(reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.4)

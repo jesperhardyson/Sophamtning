@@ -20,6 +20,7 @@ struct AreaFinderSheet: View {
     @State private var expectedDetent: PresentationDetent = AreaFinderSheet.expanded
     @State private var chosen: HitSelection?
     @State private var saveFailed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(model: AppModel, place: String, onSaved: @escaping () -> Void, onOther: @escaping () -> Void) {
         self.model = model
@@ -146,7 +147,7 @@ struct AreaFinderSheet: View {
     private var primaryAction: PrimaryAction? {
         if showCalendar {
             return PrimaryAction(title: "Hitta område") {
-                withAnimation(.snappy) { showCalendar = false }
+                withAnimation(Motion.expand(reduceMotion: reduceMotion)) { showCalendar = false }
                 finder.find()
             }
         }
@@ -156,7 +157,7 @@ struct AreaFinderSheet: View {
         case .failed where finder.retryable:
             return PrimaryAction(title: "Försök igen") { finder.retry() }
         case .failed:
-            return PrimaryAction(title: "Välj ett annat datum") { withAnimation(.snappy) { showCalendar = true } }
+            return PrimaryAction(title: "Välj ett annat datum") { withAnimation(Motion.expand(reduceMotion: reduceMotion)) { showCalendar = true } }
         default:
             return nil
         }
@@ -186,7 +187,7 @@ struct AreaFinderSheet: View {
     }
 
     private var dateField: some View {
-        Button { withAnimation(.snappy) { showCalendar.toggle() } } label: {
+        Button { withAnimation(Motion.expand(reduceMotion: reduceMotion)) { showCalendar.toggle() } } label: {
             HStack(spacing: 12) {
                 Image(systemName: "calendar")
                     .font(.system(.title3))

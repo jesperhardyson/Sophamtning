@@ -12,6 +12,7 @@ struct AreaConfirmSheet: View {
 
     /// Alla platser visas när användaren fäller ut listan. Från början står den korta raden, så att knapparna syns.
     @State private var allPlaces = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // Systemets fält med systemets stängknapp, som stänger arket utan att spara. Frågan står som rubrik i
@@ -85,7 +86,7 @@ struct AreaConfirmSheet: View {
         return VStack(alignment: .leading, spacing: 8) {
             AreaDetailsView(content: content, showsAllPlaces: allPlaces, labelBackground: Color.Theme.surface)
             if content.hidesPlaces {
-                Button { withAnimation(.snappy) { allPlaces.toggle() } } label: {
+                Button { withAnimation(Motion.expand(reduceMotion: reduceMotion)) { allPlaces.toggle() } } label: {
                     Text(allPlaces ? "Visa färre platser" : content.showAllPlacesText)
                         .font(.ui(16, weight: .heavy, relativeTo: .callout))
                         .foregroundStyle(Color.Theme.primary)

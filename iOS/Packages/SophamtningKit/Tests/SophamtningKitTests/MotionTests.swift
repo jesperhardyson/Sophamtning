@@ -25,6 +25,11 @@ import Testing
         #expect(EntranceTimeline.offset(24, reduceMotion: false) == 24)
     }
 
+    @Test func utfallningUtanAnimationMedReduceraRorelse() {
+        #expect(Motion.expand(reduceMotion: true) == nil)
+        #expect(Motion.expand(reduceMotion: false) != nil)
+    }
+
     @Test func vandningenBorjarNarKortetKommitIn() {
         // Huvudkortet är andra kortet i ordningen: 60 ms väntan och 0,45 s glidning.
         #expect(abs(EntranceTimeline.flipDelay(cardIndex: 1, reduceMotion: false) - 0.51) < 0.0001)
