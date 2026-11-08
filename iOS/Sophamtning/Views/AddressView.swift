@@ -115,7 +115,7 @@ struct AddressView: View {
     /// Adressen och platsen under den stora rubriken i fältet.
     private func header(_ detail: AddressDetail) -> some View {
         AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
-            .padding(.bottom, 20)
+            .padding(.bottom, AddressLinesView.bottomSpacing)
     }
 
     // MARK: Lägen

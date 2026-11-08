@@ -342,6 +342,18 @@ private func periodSchedule(_ events: [PickupEvent], until: String?, reason: Str
     #expect(noReason.noUpcomingMessage.message == "Schemat gällde till 5 november 2026, och källan har inte publicerat nästa period än.")
 }
 
+@Test func helaSchematHarNamnetForstOchAdressvynUnderRubriken() throws {
+    let area = SavedAddress(key: key, url: address.url, street: "Kaplansgården, Jularbo m.fl.", locality: "", kommun: "Avesta kommun", detail: nil, selection: "area", displayName: "Kaplansgården, Jularbo m.fl.", isPrimary: false, addedAt: address.addedAt)
+    let result = detail(nil, address: area)
+    // Adressvyn har namnet som rubrik, så bara platsen står under.
+    #expect(result.lines == HomeContent.AddressLines(address: "", place: "Avesta kommun"))
+    // Hela schemat har rubriken "Hela schemat", så namnet står först.
+    #expect(result.namedLines == HomeContent.AddressLines(name: "Kaplansgården, Jularbo m.fl.", address: "", place: "Avesta kommun"))
+    #expect(result.namedLines.accessibilityLabel == "Kaplansgården, Jularbo m.fl., Avesta kommun")
+    // Huvudadressen med eget namn: namnet, gatan och platsen.
+    #expect(detail(nil).namedLines.accessibilityLabel == "Hemma, Storgatan 2, Uppsala")
+}
+
 @Test func periodenGallerHelaSistaDagenISverige() throws {
     let schedule = try periodSchedule([event("2026-11-06", ["rest"])], until: "2026-11-06")
     // 23:30 svensk tid den sista dagen: perioden gäller fortfarande, och dagens hämtning visas.

@@ -173,7 +173,8 @@ struct HitSelection: Identifiable {
 let tipLink = WebLink(url: URL(string: "https://sopor.hardyson.se/bidra")!)!
 
 /// Adressen och platsen på var sin rad. Adressen i radens vanliga stil, och platsen en storlek mindre med en liten
-/// platsikon. VoiceOver läser båda som en text, utan mittpunkt: "Storgatan 12, Krylbo, Avesta kommun".
+/// platsikon. Har raderna ett namn står det först, något större. VoiceOver läser allt som en text, utan mittpunkt:
+/// "Hemma, Storgatan 12, Krylbo, Avesta kommun".
 struct AddressLinesView: View {
     let lines: HomeContent.AddressLines
     /// Adressens storlek. Platsen är två punkter mindre.
@@ -183,6 +184,9 @@ struct AddressLinesView: View {
     var placeColor: Color = Color.Theme.text2
     /// Sökträffarna har adressen som rubrik, i fetare stil.
     var addressWeight: Font.Weight = .semibold
+
+    /// Avståndet från raderna under sidans stora rubrik till innehållet under, lika i adressvyn och i Hela schemat.
+    static let bottomSpacing: CGFloat = 20
 
     /// Textstilen som storleken följer med Dynamic Type, för adressen och för platsen en storlek ner.
     enum TextStyleChoice {
@@ -194,6 +198,12 @@ struct AddressLinesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
+            // Namnet står bara här där rubriken är något annat, som i Hela schemat.
+            if !lines.name.isEmpty {
+                Text(lines.name)
+                    .font(.ui(size + 2, weight: .heavy, relativeTo: addressStyle == .body ? .headline : .subheadline))
+                    .foregroundStyle(Color.Theme.text)
+            }
             if !lines.address.isEmpty {
                 Text(lines.address)
                     .font(.ui(size, weight: addressWeight, relativeTo: addressStyle.address))

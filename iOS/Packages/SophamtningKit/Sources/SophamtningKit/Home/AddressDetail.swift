@@ -95,8 +95,10 @@ public struct AddressDetail: Equatable, Sendable {
 
     public let key: AddressKey
     public let title: String
-    /// Adressen och platsen under rubriken, på var sin rad.
+    /// Adressen och platsen under rubriken, på var sin rad. Rubriken är adressens namn.
     public let lines: HomeContent.AddressLines
+    /// Namnet, adressen och platsen, för Hela schemat, där rubriken inte är adressens namn.
+    public let namedLines: HomeContent.AddressLines
     public let mode: Mode
     public let notice: Notice?
     public let next: HomeContent.Pickup?
@@ -181,6 +183,7 @@ public struct AddressDetail: Equatable, Sendable {
             key: address.key,
             title: address.displayName,
             lines: entry.lines,
+            namedLines: HomeContent.namedLines(for: address),
             mode: mode,
             notice: notice,
             next: next,

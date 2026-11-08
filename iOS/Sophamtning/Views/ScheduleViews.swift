@@ -210,9 +210,8 @@ struct FullScheduleView: View {
                         missingAddress
                     }
                 }
-                // Samma kant som den stora rubriken i fältet.
+                // Samma kant som den stora rubriken i fältet, och raderna direkt under rubriken som i adressvyn.
                 .padding(.horizontal, PageMargin.horizontal)
-                .padding(.top, 8)
                 .padding(.bottom, 32)
             }
             .refreshable { await model.refreshAll(manual: true) }
@@ -232,8 +231,9 @@ struct FullScheduleView: View {
             sourceName: sources.map { sourceName(key.source, in: $0) },
             now: model.currentDate
         )
-        AddressLinesView(lines: detail.lines, size: 18, addressStyle: .body)
-            .padding(.bottom, 16)
+        // Rubriken är "Hela schemat", så namnet står här, och gatan när den skiljer sig från namnet.
+        AddressLinesView(lines: detail.namedLines, size: 18, addressStyle: .body)
+            .padding(.bottom, AddressLinesView.bottomSpacing)
         AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
         switch detail.mode {
         case .loading:

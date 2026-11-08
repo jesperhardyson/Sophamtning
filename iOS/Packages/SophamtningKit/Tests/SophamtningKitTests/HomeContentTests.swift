@@ -347,6 +347,51 @@ private func reminder(events: [PickupEvent], at time: Date) throws -> String? {
     #expect(try #require(make([named], [:]).primary).lines.address == "Testgatan\u{00A0}3")
 }
 
+@Test func helaSchematVisarAlltidAdressenMedNamn() throws {
+    // Ett område som sparats med sitt namn: namnet står en gång, som namn, och platsen under. Gatan tas bort som dubblett,
+    // inte adressen.
+    let area = saved("r", name: "Ringänget, Veddarsbo m.fl.", street: "Ringänget, Veddarsbo m.fl.", locality: "", primary: true)
+    let areaLines = HomeContent.namedLines(for: area)
+    #expect(areaLines == HomeContent.AddressLines(name: "Ringänget, Veddarsbo m.fl.", address: "", place: "Avesta kommun"))
+    #expect(areaLines.accessibilityLabel == "Ringänget, Veddarsbo m.fl., Avesta kommun")
+    // En gata som sparats med gatan som namn, som alla adresser utom den första.
+    let street = saved("s", name: "Storgatan 12", street: "Storgatan 12", locality: "Krylbo", primary: false)
+    let streetLines = HomeContent.namedLines(for: street)
+    #expect(streetLines == HomeContent.AddressLines(name: "Storgatan\u{00A0}12", address: "", place: "Krylbo\u{00A0}· Avesta kommun"))
+    #expect(streetLines.accessibilityLabel == "Storgatan 12, Krylbo, Avesta kommun")
+    // Ett eget namn: namnet, gatan och platsen.
+    let named = saved("n", name: "Hemma", street: "Storgatan 12", locality: "Krylbo", primary: true)
+    let namedLines = HomeContent.namedLines(for: named)
+    #expect(namedLines == HomeContent.AddressLines(name: "Hemma", address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun"))
+    #expect(namedLines.accessibilityLabel == "Hemma, Storgatan 12, Krylbo, Avesta kommun")
+    // Ett område med eget namn.
+    let stugan = saved("a", name: "Stugan", street: "Kaplansgården, Jularbo m.fl.", locality: "", primary: false)
+    #expect(HomeContent.namedLines(for: stugan) == HomeContent.AddressLines(name: "Stugan", address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun"))
+}
+
+@Test func adressenSynsMinstEnGangOverallt() throws {
+    // Kortet, raderna och adressvyn har namnet som rubrik, och Hela schemat har det på första raden. Varje vy visar
+    // alltså namnet, och gatan när den skiljer sig från namnet.
+    let addresses = [
+        saved("r", name: "Ringänget, Veddarsbo m.fl.", street: "Ringänget, Veddarsbo m.fl.", locality: "", primary: true),
+        saved("s", name: "Storgatan 12", street: "Storgatan 12", locality: "Krylbo", primary: false),
+        saved("n", name: "Hemma", street: "Bergsvägen 4", locality: "Horndal", primary: false),
+    ]
+    let content = make(addresses, [:])
+    let entries = [try #require(content.primary)] + content.others
+    for (entry, address) in zip(entries, addresses) {
+        let plain = address.displayName
+        #expect(entry.title == plain)
+        #expect(entry.accessibilityLabel.hasPrefix(plain))
+        let street = address.street
+        #expect(entry.title == street || entry.lines.accessibilityLabel.hasPrefix(street.replacingOccurrences(of: "\u{00A0}", with: " ")))
+        let full = HomeContent.namedLines(for: address).accessibilityLabel
+        #expect(full.hasPrefix(plain))
+        #expect(full.contains(street))
+        #expect(full.hasSuffix("kommun"))
+    }
+}
+
 @Test func voiceOverLaserAdressOchPlatsUtanMittpunkt() {
     #expect(HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun").accessibilityLabel == "Storgatan 12, Krylbo, Avesta kommun")
     #expect(HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun").accessibilityLabel == "Kaplansgården, Jularbo m.fl., Avesta kommun")

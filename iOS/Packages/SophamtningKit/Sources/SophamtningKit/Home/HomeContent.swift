@@ -92,21 +92,25 @@ public struct HomeContent: Equatable, Sendable {
         }
     }
 
-    /// Adressen och platsen på var sin rad: "Storgatan 12" och "Krylbo · Avesta kommun".
+    /// Adressen och platsen på var sin rad: "Storgatan 12" och "Krylbo · Avesta kommun". Där adressens namn inte står
+    /// i rubriken, som i Hela schemat, står namnet på en egen rad först.
     public struct AddressLines: Equatable, Sendable {
-        /// Gatan med nummer, eller områdets namn. Tom när adressen saknar gata.
+        /// Adressens namn, "Hemma". Tomt där namnet redan står i rubriken eller på kortet.
+        public let name: String
+        /// Gatan med nummer, eller områdets namn. Tom när adressen saknar gata eller när gatan bara upprepar namnet.
         public let address: String
         /// Orten och kommunen. Kommunen döljs när den bara upprepar orten.
         public let place: String
 
-        public init(address: String, place: String) {
+        public init(name: String = "", address: String, place: String) {
+            self.name = name
             self.address = address
             self.place = place
         }
 
-        /// "Storgatan 12, Krylbo, Avesta kommun", utan mittpunkt och med vanliga mellanslag.
+        /// "Hemma, Storgatan 12, Krylbo, Avesta kommun", utan mittpunkt och med vanliga mellanslag.
         public var accessibilityLabel: String {
-            [address, place.replacingOccurrences(of: "\u{00A0}· ", with: ", ")]
+            [name, address, place.replacingOccurrences(of: "\u{00A0}· ", with: ", ")]
                 .filter { !$0.isEmpty }
                 .joined(separator: ", ")
                 .replacingOccurrences(of: "\u{00A0}", with: " ")
@@ -227,6 +231,15 @@ public struct HomeContent: Equatable, Sendable {
         let repeatsName = trimmed.compare(name, options: [.caseInsensitive]) == .orderedSame
         let street = repeatsName ? "" : trimmed.replacing(/\ (?=\d)/, with: "\u{00A0}")
         return AddressLines(address: street, place: localityAndKommun(locality: address.locality, kommun: address.kommun))
+    }
+
+    /// Som `lines(for:)`, med adressens namn på första raden. För vyer där rubriken inte är adressens namn, som Hela
+    /// schemat. Regeln om gatan tar då bara bort dubbletten: är namnet detsamma som gatan står det en gång, som namn.
+    /// Saknar adressen både namn och gata står gatan kvar, så att adressen alltid syns.
+    public static func namedLines(for address: SavedAddress) -> AddressLines {
+        let base = lines(for: address)
+        let name = address.displayName.trimmingCharacters(in: .whitespacesAndNewlines).replacing(/\ (?=\d)/, with: "\u{00A0}")
+        return AddressLines(name: name, address: base.address, place: base.place)
     }
 
     private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {
