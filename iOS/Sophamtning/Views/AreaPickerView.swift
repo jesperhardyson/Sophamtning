@@ -21,6 +21,7 @@ struct AreaPickerView: View {
 
     /// Områdena som matchar sökfältet, i listans ordning. Ett tomt fält visar alla.
     private var visibleHits: [SearchHit] { AreaFilter.filter(hits, query: query) }
+    private var isSearching: Bool { !trimmedQuery.isEmpty }
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
@@ -31,26 +32,30 @@ struct AreaPickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let notice {
-                    MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
-                        .padding(.top, 8)
-                }
-                // Som på webben: varför man väljer område, och vart man vänder sig. Saknas källorna visas inget kort.
-                if !sourceNotes.isEmpty {
-                    AreaSourceNotesView(notes: sourceNotes)
-                        .padding(.top, notice == nil ? 8 : 16)
-                }
-                if place != nil {
-                    finderRow
-                        .padding(.top, 20)
-                }
-                if let areasLink {
-                    Button { webLink = areasLink } label: {
-                        Label("Vilka platser ingår i områdena?", systemImage: "arrow.up.right.square")
-                            .font(.ui(17, weight: .heavy, relativeTo: .body))
-                            .foregroundStyle(Color.Theme.primary)
+                // Under en sökning visas bara träffarna, som i systemets egna sökningar. Varningen visas igen när fältet töms
+                // och står i bekräftelsearket (`notice`), så den går inte förlorad.
+                if !isSearching {
+                    if let notice {
+                        MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Du väljer området själv", message: notice)
+                            .padding(.top, 8)
                     }
-                    .padding(.top, 20)
+                    // Som på webben: varför man väljer område, och vart man vänder sig. Saknas källorna visas inget kort.
+                    if !sourceNotes.isEmpty {
+                        AreaSourceNotesView(notes: sourceNotes)
+                            .padding(.top, notice == nil ? 8 : 16)
+                    }
+                    if place != nil {
+                        finderRow
+                            .padding(.top, 20)
+                    }
+                    if let areasLink {
+                        Button { webLink = areasLink } label: {
+                            Label("Vilka platser ingår i områdena?", systemImage: "arrow.up.right.square")
+                                .font(.ui(17, weight: .heavy, relativeTo: .body))
+                                .foregroundStyle(Color.Theme.primary)
+                        }
+                        .padding(.top, 20)
+                    }
                 }
                 let visible = visibleHits
                 if visible.isEmpty {
@@ -62,9 +67,15 @@ struct AreaPickerView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 20)
                         .accessibilityAddTraits(.isStaticText)
+                    // Vägen vidare när sökningen inte ger något.
+                    if place != nil {
+                        finderRow
+                            .padding(.top, 20)
+                    }
                 } else {
                     ResultList {
-                        ForEach(Array(visible.enumerated()), id: \.offset) { offset, hit in
+                        // Områdets id är unikt i listan, så raden behåller sin identitet när filtret ändras.
+                        ForEach(Array(visible.enumerated()), id: \.element.id) { offset, hit in
                             // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
                             VStack(spacing: 0) {
                                 if offset > 0 { ResultDivider() }
