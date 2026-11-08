@@ -88,6 +88,7 @@
 		0C8419AD422B35F3FFBD5521 /* PickupLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupLiveActivity.swift; sourceTree = "<group>"; };
 		140BBB80224770A99801765F /* AccessibilityAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditTests.swift; sourceTree = "<group>"; };
 		19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningWidgetBundle.swift; sourceTree = "<group>"; };
+		1B1EAD0C3854D31E258D42A5 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
 		2646AA909312B4395C8FC349 /* ScheduleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleViews.swift; sourceTree = "<group>"; };
 		34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-omraden.json"; sourceTree = "<group>"; };
 		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -183,12 +184,21 @@
 		4D7DA47755D74838DFD79873 = {
 			isa = PBXGroup;
 			children = (
+				6B7534172D11547D4E2C9651 /* Config */,
 				7A0FE1F3ACCC9DCB17052506 /* Packages */,
 				74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */,
 				A56B39B834D616C72AA4C4A5 /* SophamtningUITests */,
 				8695B78B42B387C7502982F5 /* SophamtningWidgets */,
 				9EA4635974972027A134D901 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		6B7534172D11547D4E2C9651 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				1B1EAD0C3854D31E258D42A5 /* Version.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */ = {
@@ -549,6 +559,7 @@
 		};
 		7AD1B9F7D5340C22D40EC2F8 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1B1EAD0C3854D31E258D42A5 /* Version.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -632,6 +643,7 @@
 		};
 		93AF8DCA0299E718B4030415 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1B1EAD0C3854D31E258D42A5 /* Version.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
