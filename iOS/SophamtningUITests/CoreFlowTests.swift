@@ -118,6 +118,39 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Visa färre platser"].exists)
     }
 
+    func testOmradeslistanGarAttSoka() {
+        open("Gata och husnummer")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("okänd gata 1, Avesta")
+        open("Välj område i Avesta kommun")
+
+        // Systemets sökfält står överst, och varningen står kvar under det.
+        let search = app.searchFields["Sök område, ort eller gata"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Du väljer området själv"].exists, "Varningen ska stå kvar")
+        let askon = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Askön, Nyhyttan")).firstMatch
+        XCTAssertTrue(askon.waitForExistence(timeout: 5))
+
+        // En plats som bara står i listan över platser hittar rätt område.
+        search.tap()
+        search.typeText("klintbo")
+        XCTAssertTrue(askon.waitForExistence(timeout: 5))
+        let kaplansgarden = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Kaplansgården")).firstMatch
+        XCTAssertFalse(kaplansgarden.exists, "Bara området med platsen ska finnas kvar")
+
+        // Inga träffar: en tydlig text, och Hitta område står kvar.
+        search.clearAndTypeText("zzz")
+        XCTAssertTrue(app.staticTexts["Inga områden matchar ”zzz”."].waitForExistence(timeout: 5))
+        XCTAssertFalse(askon.exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Vet du inte vilket område?")).firstMatch.exists)
+
+        // Tomt fält ger alla områden igen.
+        search.clearAndTypeText("")
+        XCTAssertTrue(askon.waitForExistence(timeout: 5))
+    }
+
     func testSchematGallerTillVisasForAvestaMenInteForLivekalla() {
         // Live-källan har `schedule: null`, så raden syns inte.
         addAddress()
@@ -284,5 +317,14 @@ final class CoreFlowTests: XCTestCase {
         let hit = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch
         XCTAssertTrue(hit.waitForExistence(timeout: 10), "Sökningen ska ge träffar")
         hit.tap()
+    }
+}
+
+private extension XCUIElement {
+    /// Tömmer fältet och skriver ny text. En tom text lämnar fältet tomt.
+    func clearAndTypeText(_ text: String) {
+        guard let current = value as? String, !current.isEmpty else { if !text.isEmpty { typeText(text) }; return }
+        typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        if !text.isEmpty { typeText(text) }
     }
 }

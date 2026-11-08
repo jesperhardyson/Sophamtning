@@ -17,6 +17,11 @@ struct AreaPickerView: View {
     @State private var saveFailed = false
     @State private var webLink: WebLink?
     @State private var finderOpen = false
+    @State private var query = ""
+
+    /// Områdena som matchar sökfältet, i listans ordning. Ett tomt fält visar alla.
+    private var visibleHits: [SearchHit] { AreaFilter.filter(hits, query: query) }
+    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
     private var sourceNotes: [AreaSourceNote] { AreaSourceNote.notes(sources) }
@@ -47,26 +52,38 @@ struct AreaPickerView: View {
                     }
                     .padding(.top, 20)
                 }
-                ResultList {
-                    ForEach(Array(hits.enumerated()), id: \.offset) { offset, hit in
-                        // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
-                        VStack(spacing: 0) {
-                            if offset > 0 { ResultDivider() }
-                            Button { saveFailed = false; chosen = HitSelection(hit: hit) } label: {
-                                HStack(spacing: 12) {
-                                    AreaDetailsView(content: AreaRowContent.make(hit))
-                                    Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
+                let visible = visibleHits
+                if visible.isEmpty {
+                    // Ett filter utan träffar säger inget om att något saknas hos källan: listan är bara filtrerad.
+                    Text("Inga områden matchar ”\(trimmedQuery)”.")
+                        .font(.ui(17, weight: .semibold, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 20)
+                        .accessibilityAddTraits(.isStaticText)
+                } else {
+                    ResultList {
+                        ForEach(Array(visible.enumerated()), id: \.offset) { offset, hit in
+                            // Avgränsaren följer sin rad, så att den inte syns i en tom ruta.
+                            VStack(spacing: 0) {
+                                if offset > 0 { ResultDivider() }
+                                Button { saveFailed = false; chosen = HitSelection(hit: hit) } label: {
+                                    HStack(spacing: 12) {
+                                        AreaDetailsView(content: AreaRowContent.make(hit))
+                                        Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 16)
+                                    .contentShape(Rectangle())
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 16)
-                                .contentShape(Rectangle())
+                                .buttonStyle(.pressable)
                             }
-                            .buttonStyle(.pressable)
+                            .rowEntranceOnAppear(index: offset)
                         }
-                        .rowEntranceOnAppear(index: offset)
                     }
+                    .padding(.top, 20)
                 }
-                .padding(.top, 20)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -76,6 +93,10 @@ struct AreaPickerView: View {
         .navigationTitle("Välj område")
         .navigationSubtitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        // Systemets sökfält under rubriken. Områdena filtreras medan man skriver.
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Sök område, ort eller gata")
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
         .inAppBrowser(item: $webLink)
         .sheet(isPresented: $finderOpen) {
             if let place {
