@@ -47,6 +47,48 @@ private final class Clock: @unchecked Sendable {
         #expect(api.callCount == 0)
     }
 
+    @Test func listaFranAnnanAppversionHamtasDirekt() async throws {
+        let temp = TempDir(); let store = LocalStore(directory: temp.url)
+        try store.setSources(CachedSources(response: list("sparad"), fetchedAt: t0.addingTimeInterval(-60), appVersion: "1.0.0 (201)"))
+        let api = SourcesAPI(.success(list("ny")))
+        let model = AppModel(api: api, store: store, now: { t0 }, appVersion: "1.0.1 (301)")
+        #expect(await model.sourceList()?.first?.id == "ny")
+        #expect(store.sources()?.appVersion == "1.0.1 (301)")
+        _ = await model.sourceList()
+        #expect(api.callCount == 1)
+    }
+
+    @Test func listaUtanAppversionHamtasDirekt() async throws {
+        let temp = TempDir(); let store = LocalStore(directory: temp.url)
+        try store.setSources(CachedSources(response: list("sparad"), fetchedAt: t0.addingTimeInterval(-60)))
+        let api = SourcesAPI(.success(list("ny")))
+        let model = AppModel(api: api, store: store, now: { t0 }, appVersion: "1.0.1 (301)")
+        #expect(await model.sourceList()?.first?.id == "ny")
+    }
+
+    @Test func sammaAppversionAnvanderSparadLista() async throws {
+        let temp = TempDir(); let store = LocalStore(directory: temp.url)
+        try store.setSources(CachedSources(response: list("sparad"), fetchedAt: t0.addingTimeInterval(-60), appVersion: "1.0.1 (301)"))
+        let api = SourcesAPI(.success(list("ny")))
+        let model = AppModel(api: api, store: store, now: { t0 }, appVersion: "1.0.1 (301)")
+        #expect(await model.sourceList()?.first?.id == "sparad")
+        #expect(api.callCount == 0)
+    }
+
+    @Test func listaFranAnnanAppversionAnvandsNarHamtningenMisslyckas() async throws {
+        let temp = TempDir(); let store = LocalStore(directory: temp.url)
+        try store.setSources(CachedSources(response: list("sparad"), fetchedAt: t0.addingTimeInterval(-60), appVersion: "1.0.0 (201)"))
+        let api = SourcesAPI(.failure(URLError(.notConnectedToInternet)))
+        let model = AppModel(api: api, store: store, now: { t0 }, appVersion: "1.0.1 (301)")
+        #expect(await model.sourceList()?.first?.id == "sparad")
+    }
+
+    @Test func gammalSparadListaUtanAppversionAvkodas() throws {
+        let json = #"{"response":{"sources":[],"fractions":{}},"fetchedAt":0}"#
+        let cached = try JSONDecoder().decode(CachedSources.self, from: Data(json.utf8))
+        #expect(cached.appVersion == nil)
+    }
+
     @Test func gammalListaHamtasOchSparas() async throws {
         let temp = TempDir(); let store = LocalStore(directory: temp.url)
         try store.setSources(CachedSources(response: list("sparad"), fetchedAt: t0.addingTimeInterval(-90_000)))

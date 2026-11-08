@@ -17,20 +17,21 @@ struct SophamtningApp: App {
         NavigationBarStyle.apply()
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
-        let model = Self.makeModel(version: version)
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+        let model = Self.makeModel(version: version, build: build)
         // Uppgiften måste registreras innan appen startat klart.
         BackgroundRefresh.register(model: model)
         _model = State(initialValue: model)
     }
 
-    private static func makeModel(version: String) -> AppModel {
+    private static func makeModel(version: String, build: String) -> AppModel {
         #if DEBUG
         if UITestSupport.isActive {
             // UI-testerna får en stubb, en tom lagring och inga notiser. Koden finns bara i Debug-bygget.
             return AppModel(api: UITestAPI(), store: UITestSupport.store())
         }
         #endif
-        return AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() })
+        return AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() }, appVersion: "\(version) (\(build))")
     }
 
     var body: some Scene {
