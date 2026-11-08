@@ -216,6 +216,36 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertFalse(box.label.localizedCaseInsensitiveContains("påminnelse"), "Inget löfte om påminnelser")
     }
 
+    func testGatorMedAnnanHamtdagVisasOverst() {
+        open("Gata och husnummer")
+        let field = app.textFields["Gata och husnummer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("okänd gata 1, Avesta")
+        open("Välj område i Avesta kommun")
+        let area = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 5))
+        area.tap()
+        open("Spara området")
+        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Askön")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
+        saved.tap()
+
+        // Adressvyn: rubriken som rubrik och raden ordagrant, ovanför Kommande.
+        let kommande = app.staticTexts["Kommande"]
+        XCTAssertTrue(kommande.waitForExistence(timeout: 5))
+        let heading = app.staticTexts["Vissa gator har en annan hämtdag"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 5), "Rubriken ska synas i adressvyn")
+        XCTAssertTrue(app.otherElements["otherDaysCard"].exists)
+        XCTAssertTrue(app.staticTexts["Till exempel Stallgatan och Storbogatan (måndag, udda vecka) och Bodgatan (onsdag, jämn vecka)."].exists)
+        XCTAssertLessThan(heading.frame.minY, kommande.frame.minY, "Rutan ska stå före Kommande")
+
+        // Hela schemat visar samma ruta.
+        for _ in 0..<2 where !app.buttons["Hela schemat"].exists { app.swipeUp() }
+        app.buttons["Hela schemat"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Vissa gator har en annan hämtdag"].waitForExistence(timeout: 5), "Hela schemat ska visa rubriken")
+    }
+
     func testHittaOmradeKnappenSynsNarKalendernArUtfalld() {
         open("Gata och husnummer")
         let field = app.textFields["Gata och husnummer"]

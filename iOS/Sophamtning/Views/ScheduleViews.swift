@@ -235,6 +235,10 @@ struct FullScheduleView: View {
         AddressLinesView(lines: detail.namedLines, size: 18, addressStyle: .body)
             .padding(.bottom, AddressLinesView.bottomSpacing)
         AddressNoticeView(model: model, notice: detail.notice, onSearchAgain: { onSearchAgain() })
+        if let note = detail.otherDays {
+            OtherDaysCard(note: note)
+                .padding(.bottom, 12)
+        }
         switch detail.mode {
         case .loading:
             ScheduleLoadingCard()
@@ -262,6 +266,40 @@ struct FullScheduleView: View {
         } else {
             MessageCard(style: .neutral, icon: "mappin.slash", title: "Adressen är borttagen", message: "Den finns inte längre bland dina sparade adresser.")
         }
+    }
+}
+
+/// Rutan för ett område där vissa gator har en annan hämtdag, med samma utseende som den neutrala `MessageCard`. Rubriken
+/// läses som rubrik och raderna efter den. Står överst, före datumen, så att den som bor på en sådan gata ser den först.
+struct OtherDaysCard: View {
+    let note: OtherDaysNote
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 18
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: iconSize))
+                .foregroundStyle(Color.Theme.text)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(note.heading)
+                    .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.text)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(Array(note.rows.enumerated()), id: \.offset) { _, row in
+                    Text(row)
+                        .font(.ui(14, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(Color.Theme.text2)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("otherDaysCard")
     }
 }
 

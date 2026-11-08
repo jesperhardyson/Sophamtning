@@ -84,6 +84,11 @@ struct AddressView: View {
                 header(detail)
                 Group { notice(detail) }
                     .transition(.opacity)
+                // Före datumen: den som bor på en sådan gata ska se det innan hen litar på dem.
+                if let note = detail.otherDays {
+                    OtherDaysCard(note: note)
+                        .padding(.bottom, 12)
+                }
                 switch detail.mode {
                 case .loading:
                     ScheduleLoadingCard()

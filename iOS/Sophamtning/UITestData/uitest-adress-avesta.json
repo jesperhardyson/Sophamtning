@@ -9,7 +9,14 @@
     "source": "avesta",
     "detail": "Måndag, udda vecka · Område 1",
     "selection": "area",
-    "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning."
+    "notice": "Kontrollera att området stämmer. Du har valt området själv, eftersom Avesta Vatten inte publicerar vilka adresser som hör till vilket område. Väljer du fel område kan du missa din tömning.",
+    "area": {
+      "day": "Måndag, udda vecka",
+      "label": "Område 1",
+      "places": ["Askön", "Nyhyttan"],
+      "otherDays": ["Till exempel Stallgatan och Storbogatan (måndag, udda vecka) och Bodgatan (onsdag, jämn vecka)."],
+      "searchTerms": ["Askön", "Nyhyttan", "område 1", "trakt 1"]
+    }
   },
   "next": [
     {
