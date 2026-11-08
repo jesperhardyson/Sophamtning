@@ -154,7 +154,7 @@ struct SearchView: View {
             }
             if case .found(let place, let areas, let areaSources)? = outcome.areas {
                 // Knappen kommer ofta efter träffarna, och glider då in i stället för att skjuta ned listan i ett ryck.
-                areaButton(place: place, areas: areas, sources: areaSources)
+                areaRow(place: place, areas: areas, sources: areaSources)
                     .padding(.bottom, 20)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -194,12 +194,16 @@ struct SearchView: View {
         return all.filter { !($0.element.isArea && kommuner.contains($0.element.kommun)) }
     }
 
-    /// "Välj område i X": samma knapp och flöde vid träffar som vid noll träffar.
-    private func areaButton(place: String, areas: [SearchHit], sources: [AreaSource]) -> some View {
-        NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas, sources: sources)) {
-            PrimaryButtonLabel(title: "Välj område i \(kommunDisplayName(areas[0].kommun))")
+    /// "Välj område i X": en egen grupp med en rad i adressradernas stil, så att man ser att adresserna under är något
+    /// annat. Samma rad och flöde vid träffar som vid noll träffar.
+    private func areaRow(place: String, areas: [SearchHit], sources: [AreaSource]) -> some View {
+        ResultList {
+            NavigationLink(value: AddRoute.areas(title: areas[0].kommun, place: place, hits: areas, sources: sources)) {
+                IconPlateRowLabel(icon: "map", title: "Välj område i \(kommunDisplayName(areas[0].kommun))",
+                                  subtitle: "Här finns schemat per område, inte per adress.")
+            }
+            .buttonStyle(.pressable)
         }
-        .buttonStyle(.pressable)
     }
 
     private func row(_ hit: SearchHit) -> some View {
@@ -259,7 +263,7 @@ struct SearchView: View {
                     .foregroundStyle(Color.Theme.text2)
                     .multilineTextAlignment(.center)
                     .padding(.top, 10)
-                areaButton(place: found.place, areas: found.areas, sources: found.sources)
+                areaRow(place: found.place, areas: found.areas, sources: found.sources)
                     .padding(.top, 24)
             } else if outcome.areas == .failed {
                 MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Kunde inte hämta områden",

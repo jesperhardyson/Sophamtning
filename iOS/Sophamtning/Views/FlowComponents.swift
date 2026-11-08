@@ -252,3 +252,40 @@ enum PageMargin {
         return window?.rootViewController?.systemMinimumLayoutMargins.leading ?? 16
     }
 }
+
+/// En rad i en `ResultList` med en ikon i en rund platta, en titel, en förklarande rad och en chevron. Används för val som
+/// inte är en adress eller ett område: "Välj område i …" i sökningen och "Vet du inte vilket område?" i listan. Som en
+/// knapp läser VoiceOver titeln och raden under.
+struct IconPlateRowLabel: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    @ScaledMetric(relativeTo: .body) private var plate: CGFloat = 40
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(.body, weight: .semibold))
+                .foregroundStyle(Color.Theme.brandText)
+                .frame(width: plate, height: plate)
+                .background(Color.Theme.brandSoft, in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.ui(18, weight: .heavy, relativeTo: .body))
+                    .foregroundStyle(Color.Theme.text)
+                Text(subtitle)
+                    .font(.ui(16, weight: .semibold, relativeTo: .callout))
+                    .foregroundStyle(Color.Theme.text2)
+            }
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title.hasSuffix("?") ? "\(title) \(subtitle)" : "\(title). \(subtitle)")
+    }
+}
