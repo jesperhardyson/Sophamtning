@@ -160,8 +160,8 @@ private func areaHit(detail: String? = "Måndag, udda vecka · Område 1", area:
         let warning = try #require(AreaWarning.make(notice: notice, notes: AreaSourceNote.notes([avesta])))
         #expect(warning.explanations.map(\.text) == ["Avesta publicerar per område."])
         #expect(warning.helps.count == 1)
-        #expect(!warning.accessibilityLabel.contains(notice))
-        #expect(warning.accessibilityLabel.contains(AreaWarning.consequence))
+        #expect(!warning.explanations.map(\.text).contains(notice))
+        #expect(warning.showsConsequence)
     }
 
     @Test func saknasForklaringenVisasNotice() throws {
@@ -177,9 +177,22 @@ private func areaHit(detail: String? = "Måndag, udda vecka · Område 1", area:
         #expect(warning.helps.isEmpty)
     }
 
-    @Test func utanNoticeOchKallorFinnsInteKortet() {
-        #expect(AreaWarning.make(notice: nil, notes: []) == nil)
-        #expect(AreaWarning.make(notice: "  ", notes: []) == nil)
+    @Test func utanNoticeOchKallorFinnsKortetAndaMedKonsekvensen() {
+        for missing in [nil, "  "] {
+            let warning = AreaWarning.make(notice: missing, notes: [])
+            #expect(warning.explanations.isEmpty)
+            #expect(warning.helps.isEmpty)
+            #expect(warning.showsConsequence)
+        }
+        #expect(AreaWarning.title == "Du väljer området själv")
+        #expect(AreaWarning.consequence == "Väljer du fel område kan du missa din tömning.")
+    }
+
+    @Test func konsekvensenStarInteTvaGangerNarNoticeRedanHarDen() {
+        let full = "Adresser publiceras inte. \(AreaWarning.consequence)"
+        let warning = AreaWarning.make(notice: full, notes: [])
+        #expect(warning.explanations.map(\.text) == [full])
+        #expect(!warning.showsConsequence)
     }
 
     @Test func flerKallorVisasMedNamn() throws {

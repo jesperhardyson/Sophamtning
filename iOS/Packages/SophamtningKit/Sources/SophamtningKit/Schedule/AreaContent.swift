@@ -133,7 +133,7 @@ public struct AreaSourceNote: Equatable, Sendable, Identifiable {
 
 /// Det som varningskortet överst i områdesvalet visar. Källans `explanation` står ordagrant, sedan en mening om att fel
 /// område kan göra att man missar tömningen, och sist källans hjälprad. Saknas `explanation` visas `notice` i dess ställe,
-/// så att varningen aldrig försvinner. När `explanation` finns visas inte `notice` här, utan i bekräftelsearket.
+/// så att varningen aldrig försvinner, och finns ingen text alls står ändå rubriken och konsekvensen. När `explanation` finns visas inte `notice` här, utan i bekräftelsearket.
 public struct AreaWarning: Equatable, Sendable {
     /// En text i kortet. Källans namn behövs bara när flera källor svarade.
     public struct Entry: Equatable, Sendable, Identifiable {
@@ -156,8 +156,8 @@ public struct AreaWarning: Equatable, Sendable {
     public let explanations: [Entry]
     public let helps: [Help]
 
-    /// `nil` när det varken finns förklaring, `notice` eller hjälprad. Då har inte områdesvalet något att varna för.
-    public static func make(notice: String?, notes: [AreaSourceNote]) -> AreaWarning? {
+    /// Kortet finns alltid: saknas förklaring, `notice` och hjälprad står bara rubriken och meningen om missad tömning.
+    public static func make(notice: String?, notes: [AreaSourceNote]) -> AreaWarning {
         let named = notes.count > 1
         var explanations = notes.compactMap { note -> Entry? in
             note.explanation.map { text in Entry(id: note.id, name: named ? note.name : nil, text: text) }
@@ -168,13 +168,12 @@ public struct AreaWarning: Equatable, Sendable {
         let helps = notes.compactMap { note -> Help? in
             note.help.map { text in Help(id: note.id, name: named ? note.name : nil, text: text) }
         }
-        guard !explanations.isEmpty || !helps.isEmpty else { return nil }
         return AreaWarning(explanations: explanations, helps: helps)
     }
 
-    /// Hela kortet som en text för VoiceOver.
-    public var accessibilityLabel: String {
-        let parts = explanations.map { entry in entry.text } + [Self.consequence] + helps.map { help in String(help.text.characters) }
-        return ([Self.title] + parts).map { part in part.hasSuffix(".") ? part : part + "." }.joined(separator: " ")
+    /// Om meningen om missad tömning ska stå för sig. Den utelämnas när en förklaring (till exempel `notice` som
+    /// reservtext) redan innehåller den, så att den inte står två gånger.
+    public var showsConsequence: Bool {
+        !explanations.contains { entry in entry.text.contains(Self.consequence) }
     }
 }
