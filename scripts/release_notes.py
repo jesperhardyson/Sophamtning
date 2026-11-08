@@ -1,8 +1,13 @@
-"""Fyller i "Vad ska testas" i TestFlight med versionens avsnitt ur changelogen.
+"""Fyller i versionens avsnitt ur changelogen i App Store Connect.
 
-Körs av TestFlight-jobbet i .github/workflows/release.yml efter uppladdningen (docs/specs/2026-11-08-release.md).
+- testflight: "Vad ska testas" på bygget. Körs av TestFlight-jobbet efter uppladdningen.
+- appstore: utkast till "Nyheter i den här versionen" på App Store-versionen med samma versionsnummer, om den
+  finns och går att ändra. Text som redan står där skrivs aldrig över.
 
-    python3 scripts/testflight_notes.py --version 1.0.1 --build 301 --notes-file notes.md
+Se docs/specs/2026-11-08-release.md.
+
+    python3 scripts/release_notes.py testflight --version 1.0.1 --build 301 --notes-file notes.md
+    python3 scripts/release_notes.py appstore --version 1.0.1 --notes-file notes.md
 
 Nyckeln läses från miljövariablerna ASC_KEY_ID, ASC_ISSUER_ID och ASC_KEY_PATH. Inga hemliga värden skrivs ut.
 """
@@ -119,10 +124,46 @@ def set_notes(app_id: str, build_id: str, notes: str) -> None:
         print(f"Skapade {locale}")
 
 
+# App Store-versioner vars texter går att ändra.
+EDITABLE_STATES = {
+    "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY",
+}
+
+
+def set_app_store_notes(app_id: str, version: str, notes: str) -> None:
+    """Utkast till "Nyheter i den här versionen". Rör bara en version som går att ändra och språk utan text."""
+    query = urllib.parse.urlencode({"filter[versionString]": version, "filter[platform]": "IOS"})
+    versions = request("GET", f"/apps/{app_id}/appStoreVersions?{query}")["data"]
+    editable = [v for v in versions if v["attributes"].get("appStoreState") in EDITABLE_STATES]
+    if not editable:
+        print(f"Ingen App Store-version {version} som går att ändra. Skapa den i App Store Connect och kör "
+              "workflowen App Store-text med taggen.")
+        return
+    version_id = editable[0]["id"]
+    localizations = request("GET", f"/appStoreVersions/{version_id}/appStoreVersionLocalizations")["data"]
+    for loc in localizations:
+        locale = loc["attributes"]["locale"]
+        if (loc["attributes"].get("whatsNew") or "").strip():
+            print(f"{locale}: har redan text, rörs inte")
+            continue
+        request("PATCH", f"/appStoreVersionLocalizations/{loc['id']}", {
+            "data": {"type": "appStoreVersionLocalizations", "id": loc["id"], "attributes": {"whatsNew": notes}},
+        })
+        print(f"{locale}: utkast inlagt")
+
+
+def app_id() -> str:
+    apps = request("GET", "/apps?" + urllib.parse.urlencode({"filter[bundleId]": BUNDLE_ID}))["data"]
+    if not apps:
+        raise SystemExit(f"Hittar ingen app med paket-id {BUNDLE_ID}")
+    return apps[0]["id"]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("target", choices=["testflight", "appstore"])
     parser.add_argument("--version", required=True, help="Appens version, till exempel 1.0.1")
-    parser.add_argument("--build", required=True, help="Byggnumret")
+    parser.add_argument("--build", help="Byggnumret, för testflight")
     parser.add_argument("--notes-file", required=True, help="Versionens avsnitt ur changelogen, i Markdown")
     parser.add_argument("--wait-minutes", type=int, default=30)
     args = parser.parse_args()
@@ -132,14 +173,16 @@ def main() -> None:
     if not notes:
         print("Ingen text att lägga in")
         return
-    print("Vad ska testas:\n" + notes)
+    print("Text:\n" + notes)
 
-    apps = request("GET", "/apps?" + urllib.parse.urlencode({"filter[bundleId]": BUNDLE_ID}))["data"]
-    if not apps:
-        raise SystemExit(f"Hittar ingen app med paket-id {BUNDLE_ID}")
-    app_id = apps[0]["id"]
-    build = find_build(app_id, args.version, args.build, args.wait_minutes)
-    set_notes(app_id, build["id"], notes)
+    app = app_id()
+    if args.target == "appstore":
+        set_app_store_notes(app, args.version, notes)
+        return
+    if not args.build:
+        parser.error("--build krävs för testflight")
+    build = find_build(app, args.version, args.build, args.wait_minutes)
+    set_notes(app, build["id"], notes)
 
 
 if __name__ == "__main__":

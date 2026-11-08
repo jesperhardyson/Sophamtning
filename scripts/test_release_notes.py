@@ -1,8 +1,8 @@
-"""Tester för texten till TestFlight. Kör: python3 -m unittest discover -s scripts"""
+"""Tester för texten till TestFlight och App Store. Kör: python3 -m unittest discover -s scripts"""
 
 import unittest
 
-from testflight_notes import MAX_LENGTH, plain_notes
+from release_notes import MAX_LENGTH, plain_notes
 
 RELEASE = """## [1.0.1](https://github.com/jesperhardyson/Sophamtning/compare/v1.0.0...v1.0.1) (2026-11-08)
 
