@@ -153,7 +153,7 @@ struct SearchView: View {
                     .padding(.bottom, 20)
             }
             if case .found(let place, let areas, let areaSources)? = outcome.areas {
-                // Knappen kommer ofta efter träffarna, och glider då in i stället för att skjuta ned listan i ett ryck.
+                // Raden kommer ofta efter träffarna, och glider då in i stället för att skjuta ned listan i ett ryck.
                 areaRow(place: place, areas: areas, sources: areaSources)
                     .padding(.bottom, 20)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -186,7 +186,7 @@ struct SearchView: View {
         .animation(Motion.transition(reduceMotion: reduceMotion), value: outcome.areas)
     }
 
-    /// Träffarna, med sin plats i svaret, utan områdesrader för en kommun vars områden redan nås med knappen.
+    /// Träffarna, med sin plats i svaret, utan områdesrader för en kommun vars områden redan nås med raden Välj område.
     private func visibleHits(_ hits: [SearchHit]) -> [EnumeratedSequence<[SearchHit]>.Element] {
         let all = Array(hits.enumerated())
         guard case .found(_, let areas, _)? = outcome.areas else { return all }

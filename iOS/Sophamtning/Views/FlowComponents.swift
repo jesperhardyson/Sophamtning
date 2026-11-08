@@ -260,30 +260,41 @@ struct IconPlateRowLabel: View {
     let icon: String
     let title: String
     let subtitle: String
+    var horizontalPadding: CGFloat = 16
+    var verticalPadding: CGFloat = 14
     @ScaledMetric(relativeTo: .body) private var plate: CGFloat = 40
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// Plattan växer med texten men aldrig över 56 pt.
+    private var plateSize: CGFloat { min(plate, 56) }
 
     var body: some View {
-        HStack(spacing: 14) {
+        // Med tillgänglighetsstorlekar står plattan ovanför texten, så att orden får hela bredden och inte bryts mitt i.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
+        layout {
             Image(systemName: icon)
                 .font(.system(.body, weight: .semibold))
                 .foregroundStyle(Color.Theme.brandText)
-                .frame(width: plate, height: plate)
+                .frame(width: plateSize, height: plateSize)
                 .background(Color.Theme.brandSoft, in: Circle())
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.ui(18, weight: .heavy, relativeTo: .body))
-                    .foregroundStyle(Color.Theme.text)
-                Text(subtitle)
-                    .font(.ui(16, weight: .semibold, relativeTo: .callout))
-                    .foregroundStyle(Color.Theme.text2)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.ui(18, weight: .heavy, relativeTo: .body))
+                        .foregroundStyle(Color.Theme.text)
+                    Text(subtitle)
+                        .font(.ui(16, weight: .semibold, relativeTo: .callout))
+                        .foregroundStyle(Color.Theme.text2)
+                }
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
             }
-            .multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right").foregroundStyle(Color.Theme.text2).accessibilityHidden(true)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title.hasSuffix("?") ? "\(title) \(subtitle)" : "\(title). \(subtitle)")

@@ -26,14 +26,14 @@ struct AreaPickerView: View {
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
     /// Kortet överst: källans förklaring, eller `notice` när förklaringen saknas. `notice` står oförändrad i bekräftelsearket.
-    private var warning: AreaWarning? { AreaWarning.make(notice: notice, notes: AreaSourceNote.notes(sources)) }
+    private var warning: AreaWarning { AreaWarning.make(notice: notice, notes: AreaSourceNote.notes(sources)) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Under en sökning visas bara träffarna, som i systemets egna sökningar. Varningen visas igen när fältet töms
                 // och `notice` står i bekräftelsearket, så den går inte förlorad.
-                if !isSearching, let warning {
+                if !isSearching {
                     AreaWarningCard(warning: warning)
                         .padding(.top, 8)
                 }
@@ -112,8 +112,8 @@ private extension AreaPickerView {
     /// "Vet du inte vilket område?" Öppnar arket där senaste tömningen pekar ut området.
     var finderRow: some View {
         Button { finderOpen = true } label: {
-            IconPlateRowLabel(icon: "calendar.badge.magnifyingglass", title: "Vet du inte vilket område?",
-                              subtitle: "Hitta det med din senaste tömning")
+            IconPlateRowLabel(icon: "calendar.badge.clock", title: "Vet du inte vilket område?",
+                              subtitle: "Hitta det med din senaste tömning", horizontalPadding: 20, verticalPadding: 16)
         }
         .buttonStyle(.pressable)
     }
@@ -126,16 +126,20 @@ struct AreaWarningCard: View {
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 18
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: iconSize))
-                .foregroundStyle(Color.Theme.warn)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
+        // Ikonen står på rubrikens rad, så att brödtexten får hela kortets bredd även med största text.
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: iconSize))
+                    .foregroundStyle(Color.Theme.warn)
+                    .accessibilityHidden(true)
                 Text(AreaWarning.title)
                     .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
                     .foregroundStyle(Color.Theme.warn)
                     .accessibilityAddTraits(.isHeader)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Group {
                 ForEach(warning.explanations) { entry in
                     VStack(alignment: .leading, spacing: 2) {
                         // Källans namn behövs bara när flera källor svarade.
@@ -147,8 +151,10 @@ struct AreaWarningCard: View {
                         Text(entry.text)
                     }
                 }
-                Text(AreaWarning.consequence)
-                    .fontWeight(.heavy)
+                if warning.showsConsequence {
+                    Text(AreaWarning.consequence)
+                        .fontWeight(.heavy)
+                }
                 ForEach(warning.helps) { help in
                     VStack(alignment: .leading, spacing: 2) {
                         if let name = help.name {
