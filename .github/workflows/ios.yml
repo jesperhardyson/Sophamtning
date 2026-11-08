@@ -18,6 +18,9 @@ jobs:
       - name: Välj Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
+      - name: Releaseskriptens tester
+        run: python3 -m unittest discover -s scripts
+
       - name: Paketets tester
         working-directory: iOS/Packages/SophamtningKit
         run: swift test --skip ContractTests
