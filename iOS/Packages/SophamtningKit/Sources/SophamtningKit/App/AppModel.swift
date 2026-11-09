@@ -72,6 +72,8 @@ public final class AppModel {
     @ObservationIgnored var householdCacheKnown: Bool
     /// Egna bockar som redan skickats till hushållet i den här körningen, så att samma bock inte skickas två gånger.
     @ObservationIgnored var sentHouseholdMarks: Set<PlacedOut> = []
+    /// Dagen då förbrukade bockar senast togs bort, så att det görs en gång per dag.
+    @ObservationIgnored var lastRemoveExpiredDay: DayDate?
     /// Hur många lägen från hushållet som är behandlade. Testerna väntar på den.
     @ObservationIgnored var handledHouseholdStates = 0
 

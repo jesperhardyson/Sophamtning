@@ -44,10 +44,18 @@ extension AppModel {
         "hushall.\(placedOut.key.fileName).\(placedOut.date.iso)"
     }
 
-    /// Andras bockar som inte passerat, när Tysta min påminnelse är på. Läggs till de utställda när påminnelserna planeras.
+    /// Bockar som inte passerat och läggs till de utställda när påminnelserna planeras. Mina egna, även från en annan enhet,
+    /// räknas alltid. Andras räknas bara när Tysta min påminnelse är på.
     func householdSilenced(today: DayDate) -> Set<PlacedOut> {
-        guard householdPreferences.silenceWhenOthersPlaceOut, inHousehold else { return [] }
-        return Set(HouseholdLogic.othersActive(household.marks, myId: household.myId, today: today).map(\.placedOut))
+        guard inHousehold else { return [] }
+        var result: Set<PlacedOut> = []
+        if let myId = household.myId {
+            result.formUnion(household.marks.filter { $0.by == myId && $0.placedOut.date >= today }.map(\.placedOut))
+        }
+        if householdPreferences.silenceWhenOthersPlaceOut {
+            result.formUnion(HouseholdLogic.othersActive(household.marks, myId: household.myId, today: today).map(\.placedOut))
+        }
+        return result
     }
 
     // MARK: Nytt läge
@@ -67,12 +75,14 @@ extension AppModel {
         let reliable = incoming.status == .synced
         var effective = incoming
         if !reliable {
-            // Ett tekniskt fel får aldrig se ut som att hushållet eller en adress saknas. Det senast sparade gäller.
+            // Ett tekniskt fel får aldrig se ut som att hushållet, en adress eller en bock saknas. Det senast sparade gäller.
             if incoming.role == .none {
                 effective = previous
                 effective.status = incoming.status
             } else if householdCacheKnown {
                 effective.addresses = previous.addresses
+                effective.marks = previous.marks
+                effective.participants = previous.participants
             }
         }
 
@@ -90,17 +100,22 @@ extension AppModel {
             householdCacheKnown = true
         }
 
-        if reliable, Self.isMember(previous), Self.isMember(effective) {
-            adoptRemoteUndo(previous: previous, current: effective, today: today)
+        // Bara ett synkat läge går att lita på för att skicka, ta bort eller visa något.
+        if reliable {
+            if Self.isMember(previous), Self.isMember(effective) {
+                adoptRemoteUndo(previous: previous, current: effective, today: today)
+            }
+            await sendPendingMarks(in: effective, today: today)
+            await notifyOthersPlacedOut(in: effective, today: today)
         }
-        await sendPendingMarks(in: effective, today: today)
-        await notifyOthersPlacedOut(in: effective, today: today)
         pruneNotifiedMarks(today: today)
 
         if previous != effective || addressesChanged { applyReminders() }
         // En ny adress från hushållet har inget schema än.
         if !addedKeys.isEmpty { await refreshAll(manual: false) }
-        if Self.isMember(effective), !HouseholdLogic.expired(effective.marks, today: today).isEmpty {
+        // En gång per dag, så att en post som inte går att ta bort inte ger en slinga av nya lägen.
+        if reliable, Self.isMember(effective), lastRemoveExpiredDay != today, !HouseholdLogic.expired(effective.marks, today: today).isEmpty {
+            lastRemoveExpiredDay = today
             await householdSync.removeExpired(today: today)
         }
     }
@@ -170,7 +185,9 @@ extension AppModel {
         guard case .value(let saved) = store.placedOutState() else { return }
         let before = Set(previous.marks.map(\.placedOut))
         let remaining = Set(current.marks.map(\.placedOut))
-        for entry in Set(saved) where entry.date >= today && before.contains(entry) && !remaining.contains(entry) {
+        // En bock som försvann med sin adress är inget Ångra.
+        let sharedKeys = Set(current.addresses.map(\.address.key))
+        for entry in Set(saved) where entry.date >= today && before.contains(entry) && !remaining.contains(entry) && sharedKeys.contains(entry.key) {
             // Ett skrivfel ger i värsta fall att bocken skickas igen vid nästa läge.
             try? store.unmarkPlacedOut(entry)
             sentHouseholdMarks.remove(entry)

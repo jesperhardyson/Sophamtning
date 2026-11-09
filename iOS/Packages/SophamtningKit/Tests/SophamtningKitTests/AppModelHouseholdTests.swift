@@ -62,8 +62,12 @@ private final class CountingHousehold: HouseholdSync, @unchecked Sendable {
     let inner: InMemoryHouseholdSync
     private let lock = NSLock()
     private var marks = 0
-    init(_ inner: InMemoryHouseholdSync) { self.inner = inner }
+    private var expiredCalls = 0
+    /// En post som inte går att ta bort: synken skickar läget igen men tar inte bort något.
+    let removalFails: Bool
+    init(_ inner: InMemoryHouseholdSync, removalFails: Bool = false) { self.inner = inner; self.removalFails = removalFails }
     var markCalls: Int { lock.withLock { marks } }
+    var removeExpiredCalls: Int { lock.withLock { expiredCalls } }
 
     func states() -> AsyncStream<HouseholdState> { inner.states() }
     func share(_ address: SavedAddress) async throws { try await inner.share(address) }
@@ -74,7 +78,10 @@ private final class CountingHousehold: HouseholdSync, @unchecked Sendable {
     }
     func unmark(_ placedOut: PlacedOut) async throws { try await inner.unmark(placedOut) }
     func leave() async throws { try await inner.leave() }
-    func removeExpired(today: DayDate) async { await inner.removeExpired(today: today) }
+    func removeExpired(today: DayDate) async {
+        lock.withLock { expiredCalls += 1 }
+        if removalFails { await inner.fetchChanges() } else { await inner.removeExpired(today: today) }
+    }
     func fetchChanges() async { await inner.fetchChanges() }
 }
 
@@ -125,14 +132,17 @@ private func makeModel(_ sync: some HouseholdSync, scheduler: FakeScheduler, clo
     return model
 }
 
-/// Väntar tills hushållets lägen är behandlade och inget nytt har kommit på en stund, och sedan på påminnelserna.
+/// Kör `action`, som ska ge minst ett nytt läge, och väntar tills räknaren passerat läget före och sedan stått still en stund.
+/// Därefter väntar den på påminnelserna.
 @MainActor
-private func settle(_ model: AppModel) async {
-    var last = -1
+private func settle(_ model: AppModel, _ action: () async -> Void) async {
+    let baseline = model.handledHouseholdStates
+    await action()
+    var last = baseline
     var quiet = 0
-    for _ in 0..<500 {
+    for _ in 0..<1000 {
         let count = model.handledHouseholdStates
-        if count == last, count > 0 {
+        if count > baseline, count == last {
             quiet += 1
             if quiet >= 5 { break }
         } else {
@@ -141,6 +151,7 @@ private func settle(_ model: AppModel) async {
         }
         try? await Task.sleep(for: .milliseconds(2))
     }
+    #expect(model.handledHouseholdStates > baseline, "inget nytt läge behandlades")
     await model.settleReminders()
 }
 
@@ -153,11 +164,9 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let temp = TempDir()
     let sync = InMemoryHouseholdSync(state: householdState())
     let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
-    sync.simulateRemote { $0.addresses.append(HouseholdAddress(address: address(storgatan, name: "Storgatan 3", notificationsOn: true), addedBy: "kim")) }
-    await settle(model)
+    await settle(model) { sync.simulateRemote { $0.addresses.append(HouseholdAddress(address: address(storgatan, name: "Storgatan 3", notificationsOn: true), addedBy: "kim")) } }
 
     let added = try #require(model.addresses.first { $0.key == storgatan })
     #expect(added.notificationsOn == false)
@@ -169,12 +178,10 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let scheduler = FakeScheduler()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
     #expect(scheduler.hasPending(for: "2026-11-11"))
 
-    sync.simulateRemote { $0.marks.append(kimsMark()) }
-    await settle(model)
+    await settle(model) { sync.simulateRemote { $0.marks.append(kimsMark()) } }
 
     #expect(!scheduler.hasPending(for: "2026-11-11"))
     // Andras bock skrivs aldrig i mina egna utställda.
@@ -187,12 +194,11 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
     model.setSilenceWhenOthersPlaceOut(false)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
-    sync.simulateRemote { $0.marks.append(kimsMark()) }
-    await settle(model)
+    await settle(model) { sync.simulateRemote { $0.marks.append(kimsMark()) } }
 
+    #expect(model.household.marks.contains { $0.by == "kim" })
     #expect(scheduler.hasPending(for: "2026-11-11"))
 }
 
@@ -200,11 +206,9 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let temp = TempDir()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]), now: { noon })
     let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
-    await model.placeOut(home)
-    await settle(model)
+    await settle(model) { await model.placeOut(home) }
 
     let entry = PlacedOut(key: home, date: tomorrow)
     #expect(LocalStore(directory: temp.url).placedOut() == [entry])
@@ -216,15 +220,12 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let scheduler = FakeScheduler()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
-    await model.placeOut(home)
-    await settle(model)
+    await settle(model) { await model.placeOut(home) }
     #expect(!scheduler.hasPending(for: "2026-11-11"))
 
-    await model.undoPlaceOut(home)
-    await settle(model)
+    await settle(model) { await model.undoPlaceOut(home) }
     #expect(scheduler.hasPending(for: "2026-11-11"))
     #expect(LocalStore(directory: temp.url).placedOut().isEmpty)
     #expect(await currentState(sync).marks.isEmpty)
@@ -236,18 +237,15 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let clock = TestClock(noon)
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: clock, directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
-    await model.placeOut(home)
-    await settle(model)
+    await settle(model) { await model.placeOut(home) }
     clock.set(evening)
     model.applyReminders()
-    await settle(model)
+    await model.settleReminders()
     scheduler.resetCalls()
 
-    await model.undoPlaceOut(home)
-    await settle(model)
+    await settle(model) { await model.undoPlaceOut(home) }
     #expect(scheduler.scheduleCalls == 0)
     #expect(scheduler.delivered.isEmpty)
     #expect(!scheduler.hasPending(for: "2026-11-11"))
@@ -262,11 +260,12 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let sync = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: shared)))
     let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
     try LocalStore(directory: temp.url).markPlacedOut(entry, today: DayDate("2026-11-10")!)
-    model.startHousehold()
-    await settle(model)
-    await sync.fetchChanges()
-    await sync.fetchChanges()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
+    await settle(model) {
+        await sync.fetchChanges()
+        await sync.fetchChanges()
+    }
+    #expect(model.household.marks.contains { $0.placedOut == entry })
     #expect(sync.markCalls == 1)
     #expect(await currentState(sync).marks.map(\.placedOut) == [entry])
 
@@ -275,10 +274,9 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let already = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: shared, marks: [kimsMark()])))
     let other = try await makeModel(already, scheduler: FakeScheduler(), clock: TestClock(noon), directory: otherTemp.url)
     try LocalStore(directory: otherTemp.url).markPlacedOut(entry, today: DayDate("2026-11-10")!)
-    other.startHousehold()
-    await settle(other)
-    await already.fetchChanges()
-    await settle(other)
+    await settle(other) { other.startHousehold() }
+    #expect(other.household.marks.contains { $0.by == "kim" })
+    await settle(other) { await already.fetchChanges() }
     #expect(already.markCalls == 0)
 }
 
@@ -288,21 +286,21 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let sync = InMemoryHouseholdSync(state: householdState())
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
     #expect(await model.setNotifyWhenOthersPlaceOut(true) == .granted)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
-    sync.simulateRemote { state in
-        state.addresses.append(HouseholdAddress(address: address(storgatan, name: "Storgatan 3"), addedBy: "kim"))
-        state.marks.append(kimsMark(storgatan))
+    await settle(model) {
+        sync.simulateRemote { state in
+            state.addresses.append(HouseholdAddress(address: address(storgatan, name: "Storgatan 3"), addedBy: "kim"))
+            state.marks.append(kimsMark(storgatan))
+        }
     }
-    await settle(model)
 
     #expect(scheduler.delivered.map(\.body) == ["Kim ställde ut kärlen för Storgatan 3"])
     #expect(scheduler.delivered.map(\.identifier) == ["hushall.\(storgatan.fileName).2026-11-11"])
     #expect(model.householdPreferences.notifiedMarks == [PlacedOut(key: storgatan, date: tomorrow)])
 
-    await sync.fetchChanges()
-    await settle(model)
+    #expect(model.household.marks.contains { $0.by == "kim" })
+    await settle(model) { await sync.fetchChanges() }
     #expect(scheduler.delivered.count == 1)
 }
 
@@ -312,13 +310,12 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
     _ = await model.setNotifyWhenOthersPlaceOut(true)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
 
     // Min bock från en annan enhet med samma id.
-    sync.simulateRemote { $0.marks.append(HouseholdMark(placedOut: PlacedOut(key: home, date: tomorrow), by: "jag", at: noon, isPending: false)) }
-    await settle(model)
+    await settle(model) { sync.simulateRemote { $0.marks.append(HouseholdMark(placedOut: PlacedOut(key: home, date: tomorrow), by: "jag", at: noon, isPending: false)) } }
 
+    #expect(model.household.marks.contains { $0.by == "jag" })
     #expect(scheduler.delivered.isEmpty)
 }
 
@@ -326,12 +323,10 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let temp = TempDir()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(storgatan, name: "Storgatan 3"), addedBy: "kim")]))
     let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
     #expect(model.householdPreferences.receivedKeys == [storgatan])
 
-    await model.leaveHousehold()
-    await settle(model)
+    await settle(model) { await model.leaveHousehold() }
 
     #expect(model.addresses.contains { $0.key == storgatan })
     #expect(model.householdPreferences.receivedKeys.isEmpty)
@@ -345,15 +340,15 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let temp = TempDir()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(storgatan, name: "Storgatan 3"), addedBy: "kim")]))
     let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
     #expect(model.addresses.contains { $0.key == storgatan })
 
-    sync.simulateRemote { state in
-        state.status = .notSignedIn
-        state.addresses = []
+    await settle(model) {
+        sync.simulateRemote { state in
+            state.status = .notSignedIn
+            state.addresses = []
+        }
     }
-    await settle(model)
 
     #expect(model.addresses.contains { $0.key == storgatan })
     #expect(model.householdPreferences.receivedKeys == [storgatan])
@@ -366,14 +361,11 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let scheduler = FakeScheduler()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
-    await model.placeOut(home)
-    await settle(model)
+    await settle(model) { model.startHousehold() }
+    await settle(model) { await model.placeOut(home) }
 
     // Kim trycker Ångra på min bock.
-    sync.simulateRemote { $0.marks = [] }
-    await settle(model)
+    await settle(model) { sync.simulateRemote { $0.marks = [] } }
 
     #expect(LocalStore(directory: temp.url).placedOut().isEmpty)
     #expect(scheduler.hasPending(for: "2026-11-11"))
@@ -383,9 +375,90 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let temp = TempDir()
     let scheduler = FakeScheduler()
     let model = try await makeModel(DisabledHousehold(), scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
-    model.startHousehold()
-    await settle(model)
+    await settle(model) { model.startHousehold() }
     #expect(model.addresses.map(\.key) == [home])
     #expect(model.householdNotice == nil)
     #expect(scheduler.hasPending(for: "2026-11-11"))
+}
+
+@Test @MainActor func egenBockFranAnnanEnhetTystarAlltid() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    model.setSilenceWhenOthersPlaceOut(false)
+    await settle(model) { model.startHousehold() }
+    #expect(scheduler.hasPending(for: "2026-11-11"))
+
+    // Min bock från en annan enhet tystar även när valet för andras bockar är av.
+    await settle(model) { sync.simulateRemote { $0.marks.append(HouseholdMark(placedOut: PlacedOut(key: home, date: tomorrow), by: "jag", at: noon, isPending: false)) } }
+
+    #expect(model.household.marks.contains { $0.by == "jag" })
+    #expect(!scheduler.hasPending(for: "2026-11-11"))
+    #expect(LocalStore(directory: temp.url).placedOut().isEmpty)
+}
+
+@Test @MainActor func felLageBehallerBockarna() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let entry = PlacedOut(key: home, date: tomorrow)
+    let sync = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")], marks: [kimsMark()])))
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(model.household.marks.contains { $0.by == "kim" })
+    #expect(!scheduler.hasPending(for: "2026-11-11"))
+
+    // Min egen utställda finns lokalt, och Kims bock för samma tömning finns redan i hushållet.
+    try LocalStore(directory: temp.url).markPlacedOut(entry, today: DayDate("2026-11-10")!)
+    await settle(model) {
+        sync.inner.simulateRemote { state in
+            state.status = .failed
+            state.marks = []
+        }
+    }
+
+    #expect(model.household.status == .failed)
+    #expect(model.household.marks.contains { $0.by == "kim" })
+    #expect(model.household.participants.contains { $0.id == "kim" })
+    #expect(sync.markCalls == 0)
+    // Felet är inget Ångra, så min egen utställda står kvar.
+    #expect(LocalStore(directory: temp.url).placedOut() == [entry])
+    try LocalStore(directory: temp.url).unmarkPlacedOut(entry)
+    model.applyReminders()
+    await model.settleReminders()
+    #expect(!scheduler.hasPending(for: "2026-11-11"))
+}
+
+@Test @MainActor func forbrukadBockTasBortEnGangPerDag() async throws {
+    let temp = TempDir()
+    let old = kimsMark(date: DayDate("2026-11-09")!)
+    let sync = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")], marks: [old])), removalFails: true)
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    await settle(model) {
+        await sync.fetchChanges()
+        await sync.fetchChanges()
+    }
+
+    #expect(model.household.marks == [old])
+    #expect(sync.removeExpiredCalls == 1)
+}
+
+@Test @MainActor func bockSomForsvannMedAdressenArInteAngra() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    await settle(model) { await model.placeOut(home) }
+    #expect(model.household.marks.contains { $0.by == "jag" })
+
+    // Adressen slutar delas, och bocken försvinner med den. Min egen utställda står kvar.
+    await settle(model) {
+        sync.simulateRemote { state in
+            state.addresses = []
+            state.marks = []
+        }
+    }
+
+    #expect(LocalStore(directory: temp.url).placedOut() == [PlacedOut(key: home, date: tomorrow)])
 }
