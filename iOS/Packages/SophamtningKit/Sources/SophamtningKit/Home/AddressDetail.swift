@@ -134,7 +134,7 @@ public struct AddressDetail: Equatable, Sendable {
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
     public let webLink: URL?
-    /// Raden under "Notis kvällen före".
+    /// Raden under "Påminn mig kvällen före".
     public let reminderText: String
     public let liveActivityText: String
     public let isPrimary: Bool

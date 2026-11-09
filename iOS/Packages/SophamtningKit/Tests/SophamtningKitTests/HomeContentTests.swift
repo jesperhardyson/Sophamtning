@@ -240,6 +240,11 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     #expect(try #require(liveOnly.primary).reminder?.detail == "Ingen Live Activity planerad")
 }
 
+@Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
+    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse kvällen före")
+}
+
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {
     let loading = make([home], [:])
     #expect(try #require(loading.primary).status == .loading)

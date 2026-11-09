@@ -3,6 +3,13 @@ import Foundation
 /// Hemskärmens innehåll, räknat från sparade adresser och scheman och given tid.
 /// Allt räknas lokalt: dagar, datum och påminnelsetext kommer aldrig från sparade `next`-fält.
 public struct HomeContent: Equatable, Sendable {
+    /// Valets namn på huvudkortet, i adressvyn och i snabbmenyn.
+    public static let reminderTitle = "Påminn mig kvällen före"
+    /// VoiceOvers åtgärd för samma val, på huvudkortet och raderna.
+    public static func reminderActionTitle(isOn: Bool) -> String {
+        isOn ? "Stäng av påminnelse kvällen före" : "Slå på påminnelse kvällen före"
+    }
+
     public struct FractionItem: Equatable, Sendable, Identifiable {
         public let id: String
         public let info: FractionInfo
@@ -55,7 +62,7 @@ public struct HomeContent: Equatable, Sendable {
 
     /// Reglaget för påminnelsen på huvudkortet, som i adressvyn: av, på eller nekat i iOS.
     public struct PrimaryReminder: Equatable, Sendable {
-        /// Notis kvällen före är på och tillåten i iOS.
+        /// Påminnelsen kvällen före är på och tillåten i iOS.
         public let isOn: Bool
         /// iOS har nekat notiser. Reglaget är av, och en knapp öppnar Inställningar.
         public let isDenied: Bool
@@ -72,7 +79,7 @@ public struct HomeContent: Equatable, Sendable {
             self.detail = detail
         }
 
-        static let offTitle = "Påminn mig kvällen före"
+        static let offTitle = HomeContent.reminderTitle
 
         /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
         /// "Söndag kl. 18:00" under den.
