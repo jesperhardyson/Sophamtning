@@ -38,8 +38,13 @@ extension AppModel {
         inHousehold && household.addresses.contains { $0.address.key == key }
     }
 
+    /// Raden har visats. Ett borttaget hushåll visas då inte längre som läge, så att kortet inte står kvar.
     public func clearHouseholdNotice() {
         householdNotice = nil
+        guard household.status == .removed else { return }
+        household.status = .synced
+        try? store.setHouseholdState(household)
+        widgetReloader()
     }
 
     /// Identifieraren för notisen om att någon ställt ut. `NotificationDiff.isOwn` känner inte igen den.
@@ -174,7 +179,8 @@ extension AppModel {
     /// Lämnat, borttagen eller avslutat hushåll: adresserna blir kvar som egna, bockarna försvinner och raden visas en gång.
     private func adoptLeft(status: HouseholdStatus, wasMember: Bool) {
         var left = HouseholdState.empty
-        left.status = status
+        // Borttagen visas bara tillsammans med raden om det. Ett upprepat läge visar ingenting igen.
+        left.status = status == .removed && !wasMember ? .synced : status
         let changed = household != left
         if changed {
             household = left

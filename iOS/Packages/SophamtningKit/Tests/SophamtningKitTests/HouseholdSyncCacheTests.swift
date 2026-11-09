@@ -52,6 +52,17 @@ private let member = HouseholdState(
     #expect(!clearedAgain, "Bara första inloggningen tömmer kopian")
 }
 
+@Test func hamtningForeInloggningenGorInteKopianKomplett() {
+    // Hämtningen hinner klart innan händelsen om inloggningen har tömt kopian. Den gamla kopian får inte bli pålitlig.
+    var trust = HouseholdSyncTrust()
+    trust.signedOut()
+    trust.fetchCompleted()
+    #expect(!trust.complete)
+    _ = trust.signedIn()
+    trust.fetchCompleted()
+    #expect(trust.complete)
+}
+
 @Test func inloggningUtanUtloggningTommerInget() {
     var trust = HouseholdSyncTrust(complete: true)
     let cleared = trust.signedIn()

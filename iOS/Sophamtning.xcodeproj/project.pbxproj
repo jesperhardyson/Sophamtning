@@ -11,6 +11,7 @@
 		0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */; };
 		12270CE31849ADF3AF19DC9F /* uitest-sok.json in Resources */ = {isa = PBXBuildFile; fileRef = 69F7D16F04135196630E9D02 /* uitest-sok.json */; };
 		16E94D6EB51F6A40327DCC49 /* CloudKitHouseholdSync+Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B08DC8B3A8F3843B4340103 /* CloudKitHouseholdSync+Storage.swift */; };
+		1B2DD25F69CF68CA48C96F60 /* HouseholdPlaceOutRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D39C512D0EAFE6728D4A9C2 /* HouseholdPlaceOutRow.swift */; };
 		22986F3CDF217739154F8363 /* HouseholdRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6733ABFC375276FA8FB421 /* HouseholdRecords.swift */; };
 		2635872BDFC7A782BF6F0414 /* HouseholdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84FE27AF7781C32C7F5967A /* HouseholdTests.swift */; };
 		2F9E50FF90E1F2454F9BFF1E /* HouseholdSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672E8B9450E36C4877F1B96E /* HouseholdSheet.swift */; };
@@ -120,6 +121,7 @@
 		69E3159073675AD584A68EDF /* QuickActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsTests.swift; sourceTree = "<group>"; };
 		69F7D16F04135196630E9D02 /* uitest-sok.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-sok.json"; sourceTree = "<group>"; };
 		7080212AF771CAC98595E3B2 /* NavigationBarStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationBarStyle.swift; sourceTree = "<group>"; };
+		7D39C512D0EAFE6728D4A9C2 /* HouseholdPlaceOutRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdPlaceOutRow.swift; sourceTree = "<group>"; };
 		7E6733ABFC375276FA8FB421 /* HouseholdRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdRecords.swift; sourceTree = "<group>"; };
 		7F307C543EEA02E99659E697 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -315,6 +317,7 @@
 				05965D9A8E8C367F07C5BD05 /* CloudSharingView.swift */,
 				AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */,
 				F6E97966D4E1386A76326E42 /* HomeView.swift */,
+				7D39C512D0EAFE6728D4A9C2 /* HouseholdPlaceOutRow.swift */,
 				672E8B9450E36C4877F1B96E /* HouseholdSheet.swift */,
 				DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */,
 				E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */,
@@ -489,6 +492,7 @@
 				EDE500B40C9C08F10DB512D3 /* CloudSharingView.swift in Sources */,
 				A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */,
 				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,
+				1B2DD25F69CF68CA48C96F60 /* HouseholdPlaceOutRow.swift in Sources */,
 				22986F3CDF217739154F8363 /* HouseholdRecords.swift in Sources */,
 				571BE1C6E47E58D38F1F494D /* HouseholdShareAcceptance.swift in Sources */,
 				2F9E50FF90E1F2454F9BFF1E /* HouseholdSheet.swift in Sources */,

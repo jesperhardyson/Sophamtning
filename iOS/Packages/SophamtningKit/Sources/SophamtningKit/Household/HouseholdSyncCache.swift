@@ -14,8 +14,10 @@ public struct HouseholdSyncTrust: Hashable, Codable, Sendable {
         self.resetOnSignIn = resetOnSignIn
     }
 
-    /// En hämtning av båda databaserna har lyckats.
+    /// En hämtning av båda databaserna har lyckats. Väntar kopian på att tömmas vid inloggningen gör hämtningen den inte
+    /// pålitlig, eftersom den kan blanda poster från före och efter utloggningen.
     public mutating func fetchCompleted() {
+        guard !resetOnSignIn else { return }
         complete = true
     }
 

@@ -153,4 +153,9 @@ struct HouseholdLogicTests {
         #expect(kims?.isPending == false)
         #expect(kims?.placedOutText == "Utställt av någon, kl. 19:42")
     }
+
+    @Test func fullLagringUtanNamn() {
+        #expect(HouseholdTexts.status(.quotaExceeded(ownerName: "")) == "iCloud-lagringen är full, så hushållet kan inte uppdateras.")
+        #expect(HouseholdTexts.status(.quotaExceeded(ownerName: "  ")) == "iCloud-lagringen är full, så hushållet kan inte uppdateras.")
+    }
 }

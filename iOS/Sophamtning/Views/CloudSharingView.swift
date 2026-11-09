@@ -61,7 +61,7 @@ enum CloudSharingPresenter {
         }
 
         func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: any Error) {
-            sync.recordFailure(error)
+            sync.recordFailure(error, share: csc.share)
         }
 
         func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {

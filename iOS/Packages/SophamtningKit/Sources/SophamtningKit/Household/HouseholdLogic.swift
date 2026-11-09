@@ -26,7 +26,7 @@ public enum HouseholdLogic {
 
     /// Lägger in delade adresser som saknas och tar bort mottagna adresser som inte längre delas.
     /// En adress som redan finns i listan ändras inte och blir inte mottagen, så att mina egna val består.
-    /// Nya adresser får notiser av och blir aldrig huvudadress.
+    /// Nya adresser får notiser av. De blir huvudadress bara när listan var tom, eftersom en lista alltid har en huvudadress.
     public static func merge(shared: [HouseholdAddress], into list: [SavedAddress], received: Set<AddressKey>) -> (list: [SavedAddress], received: Set<AddressKey>) {
         var result = list
         var receivedKeys = received

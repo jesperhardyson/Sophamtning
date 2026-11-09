@@ -81,7 +81,7 @@ final class HouseholdShareAcceptance {
                 try await sync.accept(metadata)
             } catch {
                 logger.error("Kunde inte gå med i hushållet: \(error.localizedDescription, privacy: .public)")
-                sync.recordFailure(error)
+                sync.recordFailure(error, share: metadata.share)
             }
         }
     }
@@ -89,8 +89,9 @@ final class HouseholdShareAcceptance {
 
 extension CloudKitHouseholdSync {
     /// Ett fel vid inbjudan eller delning visas som att hushållet inte kunde uppdateras, aldrig som ett tomt hushåll.
-    func recordFailure(_ error: any Error) {
-        let mapped = (error as? CKError).flatMap { HouseholdRecords.status(for: $0, ownerName: "") }
+    /// Ägarens namn tas från inbjudan när den finns, annars från hushållets delning.
+    func recordFailure(_ error: any Error, share invitation: CKShare? = nil) {
+        let mapped = (error as? CKError).flatMap { HouseholdRecords.status(for: $0, ownerName: HouseholdRecords.ownerName(of: invitation ?? share)) }
         mutate { inner in
             if mapped == .notSignedIn {
                 inner.signedIn = false

@@ -549,3 +549,27 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     #expect(line.isPending)
 }
 
+@Test @MainActor func kortetForBorttagenVisasEnGang() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(storgatan, name: "Storgatan 3"), addedBy: "kim")]))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    // Ägaren tar bort mig ur hushållet.
+    await settle(model) { sync.simulateRemote { $0 = .empty; $0.status = .removed } }
+    #expect(model.householdNotice == HouseholdTexts.leftNote)
+
+    // Arket har visat raden och stängts.
+    model.clearHouseholdNotice()
+    #expect(HouseholdTexts.status(model.household.status) == nil)
+    guard case .value(let saved) = LocalStore(directory: temp.url).householdState() else {
+        Issue.record("Hushållet ska vara sparat")
+        return
+    }
+    #expect(HouseholdTexts.status(saved.status) == nil)
+
+    // Samma läge en gång till visar ingenting.
+    await settle(model) { sync.simulateRemote { $0.participants = [] } }
+    #expect(model.householdNotice == nil)
+    #expect(HouseholdTexts.status(model.household.status) == nil)
+}

@@ -44,7 +44,10 @@ public enum HouseholdTexts {
         switch status {
         case .synced: nil
         case .notSignedIn: "Synkar inte just nu"
-        case .quotaExceeded(let ownerName): "\(genitive(ownerName)) iCloud-lagring är full, så hushållet kan inte uppdateras."
+        case .quotaExceeded(let ownerName):
+            ownerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "iCloud-lagringen är full, så hushållet kan inte uppdateras."
+                : "\(genitive(ownerName)) iCloud-lagring är full, så hushållet kan inte uppdateras."
         case .removed: leftNote
         case .failed: "Hushållet kunde inte uppdateras just nu"
         }
