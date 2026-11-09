@@ -23,6 +23,10 @@ struct AddressView: View {
     @State private var newName = ""
     @State private var confirmingRemoval = false
     @State private var notificationPulse = 0
+    /// Valet Dela med hushållet medan det skickas, så att reglaget inte hoppar tillbaka under tiden.
+    @State private var sharePending: Bool?
+    @State private var shareFailed = false
+    @State private var sharePulse = 0
     /// Raderna under "Kommande" och korten för kärlen väntar tills de syns, eftersom de kan ligga nedanför skärmen.
     @State private var rowsRevealed = false
     @State private var binsRevealed = false
@@ -107,6 +111,7 @@ struct AddressView: View {
                 if detail.mode == .schedule || detail.mode == .noUpcoming {
                     reminders(detail)
                 }
+                household(detail)
                 footer(detail)
             }
             .animation(Motion.transition(reduceMotion: reduceMotion), value: detail.mode)
@@ -142,6 +147,16 @@ struct AddressView: View {
     private func schedule(_ detail: AddressDetail) -> some View {
         if let next = detail.next {
             nextCard(next)
+        }
+        // Ställ ut kärlen eller bocken, för en delad adress. Hushållets läge står under Hushåll längre ned.
+        if let line = placeOutLine(detail) {
+            HouseholdPlaceOutRow(
+                line: line,
+                onCard: false,
+                onPlaceOut: { Task { await model.placeOut(key) } },
+                onUndo: { Task { await model.undoPlaceOut(key) } }
+            )
+            .padding(.top, 16)
         }
         if let warning = detail.nextWarning {
             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Varning från källan", message: warning)
@@ -307,6 +322,56 @@ struct AddressView: View {
         }
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+    }
+
+    // MARK: Hushåll
+
+    /// Raden under kortet för nästa tömning, utan hushållets läge, eller `nil` när den inte har något att visa.
+    private func placeOutLine(_ detail: AddressDetail) -> HouseholdLine? {
+        guard var line = detail.household else { return nil }
+        line.statusText = nil
+        return HouseholdPlaceOutRow.hasContent(line) ? line : nil
+    }
+
+    /// Reglaget Dela med hushållet, för den som är med i ett hushåll, och hushållets läge när något inte fungerar.
+    @ViewBuilder
+    private func household(_ detail: AddressDetail) -> some View {
+        let state = model.household
+        if state.role != .none, state.status != .removed {
+            sectionTitle(HouseholdTexts.title)
+            if shareFailed, let failed = HouseholdTexts.status(.failed) {
+                MessageCard(style: .warning, icon: "exclamationmark.triangle", title: HouseholdTexts.title, message: failed)
+                    .padding(.bottom, 12)
+            }
+            if detail.household?.isShared == true, let status = detail.household?.statusText {
+                MessageCard(style: .warning, icon: "icloud.slash", title: HouseholdTexts.title, message: status)
+                    .padding(.bottom, 12)
+            }
+            ReminderToggleRow(
+                title: HouseholdTexts.share,
+                text: HouseholdTexts.shareNote,
+                symbol: "person.2.fill",
+                pulse: sharePulse,
+                isOn: Binding(
+                    get: { sharePending ?? model.isShared(key) },
+                    set: { on in setShared(on) }
+                )
+            )
+            .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+        }
+    }
+
+    /// Delar adressen eller slutar dela den. Går det inte står reglaget kvar som förut, och felet visas ovanför.
+    private func setShared(_ on: Bool) {
+        shareFailed = false
+        sharePending = on
+        Task {
+            let ok = await model.setShared(on, for: key)
+            sharePending = nil
+            shareFailed = !ok
+            if ok, on { sharePulse += 1 }
+        }
     }
 
     // MARK: Fot

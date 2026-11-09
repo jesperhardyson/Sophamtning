@@ -15,6 +15,9 @@ struct PrimaryCard: View {
     /// Reglaget slås på eller av. Samma flöde som i adressvyn.
     var onReminderChange: (Bool) -> Void = { _ in }
     var onOpenSettings: () -> Void = {}
+    /// Ställ ut kärlen och Ångra för en delad adress.
+    var onPlaceOut: () -> Void = {}
+    var onUndoPlaceOut: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -34,16 +37,34 @@ struct PrimaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Button(action: onOpen) { content }
-                .buttonStyle(PressReportingButtonStyle(pressed: $pressed))
-            if case .upcoming = entry.status, let reminder = entry.reminder {
-                PrimaryReminderRow(reminder: reminder, pulse: reminderPulse, onChange: { onReminderChange($0) }, onOpenSettings: { onOpenSettings() })
-                    .transition(.opacity)
+            VStack(alignment: .leading, spacing: 16) {
+                Button(action: onOpen) { content }
+                    .buttonStyle(PressReportingButtonStyle(pressed: $pressed))
+                if case .upcoming = entry.status, let reminder = entry.reminder {
+                    PrimaryReminderRow(reminder: reminder, pulse: reminderPulse, onChange: { onReminderChange($0) }, onOpenSettings: { onOpenSettings() })
+                        .transition(.opacity)
+                }
+                if entry.refreshFailed {
+                    Text("Kunde inte uppdatera schemat. Visar det senast hämtade.")
+                        .font(.ui(13, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(foreground.opacity(0.85))
+                        .transition(.opacity)
+                }
             }
-            if entry.refreshFailed {
-                Text("Kunde inte uppdatera schemat. Visar det senast hämtade.")
-                    .font(.ui(13, weight: .semibold, relativeTo: .footnote))
-                    .foregroundStyle(foreground.opacity(0.85))
+            // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist, och slås på och av med kortets
+            // åtgärder, som snabbmenyn. Hushållets knappar står utanför, så att de går att nå och trycka på.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
+            .accessibilityHint("Öppnar adressen")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { onOpen() }
+            .accessibilityActions {
+                if entry.reminder?.isDenied == true {
+                    Button("Öppna Inställningar") { onOpenSettings() }
+                }
+            }
+            if let household = entry.household, HouseholdPlaceOutRow.hasContent(household) {
+                HouseholdPlaceOutRow(line: household, onCard: true, onPlaceOut: onPlaceOut, onUndo: onUndoPlaceOut)
                     .transition(.opacity)
             }
         }
@@ -57,25 +78,16 @@ struct PrimaryCard: View {
         // Ett tryck utanför knappen och reglaget, till exempel i kanten, öppnar också adressen.
         .onTapGesture { onOpen() }
         .pressEffect(pressed: pressed)
-        // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist, och slås på och av med kortets
-        // åtgärder, som snabbmenyn.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
-        .accessibilityHint("Öppnar adressen")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { onOpen() }
-        .accessibilityActions {
-            if entry.reminder?.isDenied == true {
-                Button("Öppna Inställningar") { onOpenSettings() }
-            }
-        }
+        .accessibilityElement(children: .contain)
         // Utanför padding och bakgrund, så att kortets höjd och bakgrund också följer med mjukt.
         .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
         .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.household)
     }
 
     private var accessibilityText: String {
         var parts = [entry.accessibilityLabel]
+        if entry.household?.isShared == true { parts.append(HouseholdTexts.shared) }
         if case .upcoming = entry.status, let reminder = entry.reminder {
             parts.append(reminder.isDenied ? reminder.title : "\(reminder.title): \(reminder.isOn ? "på" : "av")")
             if let detail = reminder.detail { parts.append(detail) }
@@ -127,6 +139,7 @@ struct PrimaryCard: View {
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
                             .lineLimit(2)
                             .minimumScaleFactor(0.5)
+                        sharedIcon
                     }
                     placeLines
                 }
@@ -137,8 +150,11 @@ struct PrimaryCard: View {
                         .accessibilityHidden(true)
                     // Platsen under namnet, så att den får hela bredden. Den bryts i stället för att kapas.
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.title)
-                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(entry.title)
+                                .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                            sharedIcon
+                        }
                         placeLines
                     }
                     Spacer(minLength: 0)
@@ -151,6 +167,17 @@ struct PrimaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Den lilla hushållsikonen bredvid namnet för en delad adress. Kortets etikett säger "Delas med hushållet".
+    @ViewBuilder
+    private var sharedIcon: some View {
+        if entry.household?.isShared == true {
+            Image(systemName: "person.2.fill")
+                .font(.system(.footnote, weight: .semibold))
+                .opacity(0.9)
+                .accessibilityHidden(true)
+        }
     }
 
     /// Adressen och platsen. På det gröna kortet är platsen något svagare än adressen i stället för `text2`, som inte
@@ -288,6 +315,97 @@ private struct PrimaryReminderRow: View {
                         .onTapGesture { onOpenSettings() }
                 }
             }
+    }
+}
+
+/// Hushållets rad för en delad adress: **Ställ ut kärlen**, eller bocken "Utställt av …" med **Ångra** under, och hushållets
+/// läge när något inte fungerar. På huvudkortet står raden på kortets gröna yta, i adressvyn på en vanlig yta.
+struct HouseholdPlaceOutRow: View {
+    let line: HouseholdLine
+    /// Sant på det gröna huvudkortet.
+    let onCard: Bool
+    let onPlaceOut: () -> Void
+    let onUndo: () -> Void
+
+    /// Raden visas bara för en delad adress, och bara när den har något att visa.
+    static func hasContent(_ line: HouseholdLine) -> Bool {
+        line.isShared && (line.showsButton || line.placedOutText != nil || line.statusText != nil)
+    }
+
+    private var foreground: Color { onCard ? Color.Theme.onPrimary : Color.Theme.text }
+    private var accent: Color { onCard ? Color.Theme.onPrimary : Color.Theme.brandText }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let text = line.placedOutText {
+                mark(text)
+                Button { onUndo() } label: {
+                    Text(HouseholdTexts.undo)
+                        .font(.ui(16, weight: .heavy, relativeTo: .callout))
+                        .foregroundStyle(onCard ? Color.Theme.onPrimary : Color.Theme.primary)
+                        .underline(onCard)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Tar bort att kärlen är utställda")
+            } else if line.showsButton {
+                Button { onPlaceOut() } label: { placeOutLabel }
+                    .buttonStyle(.pressable)
+            }
+            if let status = line.statusText {
+                Label {
+                    Text(status)
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "icloud.slash")
+                        .font(.system(.footnote, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(onCard ? foreground.opacity(0.9) : Color.Theme.text2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, onCard ? 16 : 0)
+        .padding(.vertical, onCard ? 12 : 0)
+        .background(onCard ? Color.Theme.cardOverlay : Color.clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// "Utställt av Kim, kl. 19:42" med en bock, och en klocka när bocken inte har skickats än. Läses som en rad.
+    private func mark(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(.body, weight: .semibold))
+                .foregroundStyle(accent)
+            Text(text)
+                .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                .foregroundStyle(foreground)
+                .fixedSize(horizontal: false, vertical: true)
+            if line.isPending {
+                Image(systemName: "clock")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(onCard ? foreground.opacity(0.85) : Color.Theme.text2)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(line.isPending ? "\(text), \(HouseholdTexts.pending.lowercased())" : text)
+    }
+
+    @ViewBuilder
+    private var placeOutLabel: some View {
+        if onCard {
+            // En ljus knapp på det gröna kortet, så att den syns som en knapp och inte som text.
+            Label(HouseholdTexts.placeOut, systemImage: "checkmark.circle")
+                .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                .foregroundStyle(Color.Theme.brandText)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .padding(.horizontal, 16)
+                .background(Color.Theme.surface, in: Capsule())
+        } else {
+            PrimaryButtonLabel(title: HouseholdTexts.placeOut)
+        }
     }
 }
 

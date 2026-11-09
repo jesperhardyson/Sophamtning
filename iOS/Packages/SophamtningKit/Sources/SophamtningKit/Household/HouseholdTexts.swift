@@ -49,4 +49,31 @@ public enum HouseholdTexts {
     public static let deliveryNote = "Fungerar när telefonen tillåter det. Ibland syns det först när du öppnar appen."
     public static let leftNote = "Du är inte längre med i hushållet. Adresserna finns kvar som dina egna."
     public static let leaveFirst = "Du är redan med i ett hushåll. Lämna det för att gå med i det här?"
+
+    // MARK: Arket och vyerna
+
+    public static let title = "Hushåll"
+    public static let intro = "Dela adresser med dem du bor med. Ni ser samma schema, och när någon ställer ut kärlen syns det för alla. Hushållet sparas i ert iCloud."
+    public static let participants = "Deltagare"
+    public static let owner = "Ägare"
+    public static let notifications = "Notiser"
+    public static let notSignedInNote = "Logga in på iCloud och låt Sophämtning använda iCloud i Inställningar. De delade adresserna visas som de senast sparades."
+    public static let shared = "Delas med hushållet"
+    public static let shareNote = "Alla i hushållet ser adressen och kan ställa ut kärlen."
+    public static let pending = "Väntar på att skickas"
+    public static let widgetPlacedOut = "Utställt"
+    public static let leaveConfirm = "Lämna hushållet?"
+    public static let leaveConfirmMessage = "Adresserna finns kvar som dina egna. Bockarna för Utställt försvinner."
+    public static let endConfirm = "Avsluta hushållet?"
+    public static let endConfirmMessage = "Hushållet tas bort för alla. Adresserna finns kvar som egna adresser hos var och en."
+
+    /// Värdet på raden Hushåll i Inställningar: "2 deltagare", eller tomt utan hushåll.
+    public static func participantCount(_ count: Int) -> String {
+        count > 0 ? "\(count) deltagare" : ""
+    }
+
+    /// En deltagare i listan: "Alex (du)" för mig själv, annars namnet.
+    public static func participantName(_ participant: HouseholdParticipant, myId: String?) -> String {
+        participant.id == myId ? "\(participant.name) (du)" : participant.name
+    }
 }

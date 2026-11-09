@@ -93,6 +93,8 @@ struct HomeView: View {
             if phase == .active {
                 model.applyReminders()
                 Task { await model.refreshAll(manual: false) }
+                // Som reserv för tyst push hämtas hushållets ändringar också när appen blir aktiv.
+                Task { await model.fetchHouseholdChanges() }
             } else if phase == .background {
                 // Bokar nästa bakgrundsuppdatering, tidigast om en timme.
                 BackgroundRefresh.schedule()
@@ -262,7 +264,9 @@ struct HomeView: View {
                     reminderPulse: reminderPulse,
                     onOpen: { path.append(primary.key) },
                     onReminderChange: { on in setNotifications(on, for: primary.key) },
-                    onOpenSettings: { openNotificationSettings() }
+                    onOpenSettings: { openNotificationSettings() },
+                    onPlaceOut: { Task { await model.placeOut(primary.key) } },
+                    onUndoPlaceOut: { Task { await model.undoPlaceOut(primary.key) } }
                 )
             }
             // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
@@ -491,14 +495,23 @@ private struct AddressRow: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([entry.accessibilityLabel, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityLabel([entry.accessibilityLabel, entry.household?.isShared == true ? HouseholdTexts.shared : nil, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
     }
 
     private var title: some View {
-        Text(entry.title)
-            .font(.ui(22, weight: .heavy, relativeTo: .title3))
-            .foregroundStyle(Color.Theme.text)
-            .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(entry.title)
+                .font(.ui(22, weight: .heavy, relativeTo: .title3))
+                .foregroundStyle(Color.Theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            // En delad adress har en liten hushållsikon. Radens etikett säger "Delas med hushållet".
+            if entry.household?.isShared == true {
+                Image(systemName: "person.2.fill")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(Color.Theme.brandText)
+                    .accessibilityHidden(true)
+            }
+        }
     }
 
     private var details: some View {

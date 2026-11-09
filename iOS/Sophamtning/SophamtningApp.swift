@@ -19,6 +19,8 @@ struct SophamtningApp: App {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         let model = Self.makeModel(version: version, build: build)
+        // Hushållets lägen tas emot från start. Utan hushåll gör lyssnaren ingenting.
+        model.startHousehold()
         // Uppgiften måste registreras innan appen startat klart.
         BackgroundRefresh.register(model: model)
         _model = State(initialValue: model)
@@ -27,11 +29,12 @@ struct SophamtningApp: App {
     private static func makeModel(version: String, build: String) -> AppModel {
         #if DEBUG
         if UITestSupport.isActive {
-            // UI-testerna får en stubb, en tom lagring och inga notiser. Koden finns bara i Debug-bygget.
-            return AppModel(api: UITestAPI(), store: UITestSupport.store())
+            // UI-testerna får en stubb, en tom lagring, inga notiser och ett hushåll i minnet. Koden finns bara i Debug-bygget.
+            return AppModel(api: UITestAPI(), store: UITestSupport.store(), household: UITestSupport.household())
         }
         #endif
-        return AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() }, appVersion: "\(version) (\(build))")
+        // Hushållet är avstängt tills synken med iCloud finns.
+        return AppModel(api: SoporClient(version: version), store: LocalStore.shared(), scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() }, appVersion: "\(version) (\(build))", household: DisabledHousehold())
     }
 
     var body: some Scene {
