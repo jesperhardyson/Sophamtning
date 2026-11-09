@@ -468,9 +468,12 @@ private struct AddressRow: View {
     let entry: HomeContent.Entry
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isFailure: Bool {
-        if case .failed = entry.status { return true }
-        return false
+    private var summaryColor: Color {
+        switch entry.summaryTone {
+        case .date: Color.Theme.brandText
+        case .neutral: Color.Theme.text2
+        case .warning: Color.Theme.warn
+        }
     }
 
     /// Namnet, platsen, datumet och påminnelsen får hela bredden, så att inga ord bryts mitt i. Chipsen står under
@@ -507,9 +510,10 @@ private struct AddressRow: View {
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
             AddressLinesView(lines: entry.lines, size: 17, addressStyle: .body)
+            // Ett datum står i accentfärg. En lugn statustext, som "Inga kommande hämtningar", står neutralt.
             Text(entry.summary)
-                .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
+                .font(.ui(16, weight: entry.summaryTone == .neutral ? .bold : .heavy, relativeTo: .callout))
+                .foregroundStyle(summaryColor)
                 .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
             // Bara när notis är på för adressen. Ingen klocka när notis är av.
             if let reminder = entry.rowReminder {
