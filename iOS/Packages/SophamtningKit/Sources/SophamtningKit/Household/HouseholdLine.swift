@@ -21,9 +21,10 @@ public struct HouseholdLine: Equatable, Sendable {
         self.statusText = statusText
     }
 
-    /// Raden för en adress och dess nästa tömning. `nil` när jag inte delar med något hushåll.
+    /// Raden för en adress och dess nästa tömning. `nil` när det inte finns något hushåll.
     public static func make(household: HouseholdState, key: AddressKey, nextPickup: DayDate?, today: DayDate) -> HouseholdLine? {
-        guard household.role != .none else { return nil }
+        // Utan roll men med adresser kvar, till exempel efter ett fel, visas raden ändå.
+        guard household.role != .none || !household.addresses.isEmpty else { return nil }
         let isShared = household.addresses.contains { $0.address.key == key }
         let mark = HouseholdLogic.currentMark(for: key, nextPickup: nextPickup, in: household.marks)
         return HouseholdLine(

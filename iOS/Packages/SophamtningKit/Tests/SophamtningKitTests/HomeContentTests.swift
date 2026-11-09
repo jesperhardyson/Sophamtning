@@ -660,8 +660,7 @@ private func householdMark(pending: Bool = false) -> HouseholdMark {
 
 private func householdLine(_ state: HouseholdState, at time: Date = sunday) -> HouseholdLine? {
     let content = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: time, household: state)
-    guard case .upcoming(let pickup) = content.primary?.status else { return nil }
-    return pickup.household
+    return content.primary?.household
 }
 
 @Test func utanHushallIngenRad() {
@@ -704,4 +703,29 @@ private func householdLine(_ state: HouseholdState, at time: Date = sunday) -> H
 @Test func statusTextenFolerHushallets() throws {
     let line = try #require(householdLine(household(status: .notSignedIn)))
     #expect(line.statusText == "Synkar inte just nu")
+}
+
+private func lineFor(_ cached: CachedSchedule?, _ state: HouseholdState) -> HouseholdLine? {
+    HomeContent.make(addresses: [home], schedules: cached.map { [home.key: $0] } ?? [:], settings: ReminderSettings(), now: sunday, household: state).primary?.household
+}
+
+@Test func hushallsradenFinnsUtanKommandeTomning() throws {
+    let state = household(status: .notSignedIn)
+    for cached in [schedule([]), CachedSchedule(response: nil, fetchedAt: nil, lastAttemptAt: now, lastError: .network), nil] {
+        let line = try #require(lineFor(cached, state))
+        #expect(line.isShared)
+        #expect(line.statusText == "Synkar inte just nu")
+        #expect(!line.showsButton)
+    }
+}
+
+@Test func hushallsradenFinnsMedFelDaRollenSaknasMenAdresserFinns() throws {
+    var state = household(status: .notSignedIn)
+    state.role = .none
+    let line = try #require(lineFor(schedule([event("2026-11-09", ["rest"])]), state))
+    #expect(line.isShared)
+    #expect(line.statusText == "Synkar inte just nu")
+    var empty = HouseholdState.empty
+    empty.status = .notSignedIn
+    #expect(lineFor(schedule([event("2026-11-09", ["rest"])]), empty) == nil)
 }

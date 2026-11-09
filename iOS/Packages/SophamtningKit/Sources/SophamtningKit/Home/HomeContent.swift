@@ -18,8 +18,6 @@ public struct HomeContent: Equatable, Sendable {
         public let headline: String
         /// "Måndag 9 november", med "Ca" först när datumet är uppskattat.
         public let longDate: String
-        /// Hushållets rad för den här tömningen. `nil` utan hushåll.
-        public let household: HouseholdLine?
 
         /// Datum, dagar kvar och kärlen i ett: "Nästa tömning. Om 3 dagar. Måndag 9 november. Restavfall, Matavfall".
         public var accessibilityLabel: String {
@@ -137,6 +135,8 @@ public struct HomeContent: Equatable, Sendable {
         public let scheduleEnding: ScheduleEnding?
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
+        /// Hushållets rad, för varje status. `nil` utan hushåll.
+        public let household: HouseholdLine?
 
         public var id: AddressKey { key }
 
@@ -181,14 +181,16 @@ public struct HomeContent: Equatable, Sendable {
     }
 
     private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?, household: HouseholdState) -> Entry {
-        let status = status(of: schedule, key: address.key, household: household, today: today)
+        let status = status(of: schedule, today: today)
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
         var rowReminder: RowReminder?
         var primaryReminder: PrimaryReminder?
         var scheduleEnding: ScheduleEnding?
         let summary: String
+        var nextPickup: DayDate?
         switch status {
         case .upcoming(let pickup):
+            nextPickup = pickup.date
             // Raderna under Fler adresser visar ingen sådan rad, så VoiceOver ska inte läsa den heller.
             scheduleEnding = asRow ? nil : ScheduleEnding.make(schedule?.response?.schedule, today: today)
             // Hårt mellanslag före mittpunkten, så att den aldrig börjar en rad.
@@ -226,7 +228,8 @@ public struct HomeContent: Equatable, Sendable {
             reminder: primaryReminder,
             rowReminder: rowReminder,
             scheduleEnding: scheduleEnding,
-            summary: summary
+            summary: summary,
+            household: HouseholdLine.make(household: household, key: address.key, nextPickup: nextPickup, today: today)
         )
     }
 
@@ -252,7 +255,7 @@ public struct HomeContent: Equatable, Sendable {
         return AddressLines(name: name, address: base.address, place: base.place)
     }
 
-    private static func status(of schedule: CachedSchedule?, key: AddressKey? = nil, household: HouseholdState = .empty, today: DayDate) -> Status {
+    private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {
         guard let schedule else { return .loading }
         guard let response = schedule.response else {
             return schedule.lastError.map { .failed($0) } ?? .loading
@@ -269,8 +272,7 @@ public struct HomeContent: Equatable, Sendable {
                 FractionItem(id: $0, info: ScheduleLogic.displayInfo(for: $0, in: response.fractions))
             },
             headline: capitalized(headline),
-            longDate: capitalized(longDate),
-            household: key.flatMap { HouseholdLine.make(household: household, key: $0, nextPickup: event.date, today: today) }
+            longDate: capitalized(longDate)
         ))
     }
 

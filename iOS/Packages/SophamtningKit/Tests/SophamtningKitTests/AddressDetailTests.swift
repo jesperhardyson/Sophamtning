@@ -473,7 +473,6 @@ private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("
 @Test func adressvynUtanHushallHarIngenRad() throws {
     let result = detail(try schedule([event("2026-11-09", ["rest"])]))
     #expect(result.household == nil)
-    #expect(result.next?.household == nil)
 }
 
 @Test func adressvynVisarHushalletsBock() throws {
@@ -499,4 +498,13 @@ private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("
     let sunday = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
     let result = AddressDetail.make(address: address, schedule: try schedule([event("2026-11-09", ["rest"])]), settings: ReminderSettings(), sourceName: nil, now: sunday, household: state)
     #expect(result.household?.showsButton == true)
+}
+
+@Test func adressvynHarHushallsradenAvenUtanKommandeTomning() throws {
+    var state = HouseholdState(role: .owner, myId: "jag", participants: [], addresses: [HouseholdAddress(address: address, addedBy: "jag")], marks: [], status: .notSignedIn)
+    state.role = .member
+    let result = AddressDetail.make(address: address, schedule: try schedule([]), settings: ReminderSettings(), sourceName: nil, now: noon, household: state)
+    #expect(result.mode == .noUpcoming)
+    #expect(result.household?.isShared == true)
+    #expect(result.household?.statusText == "Synkar inte just nu")
 }
