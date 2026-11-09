@@ -2,18 +2,15 @@ import SophamtningDesign
 import SophamtningKit
 import SwiftUI
 
-/// Huvudkortet på hemskärmen: huvudadressens nästa tömning och reglaget för påminnelsen.
-/// Kortet öppnar adressvyn vid tryck, i alla lägen. Bara reglaget tar emot sina egna tryck. Hela kortet fjädrar när
-/// knappen trycks ned.
+/// Huvudkortet på hemskärmen: huvudadressens nästa tömning, och det man behöver göra. Överst namnet och adressen, sedan
+/// nästa tömning och kärlen, en fot med delningen och påminnelsen, och sist Ställ ut kärlen för en delad adress. Kortet
+/// öppnar adressvyn vid tryck, i alla lägen. Bara knapparna tar emot sina egna tryck. Hela kortet fjädrar när det trycks ned.
 struct PrimaryCard: View {
     let entry: HomeContent.Entry
     /// Kalenderbladets vändning vid start från början.
     var opening: CalendarTile.Opening?
-    /// Ökar när påminnelsen faktiskt har slagits på, för ikonens studs och vibrationen.
-    var reminderPulse = 0
     let onOpen: () -> Void
-    /// Reglaget slås på eller av. Samma flöde som i adressvyn.
-    var onReminderChange: (Bool) -> Void = { _ in }
+    /// Öppna Inställningar, när påminnelsen är på men iOS nekar notiser.
     var onOpenSettings: () -> Void = {}
     /// Ställ ut kärlen och Ångra för en delad adress.
     var onPlaceOut: () -> Void = {}
@@ -37,13 +34,19 @@ struct PrimaryCard: View {
         }
     }
 
+    /// Påminnelsen när kortet visar en kommande tömning. Annars gäller den inget.
+    private var reminder: HomeContent.PrimaryReminder? {
+        guard case .upcoming = entry.status else { return nil }
+        return entry.reminder
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 16) {
                 Button(action: onOpen) { content }
                     .buttonStyle(PressReportingButtonStyle(pressed: $pressed))
-                if case .upcoming = entry.status, let reminder = entry.reminder {
-                    PrimaryReminderRow(reminder: reminder, pulse: reminderPulse, onChange: { onReminderChange($0) }, onOpenSettings: { onOpenSettings() })
+                if reminder?.showsDeniedNotice == true {
+                    DeniedReminderNotice(onOpenSettings: onOpenSettings)
                         .transition(.opacity)
                 }
                 if entry.refreshFailed {
@@ -53,15 +56,15 @@ struct PrimaryCard: View {
                         .transition(.opacity)
                 }
             }
-            // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist, och slås på och av med kortets
-            // åtgärder, som snabbmenyn. Hushållets knappar står utanför, så att de går att nå och trycka på.
+            // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist. Hushållets knappar står utanför,
+            // så att de går att nå och trycka på.
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityText)
             .accessibilityHint("Öppnar adressen")
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { onOpen() }
             .accessibilityActions {
-                if entry.reminder?.isDenied == true {
+                if reminder?.showsDeniedNotice == true {
                     Button("Öppna Inställningar") { onOpenSettings() }
                 }
                 ForEach(addressActions) { action in
@@ -80,7 +83,7 @@ struct PrimaryCard: View {
             in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        // Ett tryck utanför knappen och reglaget, till exempel i kanten, öppnar också adressen.
+        // Ett tryck utanför knapparna, till exempel i kanten, öppnar också adressen.
         .onTapGesture { onOpen() }
         .pressEffect(pressed: pressed)
         .accessibilityElement(children: .contain)
@@ -88,20 +91,24 @@ struct PrimaryCard: View {
         .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
         .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
         .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.household)
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.reminder)
     }
 
     private var accessibilityText: String {
         var parts = [entry.accessibilityLabel]
         if let shared = entry.household?.sharedText { parts.append(shared) }
         if let note = entry.dayNote { parts.append(note) }
-        if case .upcoming = entry.status, let reminder = entry.reminder {
-            parts.append(reminder.isDenied ? reminder.title : "\(reminder.title): \(reminder.isOn ? "på" : "av")")
-            if let detail = reminder.detail { parts.append(detail) }
+        if let reminder {
+            if reminder.showsDeniedNotice {
+                parts.append(HomeContent.RowReminder.denied.text)
+            } else if let line = reminder.line {
+                parts.append(line)
+            }
         }
         return parts.joined(separator: ", ")
     }
 
-    /// Allt utom reglaget: rubriken, nästa tömning och kärlen, eller laddning och fel.
+    /// Allt utom hushållets knappar: rubriken, nästa tömning, kärlen och foten, eller laddning och fel.
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
@@ -111,6 +118,7 @@ struct PrimaryCard: View {
                     nextPickup(pickup)
                     fractions(pickup)
                     scheduleEnding
+                    footer
                 }
                 .transition(.opacity)
             case .loading:
@@ -127,69 +135,71 @@ struct PrimaryCard: View {
         .contentShape(Rectangle())
     }
 
+    /// Namnet och under det gatan och orten på en rad. Med största text står inget hus och ingen pil, så att texten får
+    /// hela bredden: hela kortet är ändå en knapp.
     private var header: some View {
-        Group {
-            if typeSize.isAccessibilitySize {
-                // Under varandra, och utan pil: hela kortet är ändå en knapp. Då får texten hela bredden.
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "house")
-                            .font(.system(.body, weight: .semibold))
-                            .accessibilityHidden(true)
-                        Text(entry.title)
-                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.5)
-                    }
-                    placeLines
-                    sharedLine
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            if !typeSize.isAccessibilitySize {
+                Image(systemName: "house")
+                    .font(.system(.body, weight: .semibold))
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.title)
+                    .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                    .fixedSize(horizontal: false, vertical: true)
+                let address = entry.lines.singleLine
+                if !address.isEmpty {
+                    // Något svagare än namnet, i stället för `text2`, som inte syns mot grönt.
+                    Text(address)
+                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                        .foregroundStyle(foreground.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } else {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: "house")
-                        .font(.system(.body, weight: .semibold))
-                        .accessibilityHidden(true)
-                    // Platsen under namnet, så att den får hela bredden. Den bryts i stället för att kapas.
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.title)
-                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                        placeLines
-                        sharedLine
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(.subheadline, weight: .semibold))
-                        .accessibilityHidden(true)
-                }
+            }
+            Spacer(minLength: 0)
+            if !typeSize.isAccessibilitySize {
+                Image(systemName: "chevron.right")
+                    .font(.system(.subheadline, weight: .semibold))
+                    .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(foreground)
-        .accessibilityElement(children: .combine)
+        .multilineTextAlignment(.leading)
     }
 
-    /// "Delas med Sofie" under adressen för en delad adress, så att det syns med vem och inte bara att den delas.
+    /// En tunn linje och sedan delningen och påminnelsen bredvid varandra, som bryts till två rader när de inte får
+    /// plats. Ingen fot när adressen inte delas och påminnelsen är av.
     @ViewBuilder
-    private var sharedLine: some View {
-        if let shared = entry.household?.sharedText {
-            Label {
-                Text(shared)
-                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
-                    .fixedSize(horizontal: false, vertical: true)
-            } icon: {
-                Image(systemName: "person.2.fill")
-                    .font(.system(.footnote, weight: .semibold))
+    private var footer: some View {
+        let shared = entry.household?.sharedText
+        let line = reminder?.line
+        if shared != nil || line != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Rectangle()
+                    .fill(foreground.opacity(0.25))
+                    .frame(height: 1)
                     .accessibilityHidden(true)
+                FlowLayout(spacing: 16, lineSpacing: 8) {
+                    if let shared { footerLabel(shared, icon: "person.2.fill") }
+                    if let line { footerLabel(line, icon: "bell.fill") }
+                }
             }
-            .foregroundStyle(foreground.opacity(0.9))
-            .padding(.top, 4)
         }
     }
 
-    /// Adressen och platsen. På det gröna kortet är platsen något svagare än adressen i stället för `text2`, som inte
-    /// syns mot grönt.
-    private var placeLines: some View {
-        AddressLinesView(lines: entry.lines, size: 15, addressStyle: .subheadline, addressColor: foreground.opacity(0.9), placeColor: foreground.opacity(0.8))
+    private func footerLabel(_ text: String, icon: String) -> some View {
+        Label {
+            Text(text)
+                .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: icon)
+                .font(.system(.footnote, weight: .semibold))
+                .accessibilityHidden(true)
+        }
+        .foregroundStyle(foreground.opacity(0.9))
     }
 
     /// Samma uppställning som när schemat har kommit, så att kortet inte byter höjd och inget under det hoppar. Brickan
@@ -279,12 +289,9 @@ struct PrimaryCard: View {
 
 }
 
-/// Reglaget för påminnelsen på huvudkortet, som ett vanligt reglage i iOS: av, eller på med tiden under. Nekar iOS
-/// notiser är reglaget av och går inte att slå på, och en knapp öppnar Inställningar, som i adressvyn.
-private struct PrimaryReminderRow: View {
-    let reminder: HomeContent.PrimaryReminder
-    let pulse: Int
-    let onChange: (Bool) -> Void
+/// Rutan när påminnelsen är på men iOS nekar notiser: **Notiser är avstängda i iOS** och **Öppna Inställningar**. Knappen
+/// står till höger om texten, och under den när den inte får plats.
+private struct DeniedReminderNotice: View {
     let onOpenSettings: () -> Void
 
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -294,78 +301,70 @@ private struct PrimaryReminderRow: View {
     var body: some View {
         Group {
             if typeSize.isAccessibilitySize {
-                // Med stor text står ikonen och reglaget överst, och texten får hela bredden under dem.
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        symbol
-                        Spacer(minLength: 0)
-                        toggle
+                // Med största text är knappen en understruken länk och rutan har ingen inre marginal, så att
+                // "Inställningar" får plats utan att brytas mitt i ordet.
+                VStack(alignment: .leading, spacing: 10) {
+                    label
+                    Button { onOpenSettings() } label: {
+                        Text("Öppna Inställningar")
+                            .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                            .underline()
                     }
-                    texts
+                    .buttonStyle(.plain)
                 }
             } else {
-                HStack(alignment: .center, spacing: 12) {
-                    symbol
-                    texts
-                    Spacer(minLength: 0)
-                    toggle
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 12) {
+                        label.fixedSize()
+                        Spacer(minLength: 8)
+                        button
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        label
+                        button
+                    }
                 }
             }
         }
         .foregroundStyle(foreground)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.Theme.cardOverlay, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .sensoryFeedback(.impact(weight: .light), trigger: pulse)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, typeSize.isAccessibilitySize ? 0 : 16)
+        .padding(.vertical, typeSize.isAccessibilitySize ? 0 : 10)
+        .background(typeSize.isAccessibilitySize ? Color.clear : Color.Theme.cardOverlay, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // Ett tryck i rutan utanför knappen öppnar inte adressen.
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture {}
     }
 
-    private var symbol: some View {
-        ReminderSymbol(symbol: reminder.isDenied ? "bell.slash" : "bell.badge", pulse: pulse, color: foreground)
-    }
-
-    private var texts: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(reminder.title)
-                .font(.ui(16, weight: .bold, relativeTo: .callout))
-            if reminder.isDenied {
-                Button { onOpenSettings() } label: {
-                    Text("Öppna Inställningar")
-                        .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
-                        .underline()
-                }
-                .buttonStyle(.plain)
-            } else if let detail = reminder.detail {
-                Text(detail)
-                    .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                    .opacity(0.9)
-            }
+    private var label: some View {
+        Label {
+            Text(HomeContent.RowReminder.denied.text)
+                .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "bell.slash")
+                .font(.system(.body, weight: .semibold))
+                .accessibilityHidden(true)
         }
-        .multilineTextAlignment(.leading)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var toggle: some View {
-        Toggle(reminder.title, isOn: Binding(get: { reminder.isOn }, set: { onChange($0) }))
-            .labelsHidden()
-            .toggleStyle(.switch)
-            // En mörk bana i både ljust och mörkt läge, så att påslaget syns tydligt mot det gröna kortet och den vita
-            // knoppen.
-            .tint(Color.Theme.toggleOn)
-            .disabled(reminder.isDenied)
-            // Det avstängda reglaget öppnar Inställningar, i stället för att trycket går vidare och öppnar adressen.
-            .overlay {
-                if reminder.isDenied {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { onOpenSettings() }
-                }
-            }
+    private var button: some View {
+        Button { onOpenSettings() } label: {
+            Text("Öppna Inställningar")
+                .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .controlSize(.small)
+        .tint(foreground)
     }
 }
 
 /// Lägger barnen på rader och bryter rad när det inte får plats.
 struct FlowLayout: Layout {
     var spacing: CGFloat
+    /// Avståndet mellan raderna. Samma som `spacing` om inget annat anges.
+    var lineSpacing: CGFloat?
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         arrange(width: proposal.width ?? .infinity, subviews: subviews).size
@@ -389,7 +388,7 @@ struct FlowLayout: Layout {
             let size = subview.sizeThatFits(ProposedViewSize(width: width.isFinite ? width : nil, height: nil))
             if x > 0, x + size.width > width {
                 x = 0
-                y += rowHeight + spacing
+                y += rowHeight + (lineSpacing ?? spacing)
                 rowHeight = 0
             }
             origins.append(CGPoint(x: x, y: y))

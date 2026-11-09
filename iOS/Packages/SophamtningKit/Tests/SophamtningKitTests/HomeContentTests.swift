@@ -573,8 +573,8 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     on.notificationsOn = true
     let schedules = [on.key: schedule([event("2026-11-09", ["rest"])])]
     let denied = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
-    #expect(try #require(denied.primary?.reminder) == HomeContent.PrimaryReminder(isOn: false, isDenied: true, title: "Notiser är avstängda i iOS", detail: nil))
-    // Också när valet inte är på: reglaget går inte att slå på förrän iOS tillåter notiser.
+    #expect(try #require(denied.primary?.reminder) == HomeContent.PrimaryReminder(isOn: false, isDenied: true, title: "Notiser är avstängda i iOS", detail: nil, showsDeniedNotice: true))
+    // Också när valet inte är på vet modellen att iOS nekar, men kortet visar då ingen ruta.
     let off = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
     #expect(try #require(off.primary?.reminder).isDenied)
 }
@@ -766,4 +766,59 @@ private func lineFor(_ cached: CachedSchedule?, _ state: HouseholdState) -> Hous
     #expect(loading.summaryTone == .neutral)
     let failed = try #require(make([home], [home.key: CachedSchedule(response: nil, fetchedAt: nil, lastAttemptAt: now, lastError: .network)]).primary)
     #expect(failed.summaryTone == .warning)
+}
+
+// MARK: Påminnelsen i huvudkortets fot
+
+@Test func paminnelsenArEnRadIKortetsFot() throws {
+    var on = home
+    on.notificationsOn = true
+    let reminder = try #require(make([on], [on.key: schedule([event("2026-11-09", ["rest"])])]).primary?.reminder)
+    #expect(reminder.line == "Påminnelse söndag kl. 18:00")
+    #expect(!reminder.showsDeniedNotice)
+}
+
+@Test func avstangdPaminnelseGerIngenRadIFoten() throws {
+    let reminder = try #require(make([home], [home.key: schedule([event("2026-11-09", ["rest"])])]).primary?.reminder)
+    #expect(reminder.line == nil)
+    #expect(!reminder.showsDeniedNotice)
+}
+
+@Test func liveActivityArEnRadIFotenAvenMedNotisenAv() throws {
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 17 * 60 + 30)
+    let content = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
+    #expect(try #require(content.primary?.reminder).line == "Live Activity söndag kl. 17:30")
+}
+
+@Test func rutanOmNekadeNotiserVisasBaraNarPaminnelsenArPa() throws {
+    var on = home
+    on.notificationsOn = true
+    let denied = HomeContent.make(addresses: [on], schedules: [on.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    let wanted = try #require(denied.primary?.reminder)
+    #expect(wanted.showsDeniedNotice)
+    #expect(wanted.line == nil)
+    // Påminnelsen är av: inget har slutat fungera, så ingen ruta och ingen rad.
+    let off = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false, remindersDenied: true)
+    let notWanted = try #require(off.primary?.reminder)
+    #expect(!notWanted.showsDeniedNotice)
+    #expect(notWanted.line == nil)
+}
+
+@Test func ejFragadeNotiserGerIngenRadOchIngenRuta() throws {
+    var on = home
+    on.notificationsOn = true
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: now, remindersAllowed: false)
+    let reminder = try #require(content.primary?.reminder)
+    #expect(reminder.line == nil)
+    #expect(!reminder.showsDeniedNotice)
+}
+
+// MARK: Adress och plats på en rad
+
+@Test func adressOchPlatsStarPaEnRad() {
+    #expect(HomeContent.AddressLines(address: "Storgatan\u{00A0}12", place: "Krylbo\u{00A0}· Avesta kommun").singleLine == "Storgatan\u{00A0}12, Krylbo\u{00A0}· Avesta kommun")
+    #expect(HomeContent.AddressLines(address: "Kaplansgården, Jularbo m.fl.", place: "Avesta kommun").singleLine == "Kaplansgården, Jularbo m.fl., Avesta kommun")
+    // Utan gata står bara platsen, och utan plats bara gatan.
+    #expect(HomeContent.AddressLines(address: "", place: "Uppsala").singleLine == "Uppsala")
+    #expect(HomeContent.AddressLines(address: "Testgatan 1", place: "").singleLine == "Testgatan 1")
 }

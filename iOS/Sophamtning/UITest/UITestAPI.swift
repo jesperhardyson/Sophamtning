@@ -97,6 +97,16 @@ enum UITestSupport {
 
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") || runsEntrance }
 
+    // MARK: Notiser
+
+    /// `-uitest-notiser`: iOS tillåter notiser, och de läggs in i minnet. `-uitest-notiser-nekade`: iOS nekar dem. Utan
+    /// argumenten finns inga notiser, som förut.
+    static func notifications() -> any NotificationScheduling {
+        if has("-uitest-notiser-nekade") { return UITestNotifications(authorization: .denied) }
+        if has("-uitest-notiser") { return UITestNotifications(authorization: .authorized) }
+        return DisabledNotifications()
+    }
+
     // MARK: Hushåll
 
     /// `-uitest-hushall`: jag är medlem, Kim är ägare och Testgatan 1 delas. `-uitest-hushall-agare` gör mig till ägare, och
@@ -164,5 +174,32 @@ enum UITestSupport {
         if !runsEntrance { try? FileManager.default.removeItem(at: directory) }
         return LocalStore(directory: directory)
     }
+}
+/// Notiser i minnet för UI-testerna, med ett fast svar om tillstånd.
+actor UITestNotifications: NotificationScheduling {
+    private let state: NotificationAuthorization
+    private var planned: [PendingNotification] = []
+
+    init(authorization: NotificationAuthorization) {
+        state = authorization
+    }
+
+    func authorization() async -> NotificationAuthorization { state }
+    func requestAuthorization() async -> Bool { state == .authorized }
+    func pending() async -> [PendingNotification] { planned }
+
+    func schedule(_ notifications: [PlannedNotification]) async -> [String] {
+        for notification in notifications {
+            planned.removeAll { $0.identifier == notification.identifier }
+            planned.append(PendingNotification(identifier: notification.identifier, fireDate: notification.fireDate, body: notification.body))
+        }
+        return []
+    }
+
+    func cancel(identifiers: [String]) async {
+        planned.removeAll { identifiers.contains($0.identifier) }
+    }
+
+    func deliverNow(identifier: String, body: String) async {}
 }
 #endif
