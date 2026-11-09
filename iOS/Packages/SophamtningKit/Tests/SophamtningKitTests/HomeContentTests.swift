@@ -664,4 +664,3 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
     #expect(content.others[0].scheduleEnding == nil)
     #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
 }
-
