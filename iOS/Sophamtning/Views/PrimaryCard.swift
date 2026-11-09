@@ -96,12 +96,7 @@ struct PrimaryCard: View {
                 }
                 .transition(.opacity)
             case .loading:
-                // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
-                // Texten under är dekoration, och VoiceOver läser "Hämtar schema".
-                BinLoaderView(textColor: Color.Theme.text)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                loading
                     .transition(.opacity)
             case .noUpcoming, .failed:
                 Text(entry.summary)
@@ -157,6 +152,38 @@ struct PrimaryCard: View {
     /// syns mot grönt.
     private var placeLines: some View {
         AddressLinesView(lines: entry.lines, size: 15, addressStyle: .subheadline, addressColor: foreground.opacity(0.9), placeColor: foreground.opacity(0.8))
+    }
+
+    /// Samma uppställning som när schemat har kommit, så att kortet inte byter höjd och inget under det hoppar. Brickan
+    /// och raden om nästa tömning är platshållare, och ett litet kärl står där kärlen sedan står. Kortet läses som en
+    /// enhet, och VoiceOver får "Hämtar schema" från kortets etikett.
+    private var loading: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            AdaptiveStack(spacing: 20) {
+                CalendarTile(date: StockholmClock.today(now: Date()))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("NÄSTA TÖMNING")
+                        .font(.ui(13, weight: .heavy, relativeTo: .caption))
+                        .tracking(1.2)
+                    Text(verbatim: "Om 3 dagar")
+                        .font(.ui(32, weight: .heavy, relativeTo: .title))
+                        .lineLimit(1)
+                    Text(verbatim: "Måndag 9 november")
+                        .font(.ui(17, weight: .bold, relativeTo: .body))
+                }
+                .foregroundStyle(foreground)
+            }
+            .redacted(reason: .placeholder)
+            HStack(spacing: 10) {
+                // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
+                BinLoaderView(width: 26, showsText: false)
+                    .padding(10)
+                    .background(Color.Theme.surface, in: Circle())
+                Text("Hämtar schema")
+                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                    .foregroundStyle(foreground)
+            }
+        }
     }
 
     private func nextPickup(_ pickup: HomeContent.Pickup) -> some View {
