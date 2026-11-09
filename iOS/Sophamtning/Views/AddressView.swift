@@ -327,8 +327,8 @@ struct AddressView: View {
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(.ui(22, weight: .heavy, relativeTo: .title2))
-            .foregroundStyle(Color.Theme.text)
+            .font(.ui(20, weight: .bold, relativeTo: .title3))
+            .foregroundStyle(Color.Theme.text2)
             .padding(.top, 28)
             .padding(.bottom, 12)
             .accessibilityAddTraits(.isHeader)

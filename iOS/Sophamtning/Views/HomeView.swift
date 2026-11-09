@@ -279,8 +279,8 @@ struct HomeView: View {
             .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
-                    .font(.ui(22, weight: .heavy, relativeTo: .title2))
-                    .foregroundStyle(Color.Theme.text)
+                    .font(.ui(20, weight: .bold, relativeTo: .title3))
+                    .foregroundStyle(Color.Theme.text2)
                     .padding(.top, 28)
                     .padding(.bottom, 14)
                     .accessibilityAddTraits(.isHeader)
