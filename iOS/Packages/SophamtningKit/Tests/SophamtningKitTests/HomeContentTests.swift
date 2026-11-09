@@ -116,6 +116,11 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     #expect(content.others[0].summary == "ca Ons 18 nov\u{00A0}· om 12 dagar")
 }
 
+@Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
+    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse kvällen före")
+}
+
 @Test func passeratSchemaGerIngaKommandeHamtningar() throws {
     let content = make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings())
     let primary = try #require(content.primary)
@@ -641,9 +646,4 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
     #expect(content.primary?.accessibilityLabel.contains("Schemat slutar") == true)
     #expect(content.others[0].scheduleEnding == nil)
     #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
-}
-
-@Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
-    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse kvällen före")
-    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse kvällen före")
 }
