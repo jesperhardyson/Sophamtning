@@ -171,6 +171,8 @@ public enum ReminderPlanner {
     static let fallbackLatestMinutes = 23 * 60 + 45
     /// Senaste klockslag för reservnotisen samma morgon: 12:00. Morgontiden stannar vid 09:00, så starten är aldrig senare.
     static let morningFallbackLatestMinutes = 12 * 60
+    /// Med samma morgon gäller dagens tömning för Live Activity fram till 12:00, i minuter efter midnatt.
+    static let morningActivityCutoffMinutes = 12 * 60
 
     static let fallbackTitle = "Har du ställt ut kärlen?"
     static let ordinaryTitle = "Ställ ut kärlen"
@@ -256,18 +258,23 @@ public enum ReminderPlanner {
         else { return nil }
 
         let key = primary.address.key
-        // Första tömning efter i dag som inte är utställd. På tömningsdagen gäller alltså nästa tömning.
+        let timing = input.settings.timing
+        // Kvällen före gäller första tömning efter i dag, så på tömningsdagen gäller nästa. Samma morgon gäller också dagens
+        // tömning fram till 12:00.
+        let morningOpen = input.now < StockholmClock.date(on: today, minutes: morningActivityCutoffMinutes)
         guard let next = pickups(in: response, today: today).first(where: {
-            $0.date > today && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
+            let eligible = $0.date > today || (timing == .sameMorning && $0.date == today && morningOpen)
+            return eligible && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
         }) else { return nil }
 
         let start = ReminderTime.date(forPickup: next.date, settings: input.settings)
-        let isTomorrow = next.date == today.adding(days: 1)
+        // Passerad start ger direktstart, men bara när påminnelsedagen är i dag.
+        let remindedToday = ReminderTime.reminderDay(forPickup: next.date, timing: timing) == today
         return PlannedLiveActivity(
             key: key,
             pickupDate: next.date,
             start: start,
-            startsImmediately: isTomorrow && input.now >= start,
+            startsImmediately: remindedToday && input.now >= start,
             content: content(of: next, address: primary.address, response: response)
         )
     }

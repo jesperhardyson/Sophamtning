@@ -608,3 +608,32 @@ private func homeNotification(_ plan: ReminderPlan, on date: String) -> PlannedN
     #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: stockholm("2026-11-09T06:30"), timing: .sameMorning))[id] == PlacedOut(key: homeKey, date: day("2026-11-09")))
     #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: stockholm("2026-11-09T05:30"), timing: .sameMorning))[id] == nil)
 }
+
+@Test func morgonAktivitetIDagFöreTolv() throws {
+    let p = plan(live: true, now: stockholm("2026-11-09T07:30"), timing: .sameMorning)
+    let activity = try #require(p.liveActivity)
+    #expect(activity.pickupDate == day("2026-11-09"))
+    #expect(activity.start == stockholm("2026-11-09T06:00"))
+    #expect(activity.startsImmediately)
+}
+
+@Test func morgonAktivitetIDagEfterTolv() throws {
+    let p = plan(live: true, now: stockholm("2026-11-09T12:00"), timing: .sameMorning)
+    let activity = try #require(p.liveActivity)
+    #expect(activity.pickupDate == day("2026-11-12"))
+    #expect(activity.start == stockholm("2026-11-12T06:00"))
+    #expect(!activity.startsImmediately)
+}
+
+@Test func morgonAktivitetKvällenFöreSchemaläggs() throws {
+    let p = plan(live: true, now: stockholm("2026-11-08T20:00"), timing: .sameMorning)
+    let activity = try #require(p.liveActivity)
+    #expect(activity.pickupDate == day("2026-11-09"))
+    #expect(activity.start == stockholm("2026-11-09T06:00"))
+    #expect(!activity.startsImmediately)
+}
+
+@Test func morgonUtställdIDag() throws {
+    let p = plan(live: true, now: stockholm("2026-11-09T07:30"), placedOut: [PlacedOut(key: homeKey, date: day("2026-11-09"))], timing: .sameMorning)
+    #expect(try #require(p.liveActivity).pickupDate == day("2026-11-12"))
+}

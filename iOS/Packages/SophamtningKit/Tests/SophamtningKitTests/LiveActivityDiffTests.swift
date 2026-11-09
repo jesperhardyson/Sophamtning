@@ -279,3 +279,18 @@ private func withFractions(_ count: Int, warning: String? = nil) -> PickupActivi
     #expect(withFractions(4).warningLineLimit == 1)
     #expect(withFractions(6).warningLineLimit == 1)
 }
+
+// MARK: - Samma morgon
+
+@Test func bytTillMorgonErsätterVäntande() {
+    // Väntande för kvällen före, och valet byts till samma morgon.
+    let morning = PlannedLiveActivity(key: home, pickupDate: monday, start: StockholmClock.date(on: monday, minutes: 360), startsImmediately: false, content: content())
+    #expect(actions(morning, [existing("a")]) == [.remove(id: "a"), .start(morning)])
+}
+
+@Test func pågåendeIDagLeverEfterTolv() {
+    // Morgonens aktivitet för i dag visas, och efter 12:00 planeras nästa tömning.
+    let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: StockholmClock.date(on: thursday, minutes: 360), startsImmediately: false, content: content())
+    let running = existing("a", date: today, pending: false, start: StockholmClock.date(on: today, minutes: 360))
+    #expect(actions(next, [running], primary: home, now: StockholmClock.date(on: today, minutes: 13 * 60)) == [.start(next)])
+}
