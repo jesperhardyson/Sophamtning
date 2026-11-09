@@ -109,7 +109,7 @@ final class AccessibilityAuditTests: XCTestCase {
         audit("installningar-nedre")
         // Tillbaka upp, så att raden inte ligger under fältet när den trycks.
         app.swipeDown()
-        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Påminnelsetid")).firstMatch)
+        tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Påminnelse,")).firstMatch)
         audit("paminnelsetid")
         app.buttons["BackButton"].firstMatch.tap()
         app.swipeUp()

@@ -21,8 +21,8 @@ private func existing(_ id: String, key: AddressKey = home, date: DayDate = mond
     ExistingActivity(id: id, key: key, pickupDate: date, content: c, isPending: pending, start: s)
 }
 
-private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = []) -> [LiveActivityAction] {
-    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent, householdMarked: householdMarked)
+private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = [], householdSilenced: Set<PlacedOut> = []) -> [LiveActivityAction] {
+    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent, householdMarked: householdMarked, householdSilenced: householdSilenced)
 }
 
 @Test func ingenOnskadTarBortAlla() {
@@ -310,4 +310,41 @@ private let mondayMarked: Set<PlacedOut> = [PlacedOut(key: home, date: monday)]
 
 @Test func utanHushalletAvslutasIngetMedBock() {
     #expect(actions(nil, [existing("a", pending: false)]) == [.remove(id: "a")])
+}
+
+// MARK: - Samma morgon
+
+@Test func bytTillMorgonErsätterVäntande() {
+    // Väntande för kvällen före, och valet byts till samma morgon.
+    let morning = PlannedLiveActivity(key: home, pickupDate: monday, start: StockholmClock.date(on: monday, minutes: 360), startsImmediately: false, content: content())
+    #expect(actions(morning, [existing("a")]) == [.remove(id: "a"), .start(morning)])
+}
+
+@Test func pågåendeIDagLeverEfterTolv() {
+    // Morgonens aktivitet för i dag visas, och efter 12:00 planeras nästa tömning.
+    let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: StockholmClock.date(on: thursday, minutes: 360), startsImmediately: false, content: content())
+    let running = existing("a", date: today, pending: false, start: StockholmClock.date(on: today, minutes: 360))
+    #expect(actions(next, [running], primary: home, now: StockholmClock.date(on: today, minutes: 13 * 60)) == [.start(next)])
+}
+
+// MARK: Hushållets bockar samma morgon
+
+@Test func andrasBockUppdaterarPagaendeSammaMorgon() {
+    // Samma morgon gäller dagens tömning. Tysta är av, så den är fortfarande den önskade och visar bocken.
+    let morningStart = StockholmClock.date(on: today, minutes: 360)
+    let desired = PlannedLiveActivity(key: home, pickupDate: today, start: morningStart, startsImmediately: true, content: content())
+    let running = existing("a", date: today, pending: false, start: morningStart)
+    let marked: Set<PlacedOut> = [PlacedOut(key: home, date: today)]
+    #expect(actions(desired, [running], now: morningStart.addingTimeInterval(3600), householdMarked: marked) == [.update(id: "a", content().markedPlacedOut())])
+}
+
+@Test func andrasBockAvslutarDagensMedTystaPa() {
+    // Tysta är på, så dagens tömning räknas som utställd och torsdag är den önskade. Dagens aktivitet visar bocken och avslutas.
+    let morningStart = StockholmClock.date(on: today, minutes: 360)
+    let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: StockholmClock.date(on: thursday, minutes: 360), startsImmediately: false, content: content(date: "Torsdag 12 november"))
+    let running = existing("a", date: today, pending: false, start: morningStart)
+    let marked: Set<PlacedOut> = [PlacedOut(key: home, date: today)]
+    #expect(actions(next, [running], primary: home, now: morningStart.addingTimeInterval(3600), householdMarked: marked, householdSilenced: marked) == [.end(id: "a", content().markedPlacedOut()), .start(next)])
+    // Utan tystnad lever den kvar som förut, med bocken.
+    #expect(actions(next, [running], primary: home, now: morningStart.addingTimeInterval(3600), todayContent: content().markedPlacedOut(), householdMarked: marked) == [.update(id: "a", content().markedPlacedOut()), .start(next)])
 }

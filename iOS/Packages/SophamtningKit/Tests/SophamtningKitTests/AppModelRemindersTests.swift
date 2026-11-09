@@ -704,3 +704,106 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(model.lastStorageError == nil)
     #expect(!model.showsReminderOffer)
 }
+
+@Test @MainActor func missadMorgonGällerDagensTömning() async throws {
+    let temp = TempDir()
+    // Lördag 7 nov 07:00 med samma morgon 06:00, och schemat har tömning lördag 7 nov.
+    let morning = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 7 * 60)
+    let store = LocalStore(directory: temp.url)
+    try store.setSettings(ReminderSettings(timing: .sameMorning, morningMinutes: 360))
+    let scheduler = FakeScheduler(status: .authorized)
+    let api = FixedAPI(response: try fixtureResponse(events: ["2026-11-07"]))
+    let model = AppModel(api: api, store: store, now: { morning }, scheduler: scheduler)
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    #expect(model.missedReminderText == "Tömning i dag. Påminnelsen för i morse har redan passerat.")
+    #expect(!scheduler.planned.contains { $0.pickupDate == DayDate("2026-11-07")! })
+}
+
+// MARK: - Kvällen före eller samma morgon
+
+@MainActor
+private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time: Date = StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 12 * 60)) async throws -> AppModel {
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse(events: ["2026-11-11"])), store: LocalStore(directory: directory), now: { time }, scheduler: scheduler)
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    await model.settleReminders()
+    return model
+}
+
+@Test @MainActor func bytTillMorgonFlyttarNotisen() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await wednesdayModel(scheduler, directory: temp.url)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    #expect(scheduler.planned.map(\.fireDate) == [StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 18 * 60)])
+    #expect(model.setReminderTiming(.sameMorning))
+    await model.settleReminders()
+    #expect(scheduler.planned.map(\.fireDate) == [StockholmClock.date(on: DayDate("2026-11-11")!, minutes: 6 * 60)])
+    #expect(LocalStore(directory: temp.url).settings().timing == .sameMorning)
+}
+
+@Test @MainActor func bytTillbakaGerFörraTiden() async throws {
+    let temp = TempDir()
+    let model = try await wednesdayModel(FakeScheduler(status: .authorized), directory: temp.url)
+    #expect(model.setReminderMinutes(20 * 60))
+    #expect(model.setReminderTiming(.sameMorning))
+    #expect(model.settings.activeMinutes == 360)
+    #expect(model.setReminderMinutes(7 * 60))
+    #expect(model.setReminderTiming(.eveningBefore))
+    #expect(model.settings.activeMinutes == 20 * 60)
+    #expect(model.settings.morningMinutes == 7 * 60)
+}
+
+@Test @MainActor func tidenKontrollerasMotValet() async throws {
+    let temp = TempDir()
+    let model = try await wednesdayModel(FakeScheduler(status: .authorized), directory: temp.url)
+    #expect(!model.setReminderMinutes(6 * 60))
+    #expect(model.setReminderTiming(.sameMorning))
+    #expect(!model.setReminderMinutes(18 * 60))
+    #expect(model.settings.reminderMinutes == 1080)
+    #expect(model.settings.morningMinutes == 360)
+}
+
+@Test @MainActor func bytAvValSchemaläggerInteAvstängt() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await wednesdayModel(scheduler, directory: temp.url)
+    #expect(model.setReminderTiming(.sameMorning))
+    await model.settleReminders()
+    #expect(scheduler.planned.isEmpty)
+    #expect(scheduler.requests == 0)
+}
+
+@Test @MainActor func lagringsfelVidBytBehållerValet() async throws {
+    let blocked = TempDir()
+    try Data().write(to: blocked.url)
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: blocked.url), now: { now }, scheduler: FakeScheduler(status: .authorized))
+    #expect(!model.setReminderTiming(.sameMorning))
+    #expect(model.settings.timing == .eveningBefore)
+    #expect(model.lastStorageError != nil)
+}
+
+@Test @MainActor func bytTillKvällEfterKvällstidenBehållerMorgonnotisen() async throws {
+    // Samma morgon 06:00 och tömning onsdag. Tisdag 20:00 byts valet till kvällen före, vars tid 18:00 redan passerat.
+    let temp = TempDir()
+    let tuesdayEvening = StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 20 * 60)
+    let store = LocalStore(directory: temp.url)
+    try store.setSettings(ReminderSettings(timing: .sameMorning, morningMinutes: 360))
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = try await wednesdayModel(scheduler, directory: temp.url, at: tuesdayEvening)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    let morning = StockholmClock.date(on: DayDate("2026-11-11")!, minutes: 6 * 60)
+    #expect(scheduler.planned.map(\.fireDate) == [morning])
+    #expect(model.setReminderTiming(.eveningBefore))
+    await model.settleReminders()
+    // Notisen på onsdagsmorgonen står kvar, så tömningen har fortfarande en påminnelse, och den gäller onsdagen.
+    #expect(scheduler.planned.map(\.fireDate) == [morning])
+    let address = try #require(model.addresses.first)
+    let reserve = try #require(model.reserveNotificationDate(for: address))
+    #expect(reserve == morning)
+}

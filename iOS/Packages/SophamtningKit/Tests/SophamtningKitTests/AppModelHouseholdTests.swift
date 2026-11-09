@@ -208,6 +208,26 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     #expect(scheduler.hasPending(for: "2026-11-11"))
 }
 
+@Test @MainActor func andrasBockTystarMorgonpaminnelsen() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    #expect(model.setReminderTiming(.sameMorning))
+    await settle(model) { model.startHousehold() }
+    let morning = StockholmClock.date(on: tomorrow, minutes: 6 * 60)
+    #expect(await scheduler.pending().contains { $0.fireDate == morning })
+
+    // Kim ställer ut. Tysta är på från början, så morgonens påminnelse tas bort.
+    await settle(model) { sync.simulateRemote { $0.marks.append(kimsMark()) } }
+    #expect(!scheduler.hasPending(for: "2026-11-11"))
+    #expect(!(await scheduler.pending().contains { $0.fireDate == morning }))
+
+    // Kim ångrar innan morgonens tid, så påminnelsen kommer tillbaka.
+    await settle(model) { sync.simulateRemote { $0.marks.removeAll() } }
+    #expect(await scheduler.pending().contains { $0.fireDate == morning })
+}
+
 @Test @MainActor func egenBockSparasLokaltOchIHushallet() async throws {
     let temp = TempDir()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]), now: { noon })

@@ -1026,3 +1026,57 @@ private func kimHasPlacedOut(_ store: LocalStore, silence: Bool) throws {
     #expect(!f.activities.ids.contains(id))
     #expect(f.notifications.notification("2026-11-09") == nil)
 }
+
+// MARK: Samma morgon
+
+@Test @MainActor func bytTillMorgonErsätterVäntandeAktivitet() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    let evening = try #require(f.activities.activities.first)
+    #expect(evening.start == sundayAt(18 * 60))
+    #expect(model.setReminderTiming(.sameMorning))
+    await model.settleReminders()
+    #expect(!f.activities.ids.contains(evening.id))
+    #expect(f.activities.activities.map(\.start) == [StockholmClock.date(on: monday, minutes: 6 * 60)])
+    #expect(f.activities.activities.map(\.pickupDate) == [monday])
+}
+
+/// Måndag 9 november 07:00, en timme efter morgonens påminnelse. Aktiviteten för dagens tömning visas.
+private let mondayMorning = StockholmClock.date(on: monday, minutes: 7 * 60)
+
+/// Samma morgon med påminnelsen 06:00.
+private func morningFixture() throws -> Fixture {
+    let f = try Fixture(now: mondayMorning)
+    try f.store.setSettings(ReminderSettings(timing: .sameMorning, reminderMinutes: 1080, morningMinutes: 6 * 60, liveActivityOn: true))
+    return f
+}
+
+@Test @MainActor func sammaMorgonVisarAndrasBockMedTystaAv() async throws {
+    let f = try morningFixture()
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+    #expect(f.activities.activities.first?.pickupDate == monday)
+    #expect(f.activities.activities.first?.isPending == false)
+    #expect(f.activities.activities.first?.content.placedOut == false)
+
+    try kimHasPlacedOut(f.store, silence: false)
+    await apply(f.model())
+
+    #expect(f.activities.ids == [id])
+    #expect(f.activities.activities.first?.content.placedOut == true)
+}
+
+@Test @MainActor func sammaMorgonVisarAndrasBockInnanDenForsvinnerMedTystaPa() async throws {
+    let f = try morningFixture()
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+
+    try kimHasPlacedOut(f.store, silence: true)
+    await apply(f.model())
+
+    // Dagens aktivitet lever annars tills Utställt, men hushållets bock avslutar den med bocken, som kvällen före.
+    #expect(f.activities.endedWithPlacedOut == [id])
+    #expect(!f.activities.ids.contains(id))
+    #expect(f.notifications.notification("2026-11-09") == nil)
+}

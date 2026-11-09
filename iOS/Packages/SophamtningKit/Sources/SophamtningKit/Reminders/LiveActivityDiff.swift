@@ -51,7 +51,9 @@ public enum LiveActivityDiff {
     ///   - todayContent: dagens innehåll för huvudadressen, så att en pågående aktivitet får ny varning eller nytt namn.
     ///   - householdMarked: tömningar som någon i hushållet har bockat för. Den önskade aktiviteten visar då bocken, och en
     ///     pågående som ska bort visar bocken en kort stund innan den avslutas, som när knappen Utställt trycks.
-    public static func actions(desired: PlannedLiveActivity?, existing: [ExistingActivity], today: DayDate, enabled: Bool, primary: AddressKey? = nil, canStart: Bool = true, now: Date = .distantPast, todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = []) -> [LiveActivityAction] {
+    ///   - householdSilenced: tömningar som hushållets bockar tystar. En pågående aktivitet för dagens tömning lever annars
+    ///     tills Utställt, men tystas den av hushållet avslutas den, med bocken. Det gör att samma morgon beter sig som kvällen före.
+    public static func actions(desired: PlannedLiveActivity?, existing: [ExistingActivity], today: DayDate, enabled: Bool, primary: AddressKey? = nil, canStart: Bool = true, now: Date = .distantPast, todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = [], householdSilenced: Set<PlacedOut> = []) -> [LiveActivityAction] {
         guard enabled else { return existing.map { .remove(id: $0.id) } }
         let main = primary ?? desired?.key
         let desired = desired.map { planned in
@@ -73,7 +75,8 @@ public enum LiveActivityDiff {
         for activity in ordered {
             if let desired, activity.key == desired.key, activity.pickupDate == desired.pickupDate {
                 if kept == nil { kept = activity } else { removals.append(activity.id) }
-            } else if !activity.isPending, activity.pickupDate == today, activity.key == main, keptToday == nil {
+            } else if !activity.isPending, activity.pickupDate == today, activity.key == main, keptToday == nil,
+                      !householdSilenced.contains(PlacedOut(key: activity.key, date: activity.pickupDate)) {
                 // Startad för i dag på huvudadressen. Den lever tills Utställt eller systemets tidsgräns.
                 keptToday = activity
             } else {

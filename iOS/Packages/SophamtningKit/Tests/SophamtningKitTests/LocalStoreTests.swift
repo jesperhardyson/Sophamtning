@@ -102,7 +102,7 @@ private func fixtureResponse() throws -> AddressResponse {
 
 @Test(arguments: [(899, false), (900, true), (915, true), (916, false), (1380, true), (1395, false)])
 func giltigaPaminnelsetider(m: Int, ok: Bool) {
-    #expect(ReminderSettings.isValid(minutes: m) == ok)
+    #expect(ReminderSettings.isValid(minutes: m, for: .eveningBefore) == ok)
 }
 
 @Test func spararOchTarBortSchema() throws {
