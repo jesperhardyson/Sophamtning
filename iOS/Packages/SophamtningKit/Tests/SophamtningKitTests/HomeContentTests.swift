@@ -116,6 +116,28 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     #expect(content.others[0].summary == "ca Ons 18 nov\u{00A0}· om 12 dagar")
 }
 
+// MARK: Tömningsdagen
+
+@Test func tomningIDagGerRad() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-06", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == "Kärlen ska stå ute i dag.")
+}
+
+@Test func tomningIMorgonGerIngenRad() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-07", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == nil)
+}
+
+@Test func beraknadTomningIDagSagerSomBeraknat() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-06", ["rest"], estimated: true)])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == "Kärlen ska stå ute i dag, om tömningen kommer som beräknat.")
+}
+
+@Test func utanHamtningarGerIngenRad() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == nil)
+}
+
 @Test func passeratSchemaGerIngaKommandeHamtningar() throws {
     let content = make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings())
     let primary = try #require(content.primary)

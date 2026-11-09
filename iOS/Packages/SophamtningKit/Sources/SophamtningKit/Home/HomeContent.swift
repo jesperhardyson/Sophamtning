@@ -145,6 +145,14 @@ public struct HomeContent: Equatable, Sendable {
 
         public var id: AddressKey { key }
 
+        /// Raden under datumet på huvudkortet när nästa tömning är i dag. `nil` alla andra dagar.
+        public var dayNote: String? {
+            guard case .upcoming(let pickup) = status, pickup.daysUntil == 0 else { return nil }
+            return pickup.estimated
+                ? "Kärlen ska stå ute i dag, om tömningen kommer som beräknat."
+                : "Kärlen ska stå ute i dag."
+        }
+
         /// Alla fraktioner som text, så att VoiceOver kan läsa dem även när raden bara visar ikoner.
         public var accessibilityLabel: String {
             var parts = [title, lines.accessibilityLabel, summary]

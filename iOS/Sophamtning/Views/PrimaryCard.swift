@@ -76,6 +76,7 @@ struct PrimaryCard: View {
 
     private var accessibilityText: String {
         var parts = [entry.accessibilityLabel]
+        if let note = entry.dayNote { parts.append(note) }
         if case .upcoming = entry.status, let reminder = entry.reminder {
             parts.append(reminder.isDenied ? reminder.title : "\(reminder.title): \(reminder.isOn ? "på" : "av")")
             if let detail = reminder.detail { parts.append(detail) }
@@ -174,6 +175,13 @@ struct PrimaryCard: View {
                     .rollingNumbers(value: pickup.headline, reduceMotion: reduceMotion)
                 Text(pickup.longDate)
                     .font(.ui(17, weight: .bold, relativeTo: .body))
+                // På tömningsdagen säger kortet vad som gäller, i stället för bara "I dag".
+                if let note = entry.dayNote {
+                    Text(note)
+                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                        .opacity(0.9)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .foregroundStyle(foreground)
             .accessibilityElement(children: .combine)
