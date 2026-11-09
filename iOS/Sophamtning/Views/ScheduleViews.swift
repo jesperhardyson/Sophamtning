@@ -219,9 +219,9 @@ struct BinRow: View {
                     when(alignment: .leading)
                 }
             } else {
-                HStack(spacing: 14) {
+                // Som raderna under Kommande: ryms inte chipet bredvid datumet bryts datumet, i stället för att namnet krymper.
+                ChipRowLayout(chipSpacing: 6, spacing: 14) {
                     chip
-                    Spacer(minLength: 0)
                     when(alignment: .trailing)
                 }
             }
