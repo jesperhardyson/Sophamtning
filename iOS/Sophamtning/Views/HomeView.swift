@@ -141,6 +141,8 @@ struct HomeView: View {
             .closesOpenSwipeRow($openRow)
         }
         .scrollPosition($scrollPosition)
+        // En tydlig kant under fältet, så att rubriken och knapparna inte står ovanpå det gröna kortet.
+        .scrollEdgeEffectStyle(.hard, for: .top)
         .onChange(of: content.primary == nil) { _, empty in
             if !empty { scrollPosition.scrollTo(edge: .top) }
         }
