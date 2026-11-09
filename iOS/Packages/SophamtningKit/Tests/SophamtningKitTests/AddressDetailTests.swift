@@ -324,9 +324,19 @@ private func periodSchedule(_ events: [PickupEvent], until: String?, reason: Str
     // `null` gäller alla live-källor: ingen rad.
     let live = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: nil))
     #expect(live.schedulePeriod == nil)
-    #expect(live.noUpcomingMessage.message == "Schemat kan ta slut tills kommunen har publicerat nästa period.")
+    #expect(live.noUpcomingMessage.message == "Källan visar inga hämtningar för adressen just nu. Stämmer det inte, kontakta Uppsala Vatten.")
     // Inget schema än: ingen rad.
     #expect(detail(nil).schedulePeriod == nil)
+}
+
+@Test func liveKallaUtanNamnHanvisarTillAnsvarig() throws {
+    let live = detail(try periodSchedule([], until: nil), source: nil)
+    #expect(live.noUpcomingMessage.message == "Källan visar inga hämtningar för adressen just nu. Stämmer det inte, kontakta den som ansvarar för hämtningen.")
+}
+
+@Test func liveKallaEfterFelSagerBaraVadSchematSager() throws {
+    let failed = detail(try schedule([], error: .network), source: "Uppsala Vatten")
+    #expect(failed.noUpcomingMessage.message == "Det senast hämtade schemat har inga fler hämtningar.")
 }
 
 @Test func passeradPeriodUtanHamtningarSagerAttNastaPeriodInteArPublicerad() throws {

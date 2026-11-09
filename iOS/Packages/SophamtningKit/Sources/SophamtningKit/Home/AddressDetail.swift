@@ -198,7 +198,7 @@ public struct AddressDetail: Equatable, Sendable {
             schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
             scheduleEnding: mode == .schedule ? ScheduleEnding.make(response?.schedule, today: today) : nil,
             otherDays: OtherDaysNote.make(response?.address.area),
-            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
+            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil, sourceName: sourceName),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
             reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
@@ -219,13 +219,14 @@ public struct AddressDetail: Equatable, Sendable {
     /// Utan kommande hämtningar. Gäller perioden fortfarande finns inga fler hämtningar i det publicerade schemat. Har den
     /// passerat har källan inte publicerat nästa period än. Källans orsak står med. Det säger aldrig att adressen saknas.
     /// Visas ett sparat schema efter ett fel (`afterError`) kan nästa period finnas hos källan utan att ha kommit fram,
-    /// så då står bara vad det senast hämtade schemat säger, aldrig att något saknas hos källan.
-    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate, afterError: Bool = false) -> NoUpcomingMessage {
+    /// så då står bara vad det senast hämtade schemat säger, aldrig att något saknas hos källan. En live-källa har ingen
+    /// period, och ett tomt svar från den betyder oftast att adressen saknar abonnemang, så texten hänvisar till källan.
+    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate, afterError: Bool = false, sourceName: String? = nil) -> NoUpcomingMessage {
         let title = "Inga kommande hämtningar"
         guard let period else {
             let message = afterError
                 ? "Det senast hämtade schemat har inga fler hämtningar."
-                : "Schemat kan ta slut tills kommunen har publicerat nästa period."
+                : "Källan visar inga hämtningar för adressen just nu. Stämmer det inte, kontakta \(sourceName?.trimmedNonEmpty ?? "den som ansvarar för hämtningen")."
             return NoUpcomingMessage(title: title, message: message)
         }
         let until = SwedishFormat.dayMonthYear(period.until)
