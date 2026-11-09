@@ -286,7 +286,7 @@ public struct AddressDetail: Equatable, Sendable {
     /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.
     public static func missedReminder(events: [PickupEvent], settings: ReminderSettings, now: Date) -> String? {
         let today = StockholmClock.today(now: now)
-        let minutes = ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : 1080
+        let minutes = ReminderSettings.isValid(minutes: settings.reminderMinutes, for: .eveningBefore) ? settings.reminderMinutes : 1080
         guard events.contains(where: { $0.date == today.adding(days: 1) && !$0.fractions.isEmpty }),
               StockholmClock.date(on: today, minutes: minutes) <= now
         else { return nil }

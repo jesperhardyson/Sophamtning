@@ -182,7 +182,7 @@ public enum ReminderPlanner {
 
     /// Ogiltig tid ger standardtiden, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
     private static func effectiveMinutes(_ settings: ReminderSettings) -> Int {
-        ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : defaultReminderMinutes
+        ReminderSettings.isValid(minutes: settings.reminderMinutes, for: .eveningBefore) ? settings.reminderMinutes : defaultReminderMinutes
     }
 
     /// En tömningsdag, med händelser samma dag ihopslagna.

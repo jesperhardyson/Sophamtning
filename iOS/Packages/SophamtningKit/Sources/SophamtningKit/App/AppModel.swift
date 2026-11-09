@@ -389,7 +389,7 @@ public final class AppModel {
     /// Giltig tid är 15:00 till 23:00 i steg om 15 minuter. Annars, eller vid lagringsfel, är allt kvar som förut.
     @discardableResult
     public func setReminderMinutes(_ minutes: Int) -> Bool {
-        guard ReminderSettings.isValid(minutes: minutes) else { return false }
+        guard ReminderSettings.isValid(minutes: minutes, for: .eveningBefore) else { return false }
         var updated = settings
         updated.reminderMinutes = minutes
         guard saveSettings(updated) else { return false }
