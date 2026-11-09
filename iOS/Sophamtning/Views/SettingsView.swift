@@ -81,7 +81,7 @@ struct SettingsView: View {
             heading("Påminnelser")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.time) {
-                    SettingsRow(title: "Påminnelsetid", value: SwedishFormat.clock(minutes: model.settings.reminderMinutes))
+                    SettingsRow(title: "Påminnelse", value: model.settings.timing.settingsValue(minutes: model.settings.activeMinutes))
                 }
                 if let primary = model.addresses.first(where: \.isPrimary) {
                     ResultDivider()
@@ -100,7 +100,7 @@ struct SettingsView: View {
                 MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
                     .padding(.top, 12)
             }
-            Text("Påminnelsetiden gäller kvällen före, mellan 15:00 och 23:00. En Live Activity försvinner senast 12 timmar efter starten, så en sen tid håller den kvar längre på morgonen. Notiser väljer du per adress.")
+            Text(model.settings.timing.settingsFooter)
                 .font(.ui(16, weight: .semibold, relativeTo: .footnote))
                 .foregroundStyle(Color.Theme.text2)
                 .padding(.top, 16)
@@ -242,10 +242,10 @@ private struct ChoiceRow: View {
     }
 }
 
-/// 15:00 till 23:00 i steg om 15 minuter. Går sparandet fel visas felet och valet är kvar som förut.
+/// När påminnelsen kommer, kvällen före eller samma morgon, och tiden för det valda i steg om 15 minuter. Går sparandet fel
+/// visas felet och valet är kvar som förut.
 private struct ReminderTimeView: View {
     let model: AppModel
-    private let times = Array(stride(from: 15 * 60, through: 23 * 60, by: 15))
 
     var body: some View {
         ZStack {
@@ -258,22 +258,47 @@ private struct ReminderTimeView: View {
                         }
                         .buttonStyle(.pressable)
                     }
+                    section("När")
                     ResultList {
-                        ForEach(Array(times.enumerated()), id: \.element) { index, minutes in
+                        ForEach(Array(ReminderTiming.allCases.enumerated()), id: \.element) { index, timing in
                             if index > 0 { ResultDivider() }
-                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.reminderMinutes) {
+                            ChoiceRow(title: timing.title, selected: timing == model.settings.timing) {
+                                model.clearStorageError()
+                                model.setReminderTiming(timing)
+                            }
+                        }
+                    }
+                    section("Tid")
+                    ResultList {
+                        ForEach(Array(model.settings.timing.times.enumerated()), id: \.element) { index, minutes in
+                            if index > 0 { ResultDivider() }
+                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.activeMinutes) {
                                 model.clearStorageError()
                                 model.setReminderMinutes(minutes)
                             }
                         }
                     }
+                    Text(model.settings.timing.settingsFooter)
+                        .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(Color.Theme.text2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
                 }
                 .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
             }
         }
-        .navigationTitle("Påminnelsetid")
+        .navigationTitle("Påminnelse")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    private func section(_ title: String) -> some View {
+        Text(title)
+            .font(.ui(20, weight: .heavy, relativeTo: .title3))
+            .foregroundStyle(Color.Theme.text)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

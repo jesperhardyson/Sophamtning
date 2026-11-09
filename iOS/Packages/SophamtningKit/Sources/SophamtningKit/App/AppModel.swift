@@ -386,12 +386,28 @@ public final class AppModel {
         applyReminders()
     }
 
-    /// Giltig tid är 15:00 till 23:00 i steg om 15 minuter. Annars, eller vid lagringsfel, är allt kvar som förut.
+    /// Tiden för det valda: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
+    /// lagringsfel, är allt kvar som förut. Den andra tiden rörs inte, så ett byte tillbaka ger den förra tiden.
     @discardableResult
     public func setReminderMinutes(_ minutes: Int) -> Bool {
-        guard ReminderSettings.isValid(minutes: minutes, for: .eveningBefore) else { return false }
+        guard ReminderSettings.isValid(minutes: minutes, for: settings.timing) else { return false }
         var updated = settings
-        updated.reminderMinutes = minutes
+        switch settings.timing {
+        case .eveningBefore: updated.reminderMinutes = minutes
+        case .sameMorning: updated.morningMinutes = minutes
+        }
+        guard saveSettings(updated) else { return false }
+        applyReminders()
+        return true
+    }
+
+    /// Kvällen före eller samma morgon. Gäller notiser och Live Activity för alla adresser, men slår inte på något. Vid
+    /// lagringsfel är allt kvar som förut.
+    @discardableResult
+    public func setReminderTiming(_ timing: ReminderTiming) -> Bool {
+        guard timing != settings.timing else { return true }
+        var updated = settings
+        updated.timing = timing
         guard saveSettings(updated) else { return false }
         applyReminders()
         return true
