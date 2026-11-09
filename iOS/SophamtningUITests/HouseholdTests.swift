@@ -62,7 +62,7 @@ final class HouseholdTests: XCTestCase {
         app.launch()
         let mark = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Utställt av dig, kl.")).firstMatch
         XCTAssertTrue(mark.waitForExistence(timeout: 20), "Min bock ska visas")
-        XCTAssertTrue(mark.label.hasSuffix("väntar på att skickas"), "En bock som inte skickats ska läsas med klockan: \(mark.label)")
+        XCTAssertTrue(mark.label.hasSuffix("skickas när nätet finns"), "En bock som inte skickats ska läsas så: \(mark.label)")
         XCTAssertTrue(app.buttons["Ångra"].exists)
     }
 

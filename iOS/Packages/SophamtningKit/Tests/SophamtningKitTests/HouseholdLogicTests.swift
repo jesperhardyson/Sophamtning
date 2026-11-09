@@ -106,4 +106,30 @@ struct HouseholdLogicTests {
         let at = StockholmClock.date(on: today, minutes: 19 * 60 + 42)
         #expect(HouseholdTexts.placedOut(mark(home, "2026-11-11", by: "okand", at: at), participants: [], myId: "jag") == "Utställt av någon, kl. 19:42")
     }
+
+    @Test func undertextenSagerVemOchNar() {
+        let at = StockholmClock.date(on: today, minutes: 19 * 60 + 42)
+        let participants = [HouseholdParticipant(id: "jag", name: "Jesper", isOwner: true), HouseholdParticipant(id: "kim", name: "Kim", isOwner: false)]
+        #expect(HouseholdTexts.placedOutTitle == "Utställt")
+        #expect(HouseholdTexts.placedOutSubtitle(mark(home, "2026-11-11", by: "kim", at: at), participants: participants, myId: "jag") == "av Kim · kl. 19:42")
+        #expect(HouseholdTexts.placedOutSubtitle(mark(home, "2026-11-11", by: "jag", at: at), participants: participants, myId: "jag") == "av dig · kl. 19:42")
+        #expect(HouseholdTexts.placedOutSubtitle(mark(home, "2026-11-11", by: "okand", at: at), participants: participants, myId: "jag") == "av någon · kl. 19:42")
+        #expect(HouseholdTexts.pendingSubtitle == "skickas när nätet finns")
+    }
+
+    @Test func radenHarUndertextenOchVantandeText() {
+        let at = StockholmClock.date(on: today, minutes: 19 * 60 + 42)
+        var placed = mark(home, "2026-11-11", by: "kim", at: at)
+        let address = HouseholdAddress(address: SavedAddress.fixture(key: home, isPrimary: true), addedBy: "kim")
+        let participants = [HouseholdParticipant(id: "kim", name: "Kim", isOwner: true)]
+        var state = HouseholdState(role: .member, myId: "jag", participants: participants, addresses: [address], marks: [placed], status: .synced)
+        let line = HouseholdLine.make(household: state, key: home, nextPickup: DayDate("2026-11-11")!, today: today)
+        #expect(line?.placedOutSubtitle == "av Kim · kl. 19:42")
+        placed.isPending = true
+        state.marks = [placed]
+        let pending = HouseholdLine.make(household: state, key: home, nextPickup: DayDate("2026-11-11")!, today: today)
+        #expect(pending?.placedOutSubtitle == HouseholdTexts.pendingSubtitle)
+        // VoiceOver läser fortfarande hela meningen.
+        #expect(pending?.placedOutText == "Utställt av Kim, kl. 19:42")
+    }
 }

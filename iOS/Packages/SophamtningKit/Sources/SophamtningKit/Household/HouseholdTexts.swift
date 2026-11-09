@@ -4,6 +4,24 @@ import Foundation
 public enum HouseholdTexts {
     /// "Utställt av Kim, kl. 19:42". Klockslaget är svensk tid. Ett okänt id visas som "någon".
     public static func placedOut(_ mark: HouseholdMark, participants: [HouseholdParticipant], myId: String?) -> String {
+        let (who, time) = whoAndTime(mark, participants: participants, myId: myId)
+        return "Utställt av \(who), kl. \(time)"
+    }
+
+    /// Rubriken i raden för en bock.
+    public static let placedOutTitle = "Utställt"
+
+    /// Raden under "Utställt": "av Kim · kl. 19:42", "av dig · kl. 19:42" eller "av någon · kl. 19:42".
+    public static func placedOutSubtitle(_ mark: HouseholdMark, participants: [HouseholdParticipant], myId: String?) -> String {
+        let (who, time) = whoAndTime(mark, participants: participants, myId: myId)
+        return "av \(who) · kl. \(time)"
+    }
+
+    /// Undertexten för en bock som inte har nått iCloud än.
+    public static let pendingSubtitle = "skickas när nätet finns"
+
+    /// Vem som ställde ut, och klockslaget i svensk tid.
+    private static func whoAndTime(_ mark: HouseholdMark, participants: [HouseholdParticipant], myId: String?) -> (String, String) {
         let who: String
         if mark.by == myId {
             who = "dig"
@@ -11,8 +29,7 @@ public enum HouseholdTexts {
             who = participants.first { $0.id == mark.by }?.name ?? "någon"
         }
         let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: mark.at)
-        let time = SwedishFormat.clock(minutes: parts.hour! * 60 + parts.minute!)
-        return "Utställt av \(who), kl. \(time)"
+        return (who, SwedishFormat.clock(minutes: parts.hour! * 60 + parts.minute!))
     }
 
     public static func othersPlacedOutNotification(name: String, address: String) -> String {
@@ -63,7 +80,6 @@ public enum HouseholdTexts {
     public static let notSignedInNote = "Logga in på iCloud och låt Sophämtning använda iCloud i Inställningar. De delade adresserna visas som de senast sparades."
     public static let shared = "Delas med hushållet"
     public static let shareNote = "Alla i hushållet ser adressen och kan ställa ut kärlen."
-    public static let pending = "Väntar på att skickas"
     public static let widgetPlacedOut = "Utställt"
     public static let leaveConfirm = "Lämna hushållet?"
     public static let leaveConfirmMessage = "Adresserna finns kvar som dina egna. Bockarna för Utställt försvinner."

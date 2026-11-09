@@ -340,22 +340,11 @@ struct HouseholdPlaceOutRow: View {
     }
 
     private var foreground: Color { onCard ? Color.Theme.onPrimary : Color.Theme.text }
-    private var accent: Color { onCard ? Color.Theme.onPrimary : Color.Theme.brandText }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let text = line.placedOutText {
-                mark(text)
-                Button { onUndo() } label: {
-                    Text(HouseholdTexts.undo)
-                        .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                        .foregroundStyle(onCard ? Color.Theme.onPrimary : Color.Theme.primary)
-                        .underline(onCard)
-                        .frame(minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(HouseholdTexts.undoHint)
+                placedOutRow(text)
             } else if line.showsButton {
                 Button { onPlaceOut() } label: { placeOutLabel }
                     .buttonStyle(.pressable)
@@ -382,19 +371,61 @@ struct HouseholdPlaceOutRow: View {
         .onTapGesture {}
     }
 
-    /// "Utställt av Kim, kl. 19:42" med en bock, och en klocka när bocken inte har skickats än. Läses som en rad.
+    /// Bocken som en rad: en bock i en cirkel, **Utställt** och under det vem och när, med **Ångra** till höger. Vid största
+    /// text står Ångra under texten i full bredd. VoiceOver läser bocken som en mening, med Ångra som åtgärd.
+    @ViewBuilder
+    private func placedOutRow(_ text: String) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                mark(text)
+                undoButton(fullWidth: true)
+            }
+        } else {
+            HStack(alignment: .center, spacing: 12) {
+                mark(text)
+                Spacer(minLength: 8)
+                undoButton(fullWidth: false)
+            }
+        }
+    }
+
     private func mark(_ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        // Vid största text står bocken vid rubriken i stället för mitt i den höga texten.
+        HStack(alignment: typeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
+            // Vit cirkel med grön bock på det gröna kortet, och grön cirkel med vit bock på en vanlig yta.
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(.body, weight: .semibold))
-                .foregroundStyle(accent)
-            // Vid största text står klockan i texten, så att den bryts med orden i stället för att ta en egen spalt.
-            let inlineClock = line.isPending && typeSize.isAccessibilitySize
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(
+                    onCard ? Color.Theme.primary : Color.Theme.onPrimary,
+                    onCard ? Color.Theme.onPrimary : Color.Theme.primary
+                )
+                .font(.system(.title2, weight: .semibold))
+            VStack(alignment: .leading, spacing: 2) {
+                title
+                if let subtitle = line.placedOutSubtitle {
+                    Text(subtitle)
+                        .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
+                        .foregroundStyle(onCard ? foreground.opacity(0.85) : Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(line.isPending ? "\(text), \(HouseholdTexts.pendingSubtitle)" : text)
+        .accessibilityAction(named: HouseholdTexts.undo) { onUndo() }
+    }
+
+    /// "Utställt", med en klocka efter när bocken inte har skickats än. Vid största text står klockan i texten, så att den
+    /// bryts med orden i stället för att ta en egen spalt.
+    @ViewBuilder
+    private var title: some View {
+        let inlineClock = line.isPending && typeSize.isAccessibilitySize
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Group {
                 if inlineClock {
-                    Text("\(text) \(Image(systemName: "clock"))")
+                    Text("\(HouseholdTexts.placedOutTitle) \(Image(systemName: "clock"))")
                 } else {
-                    Text(text)
+                    Text(HouseholdTexts.placedOutTitle)
                 }
             }
             .font(.ui(17, weight: .heavy, relativeTo: .headline))
@@ -406,8 +437,20 @@ struct HouseholdPlaceOutRow: View {
                     .foregroundStyle(onCard ? foreground.opacity(0.85) : Color.Theme.text2)
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(line.isPending ? "\(text), \(HouseholdTexts.pending.lowercased())" : text)
+    }
+
+    /// En liten kapselknapp, som systemets. På det gröna kortet är den ljus.
+    private func undoButton(fullWidth: Bool) -> some View {
+        Button { onUndo() } label: {
+            Text(HouseholdTexts.undo)
+                .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                .frame(maxWidth: fullWidth ? .infinity : nil)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .controlSize(fullWidth ? .regular : .small)
+        .tint(onCard ? Color.Theme.onPrimary : Color.Theme.primary)
+        .accessibilityHint(HouseholdTexts.undoHint)
     }
 
     @ViewBuilder

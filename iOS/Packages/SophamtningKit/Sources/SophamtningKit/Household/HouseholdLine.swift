@@ -8,15 +8,18 @@ public struct HouseholdLine: Equatable, Sendable {
     public var showsButton: Bool
     /// "Utställt av Kim, kl. 19:42", när nästa tömning har en bock.
     public var placedOutText: String?
+    /// Raden under "Utställt": "av Kim · kl. 19:42", eller "skickas när nätet finns" för en bock som väntar.
+    public var placedOutSubtitle: String?
     /// Bocken har inte nått iCloud än, och en klocka visas bredvid den.
     public var isPending: Bool
     /// Hushållets läge när något inte fungerar, annars `nil`.
     public var statusText: String?
 
-    public init(isShared: Bool, showsButton: Bool, placedOutText: String?, isPending: Bool, statusText: String?) {
+    public init(isShared: Bool, showsButton: Bool, placedOutText: String?, placedOutSubtitle: String? = nil, isPending: Bool, statusText: String?) {
         self.isShared = isShared
         self.showsButton = showsButton
         self.placedOutText = placedOutText
+        self.placedOutSubtitle = placedOutSubtitle
         self.isPending = isPending
         self.statusText = statusText
     }
@@ -31,6 +34,9 @@ public struct HouseholdLine: Equatable, Sendable {
             isShared: isShared,
             showsButton: mark == nil && HouseholdLogic.showsPlaceOutButton(isShared: isShared, nextPickup: nextPickup, today: today),
             placedOutText: mark.map { HouseholdTexts.placedOut($0, participants: household.participants, myId: household.myId) },
+            placedOutSubtitle: mark.map {
+                $0.isPending ? HouseholdTexts.pendingSubtitle : HouseholdTexts.placedOutSubtitle($0, participants: household.participants, myId: household.myId)
+            },
             isPending: mark?.isPending ?? false,
             statusText: HouseholdTexts.status(household.status)
         )
