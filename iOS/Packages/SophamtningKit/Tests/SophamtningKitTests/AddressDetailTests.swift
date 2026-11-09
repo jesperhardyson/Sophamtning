@@ -493,3 +493,40 @@ private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("
     let result = detail(try periodSchedule([event("2026-11-09", ["rest"])], until: "2026-11-21"), now: early)
     #expect(result.scheduleEnding?.daysLeft == 14)
 }
+
+// MARK: Påminnelser utan hämtningar
+
+private func reminderDetail(_ schedule: CachedSchedule?, notificationsOn: Bool = false, isPrimary: Bool = true, liveActivityOn: Bool = false) -> AddressDetail {
+    var saved = address
+    saved.notificationsOn = notificationsOn
+    saved.isPrimary = isPrimary
+    return AddressDetail.make(address: saved, schedule: schedule, settings: ReminderSettings(liveActivityOn: liveActivityOn), sourceName: "Uppsala Vatten", now: noon)
+}
+
+@Test func paminnelserVisasMedHamtningar() throws {
+    #expect(reminderDetail(try schedule([event("2026-11-09", ["rest"])])).showsReminders)
+}
+
+@Test func paminnelserDoljsUtanHamtningar() throws {
+    let result = reminderDetail(try schedule([]))
+    #expect(result.mode == .noUpcoming)
+    #expect(!result.showsReminders)
+}
+
+@Test func paminnelserVisasUtanHamtningarNarNotisenArPa() throws {
+    let result = reminderDetail(try schedule([]), notificationsOn: true)
+    #expect(result.showsReminders)
+    #expect(result.reminderText == "Inga hämtningar att påminna om just nu.")
+}
+
+@Test func paminnelserVisasUtanHamtningarNarLiveActivityArPaForHuvudadressen() throws {
+    let primary = reminderDetail(try schedule([]), liveActivityOn: true)
+    #expect(primary.showsReminders)
+    #expect(primary.liveActivityText == "Inga hämtningar att påminna om just nu.")
+    // Live Activity gäller bara huvudadressen.
+    #expect(!reminderDetail(try schedule([]), isPrimary: false, liveActivityOn: true).showsReminders)
+}
+
+@Test func paminnelserVisasInteMedanSchematLaddas() {
+    #expect(!reminderDetail(nil, notificationsOn: true).showsReminders)
+}
