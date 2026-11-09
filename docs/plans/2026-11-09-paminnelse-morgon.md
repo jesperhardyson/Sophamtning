@@ -12,7 +12,7 @@
 
 ## Förutsättningar
 
-- Koden byggs på `main` först när UX-PR:erna #49–#58 och `feature/hushall` är mergade. Planen utgår från namnen de inför: `HomeContent.reminderTitle`, `HomeContent.reminderActionTitle(isOn:)` (#50) och `ReminderSettings.reminderOfferShown` med egen `init(from:)` (#53).
+- UX-PR:erna #49–#58 är mergade, och koden byggs på `main` när `feature/hushall` också är mergat. Planen utgår från namnen de inför: `HomeContent.reminderTitle`, `HomeContent.reminderActionTitle(isOn:)` (#50) och `ReminderSettings.reminderOfferShown` med egen `init(from:)` (#53).
 - Ny gren från `main`: `feature/paminnelse-morgon-kod`. Specen och planen mergas med #59 först, som `docs:`. Kodens PR heter `feat: Påminnelse på morgonen`.
 - Innan Uppgift 1: läs `git log main -- iOS/Packages/SophamtningKit/Sources/SophamtningKit/Reminders/ReminderPlanner.swift`. Har hushållet ändrat hur `placedOut` byggs är det bara indata. Planeraren ska inte veta något om hushållet.
 
@@ -221,7 +221,8 @@ git commit -am "feat: Live Activity samma morgon som tömningen"
   - `settingsFooter: String` ger de två texterna under listan, ordagrant från specen.
   - `missedText: String` ger "Tömning i morgon. Påminnelsen för i kväll har redan passerat." eller "Tömning i dag. Påminnelsen för i morse har redan passerat."
 - Ändrar:
-  - `HomeContent.reminderTitle` och `HomeContent.reminderActionTitle(isOn:)` från #50 tar `timing: ReminderTiming` och använder texterna ovan. Alla anrop i appen (huvudkortet, `AddressView` och `AddressQuickActions`) skickar `model.settings.timing`.
+  - Konstanten `HomeContent.reminderTitle` från #50 blir `static func reminderTitle(timing: ReminderTiming) -> String`, och `reminderActionTitle(isOn:)` blir `reminderActionTitle(isOn: Bool, timing: ReminderTiming)`. Båda använder texterna ovan. Alla anrop i appen (huvudkortet, `AddressView` och `AddressQuickActions`) skickar `model.settings.timing`.
+  - `RowReminder.offTitle` tas bort. `RowReminder.init(text:isOn:isDenied:)` får `timing: ReminderTiming` och jämför `text` med `timing.toggleTitle`. Annars blir morgonens inbjudan en rad under en tom rubrik.
   - `AddressDetail.missedReminder(events:settings:now:)` gäller tömningen `ReminderTime.pickupDay(remindedOn: today, timing:)`.
   - `AppModel.missedReminderApplies(to:)` använder samma dag i stället för `today.adding(days: 1)`.
 
@@ -249,7 +250,7 @@ I `AddressDetailTests`, med tömning onsdag 2026-11-11 och morgonval 06:00:
 - `reserveText(stockholm("2026-11-11T06:45"), timing: .sameMorning)` ger "Onsdag kl. 06:45, samma dag som tömningen, om aktiviteten inte syns."
 - `liveActivityText` börjar med "Visas på låsskärmen från kl. 06:00 samma morgon."
 
-I `HomeContentTests`: "Påminnelse onsdag kl. 06:00" med morgonval och `now` tisdag 20:00, och "Påminn mig samma morgon" när påminnelsen är av.
+I `HomeContentTests`: "Påminnelse onsdag kl. 06:00" med morgonval och `now` tisdag 20:00, och "Påminn mig samma morgon" när påminnelsen är av. Med morgonval och påminnelsen av ska `RowReminder` ha `title == "Påminn mig samma morgon"`, och ingen rad under.
 
 I `AppModelRemindersTests`: `missedReminderText` gäller dagens tömning med morgonval, och `nil` när tömningen i dag är utställd.
 
