@@ -157,6 +157,41 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 - [ ] **45. Kalenderbladet på morgonen.** Starta appen från början på morgonen efter en tömning: kalenderbladet vänds från dagens datum till nästa tömningsdag (se punkt 5). Hämtas ett nytt schema medan appen är öppen och nästa tömning byter datum, vänds bladet även då.
 - [ ] **46. Morgonen i appen.** Hemkortet visar inte längre **Live Activity visas nu** eller en gammal reservpåminnelse. Texten **Reservpåminnelse** visas bara när en reservnotis ligger framför.
 
+## Hushåll
+
+Kräver ett bygge med iCloud-behörigheten och containern `iCloud.se.hardyson.sophamtning`. Punkterna har nummer H1 och uppåt, så att de övriga hänvisningarna i listan inte ändras. CloudKit körs inte i UI-testerna, så allt nedan är ostött på riktig iCloud. Schemat skapas i Development när posterna skrivs första gången, och flyttas till Production före TestFlight (se `docs/specs/2026-11-08-release.md`).
+
+### Med ett konto
+
+iPhonen och simulatorn är inloggade med samma Apple-konto. Det räcker för det som inte kräver en andra person.
+
+- [ ] **H1. Hemkortets snabbval med VoiceOver.** Med VoiceOver på huvudkortet nås **Byt namn**, **Gör till huvudadress** (bara på en rad), notis kvällen före, Live Activity och **Ta bort**. Raden **Utställt** läses som ett enda element, med **Ångra** som åtgärd. **Ångra** nås inte två gånger på ett förvirrande sätt, till exempel både som eget element och som åtgärd på raden.
+- [ ] **H2. Tryck på Utställt-raden.** Ett tryck på raden **Utställt** öppnar inte adressen. **Ångra** på raden tar bort bocken.
+- [ ] **H3. Bjud in.** Inställningar, Hushåll, **Bjud in**. Delningsarket med samarbete visas, och länken går att skicka via Meddelanden. Arket och Meddelanden stängs inte av sig självt när du blir ägare. Stänger och öppnar du arket visas du som ägare.
+- [ ] **H4. Hantera medlemmar.** `UICloudSharingController` visas modalt med innehåll, och arket finns kvar när det stängts.
+- [ ] **H5. iCloud utloggat.** Logga ut ur iCloud, eller stäng av iCloud för appen. Hushållet visar **Synkar inte just nu** med det som låg i cachen kvar. Logga in igen: allt hämtas på nytt, och adresserna står kvar hela tiden tills hämtningen är klar.
+- [ ] **H6. Avbruten första hämtning.** Stäng appen (döda processen) mitt i den första hämtningen hos en medlem och starta om den utan nät. Ingen rad om att du inte längre är med visas, och adresserna står kvar. Med nät hämtas allt.
+- [ ] **H7. Motorernas tillstånd.** Starta appen utan nät två gånger efter en lyckad hämtning. Båda filerna `household-engine-*.data` finns. Saknas en börjar synken om vid varje start, och hushållet visas först efter hämtning.
+- [ ] **H8. Utställt vid hämtdatum.** Gamla `Utstallt`-poster tas bort dagen efter hämtdatumet.
+- [ ] **H9. Bakgrundsuppdatering.** Bakgrundsuppdateringen hämtar hushållet (simulera BG-tasken från Xcode).
+- [ ] **H10. Fullt iCloud.** Ägarens iCloud är fullt. Det är svårt att framkalla, så granska åtminstone texten.
+- [ ] **H11. Push i TestFlight-bygget.** `aps-environment` är `production` i TestFlight-bygget. I `project.yml` står `development`, och profilen ska sätta `production` vid export. Kontrollera i bygget som laddats ner från TestFlight.
+
+### Med två konton
+
+Kräver en andra person eller en andra telefon med ett annat Apple-konto. A bjuder in, B är medlem.
+
+- [ ] **H12. Acceptera inbjudan.** B utan hushåll öppnar länken, både med appen igång och med appen avslutad (kallstart). B blir medlem utan fråga, och båda ser varandra med namn i arket. B:s andra enheter ser också deltagarna.
+- [ ] **H13. Redan i ett hushåll.** B är redan med i ett annat hushåll och öppnar länken. Frågan **Du är redan med i ett hushåll** visas. Det gäller också när appen kallstartas från länken, och medan Inställningar eller Hushåll är öppet (frågan ligger ovanpå arket). **Avbryt** gör ingenting. **Lämna och gå med** lämnar det gamla hushållet och accepterar det nya. Öppnas en ny länk medan frågan väntar ersätter den den gamla.
+- [ ] **H14. Dela en adress.** A delar en adress: den kommer till B med hushållsikon. B slutar dela den: den försvinner hos A, om den inte var A:s egen.
+- [ ] **H15. Ställ ut kärlen.** A trycker **Ställ ut kärlen**: bocken syns hos B med A:s namn och tid, med tyst push eller när appen öppnas. **Ångra** på B tar bort bocken hos A, och A:s påminnelse kommer tillbaka.
+- [ ] **H16. Tystad påminnelse.** Med **Tysta min påminnelse när någon annan har ställt ut** på (förvalet) kommer ingen påminnelse hos B när A har ställt ut. Med valet av kommer den. **Ångra** återställer påminnelsen.
+- [ ] **H17. Samtidiga tryck.** Flygplansläge på ena telefonen, tryck **Ställ ut kärlen** på båda och slå på nätet: en bock finns kvar, den första vinner. Klockan och **skickas när nätet finns** visas medan bocken väntar.
+- [ ] **H18. Ångra och ställ ut igen.** Ångra och ställ ut igen snabbt, också offline: slutläget stämmer, alltså bocken finns om den sist ställdes ut.
+- [ ] **H19. Notis när någon ställer ut.** Med **Notis när någon ställer ut kärlen** på hos B kommer en notis per bock. Ingen notis kommer för egna bockar, och inte på samma kontos andra enhet.
+- [ ] **H20. Ta bort en medlem.** A tar bort B under **Hantera medlemmar**: B får raden om att inte längre vara med, och adresserna blir kvar. **Sluta dela** avslutar hushållet för B.
+- [ ] **H21. Lämna och avsluta.** B trycker **Lämna hushållet**: A ser B försvinna. A trycker **Avsluta hushållet**: B får raden om att hushållet är avslutat, och adresserna blir kvar.
+
 ## När listan är körd
 
 Bocka av steg 8 i uppgift 14 i `docs/plans/2026-11-06-ios-app.md` (**Kontrollera på riktig telefon**) när testet är gjort. Ändrar utfallet något i `docs/specs/2026-11-06-ios-app.md` (till exempel att iOS frågar om liveaktiviteter, eller att skärmen inte tänds) ska specen ändras, och ändringen godkännas av Jesper innan bygget fortsätter.
