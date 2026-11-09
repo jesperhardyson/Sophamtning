@@ -669,3 +669,14 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
     #expect(content.others[0].scheduleEnding == nil)
     #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
 }
+
+@Test func ingaKommandeHamtningarArNeutral() throws {
+    let none = try #require(make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(none.summaryTone == .neutral)
+    let upcoming = try #require(make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(upcoming.summaryTone == .date)
+    let loading = try #require(make([home], [:]).primary)
+    #expect(loading.summaryTone == .neutral)
+    let failed = try #require(make([home], [home.key: CachedSchedule(response: nil, fetchedAt: nil, lastAttemptAt: now, lastError: .network)]).primary)
+    #expect(failed.summaryTone == .warning)
+}

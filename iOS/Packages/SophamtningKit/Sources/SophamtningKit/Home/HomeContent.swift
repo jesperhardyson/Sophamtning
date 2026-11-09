@@ -143,6 +143,19 @@ public struct HomeContent: Equatable, Sendable {
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
 
+        /// Hur raden under adressen visas: som ett datum, som en lugn statustext eller som en varning.
+        public enum SummaryTone: Sendable { case date, neutral, warning }
+
+        /// "Inga kommande hämtningar" och "Hämtar schema…" är neutrala, så att de inte ser ut som ett datum. Ett
+        /// misslyckat försök utan sparat schema är en varning.
+        public var summaryTone: SummaryTone {
+            switch status {
+            case .upcoming: .date
+            case .noUpcoming, .loading: .neutral
+            case .failed: .warning
+            }
+        }
+
         public var id: AddressKey { key }
 
         /// Raden under datumet på huvudkortet när nästa tömning är i dag. `nil` alla andra dagar.
