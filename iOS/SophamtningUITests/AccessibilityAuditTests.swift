@@ -82,7 +82,7 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         audit("hem")
         card.tap()
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         audit("adress-ovre")
         app.swipeUp()
         audit("adress-mitt")

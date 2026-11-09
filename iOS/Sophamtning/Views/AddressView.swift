@@ -250,25 +250,20 @@ struct AddressView: View {
         .buttonStyle(.pressable)
     }
 
-    /// Nästa tömning per kärl, som kort i sidled. Nästa kort syns till hälften, så att det märks att det går att scrolla.
+    /// Nästa tömning per kärl, en rad per kärl.
     @ViewBuilder
     private func bins(_ detail: AddressDetail) -> some View {
-        sectionTitle("Kärlen")
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: BinCardMetrics.spacing) {
-                ForEach(Array(detail.bins.enumerated()), id: \.element.id) { index, bin in
-                    // Kortet väljer själv sin bredd efter namnet.
-                    BinCard(bin: bin)
-                        .rowEntrance(shown: binsRevealed || !entrancePlays || voiceOver, index: index)
+        sectionTitle("Per kärl")
+        // En rad per kärl i ett kort, som Kommande. Visar när kärl som töms sällan töms nästa gång.
+        ResultList {
+            ForEach(Array(detail.bins.enumerated()), id: \.element.id) { index, bin in
+                VStack(spacing: 0) {
+                    if index > 0 { ResultDivider() }
+                    BinRow(bin: bin)
                 }
+                .rowEntrance(shown: binsRevealed || !entrancePlays || voiceOver, index: index)
             }
-            .scrollTargetLayout()
         }
-        .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.viewAligned)
-        .contentMargins(.horizontal, PageMargin.horizontal, for: .scrollContent)
-        // Korten går ut till skärmens kant, medan resten av vyn har marginal.
-        .padding(.horizontal, -PageMargin.horizontal)
         .onScrollVisibilityChange(threshold: 0.02) { visible in
             if visible { binsRevealed = true }
         }

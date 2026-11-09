@@ -25,7 +25,7 @@ final class QuickActionsTests: XCTestCase {
         let button = app.buttons["svep-ta-bort"]
         XCTAssertTrue(button.waitForExistence(timeout: 3), "Svepet ska visa Ta bort")
         XCTAssertLessThan(row.frame.minX, start - 60, "Raden ska stå öppen")
-        XCTAssertFalse(app.staticTexts["Kärlen"].exists, "Svepet får inte öppna adressen")
+        XCTAssertFalse(app.staticTexts["Per kärl"].exists, "Svepet får inte öppna adressen")
         button.tap()
 
         XCTAssertTrue(app.staticTexts["Ta bort adressen?"].waitForExistence(timeout: 3), "Bekräftelsen ska visas")
