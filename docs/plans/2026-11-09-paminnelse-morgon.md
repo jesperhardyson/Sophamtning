@@ -14,7 +14,11 @@
 
 - UX-PR:erna #49–#58 är mergade, och koden byggs på `main` när `feature/hushall` också är mergat. Planen utgår från namnen de inför: `HomeContent.reminderTitle`, `HomeContent.reminderActionTitle(isOn:)` (#50) och `ReminderSettings.reminderOfferShown` med egen `init(from:)` (#53).
 - Ny gren från `main`: `feature/paminnelse-morgon-kod`. Specen och planen mergas med #59 först, som `docs:`. Kodens PR heter `feat: Påminnelse på morgonen`.
-- Innan Uppgift 1: läs `git log main -- iOS/Packages/SophamtningKit/Sources/SophamtningKit/Reminders/ReminderPlanner.swift`. Har hushållet ändrat hur `placedOut` byggs är det bara indata. Planeraren ska inte veta något om hushållet.
+- Hushållet (#60) är genomläst i utkastet. Det rör inte tidsberäkningen. Andras bockar kommer in som `placedOut`, och `activityContent(on:input:household:)` visar bocken.
+  - `AddressDetail.make` och `HomeContent.make` får parametern `household:` med förval. Testerna i planen kan låta bli att ange den.
+  - `SettingsView` får delen Hushåll direkt efter Påminnelser. Uppgift 5 ändrar bara delen Påminnelser och sidan för tiden.
+  - Hushållets spec säger att påminnelsetiden är per person. Det gäller också valet mellan kvällen och morgonen, och inget av dem delas.
+  - Innan Uppgift 1: läs `git log main -- iOS/Packages/SophamtningKit/Sources/SophamtningKit/Reminders/` och kontrollera att det mergade hushållet inte avviker från detta.
 
 ## Globala krav
 
