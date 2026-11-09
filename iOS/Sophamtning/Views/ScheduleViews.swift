@@ -77,7 +77,7 @@ struct ScheduleRowView: View {
     private var chips: some View {
         FlowLayout(spacing: 6) {
             ForEach(row.fractions) { fraction in
-                FractionChip(id: fraction.id, info: fraction.info, short: true)
+                FractionChip(id: fraction.id, info: fraction.info)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

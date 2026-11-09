@@ -542,7 +542,7 @@ private struct AddressRow: View {
         case .upcoming(let pickup):
             FlowLayout(spacing: 6) {
                 ForEach(pickup.fractions) { fraction in
-                    FractionChip(id: fraction.id, info: fraction.info, short: true)
+                    FractionChip(id: fraction.id, info: fraction.info)
                 }
             }
             .accessibilityHidden(true)
