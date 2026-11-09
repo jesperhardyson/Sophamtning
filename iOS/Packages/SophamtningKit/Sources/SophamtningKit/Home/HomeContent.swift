@@ -136,6 +136,14 @@ public struct HomeContent: Equatable, Sendable {
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
 
+        /// Raden under datumet på huvudkortet när nästa tömning är i dag. `nil` alla andra dagar.
+        public var dayNote: String? {
+            guard case .upcoming(let pickup) = status, pickup.daysUntil == 0 else { return nil }
+            return pickup.estimated
+                ? "Kärlen ska stå ute i dag, om tömningen kommer som beräknat."
+                : "Kärlen ska stå ute i dag."
+        }
+
         public var id: AddressKey { key }
 
         /// Alla fraktioner som text, så att VoiceOver kan läsa dem även när raden bara visar ikoner.
