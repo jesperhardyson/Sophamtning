@@ -24,7 +24,7 @@ public struct FractionStyle: Sendable {
         "karl": (.fracRest, .fracRestBg, "container"),
         "mat": (.fracMat, .fracMatBg, "apple"),
         "papper": (.fracPapper, .fracPapperBg, "package"),
-        "tidningar": (.fracPapper, .fracPapperBg, "newspaper"),
+        "tidningar": (.fracTidningar, .fracTidningarBg, "newspaper"),
         "plast": (.fracPlast, .fracPlastBg, "cup-soda"),
         "glas": (.fracGlas, .fracGlasBg, "wine"),
         "metall": (.fracMetall, .fracMetallBg, "cylinder"),
