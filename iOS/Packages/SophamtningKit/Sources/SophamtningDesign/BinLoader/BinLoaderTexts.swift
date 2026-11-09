@@ -1,12 +1,13 @@
 import Foundation
 
-/// Sopors roliga texter, ordagrant från `index.html`.
+/// Sopors roliga texter, ordagrant från `index.html`, plus Louies hälsning sist.
 public enum BinLoaderTexts {
     public static let all: [String] = [
         "Slänger rester från middagen…", "Äter upp det sista i kylen först…", "Tackar av gårdagens gratäng…", "Skrapar ur stekpannan…", "Bananen hann bli för brun…",
         "Plattar till pizzakartongen…", "Trycker ner en kartong till…", "Får inte ner lådan. Provar igen…", "Tar bort tejpen från paketet…", "Viker ihop nätshoppandet…",
         "Sköljer ur yoghurtburken…", "Letar efter rätt lock…", "Är det här ens plast?", "Klämmer ihop flaskan…", "Sköljer lagom mycket…",
         "Rullar ut kärlet till vägen…", "Oj, är det redan tömning i dag?", "Springer efter sopbilen…", "Hoppas på att grannen har plats…", "Lyfter på locket försiktigt…", "Sorterar som ett proffs…",
+        "Tjabba, tjena hallå! /Louie",
     ]
 
     /// En slumpad text som aldrig är samma som `current`.
