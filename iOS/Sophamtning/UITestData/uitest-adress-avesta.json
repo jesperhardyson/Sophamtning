@@ -113,6 +113,17 @@
       "deviation": null,
       "warning": null,
       "labels": {}
+    },
+    {
+      "date": "2027-01-08",
+      "fractions": [
+        "papper",
+        "mat"
+      ],
+      "estimated": false,
+      "deviation": null,
+      "warning": null,
+      "labels": {}
     }
   ],
   "bins": [],

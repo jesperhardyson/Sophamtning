@@ -140,7 +140,7 @@ struct AddressView: View {
     @ViewBuilder
     private func schedule(_ detail: AddressDetail) -> some View {
         if let next = detail.next {
-            nextCard(next)
+            nextCard(next, deviation: detail.nextDeviation)
         }
         if let warning = detail.nextWarning {
             MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Varning från källan", message: warning)
@@ -150,7 +150,7 @@ struct AddressView: View {
         bins(detail)
     }
 
-    private func nextCard(_ next: HomeContent.Pickup) -> some View {
+    private func nextCard(_ next: HomeContent.Pickup, deviation: String?) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             AdaptiveStack(spacing: 20) {
                 CalendarTile(date: next.date)
@@ -168,6 +168,12 @@ struct AddressView: View {
                     Text(next.longDate)
                         .font(.ui(17, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Color.Theme.text2)
+                    // Står här och inte under Kommande, som börjar efter nästa tömning.
+                    if let deviation {
+                        Text(deviation)
+                            .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                            .foregroundStyle(Color.Theme.warn)
+                    }
                 }
             }
             // Kärlen som töms den dagen, med färg, ikon och text. Raderna bryts när de inte får plats.
@@ -182,13 +188,16 @@ struct AddressView: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(next.accessibilityLabel)
+        .accessibilityLabel([next.accessibilityLabel, deviation].compactMap { $0 }.joined(separator: ". "))
     }
 
-    /// De tre närmaste datumen, och länken till hela schemat när det finns fler.
+    /// De tre närmaste datumen efter nästa tömning, och länken till hela schemat när det finns fler. Utan fler datum
+    /// än nästa tömning visas ingen rubrik, men raden om hur länge schemat gäller står kvar.
     @ViewBuilder
     private func upcoming(_ detail: AddressDetail) -> some View {
-        if typeSize.isAccessibilitySize {
+        if detail.upcoming.isEmpty {
+            EmptyView()
+        } else if typeSize.isAccessibilitySize {
             // Under varandra med största text, så att inget ord bryts mitt i.
             sectionTitle("Kommande")
             if detail.hasFullSchedule {
@@ -202,12 +211,14 @@ struct AddressView: View {
                 if detail.hasFullSchedule { fullScheduleLink }
             }
         }
-        ScheduleList(rows: detail.upcoming, shown: rowsRevealed || !entrancePlays || voiceOver)
-            .onScrollVisibilityChange(threshold: 0.02) { visible in
-                guard visible, !rowsRevealed else { return }
-                rowsRevealed = true
-                ShownSchedules.keys.markShown(key)
-            }
+        if !detail.upcoming.isEmpty {
+            ScheduleList(rows: detail.upcoming, shown: rowsRevealed || !entrancePlays || voiceOver)
+                .onScrollVisibilityChange(threshold: 0.02) { visible in
+                    guard visible, !rowsRevealed else { return }
+                    rowsRevealed = true
+                    ShownSchedules.keys.markShown(key)
+                }
+        }
         // Hur långt schemat gäller, direkt under de kommande tömningarna. Live-källor har ingen sådan rad.
         if let period = detail.schedulePeriod {
             SchedulePeriodView(line: period)
