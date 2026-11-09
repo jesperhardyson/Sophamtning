@@ -256,6 +256,14 @@ struct HomeView: View {
                 })
                 .padding(.top, Self.titleTopPadding)
                 .padding(.bottom, 12)
+            if model.showsReminderOffer {
+                ReminderOfferCard(
+                    onAccept: { setNotifications(true, for: primary.key) },
+                    onDecline: { withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.dismissReminderOffer() } }
+                )
+                .padding(.bottom, 16)
+                .transition(.opacity)
+            }
             AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
                 PrimaryCard(
                     entry: primary,
@@ -460,6 +468,56 @@ private struct HomeTitle: View {
 enum HomeSheet: String, Identifiable {
     case settings, add, kommun
     var id: String { rawValue }
+}
+
+/// "Vill du bli påmind?" efter att den första adressen har sparats. Påminnelser är avstängda från början, och kortet
+/// gör valet synligt utan att något schemaläggs förrän användaren trycker **Påminn mig**. Det visas en gång.
+private struct ReminderOfferCard: View {
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Vill du bli påmind?")
+                        .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                        .foregroundStyle(Color.Theme.text)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Få en notis kvällen före varje tömning. Du kan ändra det när som helst.")
+                        .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "bell.badge")
+                    .font(.system(.title3, weight: .semibold))
+                    .foregroundStyle(Color.Theme.primary)
+                    .accessibilityHidden(true)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { buttons }
+                VStack(spacing: 8) { buttons }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        Button(action: onAccept) { PrimaryButtonLabel(title: "Påminn mig") }
+            .buttonStyle(.pressable)
+        Button(action: onDecline) {
+            Text("Inte nu")
+                .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                .foregroundStyle(Color.Theme.primary)
+                .frame(maxWidth: .infinity, minHeight: 52)
+        }
+        .buttonStyle(.pressable)
+    }
 }
 
 /// En adress under "Fler adresser". Kärlen visas som chips med färg, ikon och kort namn, och raden läses upp med

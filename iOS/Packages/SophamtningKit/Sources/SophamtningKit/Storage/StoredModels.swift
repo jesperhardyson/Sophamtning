@@ -51,10 +51,25 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
     /// Minuter efter midnatt i Europe/Stockholm. 1080 är 18:00.
     public var reminderMinutes: Int
     public var liveActivityOn: Bool
+    /// Förslaget om påminnelse efter första adressen har visats och besvarats, eller en påminnelse har slagits på.
+    public var reminderOfferShown: Bool
 
-    public init(reminderMinutes: Int = 1080, liveActivityOn: Bool = false) {
+    public init(reminderMinutes: Int = 1080, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
         self.reminderMinutes = reminderMinutes
         self.liveActivityOn = liveActivityOn
+        self.reminderOfferShown = reminderOfferShown
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case reminderMinutes, liveActivityOn, reminderOfferShown
+    }
+
+    /// Inställningar sparade före `reminderOfferShown` saknar fältet och läses som att förslaget inte har visats.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        reminderMinutes = try container.decode(Int.self, forKey: .reminderMinutes)
+        liveActivityOn = try container.decode(Bool.self, forKey: .liveActivityOn)
+        reminderOfferShown = try container.decodeIfPresent(Bool.self, forKey: .reminderOfferShown) ?? false
     }
 
     /// Giltigt är 15:00 till 23:00 i steg om 15 minuter.

@@ -641,3 +641,65 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(restarted.addresses.count == 1)
     #expect(try Data(contentsOf: file) == good)
 }
+
+// MARK: Förslaget om påminnelse
+
+@Test @MainActor func forslagetVisasEfterForstaAdressen() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .notDetermined), directory: temp.url)
+    #expect(model.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetVisasInteUtanAdress() async throws {
+    let temp = TempDir()
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: FakeScheduler(status: .notDetermined))
+    #expect(!model.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetForsvinnerNarPaminnelsenSlasPaOchKommerInteTillbaka() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .notDetermined), directory: temp.url)
+    #expect(await model.setNotifications(true, for: key) == .granted)
+    #expect(!model.showsReminderOffer)
+    _ = await model.setNotifications(false, for: key)
+    #expect(!model.showsReminderOffer, "Förslaget visas bara en gång")
+}
+
+@Test @MainActor func inteNuDoljerForslagetAvenEfterOmstart() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .notDetermined)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    model.dismissReminderOffer()
+    #expect(!model.showsReminderOffer)
+    #expect(scheduler.requests == 0, "Inte nu frågar aldrig om tillstånd")
+    let again = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(!again.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetVisasInteNarNotiserArNekade() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .denied), directory: temp.url)
+    #expect(!model.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetVisasInteUtanKommandeHamtning() async throws {
+    // Huvudkortet har bara reglaget för påminnelsen när en hämtning kommer. Utan det kan förslaget inte visa vad som hände.
+    let temp = TempDir()
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse(events: ["2026-11-02"])), store: LocalStore(directory: temp.url), now: { now }, scheduler: FakeScheduler(status: .notDetermined))
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    await model.settleReminders()
+    #expect(!model.showsReminderOffer)
+}
+
+@Test @MainActor func paslagenPaminnelseGerIngetFelNarForslagetInteKanSparas() async throws {
+    // Påminnelsen är sparad även om inställningsfilen inte går att skriva. Då ska inget fel säga att inget ändrats.
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .notDetermined), directory: temp.url)
+    try? FileManager.default.removeItem(at: temp.url.appendingPathComponent("settings.json"))
+    try FileManager.default.createDirectory(at: temp.url.appendingPathComponent("settings.json"), withIntermediateDirectories: true)
+    #expect(await model.setNotifications(true, for: key) == .granted)
+    #expect(model.addresses[0].notificationsOn)
+    #expect(model.lastStorageError == nil)
+    #expect(!model.showsReminderOffer)
+}
