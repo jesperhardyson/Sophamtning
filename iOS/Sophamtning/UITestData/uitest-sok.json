@@ -36,6 +36,18 @@
       "notice": null,
       "areasUrl": null,
       "url": "https://sopor.hardyson.se/api/v1/adress/uppsala/testgatan-3_uppsala-0000003"
+    },
+    {
+      "id": "testgatan-4_uppsala-0000004",
+      "street": "Testgatan 4",
+      "locality": "Uppsala",
+      "kommun": "Uppsala kommun",
+      "source": "uppsala",
+      "detail": null,
+      "selection": "address",
+      "notice": null,
+      "areasUrl": null,
+      "url": "https://sopor.hardyson.se/api/v1/adress/uppsala/testgatan-4_uppsala-0000004"
     }
   ],
   "failed": []

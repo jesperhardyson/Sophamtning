@@ -482,6 +482,8 @@ private struct AddressRow: View {
             HStack(spacing: 12) {
                 fractions
                     .frame(maxWidth: .infinity, alignment: .leading)
+                // Utan chips är `fractions` tom och tar ingen plats. Avståndet håller ändå pilen till höger.
+                Spacer(minLength: 0)
                 chevron
             }
         }

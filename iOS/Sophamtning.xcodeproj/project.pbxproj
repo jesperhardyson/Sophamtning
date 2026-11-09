@@ -21,6 +21,7 @@
 		52A088583F18130CC2DA4C33 /* uitest-kallor.json in Resources */ = {isa = PBXBuildFile; fileRef = 57C37502C561147857F00418 /* uitest-kallor.json */; };
 		57E68D47DC84227704A88456 /* AccessibilityAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140BBB80224770A99801765F /* AccessibilityAuditTests.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
+		5C1BFCD9B4E55AB06D91F058 /* uitest-adress-tom.json in Resources */ = {isa = PBXBuildFile; fileRef = 38345EA7C2F5EBA31487F01D /* uitest-adress-tom.json */; };
 		61A3B4731B2A8CBF0DF5964A /* uitest-adress.json in Resources */ = {isa = PBXBuildFile; fileRef = 8E9D6D1E5D975FA6247DDC60 /* uitest-adress.json */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
 		6309A2EBEB0B6F32C74E2AF3 /* BackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */; };
@@ -92,6 +93,7 @@
 		2646AA909312B4395C8FC349 /* ScheduleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleViews.swift; sourceTree = "<group>"; };
 		34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-omraden.json"; sourceTree = "<group>"; };
 		35136FCF3CCD34E55DE2CA57 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		38345EA7C2F5EBA31487F01D /* uitest-adress-tom.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-adress-tom.json"; sourceTree = "<group>"; };
 		398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreFlowTests.swift; sourceTree = "<group>"; };
 		3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkPlacedOutIntent.swift; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 			isa = PBXGroup;
 			children = (
 				83F19D1437073960567F4C69 /* uitest-adress-avesta.json */,
+				38345EA7C2F5EBA31487F01D /* uitest-adress-tom.json */,
 				8E9D6D1E5D975FA6247DDC60 /* uitest-adress.json */,
 				57C37502C561147857F00418 /* uitest-kallor.json */,
 				34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */,
@@ -411,6 +414,7 @@
 				7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */,
 				6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */,
 				E3E832556BDB2AF4EA1BFBF4 /* uitest-adress-avesta.json in Resources */,
+				5C1BFCD9B4E55AB06D91F058 /* uitest-adress-tom.json in Resources */,
 				61A3B4731B2A8CBF0DF5964A /* uitest-adress.json in Resources */,
 				52A088583F18130CC2DA4C33 /* uitest-kallor.json in Resources */,
 				D7CED481ACFED9008E352189 /* uitest-omraden.json in Resources */,
