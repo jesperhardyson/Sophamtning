@@ -641,3 +641,43 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(restarted.addresses.count == 1)
     #expect(try Data(contentsOf: file) == good)
 }
+
+// MARK: Förslaget om påminnelse
+
+@Test @MainActor func forslagetVisasEfterForstaAdressen() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .notDetermined), directory: temp.url)
+    #expect(model.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetVisasInteUtanAdress() async throws {
+    let temp = TempDir()
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: FakeScheduler(status: .notDetermined))
+    #expect(!model.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetForsvinnerNarPaminnelsenSlasPaOchKommerInteTillbaka() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .notDetermined), directory: temp.url)
+    #expect(await model.setNotifications(true, for: key) == .granted)
+    #expect(!model.showsReminderOffer)
+    _ = await model.setNotifications(false, for: key)
+    #expect(!model.showsReminderOffer, "Förslaget visas bara en gång")
+}
+
+@Test @MainActor func inteNuDoljerForslagetAvenEfterOmstart() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler(status: .notDetermined)
+    let model = try await makeModel(scheduler, directory: temp.url)
+    model.dismissReminderOffer()
+    #expect(!model.showsReminderOffer)
+    #expect(scheduler.requests == 0, "Inte nu frågar aldrig om tillstånd")
+    let again = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: temp.url), now: { now }, scheduler: scheduler)
+    #expect(!again.showsReminderOffer)
+}
+
+@Test @MainActor func forslagetVisasInteNarNotiserArNekade() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(FakeScheduler(status: .denied), directory: temp.url)
+    #expect(!model.showsReminderOffer)
+}

@@ -500,6 +500,21 @@ public final class AppModel {
         return setNotificationsOn(true, for: key) ? .granted : .failed
     }
 
+    /// Kortet "Vill du bli påmind?" på hemskärmen: efter att en adress har sparats, så länge ingen påminnelse är på och
+    /// förslaget inte har besvarats. Inte när iOS har nekat notiser, eftersom knappen då inte kan slå på något.
+    public var showsReminderOffer: Bool {
+        storageProblem == nil && !addresses.isEmpty && !settings.reminderOfferShown
+            && !addresses.contains(where: \.notificationsOn) && notificationAuthorization != .denied
+    }
+
+    /// "Inte nu", eller en påminnelse som slogs på: förslaget visas inte igen.
+    public func dismissReminderOffer() {
+        guard !settings.reminderOfferShown else { return }
+        var updated = settings
+        updated.reminderOfferShown = true
+        saveSettings(updated)
+    }
+
     private func setNotificationsOn(_ on: Bool, for key: AddressKey) -> Bool {
         guard addresses.contains(where: { $0.key == key }) else { return false }
         let updated = addresses.map { address in
@@ -508,6 +523,8 @@ public final class AppModel {
             return copy
         }
         guard updated == addresses || saveAddresses(updated) else { return false }
+        // En påminnelse som slås på besvarar förslaget, så att det inte kommer tillbaka om den stängs av igen.
+        if on { dismissReminderOffer() }
         applyReminders()
         return true
     }

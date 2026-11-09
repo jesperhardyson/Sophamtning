@@ -179,3 +179,15 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
     try Data("skräp".utf8).write(to: file)
     if case .unreadable = store.addressesState() {} else { Issue.record("ett innehåll som inte går att tolka ska vara unreadable") }
 }
+
+@Test func installningarUtanForslagsfaltetLasesSomForut() throws {
+    // Inställningar sparade före fältet `reminderOfferShown` ska läsas som de är, inte som skadade.
+    let (store, dir, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    try Data(#"{"reminderMinutes":960,"liveActivityOn":true}"#.utf8).write(to: dir.appendingPathComponent("settings.json"))
+    let settings = store.settings()
+    #expect(settings.reminderMinutes == 960)
+    #expect(settings.liveActivityOn)
+    #expect(settings.reminderOfferShown == false)
+}
