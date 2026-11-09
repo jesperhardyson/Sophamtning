@@ -51,6 +51,16 @@ struct NotificationScheduler: NotificationScheduling {
         center.removePendingNotificationRequests(withIdentifiers: identifiers.filter { NotificationDiff.isOwn(identifier: $0) })
     }
 
+    /// Visar notisen direkt, utan utlösare. Identifieraren känns inte igen av `NotificationDiff.isOwn`, så planeringen rör den aldrig.
+    /// Ett fel tas inte om: notisen gäller bara just nu.
+    func deliverNow(identifier: String, body: String) async {
+        let content = UNMutableNotificationContent()
+        content.title = "Utställt"
+        content.body = body
+        content.sound = .default
+        try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
+    }
+
     /// Klockslaget anges i `Europe/Stockholm`, så att tiden gäller oavsett telefonens tidszon.
     static func trigger(for fireDate: Date) -> UNCalendarNotificationTrigger {
         var calendar = Calendar(identifier: .gregorian)

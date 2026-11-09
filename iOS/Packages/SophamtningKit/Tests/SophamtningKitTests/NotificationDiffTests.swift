@@ -64,6 +64,11 @@ private func planned(_ id: String, at seconds: TimeInterval, body: String = "Tex
     #expect(!NotificationDiff.isOwn(identifier: ""))
 }
 
+@Test func hushalletsNotisArInteEgen() {
+    // Planeringen får aldrig ta bort notisen om att någon ställt ut.
+    #expect(!NotificationDiff.isOwn(identifier: "hushall.\(key.fileName).2026-11-09"))
+}
+
 @Test func behalletNotisSomLiggerFramforTasInteBort() {
     let now = Date(timeIntervalSince1970: 1000)
     let result = NotificationDiff.diff(desired: [], pendingIds: ["a", "b"], pendingFireDates: ["a": Date(timeIntervalSince1970: 2000), "b": Date(timeIntervalSince1970: 2000)], retain: ["a"], now: now)

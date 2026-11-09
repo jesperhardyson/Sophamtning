@@ -1,0 +1,364 @@
+import Foundation
+
+/// Hushållet i appens modell: delade adresser, bockar för Utställt och valen för notiser.
+///
+/// Andras bockar skrivs aldrig i `placed-out.json`, som bara är mina egna tryck. De läggs till i minnet när påminnelserna
+/// planeras (`householdSilenced`), så att Ångra eller att valet stängs av ger tillbaka påminnelsen.
+extension AppModel {
+    // MARK: Lyssna
+
+    /// Börjar lyssna på hushållets lägen. Anropas en gång från appen, och fler anrop gör inget.
+    public func startHousehold() {
+        guard householdTask == nil else { return }
+        let stream = householdSync.states()
+        householdTask = Task { [weak self] in
+            for await state in stream {
+                guard let self else { return }
+                await self.receiveHousehold(state)
+            }
+        }
+    }
+
+    /// Hämtar hushållets ändringar nu, till exempel när appen blir aktiv.
+    public func fetchHouseholdChanges() async {
+        await householdSync.fetchChanges()
+    }
+
+    /// Med i ett hushåll: en roll, och inte borttagen.
+    static func isMember(_ state: HouseholdState) -> Bool {
+        state.role != .none && state.status != .removed
+    }
+
+    var inHousehold: Bool { Self.isMember(household) }
+
+    public func isShared(_ key: AddressKey) -> Bool {
+        inHousehold && household.addresses.contains { $0.address.key == key }
+    }
+
+    public func clearHouseholdNotice() {
+        householdNotice = nil
+    }
+
+    /// Identifieraren för notisen om att någon ställt ut. `NotificationDiff.isOwn` känner inte igen den.
+    static func householdNotificationId(_ placedOut: PlacedOut) -> String {
+        "hushall.\(placedOut.key.fileName).\(placedOut.date.iso)"
+    }
+
+    /// Andras bockar som inte passerat, när Tysta min påminnelse är på. Läggs till de utställda när påminnelserna planeras.
+    func householdSilenced(today: DayDate) -> Set<PlacedOut> {
+        guard householdPreferences.silenceWhenOthersPlaceOut, inHousehold else { return [] }
+        return Set(HouseholdLogic.othersActive(household.marks, myId: household.myId, today: today).map(\.placedOut))
+    }
+
+    // MARK: Nytt läge
+
+    /// Behandlar ett läge från synken: sparar det, slår ihop adresserna, skickar egna bockar, visar notiser och planerar om.
+    func receiveHousehold(_ incoming: HouseholdState) async {
+        defer { handledHouseholdStates += 1 }
+        let today = StockholmClock.today(now: now())
+        rereadHouseholdCacheIfNeeded()
+        let previous = household
+
+        if incoming.status == .removed || (incoming.role == .none && incoming.status == .synced) {
+            adoptLeft(status: incoming.status, wasMember: Self.isMember(previous))
+            return
+        }
+
+        let reliable = incoming.status == .synced
+        var effective = incoming
+        if !reliable {
+            // Ett tekniskt fel får aldrig se ut som att hushållet eller en adress saknas. Det senast sparade gäller.
+            if incoming.role == .none {
+                effective = previous
+                effective.status = incoming.status
+            } else if householdCacheKnown {
+                effective.addresses = previous.addresses
+            }
+        }
+
+        // Utan läsbar cache vet appen inte vilka adresser som delades, så ett läge med fel ändrar inga adresser.
+        var addedKeys: Set<AddressKey> = []
+        var addressesChanged = false
+        if Self.isMember(effective), reliable || householdCacheKnown {
+            (addressesChanged, addedKeys) = mergeShared(effective.addresses)
+        }
+
+        household = effective
+        if reliable || householdCacheKnown {
+            // Lägget är bara en cache. Går det inte att spara görs det vid nästa läge.
+            try? store.setHouseholdState(effective)
+            householdCacheKnown = true
+        }
+
+        if reliable, Self.isMember(previous), Self.isMember(effective) {
+            adoptRemoteUndo(previous: previous, current: effective, today: today)
+        }
+        await sendPendingMarks(in: effective, today: today)
+        await notifyOthersPlacedOut(in: effective, today: today)
+        pruneNotifiedMarks(today: today)
+
+        if previous != effective || addressesChanged { applyReminders() }
+        // En ny adress från hushållet har inget schema än.
+        if !addedKeys.isEmpty { await refreshAll(manual: false) }
+        if Self.isMember(effective), !HouseholdLogic.expired(effective.marks, today: today).isEmpty {
+            await householdSync.removeExpired(today: today)
+        }
+    }
+
+    /// Läser `household.json` igen om den inte gick att läsa vid start, till exempel skyddad data före upplåsning.
+    private func rereadHouseholdCacheIfNeeded() {
+        guard !householdCacheKnown else { return }
+        switch store.householdState() {
+        case .value(let saved):
+            household = saved
+            householdCacheKnown = true
+        case .missing:
+            householdCacheKnown = true
+        case .unreadable, .unavailable:
+            break
+        }
+    }
+
+    /// Lägger in delade adresser och tar bort mottagna som slutat delas. Svarar med om listan ändrades och vilka adresser som är nya.
+    private func mergeShared(_ shared: [HouseholdAddress]) -> (changed: Bool, added: Set<AddressKey>) {
+        // Går adresserna inte att läsa skrivs listan aldrig över.
+        guard addressesReadable else { return (false, []) }
+        let result = HouseholdLogic.merge(shared: shared, into: addresses, received: householdPreferences.receivedKeys)
+        var changed = false
+        var added: Set<AddressKey> = []
+        if result.list != addresses {
+            let before = Set(addresses.map(\.key))
+            guard saveAddresses(result.list) else { return (false, []) }
+            let after = Set(result.list.map(\.key))
+            for key in before.subtracting(after) {
+                schedules[key] = nil
+                removeStoredSchedule(for: key)
+            }
+            added = after.subtracting(before)
+            scheduleRevision += 1
+            widgetReloader()
+            changed = true
+        }
+        if result.received != householdPreferences.receivedKeys {
+            householdPreferences.receivedKeys = result.received
+            saveHouseholdPreferences()
+        }
+        return (changed, added)
+    }
+
+    /// Lämnat, borttagen eller avslutat hushåll: adresserna blir kvar som egna, bockarna försvinner och raden visas en gång.
+    private func adoptLeft(status: HouseholdStatus, wasMember: Bool) {
+        var left = HouseholdState.empty
+        left.status = status
+        let changed = household != left
+        if changed {
+            household = left
+            try? store.setHouseholdState(left)
+            householdCacheKnown = true
+        }
+        sentHouseholdMarks = []
+        if !householdPreferences.receivedKeys.isEmpty {
+            householdPreferences.receivedKeys = []
+            saveHouseholdPreferences()
+        }
+        if wasMember { householdNotice = HouseholdTexts.leftNote }
+        if changed { applyReminders() }
+    }
+
+    /// En egen bock som fanns i hushållet och nu är borta har ångrats av någon annan. Då tas den bort även lokalt.
+    private func adoptRemoteUndo(previous: HouseholdState, current: HouseholdState, today: DayDate) {
+        guard case .value(let saved) = store.placedOutState() else { return }
+        let before = Set(previous.marks.map(\.placedOut))
+        let remaining = Set(current.marks.map(\.placedOut))
+        for entry in Set(saved) where entry.date >= today && before.contains(entry) && !remaining.contains(entry) {
+            // Ett skrivfel ger i värsta fall att bocken skickas igen vid nästa läge.
+            try? store.unmarkPlacedOut(entry)
+            sentHouseholdMarks.remove(entry)
+        }
+    }
+
+    /// Egna utställda för delade adresser som saknar bock i hushållet, till exempel från knappen i Live Activity, skickas en gång.
+    private func sendPendingMarks(in state: HouseholdState, today: DayDate) async {
+        guard Self.isMember(state), case .value(let saved) = store.placedOutState() else { return }
+        let sharedKeys = Set(state.addresses.map(\.address.key))
+        let marked = Set(state.marks.map(\.placedOut))
+        for entry in saved where entry.date >= today && sharedKeys.contains(entry.key) && !marked.contains(entry) {
+            await sendMark(entry)
+        }
+    }
+
+    private func sendMark(_ entry: PlacedOut) async {
+        guard !sentHouseholdMarks.contains(entry) else { return }
+        sentHouseholdMarks.insert(entry)
+        do {
+            try await householdSync.mark(entry)
+        } catch {
+            // Bocken står kvar i `placed-out.json` och skickas igen vid nästa läge.
+            sentHouseholdMarks.remove(entry)
+        }
+    }
+
+    /// En notis per ny bock från någon annan, när valet är på. Mina egna bockar, även från andra enheter, ger aldrig någon.
+    private func notifyOthersPlacedOut(in state: HouseholdState, today: DayDate) async {
+        guard householdPreferences.notifyWhenOthersPlaceOut, Self.isMember(state), let myId = state.myId else { return }
+        let fresh = HouseholdLogic.othersActive(state.marks, myId: myId, today: today)
+            .filter { !householdPreferences.notifiedMarks.contains($0.placedOut) }
+        guard !fresh.isEmpty else { return }
+        // Utan tillstånd visas ingen notis, och bocken visas inte heller senare när den redan är gammal.
+        let allowed = await scheduler.authorization() == .authorized
+        for mark in fresh {
+            householdPreferences.notifiedMarks.insert(mark.placedOut)
+            let addressName = addresses.first { $0.key == mark.placedOut.key }?.displayName
+                ?? state.addresses.first { $0.address.key == mark.placedOut.key }?.address.displayName
+            guard allowed, let addressName else { continue }
+            let name = state.participants.first { $0.id == mark.by }?.name ?? "Någon"
+            await scheduler.deliverNow(
+                identifier: Self.householdNotificationId(mark.placedOut),
+                body: HouseholdTexts.othersPlacedOutNotification(name: name, address: addressName)
+            )
+        }
+        saveHouseholdPreferences()
+    }
+
+    /// Passerade bockar behöver inte kommas ihåg, så att listan inte växer.
+    private func pruneNotifiedMarks(today: DayDate) {
+        let kept = householdPreferences.notifiedMarks.filter { $0.date >= today }
+        guard kept != householdPreferences.notifiedMarks else { return }
+        householdPreferences.notifiedMarks = kept
+        saveHouseholdPreferences()
+    }
+
+    /// Skriver valen från minnet. Ett skrivfel lämnar minnet orört, och nästa skrivning försöker igen.
+    @discardableResult
+    private func saveHouseholdPreferences() -> Bool {
+        (try? store.setHouseholdPreferences(householdPreferences)) != nil
+    }
+
+    // MARK: Dela
+
+    /// Delar adressen med hushållet eller slutar dela den. Svarar med om det gick.
+    public func setShared(_ on: Bool, for key: AddressKey) async -> Bool {
+        guard inHousehold else { return false }
+        if on {
+            guard let address = addresses.first(where: { $0.key == key }) else { return false }
+            return (try? await householdSync.share(address)) != nil
+        }
+        // Den som själv slutar dela behåller adressen, även om den en gång kom från hushållet.
+        let wasReceived = householdPreferences.receivedKeys.remove(key) != nil
+        if wasReceived { saveHouseholdPreferences() }
+        do {
+            try await householdSync.unshare(key)
+            return true
+        } catch {
+            if wasReceived {
+                householdPreferences.receivedKeys.insert(key)
+                saveHouseholdPreferences()
+            }
+            return false
+        }
+    }
+
+    // MARK: Ställa ut
+
+    /// Nästa tömning för adressen enligt det sparade schemat.
+    private func nextPickupDate(for key: AddressKey, today: DayDate) -> DayDate? {
+        guard let events = schedules[key]?.response?.events else { return nil }
+        return ScheduleLogic.nextPickup(events, today: today)?.date
+    }
+
+    /// Ställer ut kärlen för nästa tömning: sparas i `placed-out.json` och, för en delad adress, som bock i hushållet.
+    public func placeOut(_ key: AddressKey) async {
+        let today = StockholmClock.today(now: now())
+        guard let date = nextPickupDate(for: key, today: today) else { return }
+        let entry = PlacedOut(key: key, date: date)
+        do {
+            try store.markPlacedOut(entry, today: today)
+        } catch {
+            lastStorageError = "Kunde inte spara att kärlen är utställda."
+            return
+        }
+        applyReminders()
+        if isShared(key), !household.marks.contains(where: { $0.placedOut == entry }) {
+            await sendMark(entry)
+        }
+    }
+
+    /// Ångrar bocken för nästa tömning, min egen eller någon annans. Påminnelsen kommer tillbaka om tiden inte har passerat.
+    public func undoPlaceOut(_ key: AddressKey) async {
+        let today = StockholmClock.today(now: now())
+        guard let date = nextPickupDate(for: key, today: today) else { return }
+        let entry = PlacedOut(key: key, date: date)
+        do {
+            try store.unmarkPlacedOut(entry)
+        } catch {
+            lastStorageError = "Kunde inte ångra. Inget har ändrats."
+            return
+        }
+        sentHouseholdMarks.remove(entry)
+        // Bocken tas bort i minnet direkt, så att påminnelsen kommer tillbaka utan att vänta på nästa läge.
+        let hadMark = household.marks.contains { $0.placedOut == entry }
+        household.marks.removeAll { $0.placedOut == entry }
+        applyReminders()
+        guard hadMark || isShared(key) else { return }
+        do {
+            try await householdSync.unmark(entry)
+        } catch {
+            householdNotice = HouseholdTexts.status(.failed)
+        }
+    }
+
+    // MARK: Lämna
+
+    /// Lämnar hushållet. Adresserna blir kvar som egna, och raden om det visas.
+    public func leaveHousehold() async {
+        guard household.role != .none else { return }
+        let wasMember = inHousehold
+        do {
+            try await householdSync.leave()
+        } catch {
+            householdNotice = HouseholdTexts.status(.failed)
+            return
+        }
+        // Läget från synken kan komma före eller efter. Raden visas ändå bara en gång.
+        adoptLeft(status: .synced, wasMember: wasMember && inHousehold)
+    }
+
+    // MARK: Val
+
+    /// Tysta min påminnelse när någon annan har ställt ut. Valet schemalägger aldrig något, det tar bara bort.
+    public func setSilenceWhenOthersPlaceOut(_ on: Bool) {
+        guard householdPreferences.silenceWhenOthersPlaceOut != on else { return }
+        var updated = householdPreferences
+        updated.silenceWhenOthersPlaceOut = on
+        guard (try? store.setHouseholdPreferences(updated)) != nil else {
+            lastStorageError = "Kunde inte spara inställningen. Inget har ändrats."
+            return
+        }
+        householdPreferences = updated
+        applyReminders()
+    }
+
+    /// Notis när någon ställer ut kärlen. Kräver notistillstånd, och frågan ställs när valet slås på och tillståndet inte är avgjort.
+    /// Bockar som redan finns när valet slås på ger ingen notis.
+    public func setNotifyWhenOthersPlaceOut(_ on: Bool) async -> PermissionResult {
+        if on {
+            var status = await scheduler.authorization()
+            if status == .notDetermined {
+                status = await scheduler.requestAuthorization() ? .authorized : .denied
+            }
+            guard status == .authorized else { return .denied }
+        }
+        var updated = householdPreferences
+        updated.notifyWhenOthersPlaceOut = on
+        if on {
+            let today = StockholmClock.today(now: now())
+            updated.notifiedMarks.formUnion(HouseholdLogic.othersActive(household.marks, myId: household.myId, today: today).map(\.placedOut))
+        }
+        guard (try? store.setHouseholdPreferences(updated)) != nil else {
+            lastStorageError = "Kunde inte spara inställningen. Inget har ändrats."
+            return .failed
+        }
+        householdPreferences = updated
+        return .granted
+    }
+}

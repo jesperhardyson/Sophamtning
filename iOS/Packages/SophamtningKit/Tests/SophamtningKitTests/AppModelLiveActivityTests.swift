@@ -37,6 +37,7 @@ private final class FakeNotifications: NotificationScheduling, @unchecked Sendab
         lock.withLock { for id in identifiers { store[id] = nil } }
         for id in identifiers { log.add("notis- \(id.suffix(10))") }
     }
+    func deliverNow(identifier: String, body: String) async {}
     var dates: [String] { lock.withLock { store.values.map(\.pickupDate.iso).sorted() } }
     /// Den väntande notisen för tömningen, om det finns någon.
     func notification(_ iso: String) -> PlannedNotification? { lock.withLock { store.values.first { $0.pickupDate.iso == iso } } }

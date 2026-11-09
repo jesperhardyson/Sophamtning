@@ -10,15 +10,15 @@ public final class AppModel {
     public private(set) var addresses: [SavedAddress]
     public private(set) var settings: ReminderSettings
     /// Det senaste lagringsfelet, tills det rensas med `clearStorageError()`. Då är det tidigare läget kvar.
-    public private(set) var lastStorageError: String?
+    public internal(set) var lastStorageError: String?
 
-    @ObservationIgnored private var schedules: [AddressKey: CachedSchedule]
-    @ObservationIgnored private let store: LocalStore
+    @ObservationIgnored var schedules: [AddressKey: CachedSchedule]
+    @ObservationIgnored let store: LocalStore
     @ObservationIgnored private let refresher: ScheduleRefresher
     @ObservationIgnored public let api: any SoporAPI
     /// När källistan senast försökte hämtas utan att lyckas, så att inte varje tangenttryck hämtar på nytt.
     @ObservationIgnored private var failedSourcesAt: Date?
-    @ObservationIgnored private let now: @Sendable () -> Date
+    @ObservationIgnored let now: @Sendable () -> Date
     /// Appens version och bygge, till exempel "1.0.1 (301)". Sparas med källistan.
     @ObservationIgnored private let appVersion: String?
     /// Den senaste köade uppdateringen. Nästa väntar på den, så att två anrop aldrig hämtar samtidigt.
@@ -27,7 +27,7 @@ public final class AppModel {
     public private(set) var notificationAuthorization: NotificationAuthorization = .notDetermined
     /// Om några väntande notiser inte gick att lägga in, annars `nil`. Försöket upprepas vid nästa körning.
     public private(set) var reminderError: String?
-    @ObservationIgnored private let scheduler: any NotificationScheduling
+    @ObservationIgnored let scheduler: any NotificationScheduling
     @ObservationIgnored private let activities: any LiveActivityScheduling
     /// Om Live Activities är påslagna i iOS, senast läst. Läses om av `applyReminders()`. Valet i appen ändras aldrig av det.
     public private(set) var liveActivitiesEnabled = true
@@ -45,21 +45,39 @@ public final class AppModel {
     @ObservationIgnored private var removedActivityIds: Set<String> = []
     /// Ett tunt anrop som laddar om widgeten, till exempel `WidgetCenter.shared.reloadAllTimelines()` i appen.
     /// Paketet känner inte till WidgetKit. Widgeten läser bara från lagringen, så den laddas om när lagringen ändrats.
-    @ObservationIgnored private let widgetReloader: @MainActor () -> Void
+    @ObservationIgnored let widgetReloader: @MainActor () -> Void
     /// Varför `addresses.json` eller `settings.json` inte går att läsa, annars `nil`. Då skrivs filen aldrig över och inga
     /// notiser tas bort. `corrupt`: innehållet går inte att tolka. `unavailable`: läsningen misslyckades, till exempel skyddad data.
     private enum StoreIssue { case corrupt, unavailable }
     private var addressesIssue: StoreIssue?
     private var settingsIssue: StoreIssue?
-    private var addressesReadable: Bool { addressesIssue == nil }
+    var addressesReadable: Bool { addressesIssue == nil }
     private var settingsReadable: Bool { settingsIssue == nil }
     /// Den senaste köade påminnelseuppdateringen, så att två aldrig körs samtidigt.
     @ObservationIgnored private var reminderQueue: Task<Void, Never>?
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
-    private var scheduleRevision = 0
+    var scheduleRevision = 0
 
-    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}, appVersion: String? = nil) {
+    // MARK: Hushållets tillstånd (beteendet finns i AppModel+Household.swift)
+
+    /// Det senast kända hushållet, sparat i `household.json`.
+    public internal(set) var household: HouseholdState
+    /// Mina val för hushållet. Läses en gång vid start och skrivs sedan från minnet, aldrig läs-ändra-skriv från filen.
+    public internal(set) var householdPreferences: HouseholdPreferences
+    /// En rad som visas en gång, till exempel att man inte längre är med i hushållet. Rensas med `clearHouseholdNotice()`.
+    public internal(set) var householdNotice: String?
+    @ObservationIgnored let householdSync: any HouseholdSync
+    @ObservationIgnored var householdTask: Task<Void, Never>?
+    /// Om `household.json` gick att läsa vid start. Annars får ett läge med fel aldrig ta bort några adresser.
+    @ObservationIgnored var householdCacheKnown: Bool
+    /// Egna bockar som redan skickats till hushållet i den här körningen, så att samma bock inte skickas två gånger.
+    @ObservationIgnored var sentHouseholdMarks: Set<PlacedOut> = []
+    /// Hur många lägen från hushållet som är behandlade. Testerna väntar på den.
+    @ObservationIgnored var handledHouseholdStates = 0
+
+    public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}, appVersion: String? = nil, household: any HouseholdSync = DisabledHousehold()) {
         self.appVersion = appVersion
+        householdSync = household
         self.scheduler = scheduler
         self.activities = activities
         self.widgetReloader = widgetReloader
@@ -92,6 +110,18 @@ public final class AppModel {
         schedules = Dictionary(addresses.compactMap { address in
             store.schedule(for: address.key).map { (address.key, $0) }
         }, uniquingKeysWith: { first, _ in first })
+        switch store.householdState() {
+        case .value(let saved):
+            self.household = saved
+            householdCacheKnown = true
+        case .missing:
+            self.household = .empty
+            householdCacheKnown = true
+        case .unreadable, .unavailable:
+            self.household = .empty
+            householdCacheKnown = false
+        }
+        householdPreferences = store.householdPreferences()
     }
 
     /// Läser om adresser och inställningar som inte gick att läsa vid uppstart, till exempel skyddad data efter omstart.
@@ -334,7 +364,7 @@ public final class AppModel {
         applyReminders()
     }
 
-    private func removeStoredSchedule(for key: AddressKey) {
+    func removeStoredSchedule(for key: AddressKey) {
         do {
             try store.removeSchedule(for: key)
         } catch {
@@ -343,7 +373,7 @@ public final class AppModel {
     }
 
     @discardableResult
-    private func saveAddresses(_ updated: [SavedAddress]) -> Bool {
+    func saveAddresses(_ updated: [SavedAddress]) -> Bool {
         guard addressesReadable else {
             lastStorageError = "Adresserna går inte att läsa just nu. Inget har ändrats."
             return false
@@ -545,13 +575,15 @@ public final class AppModel {
         let today = StockholmClock.today(now: current)
         // Rensningen är bara städning. Lyckas den inte görs den nästa gång.
         try? store.prunePlacedOut(today: today)
-        let placedOut: Set<PlacedOut>
+        var placedOut: Set<PlacedOut>
         switch store.placedOutState() {
         case .value(let saved): placedOut = Set(saved)
         case .missing, .unreadable: placedOut = []
         // Det går inte att veta vad som är utställt, så inget ändras.
         case .unavailable: return
         }
+        // Andras bockar räknas som utställda bara i minnet, så att Ångra eller att valet stängs av ger tillbaka påminnelsen.
+        placedOut.formUnion(householdSilenced(today: today))
 
         let primary = addresses.first(where: \.isPrimary)?.key
         let snapshot = await activities.current()
