@@ -27,6 +27,16 @@ extension AppModel {
         await sendPendingMarks(in: household, today: StockholmClock.today(now: now()))
     }
 
+    /// Knappen Utställt i Live Activity har sparat en bock i `placed-out.json`. För en delad adress skickas den till hushållet
+    /// direkt, medan appen körs i bakgrunden, och inte först när appen öppnas.
+    public func sendLiveActivityMarks() async {
+        rereadHouseholdCacheIfNeeded()
+        guard inHousehold, household.status == .synced else { return }
+        await sendPendingMarks(in: household, today: StockholmClock.today(now: now()))
+        // Hämtningen skickar också det som väntar.
+        await householdSync.fetchChanges()
+    }
+
     /// Med i ett hushåll: en roll, och inte borttagen.
     static func isMember(_ state: HouseholdState) -> Bool {
         state.role != .none && state.status != .removed
@@ -45,6 +55,38 @@ extension AppModel {
         household.status = .synced
         try? store.setHouseholdState(household)
         widgetReloader()
+    }
+
+    /// Raden "{namn} gick med i hushållet", eller `nil`.
+    public var householdJoinedText: String? {
+        let names = householdPreferences.joinedNames
+        return names.isEmpty ? nil : HouseholdTexts.joined(names)
+    }
+
+    /// Raden om nya deltagare har setts i arket Hushåll eller stängts på hemskärmen.
+    public func clearJoinedNotice() {
+        guard !householdPreferences.joinedNames.isEmpty else { return }
+        householdPreferences.joinedNames = []
+        saveHouseholdPreferences()
+    }
+
+    /// En inbjudan är accepterad. När hushållet har kommit öppnas arket med raden om vems hushåll det är.
+    public func expectHouseholdWelcome(ownerName: String) {
+        pendingWelcomeOwner = ownerName
+        // Deltagarna som redan är med när jag går med är inte nya.
+        householdPreferences.knownParticipants = nil
+        householdPreferences.joinedNames = []
+        saveHouseholdPreferences()
+    }
+
+    /// Inbjudan gick inte att acceptera. Inget ark öppnas.
+    public func cancelHouseholdWelcome() {
+        pendingWelcomeOwner = nil
+    }
+
+    /// Arket Hushåll har öppnats efter en inbjudan.
+    public func householdSheetShown() {
+        householdSheetRequested = false
     }
 
     /// Identifieraren för notisen om att någon ställt ut. `NotificationDiff.isOwn` känner inte igen den.
@@ -118,6 +160,12 @@ extension AppModel {
             }
             await sendPendingMarks(in: effective, today: today)
             await notifyOthersPlacedOut(in: effective, today: today)
+            await noticeNewParticipants(in: effective)
+            if let owner = pendingWelcomeOwner, Self.isMember(effective) {
+                pendingWelcomeOwner = nil
+                householdNotice = HouseholdTexts.welcome(ownerName: owner)
+                householdSheetRequested = true
+            }
         }
         pruneNotifiedMarks(today: today)
 
@@ -136,7 +184,7 @@ extension AppModel {
     }
 
     /// Läser `household.json` igen om den inte gick att läsa vid start, till exempel skyddad data före upplåsning.
-    private func rereadHouseholdCacheIfNeeded() {
+    func rereadHouseholdCacheIfNeeded() {
         guard !householdCacheKnown else { return }
         switch store.householdState() {
         case .value(let saved):
@@ -188,8 +236,11 @@ extension AppModel {
             householdCacheKnown = true
         }
         sentHouseholdMarks = []
-        if !householdPreferences.receivedKeys.isEmpty {
+        if !householdPreferences.receivedKeys.isEmpty || householdPreferences.knownParticipants != nil || !householdPreferences.joinedNames.isEmpty {
             householdPreferences.receivedKeys = []
+            // Ett nytt hushåll börjar utan kända deltagare, så att ingen räknas som ny när jag går med.
+            householdPreferences.knownParticipants = nil
+            householdPreferences.joinedNames = []
             saveHouseholdPreferences()
         }
         if wasMember { householdNotice = HouseholdTexts.leftNote }
@@ -254,6 +305,25 @@ extension AppModel {
             )
         }
         saveHouseholdPreferences()
+    }
+
+    /// Deltagare som gått med sedan förra synkade läget ger raden på hemskärmen och i arket, och en notis när valet är på.
+    /// Första gången hushållet ses, när jag själv gått med eller hämtar på nytt, blir deltagarna kända utan rad.
+    private func noticeNewParticipants(in state: HouseholdState) async {
+        guard Self.isMember(state) else { return }
+        let fresh = HouseholdLogic.newParticipants(state.participants, known: householdPreferences.knownParticipants, myId: state.myId)
+        let ids = Set(state.participants.map(\.id))
+        guard householdPreferences.knownParticipants != ids || !fresh.isEmpty else { return }
+        householdPreferences.knownParticipants = ids
+        householdPreferences.joinedNames += fresh.map(\.name).filter { !householdPreferences.joinedNames.contains($0) }
+        saveHouseholdPreferences()
+        guard !fresh.isEmpty, householdPreferences.notifyWhenOthersPlaceOut, await scheduler.authorization() == .authorized else { return }
+        for participant in fresh {
+            await scheduler.deliverNow(
+                identifier: "hushall.deltagare.\(participant.id)",
+                body: HouseholdTexts.joined([participant.name])
+            )
+        }
     }
 
     /// Passerade bockar behöver inte kommas ihåg, så att listan inte växer.
@@ -381,7 +451,7 @@ extension AppModel {
         applyReminders()
     }
 
-    /// Notis när någon ställer ut kärlen. Kräver notistillstånd, och frågan ställs när valet slås på och tillståndet inte är avgjort.
+    /// Notiser från hushållet: när någon ställer ut kärlen och när någon går med. Kräver notistillstånd, och frågan ställs när valet slås på och tillståndet inte är avgjort.
     /// Bockar som redan finns när valet slås på ger ingen notis.
     public func setNotifyWhenOthersPlaceOut(_ on: Bool) async -> PermissionResult {
         if on {

@@ -41,6 +41,12 @@ struct HouseholdSheet: View {
                 .padding(.horizontal, PageMargin.horizontal)
                 .padding(.bottom, 32)
             }
+            // Tyst push kommer inte alltid. Arket hämtar därför själv, så att en ny deltagare syns utan omstart.
+            .refreshable { await model.fetchHouseholdChanges() }
+            .task { await model.fetchHouseholdChanges() }
+            .onChange(of: invitation.active) { _, active in
+                if !active { Task { await model.fetchHouseholdChanges() } }
+            }
             .background(Color.Theme.bg.ignoresSafeArea())
             .navigationTitle(HouseholdTexts.title)
             .navigationBarTitleDisplayMode(.large)
@@ -60,6 +66,7 @@ struct HouseholdSheet: View {
             // Raden om att man lämnat visas en gång. Nästa gång arket öppnas visas deltagarna.
             .onDisappear {
                 model.clearHouseholdNotice()
+                model.clearJoinedNotice()
                 invitation.active = false
             }
         }
@@ -75,10 +82,13 @@ struct HouseholdSheet: View {
         let duplicate = model.householdNotice != nil && model.householdNotice == status
         let notice = duplicate && household.status == .failed ? nil : model.householdNotice
         let shownStatus = duplicate && household.status != .failed ? nil : status
-        if notice != nil || shownStatus != nil {
+        if notice != nil || shownStatus != nil || model.householdJoinedText != nil {
             VStack(alignment: .leading, spacing: 12) {
                 if let notice {
                     MessageCard(style: .neutral, icon: "person.2", title: HouseholdTexts.title, message: notice)
+                }
+                if let joined = model.householdJoinedText {
+                    MessageCard(style: .neutral, icon: "person.badge.plus", title: HouseholdTexts.title, message: joined)
                 }
                 if let shownStatus {
                     statusCard(shownStatus)

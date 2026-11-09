@@ -67,6 +67,12 @@ struct SettingsView: View {
             }
             .task { await loadSources() }
             .inAppBrowser(item: $link)
+            // Efter en accepterad inbjudan öppnas arket Hushåll här, ovanpå Inställningar.
+            .onChange(of: model.householdSheetRequested, initial: true) { _, requested in
+                guard requested else { return }
+                model.householdSheetShown()
+                showsHousehold = true
+            }
             .sheet(isPresented: $showsHousehold) {
                 HouseholdSheet(model: model)
             }

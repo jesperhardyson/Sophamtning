@@ -102,7 +102,7 @@ enum UITestSupport {
     /// `-uitest-hushall`: jag är medlem, Kim är ägare och Testgatan 1 delas. `-uitest-hushall-agare` gör mig till ägare, och
     /// `-uitest-hushall-synkar-inte` ger läget "Synkar inte just nu" strax efter starten, och `-uitest-hushall-vantar` ger min
     /// bock för testgatans nästa tömning som ännu inte har skickats, med klockan. `-uitest-hushall-tomt` ger en synk
-    /// utan hushåll.
+    /// utan hushåll. `-uitest-hushall-ny-deltagare` låter Sofie gå med strax efter starten.
     private static func has(_ argument: String) -> Bool { ProcessInfo.processInfo.arguments.contains(argument) }
 
     private static var withHousehold: Bool { has("-uitest-hushall") }
@@ -141,6 +141,12 @@ enum UITestSupport {
             status: .synced
         )
         let sync = InMemoryHouseholdSync(state: state)
+        if has("-uitest-hushall-ny-deltagare") {
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                sync.simulateRemote { $0.participants.append(HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: false)) }
+            }
+        }
         if has("-uitest-hushall-synkar-inte") {
             // Först ett synkat läge, så att adressen finns, och sedan iCloud utloggat.
             Task {

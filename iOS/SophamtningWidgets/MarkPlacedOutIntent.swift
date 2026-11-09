@@ -53,7 +53,10 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
         }
         if let date = DayDate(iso) {
             let saved = await PlacedOutAction.perform(store: LocalStore.shared(), entry: PlacedOut(key: key, date: date), today: StockholmClock.today(now: Date()), end: end, cancelReminder: Self.cancelReminder)
-            if !saved {
+            if saved {
+                // I appens process når bocken hushållet direkt. I widgetmålet görs det nästa gång appen körs.
+                await PlacedOutAction.sendToHousehold?()
+            } else {
                 // Aktiviteten är avslutad ändå. Nästa planering kan starta samma tömning igen.
                 Logger(subsystem: "se.hardyson.sophamtning", category: "LiveActivity").error("Kunde inte spara Utställt")
             }

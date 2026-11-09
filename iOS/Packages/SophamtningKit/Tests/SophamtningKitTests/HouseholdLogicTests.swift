@@ -158,4 +158,34 @@ struct HouseholdLogicTests {
         #expect(HouseholdTexts.status(.quotaExceeded(ownerName: "")) == "iCloud-lagringen är full, så hushållet kan inte uppdateras.")
         #expect(HouseholdTexts.status(.quotaExceeded(ownerName: "  ")) == "iCloud-lagringen är full, så hushållet kan inte uppdateras.")
     }
+
+    // MARK: Nya deltagare
+
+    @Test func nyaDeltagareJamfortMedKanda() {
+        let jag = HouseholdParticipant(id: "jag", name: "Jesper", isOwner: true)
+        let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: false)
+        // Inga kända deltagare än: ingen är ny, inte heller de som redan var med när jag gick med.
+        #expect(HouseholdLogic.newParticipants([jag, sofie], known: nil, myId: "jag").isEmpty)
+        #expect(HouseholdLogic.newParticipants([jag, sofie], known: ["jag"], myId: "jag") == [sofie])
+        #expect(HouseholdLogic.newParticipants([jag, sofie], known: ["jag", "sofie"], myId: "jag").isEmpty)
+        // Jag själv är aldrig ny, även när mitt id saknas bland de kända.
+        #expect(HouseholdLogic.newParticipants([jag, sofie], known: ["sofie"], myId: "jag").isEmpty)
+    }
+
+    @Test func textenForNyaDeltagare() {
+        #expect(HouseholdTexts.joined(["Sofie"]) == "Sofie gick med i hushållet")
+        #expect(HouseholdTexts.joined(["Sofie", "Kim"]) == "Sofie och Kim gick med i hushållet")
+        #expect(HouseholdTexts.joined(["Sofie", "Kim", "Alex"]) == "Sofie, Kim och Alex gick med i hushållet")
+        #expect(HouseholdTexts.welcome(ownerName: "Jesper") == "Du är med i Jespers hushåll. Adresser som delas visas på hemskärmen.")
+        #expect(HouseholdTexts.welcome(ownerName: "Lars") == "Du är med i Lars hushåll. Adresser som delas visas på hemskärmen.")
+        #expect(HouseholdTexts.notify == "Notiser från hushållet")
+    }
+
+    @Test func gamlaValUtanKandaDeltagare() throws {
+        let old = #"{"silenceWhenOthersPlaceOut":true,"notifyWhenOthersPlaceOut":true,"receivedKeys":[],"notifiedMarks":[]}"#
+        let decoded = try JSONDecoder().decode(HouseholdPreferences.self, from: Data(old.utf8))
+        #expect(decoded.knownParticipants == nil)
+        #expect(decoded.joinedNames.isEmpty)
+        #expect(decoded.notifyWhenOthersPlaceOut)
+    }
 }

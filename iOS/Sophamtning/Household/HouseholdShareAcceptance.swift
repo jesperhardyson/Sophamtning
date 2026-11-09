@@ -77,9 +77,12 @@ final class HouseholdShareAcceptance {
     private func accept(_ metadata: CKShare.Metadata) {
         guard let sync else { return }
         Task {
+            // Arket Hushåll öppnas med raden om vems hushåll det är när hushållet har kommit.
+            model?.expectHouseholdWelcome(ownerName: HouseholdRecords.ownerName(of: metadata.share))
             do {
                 try await sync.accept(metadata)
             } catch {
+                model?.cancelHouseholdWelcome()
                 logger.error("Kunde inte gå med i hushållet: \(error.localizedDescription, privacy: .public)")
                 sync.recordFailure(error, share: metadata.share)
             }

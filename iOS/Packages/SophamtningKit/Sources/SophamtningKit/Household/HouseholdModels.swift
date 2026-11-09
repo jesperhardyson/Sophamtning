@@ -78,18 +78,31 @@ public struct HouseholdState: Hashable, Codable, Sendable {
 public struct HouseholdPreferences: Hashable, Codable, Sendable {
     /// Tysta min påminnelse när någon annan har ställt ut. På från början.
     public var silenceWhenOthersPlaceOut: Bool
-    /// Notis när någon ställer ut kärlen. Av från början.
+    /// Notiser från hushållet: när någon ställer ut kärlen och när någon går med. Av från början.
     public var notifyWhenOthersPlaceOut: Bool
     /// Adresser som kom från hushållet. Bara de tas bort när de slutar delas.
     public var receivedKeys: Set<AddressKey>
     /// Andras bockar som redan gett en notis, så att ingen visas två gånger.
     public var notifiedMarks: Set<PlacedOut>
+    /// Deltagarna som redan är kända. `nil` tills hushållet har setts synkat en gång, och då räknas ingen som ny.
+    public var knownParticipants: Set<String>?
+    /// Namnen i raden "{namn} gick med i hushållet", tills arket Hushåll har öppnats eller raden stängts.
+    public var joinedNames: [String]
 
-    public init(silenceWhenOthersPlaceOut: Bool = true, notifyWhenOthersPlaceOut: Bool = false, receivedKeys: Set<AddressKey> = [], notifiedMarks: Set<PlacedOut> = []) {
+    public init(
+        silenceWhenOthersPlaceOut: Bool = true,
+        notifyWhenOthersPlaceOut: Bool = false,
+        receivedKeys: Set<AddressKey> = [],
+        notifiedMarks: Set<PlacedOut> = [],
+        knownParticipants: Set<String>? = nil,
+        joinedNames: [String] = []
+    ) {
         self.silenceWhenOthersPlaceOut = silenceWhenOthersPlaceOut
         self.notifyWhenOthersPlaceOut = notifyWhenOthersPlaceOut
         self.receivedKeys = receivedKeys
         self.notifiedMarks = notifiedMarks
+        self.knownParticipants = knownParticipants
+        self.joinedNames = joinedNames
     }
 
     public init(from decoder: any Decoder) throws {
@@ -98,5 +111,7 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         notifyWhenOthersPlaceOut = try container.decodeIfPresent(Bool.self, forKey: .notifyWhenOthersPlaceOut) ?? false
         receivedKeys = try container.decodeIfPresent(Set<AddressKey>.self, forKey: .receivedKeys) ?? []
         notifiedMarks = try container.decodeIfPresent(Set<PlacedOut>.self, forKey: .notifiedMarks) ?? []
+        knownParticipants = try container.decodeIfPresent(Set<String>.self, forKey: .knownParticipants)
+        joinedNames = try container.decodeIfPresent([String].self, forKey: .joinedNames) ?? []
     }
 }

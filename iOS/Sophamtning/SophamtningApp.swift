@@ -30,6 +30,8 @@ struct SophamtningApp: App {
         }
         // Hushållets lägen tas emot från start. Utan hushåll gör lyssnaren ingenting.
         model.startHousehold()
+        // Knappen Utställt i Live Activity körs i appens process och skickar bocken till hushållet direkt.
+        PlacedOutAction.sendToHousehold = { [model] in await model.sendLiveActivityMarks() }
         // Uppgiften måste registreras innan appen startat klart.
         BackgroundRefresh.register(model: model)
         _model = State(initialValue: model)

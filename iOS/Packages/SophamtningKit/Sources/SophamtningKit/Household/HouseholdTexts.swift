@@ -39,6 +39,17 @@ public enum HouseholdTexts {
         "\(name) ställde ut kärlen för \(address)"
     }
 
+    /// "Sofie gick med i hushållet", och "Sofie och Kim gick med i hushållet" för flera.
+    public static func joined(_ names: [String]) -> String {
+        let who = names.count < 2 ? names.joined() : names.dropLast().joined(separator: ", ") + " och " + names.last!
+        return "\(who) gick med i hushållet"
+    }
+
+    /// Raden i arket Hushåll när jag just har gått med via en inbjudan.
+    public static func welcome(ownerName: String) -> String {
+        "Du är med i \(genitive(ownerName)) hushåll. Adresser som delas visas på hemskärmen."
+    }
+
     /// Texten för hushållets läge, eller `nil` när allt fungerar.
     public static func status(_ status: HouseholdStatus) -> String? {
         switch status {
@@ -68,7 +79,7 @@ public enum HouseholdTexts {
     public static let undo = "Ångra"
     public static let retry = "Försök igen"
     public static let silence = "Tysta min påminnelse när någon annan har ställt ut"
-    public static let notify = "Notis när någon ställer ut kärlen"
+    public static let notify = "Notiser från hushållet"
     public static let deliveryNote = "Fungerar när telefonen tillåter det. Ibland syns det först när du öppnar appen."
     public static let leftNote = "Du är inte längre med i hushållet. Adresserna finns kvar som dina egna."
     public static let leaveFirst = "Du är redan med i ett hushåll. Lämna det för att gå med i det här?"

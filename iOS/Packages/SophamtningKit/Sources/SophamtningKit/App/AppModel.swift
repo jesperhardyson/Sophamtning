@@ -69,6 +69,10 @@ public final class AppModel {
     public internal(set) var householdPreferences: HouseholdPreferences
     /// En rad som visas en gång, till exempel att man inte längre är med i hushållet. Rensas med `clearHouseholdNotice()`.
     public internal(set) var householdNotice: String?
+    /// Sant när arket Hushåll ska öppnas, efter att jag gått med via en inbjudan. Nollställs med `householdSheetShown()`.
+    public internal(set) var householdSheetRequested = false
+    /// Ägarens namn från en accepterad inbjudan, tills hushållet har kommit som synkat läge.
+    @ObservationIgnored var pendingWelcomeOwner: String?
     @ObservationIgnored let householdSync: any HouseholdSync
     @ObservationIgnored var householdTask: Task<Void, Never>?
     /// Om `household.json` gick att läsa vid start. Annars får ett läge med fel aldrig ta bort några adresser.

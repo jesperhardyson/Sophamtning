@@ -593,3 +593,112 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     #expect(model.householdNotice == nil)
     #expect(HouseholdTexts.status(model.household.status) == nil)
 }
+
+// MARK: Nya deltagare
+
+private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: false)
+
+@Test @MainActor func nyDeltagareGerRadOchNotis() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    #expect(await model.setNotifyWhenOthersPlaceOut(true) == .granted)
+    await settle(model) { model.startHousehold() }
+    // Kim fanns redan när hushållet sågs första gången.
+    #expect(model.householdJoinedText == nil)
+    #expect(scheduler.delivered.isEmpty)
+
+    await settle(model) { sync.simulateRemote { $0.participants.append(sofie) } }
+
+    #expect(model.householdJoinedText == "Sofie gick med i hushållet")
+    #expect(scheduler.delivered.map(\.body) == ["Sofie gick med i hushållet"])
+    #expect(scheduler.delivered.map(\.identifier) == ["hushall.deltagare.sofie"])
+
+    // Samma läge igen ger ingen ny notis, och raden står kvar tills den har setts.
+    await settle(model) { await sync.fetchChanges() }
+    #expect(scheduler.delivered.count == 1)
+    #expect(model.householdJoinedText == "Sofie gick med i hushållet")
+
+    // Raden finns kvar efter en omstart.
+    #expect(LocalStore(directory: temp.url).householdPreferences().joinedNames == ["Sofie"])
+
+    model.clearJoinedNotice()
+    #expect(model.householdJoinedText == nil)
+    await settle(model) { await sync.fetchChanges() }
+    #expect(model.householdJoinedText == nil)
+    #expect(scheduler.delivered.count == 1)
+}
+
+@Test @MainActor func nyDeltagareUtanValGerBaraRaden() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    await settle(model) { sync.simulateRemote { $0.participants.append(sofie) } }
+
+    #expect(model.householdJoinedText == "Sofie gick med i hushållet")
+    #expect(scheduler.delivered.isEmpty)
+}
+
+@Test @MainActor func lamnaGlommerDeKandaDeltagarna() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    await settle(model) { sync.simulateRemote { $0.participants.append(sofie) } }
+    #expect(model.householdPreferences.knownParticipants == ["jag", "kim", "sofie"])
+
+    await model.leaveHousehold()
+
+    #expect(model.householdPreferences.knownParticipants == nil)
+    #expect(model.householdJoinedText == nil)
+}
+
+@Test @MainActor func inbjudanOpnarArketMedValkomst() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: .empty)
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(!model.householdSheetRequested)
+
+    model.expectHouseholdWelcome(ownerName: "Kim")
+    await settle(model) { sync.simulateRemote { $0 = householdState() } }
+
+    #expect(model.householdSheetRequested)
+    #expect(model.householdNotice == "Du är med i Kims hushåll. Adresser som delas visas på hemskärmen.")
+    // Kim var med redan när jag gick med och är inte ny.
+    #expect(model.householdJoinedText == nil)
+
+    model.householdSheetShown()
+    #expect(!model.householdSheetRequested)
+}
+
+@Test @MainActor func bockFranLiveActivitySkickasDirekt() async throws {
+    let temp = TempDir()
+    let sync = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")])))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(sync.markCalls == 0)
+
+    // Knappen i Live Activity skriver bara i lagringen, som intenten gör.
+    try LocalStore(directory: temp.url).markPlacedOut(PlacedOut(key: home, date: tomorrow), today: DayDate("2026-11-10")!)
+    await settle(model) { await model.sendLiveActivityMarks() }
+
+    #expect(sync.markCalls == 1)
+    #expect(await currentState(sync).marks.contains { $0.placedOut == PlacedOut(key: home, date: tomorrow) && $0.by == "jag" })
+}
+
+@Test @MainActor func bockFranLiveActivityUtanHushallSkickasInte() async throws {
+    let temp = TempDir()
+    let sync = CountingHousehold(InMemoryHouseholdSync(state: .empty))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    try LocalStore(directory: temp.url).markPlacedOut(PlacedOut(key: home, date: tomorrow), today: DayDate("2026-11-10")!)
+    await model.sendLiveActivityMarks()
+
+    #expect(sync.markCalls == 0)
+}

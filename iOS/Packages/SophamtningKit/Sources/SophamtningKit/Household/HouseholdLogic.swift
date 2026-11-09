@@ -14,6 +14,13 @@ public enum HouseholdLogic {
         return marks.first { $0.placedOut.key == key && $0.placedOut.date == nextPickup }
     }
 
+    /// Deltagare som har gått med sedan förra synkade läget. Utan kända deltagare (`nil`), när jag just gått med eller
+    /// hämtar hushållet på nytt, är ingen ny. Jag själv är aldrig ny.
+    public static func newParticipants(_ participants: [HouseholdParticipant], known: Set<String>?, myId: String?) -> [HouseholdParticipant] {
+        guard let known else { return [] }
+        return participants.filter { $0.id != myId && !known.contains($0.id) }
+    }
+
     /// Bockar vars hämtdatum har passerat. Bocken gäller hela hämtdagen och förbrukas dagen efter.
     public static func expired(_ marks: [HouseholdMark], today: DayDate) -> [HouseholdMark] {
         marks.filter { $0.placedOut.date < today }
