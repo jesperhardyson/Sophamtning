@@ -703,3 +703,20 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(model.lastStorageError == nil)
     #expect(!model.showsReminderOffer)
 }
+
+@Test @MainActor func missadMorgonGällerDagensTömning() async throws {
+    let temp = TempDir()
+    // Lördag 7 nov 07:00 med samma morgon 06:00, och schemat har tömning lördag 7 nov.
+    let morning = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 7 * 60)
+    let store = LocalStore(directory: temp.url)
+    try store.setSettings(ReminderSettings(timing: .sameMorning, morningMinutes: 360))
+    let scheduler = FakeScheduler(status: .authorized)
+    let api = FixedAPI(response: try fixtureResponse(events: ["2026-11-07"]))
+    let model = AppModel(api: api, store: store, now: { morning }, scheduler: scheduler)
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    #expect(model.missedReminderText == "Tömning i dag. Påminnelsen för i morse har redan passerat.")
+    #expect(!scheduler.planned.contains { $0.pickupDate == DayDate("2026-11-07")! })
+}

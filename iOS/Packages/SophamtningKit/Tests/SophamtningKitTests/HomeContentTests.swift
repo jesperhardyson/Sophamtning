@@ -263,8 +263,8 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
 }
 
 @Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
-    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse kvällen före")
-    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: false, timing: .eveningBefore) == "Slå på påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: true, timing: .eveningBefore) == "Stäng av påminnelse kvällen före")
 }
 
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {

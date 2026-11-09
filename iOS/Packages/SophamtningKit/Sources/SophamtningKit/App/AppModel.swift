@@ -436,15 +436,17 @@ public final class AppModel {
     /// "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen i morgon redan är påmind,
     /// aktiviteten väntar eller en reservnotis ligger framför.
     public func missedReminderApplies(to address: SavedAddress) -> Bool {
-        let tomorrow = PlacedOut(key: address.key, date: StockholmClock.today(now: now()).adding(days: 1))
+        // Tömningen som dagens påminnelse gäller: i morgon med kvällen före, i dag med samma morgon.
+        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.timing)
+        let pickup = PlacedOut(key: address.key, date: day)
         return remindersOn(for: address)
-            && !handledPickups.contains(tomorrow)
-            && !pendingActivityPickups.contains(tomorrow)
-            && reserveNotifications[tomorrow].map { $0 <= now() } ?? true
+            && !handledPickups.contains(pickup)
+            && !pendingActivityPickups.contains(pickup)
+            && reserveNotifications[pickup].map { $0 <= now() } ?? true
     }
 
-    /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när en adress med påminnelser på har tömning i morgon
-    /// och påminnelsetiden redan passerat. Ingen ersättningsnotis skickas, eftersom varje planering annars kunde skicka en ny.
+    /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." (eller "Tömning i dag. … i morse …") när en adress med
+    /// påminnelser på har tömning som dagens påminnelse gäller och påminnelsetiden redan passerat. Ingen ersättningsnotis skickas, eftersom varje planering annars kunde skicka en ny.
     public var missedReminderText: String? {
         addresses.lazy.compactMap { self.missedReminderText(for: $0) }.first
     }
