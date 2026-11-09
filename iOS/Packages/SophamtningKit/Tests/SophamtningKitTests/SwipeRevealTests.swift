@@ -8,6 +8,23 @@ import Testing
     private let width: CGFloat = 354
     private let open = SwipeReveal.openWidth
 
+    // MARK: Tryck
+
+    @Test func tryckPaEnOppenRadStangerDen() {
+        #expect(SwipeReveal.tapCloses(offset: -open, dragging: false, anotherRowOpen: false))
+        // Medan fingret drar är det svepet, inte ett tryck.
+        #expect(!SwipeReveal.tapCloses(offset: -open, dragging: true, anotherRowOpen: false))
+    }
+
+    @Test func tryckPaEnRadNarEnAnnanArOppenStangerDenAndra() {
+        // Huvudkortet, Lägg till och ytan nedanför stänger raden och gör inget annat.
+        #expect(SwipeReveal.tapCloses(offset: 0, dragging: false, anotherRowOpen: true))
+    }
+
+    @Test func tryckUtanOppenRadOppnarAdressen() {
+        #expect(!SwipeReveal.tapCloses(offset: 0, dragging: false, anotherRowOpen: false))
+    }
+
     // MARK: Riktning
 
     @Test func vertikalRorelseBlirScrollning() {

@@ -90,7 +90,7 @@ struct AreaConfirmSheet: View {
             AreaDetailsView(content: content, showsAllPlaces: allPlaces, labelBackground: Color.Theme.surface)
             if content.hidesPlaces {
                 Button { withAnimation(Motion.expand(reduceMotion: reduceMotion)) { allPlaces.toggle() } } label: {
-                    Text(allPlaces ? "Visa färre platser" : content.showAllPlacesText)
+                    Text(content.placesToggleText(expanded: allPlaces))
                         .font(.ui(16, weight: .heavy, relativeTo: .callout))
                         .foregroundStyle(Color.Theme.primary)
                         .frame(minHeight: 44)

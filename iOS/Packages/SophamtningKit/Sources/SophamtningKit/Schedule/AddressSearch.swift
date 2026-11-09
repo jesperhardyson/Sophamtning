@@ -81,3 +81,14 @@ public enum AddressSearch {
         }
     }
 }
+
+public extension AreaLookup {
+    /// Träffarna som visas under raden Välj område, med sin plats i svaret. Områdesrader för en kommun vars områden redan
+    /// nås med raden göms, så att samma områden inte står två gånger. Utan områden visas alla träffar.
+    static func visibleHits(_ hits: [SearchHit], lookup: AreaLookup?) -> [EnumeratedSequence<[SearchHit]>.Element] {
+        let all = Array(hits.enumerated())
+        guard case .found(_, let areas, _)? = lookup else { return all }
+        let kommuner = Set(areas.map(\.kommun))
+        return all.filter { !($0.element.isArea && kommuner.contains($0.element.kommun)) }
+    }
+}

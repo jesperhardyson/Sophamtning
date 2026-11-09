@@ -84,10 +84,6 @@ public struct AddressDetail: Equatable, Sendable {
         public let warning: String?
         public var id: DayDate { date }
 
-        var withoutWarning: Row {
-            Row(date: date, dateText: dateText, dayNumber: dayNumber, month: month, daysText: daysText, shortDaysText: shortDaysText, fractions: fractions, deviation: deviation, warning: nil)
-        }
-
         public var accessibilityLabel: String {
             (["\(dateText), \(daysText)", fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
         }
@@ -111,16 +107,20 @@ public struct AddressDetail: Equatable, Sendable {
     /// Hur många datum som visas under "Kommande".
     public static let upcomingCount = 3
 
-    /// De närmaste datumen under "Kommande". Det första kan vara samma dag som nästa tömning. Dess varning står då
-    /// bara i rutan för nästa tömning (`nextWarning`), inte en gång till under raden. Avvikelsen står kvar.
+    /// De närmaste datumen under "Kommande", efter nästa tömning. Nästa tömning står redan i kortet ovanför, med sin
+    /// varning (`nextWarning`) och avvikelse (`nextDeviation`). Tom när det inte finns fler datum.
     public var upcoming: [Row] {
-        rows.prefix(Self.upcomingCount).map { row in
-            row.date == next?.date ? row.withoutWarning : row
-        }
+        Array(rows.filter { $0.date != next?.date }.prefix(Self.upcomingCount))
     }
 
-    /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
-    public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
+    /// Länken "Hela schemat" visas bara när det finns fler datum än de som redan står på sidan: nästa tömning och
+    /// raderna under "Kommande".
+    public var hasFullSchedule: Bool { rows.count > Self.upcomingCount + (next == nil ? 0 : 1) }
+
+    /// "Flyttad från sön 8 nov" för nästa tömning, som står i kortet eftersom raden inte finns under "Kommande".
+    public var nextDeviation: String? {
+        rows.first { $0.date == next?.date }?.deviation
+    }
     /// "Schemat gäller till 10 januari 2027." med källans orsak. `nil` för live-källor och när perioden har passerat.
     public let schedulePeriod: SchedulePeriodLine?
     /// Rutan när schemat tar slut inom 14 dagar. Bara med kommande hämtningar: utan dem säger meddelandet nedan hur långt
@@ -134,10 +134,13 @@ public struct AddressDetail: Equatable, Sendable {
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
     public let webLink: URL?
-    /// Raden under "Notis kvällen före".
+    /// Raden under "Påminn mig kvällen före".
     public let reminderText: String
     public let liveActivityText: String
     public let isPrimary: Bool
+    /// Delen Påminnelser visas när det finns hämtningar. Utan hämtningar visas den bara när en påminnelse redan är på
+    /// (notisen för adressen, eller Live Activity för huvudadressen), så att den går att stänga av.
+    public let showsReminders: Bool
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när notiser är på och tiden redan passerat.
     public let missedReminder: String?
     /// Hushållets rad, för varje läge. `nil` utan hushåll.
@@ -174,6 +177,11 @@ public struct AddressDetail: Equatable, Sendable {
         case nil: notice = nil
         }
 
+        let liveActivityOn = settings.liveActivityOn && address.isPrimary
+        let showsReminders = mode == .schedule || (mode == .noUpcoming && (address.notificationsOn || liveActivityOn))
+        // Utan hämtningar står samma rad under båda reglagen, eftersom det inte finns någon tid att visa.
+        let nothingToRemind = mode == .noUpcoming ? Self.nothingToRemindText : nil
+
         let scheduleRows = response.map { rows(in: $0, today: today) } ?? []
         let bins = response.map { response in
             ScheduleLogic.nextByFraction(response.events, today: today).map { pickup in
@@ -200,16 +208,20 @@ public struct AddressDetail: Equatable, Sendable {
             schedulePeriod: periodLine(response?.schedule, mode: mode, today: today),
             scheduleEnding: mode == .schedule ? ScheduleEnding.make(response?.schedule, today: today) : nil,
             otherDays: OtherDaysNote.make(response?.address.area),
-            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
+            noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil, sourceName: sourceName),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
-            reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
-            liveActivityText: liveActivityText(settings: settings),
+            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
+            showsReminders: showsReminders,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil,
             household: entry.household
         )
     }
+
+    /// Raden under reglagen när adressen inte har några kommande hämtningar.
+    static let nothingToRemindText = "Inga hämtningar att påminna om just nu."
 
     /// Raden visas när källan anger en period som inte har passerat och det finns kommande hämtningar. Utan kommande
     /// hämtningar står perioden i meddelandet i stället, så att texterna inte motsäger varandra. Live-källor har ingen
@@ -222,13 +234,14 @@ public struct AddressDetail: Equatable, Sendable {
     /// Utan kommande hämtningar. Gäller perioden fortfarande finns inga fler hämtningar i det publicerade schemat. Har den
     /// passerat har källan inte publicerat nästa period än. Källans orsak står med. Det säger aldrig att adressen saknas.
     /// Visas ett sparat schema efter ett fel (`afterError`) kan nästa period finnas hos källan utan att ha kommit fram,
-    /// så då står bara vad det senast hämtade schemat säger, aldrig att något saknas hos källan.
-    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate, afterError: Bool = false) -> NoUpcomingMessage {
+    /// så då står bara vad det senast hämtade schemat säger, aldrig att något saknas hos källan. En live-källa har ingen
+    /// period, och ett tomt svar från den betyder oftast att adressen saknar abonnemang, så texten hänvisar till källan.
+    static func noUpcomingMessage(_ period: SchedulePeriod?, today: DayDate, afterError: Bool = false, sourceName: String? = nil) -> NoUpcomingMessage {
         let title = "Inga kommande hämtningar"
         guard let period else {
             let message = afterError
                 ? "Det senast hämtade schemat har inga fler hämtningar."
-                : "Schemat kan ta slut tills kommunen har publicerat nästa period."
+                : "Källan visar inga hämtningar för adressen just nu. Stämmer det inte, kontakta \(sourceName?.trimmedNonEmpty ?? "den som ansvarar för hämtningen")."
             return NoUpcomingMessage(title: title, message: message)
         }
         let until = SwedishFormat.dayMonthYear(period.until)
@@ -257,10 +270,20 @@ public struct AddressDetail: Equatable, Sendable {
         return "\(weekday.prefix(1).uppercased() + weekday.dropFirst()) kl. \(clock(of: reserveAt)) inför \(SwedishFormat.weekdayName(evening.adding(days: 1)))ens tömning, om aktiviteten inte syns."
     }
 
-    /// Texten vid valet för Live Activity.
+    /// Texten vid valet för Live Activity: en mening. Resten står i `liveActivityDetails()`.
+    /// Det som står bakom knappen Mer om Live Activity, en mening per rad.
+    public static func liveActivityDetails() -> [String] {
+        [
+            "Starten aviseras med ljud.",
+            "Den försvinner senast efter 12 timmar.",
+            "Öppna appen ibland, så att nästa tömning kommer med.",
+            "Med notiser på får du en reserv om du inte bekräftar.",
+        ]
+    }
+
     public static func liveActivityText(settings: ReminderSettings) -> String {
         let time = SwedishFormat.clock(minutes: settings.reminderMinutes)
-        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med. Med notiser på får du också en reserv om du inte bekräftar."
+        return "Visas på låsskärmen från kl. \(time) kvällen före."
     }
 
     /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.

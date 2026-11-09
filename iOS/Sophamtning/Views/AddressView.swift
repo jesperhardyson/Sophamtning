@@ -108,7 +108,8 @@ struct AddressView: View {
                     Group { schedule(detail) }
                         .transition(.opacity)
                 }
-                if detail.mode == .schedule || detail.mode == .noUpcoming {
+                // Utan hämtningar bara när en påminnelse är på, så att den går att stänga av.
+                if detail.showsReminders {
                     reminders(detail)
                 }
                 household(detail)
@@ -121,6 +122,8 @@ struct AddressView: View {
             .padding(.bottom, 32)
         }
         .refreshable { await model.refreshAll(manual: true) }
+        // En tydlig kant under fältet, så att rubriken inte står ovanpå texten som scrollar under.
+        .scrollEdgeEffectStyle(.hard, for: .top)
     }
 
     /// Adressen och platsen under den stora rubriken i fältet.
@@ -146,7 +149,7 @@ struct AddressView: View {
     @ViewBuilder
     private func schedule(_ detail: AddressDetail) -> some View {
         if let next = detail.next {
-            nextCard(next)
+            nextCard(next, deviation: detail.nextDeviation)
         }
         // Ställ ut kärlen eller bocken, för en delad adress. Hushållets läge står under Hushåll längre ned.
         if let line = placeOutLine(detail) {
@@ -166,7 +169,7 @@ struct AddressView: View {
         bins(detail)
     }
 
-    private func nextCard(_ next: HomeContent.Pickup) -> some View {
+    private func nextCard(_ next: HomeContent.Pickup, deviation: String?) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             AdaptiveStack(spacing: 20) {
                 CalendarTile(date: next.date)
@@ -184,6 +187,12 @@ struct AddressView: View {
                     Text(next.longDate)
                         .font(.ui(17, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Color.Theme.text2)
+                    // Står här och inte under Kommande, som börjar efter nästa tömning.
+                    if let deviation {
+                        Text(deviation)
+                            .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                            .foregroundStyle(Color.Theme.warn)
+                    }
                 }
             }
             // Kärlen som töms den dagen, med färg, ikon och text. Raderna bryts när de inte får plats.
@@ -198,13 +207,16 @@ struct AddressView: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(next.accessibilityLabel)
+        .accessibilityLabel([next.accessibilityLabel, deviation].compactMap { $0 }.joined(separator: ". "))
     }
 
-    /// De tre närmaste datumen, och länken till hela schemat när det finns fler.
+    /// De tre närmaste datumen efter nästa tömning, och länken till hela schemat när det finns fler. Utan fler datum
+    /// än nästa tömning visas ingen rubrik, men raden om hur länge schemat gäller står kvar.
     @ViewBuilder
     private func upcoming(_ detail: AddressDetail) -> some View {
-        if typeSize.isAccessibilitySize {
+        if detail.upcoming.isEmpty {
+            EmptyView()
+        } else if typeSize.isAccessibilitySize {
             // Under varandra med största text, så att inget ord bryts mitt i.
             sectionTitle("Kommande")
             if detail.hasFullSchedule {
@@ -218,12 +230,14 @@ struct AddressView: View {
                 if detail.hasFullSchedule { fullScheduleLink }
             }
         }
-        ScheduleList(rows: detail.upcoming, shown: rowsRevealed || !entrancePlays || voiceOver)
-            .onScrollVisibilityChange(threshold: 0.02) { visible in
-                guard visible, !rowsRevealed else { return }
-                rowsRevealed = true
-                ShownSchedules.keys.markShown(key)
-            }
+        if !detail.upcoming.isEmpty {
+            ScheduleList(rows: detail.upcoming, shown: rowsRevealed || !entrancePlays || voiceOver)
+                .onScrollVisibilityChange(threshold: 0.02) { visible in
+                    guard visible, !rowsRevealed else { return }
+                    rowsRevealed = true
+                    ShownSchedules.keys.markShown(key)
+                }
+        }
         // Hur långt schemat gäller, direkt under de kommande tömningarna. Live-källor har ingen sådan rad.
         if let period = detail.schedulePeriod {
             SchedulePeriodView(line: period)
@@ -252,25 +266,20 @@ struct AddressView: View {
         .buttonStyle(.pressable)
     }
 
-    /// Nästa tömning per kärl, som kort i sidled. Nästa kort syns till hälften, så att det märks att det går att scrolla.
+    /// Nästa tömning per kärl, en rad per kärl.
     @ViewBuilder
     private func bins(_ detail: AddressDetail) -> some View {
-        sectionTitle("Kärlen")
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: BinCardMetrics.spacing) {
-                ForEach(Array(detail.bins.enumerated()), id: \.element.id) { index, bin in
-                    // Kortet väljer själv sin bredd efter namnet.
-                    BinCard(bin: bin)
-                        .rowEntrance(shown: binsRevealed || !entrancePlays || voiceOver, index: index)
+        sectionTitle("Per kärl")
+        // En rad per kärl i ett kort, som Kommande. Visar när kärl som töms sällan töms nästa gång.
+        ResultList {
+            ForEach(Array(detail.bins.enumerated()), id: \.element.id) { index, bin in
+                VStack(spacing: 0) {
+                    if index > 0 { ResultDivider() }
+                    BinRow(bin: bin)
                 }
+                .rowEntrance(shown: binsRevealed || !entrancePlays || voiceOver, index: index)
             }
-            .scrollTargetLayout()
         }
-        .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.viewAligned)
-        .contentMargins(.horizontal, PageMargin.horizontal, for: .scrollContent)
-        // Korten går ut till skärmens kant, medan resten av vyn har marginal.
-        .padding(.horizontal, -PageMargin.horizontal)
         .onScrollVisibilityChange(threshold: 0.02) { visible in
             if visible { binsRevealed = true }
         }
@@ -305,7 +314,7 @@ struct AddressView: View {
         }
         VStack(spacing: 0) {
             ReminderToggleRow(
-                title: "Notis kvällen före",
+                title: HomeContent.reminderTitle,
                 text: detail.reminderText,
                 symbol: "bell.badge",
                 pulse: notificationPulse,
@@ -384,8 +393,8 @@ struct AddressView: View {
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(.ui(22, weight: .heavy, relativeTo: .title2))
-            .foregroundStyle(Color.Theme.text)
+            .font(.ui(20, weight: .bold, relativeTo: .title3))
+            .foregroundStyle(Color.Theme.text2)
             .padding(.top, 28)
             .padding(.bottom, 12)
             .accessibilityAddTraits(.isHeader)

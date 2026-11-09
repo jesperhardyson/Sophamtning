@@ -144,6 +144,8 @@ struct HomeView: View {
             .closesOpenSwipeRow($openRow)
         }
         .scrollPosition($scrollPosition)
+        // En tydlig kant under fältet, så att rubriken och knapparna inte står ovanpå det gröna kortet.
+        .scrollEdgeEffectStyle(.hard, for: .top)
         .onChange(of: content.primary == nil) { _, empty in
             if !empty { scrollPosition.scrollTo(edge: .top) }
         }
@@ -257,6 +259,14 @@ struct HomeView: View {
                 })
                 .padding(.top, Self.titleTopPadding)
                 .padding(.bottom, 12)
+            if model.showsReminderOffer {
+                ReminderOfferCard(
+                    onAccept: { setNotifications(true, for: primary.key) },
+                    onDecline: { withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.dismissReminderOffer() } }
+                )
+                .padding(.bottom, 16)
+                .transition(.opacity)
+            }
             AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow, actionsInContent: true) {
                 PrimaryCard(
                     entry: primary,
@@ -274,8 +284,8 @@ struct HomeView: View {
             .cardEntrance(shown: !entrance.hidesCards, index: Self.primaryCardIndex)
             if !others.isEmpty {
                 Text("Fler adresser")
-                    .font(.ui(22, weight: .heavy, relativeTo: .title2))
-                    .foregroundStyle(Color.Theme.text)
+                    .font(.ui(20, weight: .bold, relativeTo: .title3))
+                    .foregroundStyle(Color.Theme.text2)
                     .padding(.top, 28)
                     .padding(.bottom, 14)
                     .accessibilityAddTraits(.isHeader)
@@ -465,15 +475,68 @@ enum HomeSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
+/// "Vill du bli påmind?" efter att den första adressen har sparats. Påminnelser är avstängda från början, och kortet
+/// gör valet synligt utan att något schemaläggs förrän användaren trycker **Påminn mig**. Det visas en gång.
+private struct ReminderOfferCard: View {
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Vill du bli påmind?")
+                        .font(.ui(18, weight: .heavy, relativeTo: .headline))
+                        .foregroundStyle(Color.Theme.text)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Få en notis kvällen före varje tömning. Du kan ändra det när som helst.")
+                        .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "bell.badge")
+                    .font(.system(.title3, weight: .semibold))
+                    .foregroundStyle(Color.Theme.primary)
+                    .accessibilityHidden(true)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { buttons }
+                VStack(spacing: 8) { buttons }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        Button(action: onAccept) { PrimaryButtonLabel(title: "Påminn mig") }
+            .buttonStyle(.pressable)
+        Button(action: onDecline) {
+            Text("Inte nu")
+                .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                .foregroundStyle(Color.Theme.primary)
+                .frame(maxWidth: .infinity, minHeight: 52)
+        }
+        .buttonStyle(.pressable)
+    }
+}
+
 /// En adress under "Fler adresser". Kärlen visas som chips med färg, ikon och kort namn, och raden läses upp med
 /// fraktionernas hela namn.
 private struct AddressRow: View {
     let entry: HomeContent.Entry
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isFailure: Bool {
-        if case .failed = entry.status { return true }
-        return false
+    private var summaryColor: Color {
+        switch entry.summaryTone {
+        case .date: Color.Theme.brandText
+        case .neutral: Color.Theme.text2
+        case .warning: Color.Theme.warn
+        }
     }
 
     /// Namnet, platsen, datumet och påminnelsen får hela bredden, så att inga ord bryts mitt i. Chipsen står under
@@ -487,6 +550,8 @@ private struct AddressRow: View {
             HStack(spacing: 12) {
                 fractions
                     .frame(maxWidth: .infinity, alignment: .leading)
+                // Utan chips är `fractions` tom och tar ingen plats. Avståndet håller ändå pilen till höger.
+                Spacer(minLength: 0)
                 chevron
             }
         }
@@ -517,9 +582,10 @@ private struct AddressRow: View {
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
             AddressLinesView(lines: entry.lines, size: 17, addressStyle: .body)
+            // Ett datum står i accentfärg. En lugn statustext, som "Inga kommande hämtningar", står neutralt.
             Text(entry.summary)
-                .font(.ui(16, weight: .heavy, relativeTo: .callout))
-                .foregroundStyle(isFailure ? Color.Theme.warn : Color.Theme.brandText)
+                .font(.ui(16, weight: entry.summaryTone == .neutral ? .bold : .heavy, relativeTo: .callout))
+                .foregroundStyle(summaryColor)
                 .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
             // Bara när notis är på för adressen. Ingen klocka när notis är av.
             if let reminder = entry.rowReminder {
@@ -556,7 +622,7 @@ private struct AddressRow: View {
         case .upcoming(let pickup):
             FlowLayout(spacing: 6) {
                 ForEach(pickup.fractions) { fraction in
-                    FractionChip(id: fraction.id, info: fraction.info, short: true)
+                    FractionChip(id: fraction.id, info: fraction.info)
                 }
             }
             .accessibilityHidden(true)

@@ -37,8 +37,56 @@ struct ReminderToggleRow: View {
     let symbol: String
     let pulse: Int
     @Binding var isOn: Bool
+    /// En knapp under reglaget som visar mer om valet, en mening per rad. Utanför reglaget, så att VoiceOver läser den
+    /// som en egen knapp.
+    var details: (title: String, lines: [String])? = nil
+
+    @State var showsDetails = false
+    @Environment(\.dynamicTypeSize) var typeSize
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            toggle
+            if let details {
+                Button { showsDetails = true } label: {
+                    Label(details.title, systemImage: "info.circle")
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.primary)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showsDetails) {
+                    // En popover som får sin höjd från texten. Med de största textstorlekarna ryms den inte, och då blir
+                    // den ett ark som går att scrolla.
+                    if typeSize.isAccessibilitySize {
+                        ScrollView { detailLines(details.lines).padding(20) }
+                            .presentationDetents([.medium, .large])
+                    } else {
+                        detailLines(details.lines)
+                            .padding(20)
+                            .frame(width: 300, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .presentationCompactAdaptation(.popover)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .sensoryFeedback(.impact(weight: .light), trigger: pulse)
+    }
+
+    private func detailLines(_ lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(lines, id: \.self) { line in
+                Text(line)
+                    .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var toggle: some View {
         Toggle(isOn: $isOn) {
             AdaptiveStack(spacing: 12, verticalSpacing: 8, alignment: .top) {
                 ReminderSymbol(symbol: symbol, pulse: pulse, color: Color.Theme.primary)
@@ -56,9 +104,6 @@ struct ReminderToggleRow: View {
         }
         .toggleStyle(.switch)
         .tint(Color.Theme.primary)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .sensoryFeedback(.impact(weight: .light), trigger: pulse)
     }
 }
 
@@ -102,7 +147,8 @@ struct LiveActivityToggleRow: View {
             isOn: Binding(
                 get: { model.settings.liveActivityOn },
                 set: { model.clearStorageError(); model.setLiveActivity($0) }
-            )
+            ),
+            details: (title: "Mer om Live Activity", lines: AddressDetail.liveActivityDetails())
         )
         .onChange(of: isActive) { _, active in
             if active { pulse += 1 }

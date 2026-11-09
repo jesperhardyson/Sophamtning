@@ -31,7 +31,7 @@ final class LargestTextTests: XCTestCase {
         let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: card)
         wait(for: [hittable], timeout: 10)
         card.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: card.frame.width / 2, dy: 400)).tap()
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         // Rubriken "Hemma" står i systemets fält. Adressen och platsen under den börjar vid marginalen.
         let lines = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Testgatan 1, Uppsala")).firstMatch
         // Sidor med systemets stora rubrik har systemets marginal, så att innehållet har samma kant som rubriken.
@@ -71,7 +71,7 @@ final class LargestTextTests: XCTestCase {
         let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: card)
         wait(for: [hittable], timeout: 10)
         card.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: card.frame.width / 2, dy: 200)).tap()
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         let share = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Dela med hushållet")).firstMatch
         for _ in 0..<12 where !(share.exists && share.isHittable) { app.swipeUp() }
         XCTAssertTrue(share.isHittable, "Reglaget Dela med hushållet ska finnas")
@@ -94,19 +94,16 @@ final class LargestTextTests: XCTestCase {
 
     // MARK: Hjälpare
 
-    /// Rubriken börjar vid marginalen, och inget element utom kärlkorten slutar till höger om fönstret.
+    /// Rubriken börjar vid marginalen, och inget element slutar till höger om fönstret.
     private func checkFits(_ screen: String, title: XCUIElement, margin: CGFloat = 24, file: StaticString = #filePath, line: UInt = #line) {
         let width = app.windows.firstMatch.frame.width
         XCTAssertGreaterThanOrEqual(title.frame.minX, margin - 0.5, "\(screen): rubriken ska börja vid marginalen", file: file, line: line)
-        let bins = binBand()
         guard let root = try? app.snapshot() else { return XCTFail("\(screen): ingen ögonblicksbild", file: file, line: line) }
         // Systemets toning under navigeringsfältet i iOS 26 är bredare än fönstret, men är inget av appens element. Detsamma
         // gäller toningen bakom ett ark över ett annat ark: en tom vy utan etikett som går utanför fönstret åt alla håll.
         for element in flatten(root) where element.frame.maxX > width + 0.5 && !element.frame.isEmpty
             && element.identifier != "AdditionalDimmingOverlay" && !isSheetDimming(element) {
-            let frame = element.frame
-            if let bins, frame.minY >= bins.lowerBound - 1, frame.maxY <= bins.upperBound + 1 { continue }
-            XCTFail("\(screen): \(element.elementType.rawValue) '\(element.label)' slutar vid \(frame.maxX), fönstret är \(width) brett", file: file, line: line)
+            XCTFail("\(screen): \(element.elementType.rawValue) '\(element.label)' slutar vid \(element.frame.maxX), fönstret är \(width) brett", file: file, line: line)
         }
     }
 
@@ -117,14 +114,6 @@ final class LargestTextTests: XCTestCase {
 
     private func flatten(_ element: XCUIElementSnapshot) -> [XCUIElementSnapshot] {
         [element] + element.children.flatMap { flatten($0) }
-    }
-
-    /// Höjden där kärlkorten ligger, mellan rubriken "Kärlen" och "Påminnelser".
-    private func binBand() -> ClosedRange<CGFloat>? {
-        let top = app.staticTexts["Kärlen"]
-        let bottom = app.staticTexts["Påminnelser"]
-        guard top.exists, bottom.exists else { return nil }
-        return top.frame.maxY...bottom.frame.minY
     }
 
     /// Söker och sparar Testgatan 1 från det tomma hemläget.

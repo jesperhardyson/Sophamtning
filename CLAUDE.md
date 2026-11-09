@@ -27,10 +27,13 @@ cd iOS/Packages/SophamtningKit && swift test
 xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 
 # Ett enskilt UI-test
-xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test -only-testing:SophamtningUITests/CoreFlowTests/testOmradeslistanGarAttSoka
+xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test -only-testing:SophamtningUITests/CoreFlowTests/testLaggaTillAdressVisasPaHem
+
+# Tillgänglighetsgranskningen och största texten, före release
+xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Granskning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
-UI-testerna tar 15–20 minuter som hel svit. Kör därför bara de UI-tester som rör det som ändrats under arbetet, och hela sviten en gång innan PR:en görs redo eller mergas. Paketets tester och bygget körs varje gång.
+UI-testerna är bara några få kärnflöden och tar cirka 3 minuter som hel svit. Kör bara de UI-tester som rör det som ändrats under arbetet, och hela sviten en gång innan PR:en görs redo eller mergas. Paketets tester och bygget körs varje gång. Nya kontroller av vad som visas och vilken text skrivs som enhetstester i paketet, inte som UI-tester.
 
 ## Regler
 
@@ -55,6 +58,7 @@ Releaser sköts med Release Please (googleapis/release-please-action), med versi
 - Release Please läser commit-meddelandena på `main`: `feat:` höjer minor, `fix:` höjer patch och `!` höjer major. Andra typer ger ingen release och syns inte i changelogen.
 - Repot squash-mergar, så PR-titeln blir commit-meddelandet på `main`. Titeln måste därför följa formatet ovan.
 - Release Please håller en öppen release-PR med nästa version i `version.txt` och `CHANGELOG.md`. När den mergas skapas taggen `vX.Y.Z` och en GitHub Release.
+- Innan release-PR:en mergas körs schemat `Granskning` (tillgänglighetsgranskningen och största texten, cirka 10 minuter). Det körs inte i den vanliga sviten.
 - När release-PR:en mergas startar jobbet TestFlight i samma körning. Det väntar på Jespers godkännande i miljön `testflight`, och laddar sedan upp till App Store Connect. App Store-inskickning görs bara efter hans godkännande. En uppladdning kan göras om med Actions > Release > Run workflow och taggen.
 - Ett testbygge görs med Actions > Release > Run workflow, med en gren vald och tomt taggfält. Det får nästa patchversion efter `version.txt` och ändrar ingen fil i repot.
 - Appens version (`MARKETING_VERSION` i `iOS/Config/Version.xcconfig`) ska alltid vara densamma som i `version.txt`. Release Please uppdaterar båda. Byggnumret räknas fram i jobbet. Ändra aldrig version eller changelog för hand.

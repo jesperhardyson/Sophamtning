@@ -218,3 +218,22 @@ private func empty() -> SearchResponse { SearchResponse(addresses: [], failed: [
     let result = try await AreaLookup.run(query: "okänd gata 1, Avesta", api: api)
     #expect(result == .found(place: "Avesta", areas: avestaAreas, sources: sources))
 }
+
+/// Raden Välj område står i en egen grupp, och områdesträffarna för samma kommun göms under den.
+@Suite struct VisibleHitsTests {
+    private let mixed = [hit("1"), hit("trakt-1", selection: "area"), hit("2"), hit("trakt-9", kommun: "Mora kommun", selection: "area")]
+
+    @Test func omradenaForKommunenMedRadenGoms() {
+        let lookup = AreaLookup.found(place: "Avesta", areas: avestaAreas)
+        let visible = AreaLookup.visibleHits(mixed, lookup: lookup)
+        #expect(visible.map(\.element.id) == ["1", "2", "trakt-9"])
+        // Raderna behåller sin plats i svaret, så att inträdet inte börjar om.
+        #expect(visible.map(\.offset) == [0, 2, 3])
+    }
+
+    @Test func utanOmradenVisasAllaTraffar() {
+        #expect(AreaLookup.visibleHits(mixed, lookup: nil).count == 4)
+        #expect(AreaLookup.visibleHits(mixed, lookup: .notFound).count == 4)
+        #expect(AreaLookup.visibleHits(mixed, lookup: .failed).count == 4)
+    }
+}

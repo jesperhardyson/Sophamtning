@@ -49,7 +49,7 @@ import SophamtningKit
         #expect(ThemeToken.primary.dark == 0x4CC384)
         #expect(ThemeToken.bg.light == 0xE8F2EA)
         #expect(ThemeToken.fracPlastBg.dark == 0x3D241B)
-        #expect(ThemeToken.allCases.count == 29)
+        #expect(ThemeToken.allCases.count == 31)
     }
 
     @Test func reglagetPaKortetArMorktILjustOchMorkt() {
@@ -86,10 +86,22 @@ import SophamtningKit
         #expect(contrast(fg.dark, bg.dark) >= 4.5)
     }
 
+    @Test func tidningarHarEgenFarg() {
+        // Tidningar och pappersförpackningar töms ofta samma dag, så chipsen ska gå att skilja åt på färgen.
+        let tidningar = FractionStyle(id: "tidningar", info: info("newspaper"))
+        let papper = FractionStyle(id: "papper", info: info("package"))
+        for dark in [false, true] {
+            #expect(resolved(tidningar.foreground, dark: dark) == (dark ? ThemeToken.fracTidningar.dark : ThemeToken.fracTidningar.light))
+            #expect(resolved(tidningar.foreground, dark: dark) != resolved(papper.foreground, dark: dark))
+            #expect(resolved(tidningar.background, dark: dark) != resolved(papper.background, dark: dark))
+        }
+    }
+
     @Test func kandaFraktionerHarLasbarKontrast() {
         let pairs: [(ThemeToken, ThemeToken)] = [
             (.fracRest, .fracRestBg), (.fracMat, .fracMatBg), (.fracPapper, .fracPapperBg),
             (.fracPlast, .fracPlastBg), (.fracGlas, .fracGlasBg), (.fracMetall, .fracMetallBg),
+            (.fracTidningar, .fracTidningarBg),
         ]
         for (fg, bg) in pairs {
             #expect(contrast(fg.light, bg.light) >= 4.5, "\(fg) ljust")

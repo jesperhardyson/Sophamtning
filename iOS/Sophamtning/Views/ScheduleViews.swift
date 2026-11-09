@@ -34,8 +34,13 @@ struct ScheduleRowView: View {
             } else {
                 HStack(spacing: 14) {
                     badge
-                    chips
-                    days
+                    // Chipsen och dagarna delar bredden. Dagarna bryts hellre än att ett långt namn krymper.
+                    ChipRowLayout(chipSpacing: 6, spacing: 14) {
+                        ForEach(row.fractions) { fraction in
+                            FractionChip(id: fraction.id, info: fraction.info)
+                        }
+                        days
+                    }
                 }
             }
             // Avvikelse och varning tar hela radens bredd, så att ingen text trängs ihop.
@@ -77,7 +82,7 @@ struct ScheduleRowView: View {
     private var chips: some View {
         FlowLayout(spacing: 6) {
             ForEach(row.fractions) { fraction in
-                FractionChip(id: fraction.id, info: fraction.info, short: true)
+                FractionChip(id: fraction.id, info: fraction.info)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,6 +94,90 @@ struct ScheduleRowView: View {
             .foregroundStyle(Color.Theme.brandText)
             .multilineTextAlignment(.trailing)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Chipsen flödar till vänster och den sista vyn, texten med dagar kvar, står till höger. Båda centreras vertikalt.
+/// Ryms inte det bredaste chipet bredvid texten bryts texten till två rader ("ca om" och "13 d") i stället för att chipets
+/// namn krymper. Bredden bestäms av `ChipRowMetrics.trailingWidth`.
+struct ChipRowLayout: Layout {
+    var chipSpacing: CGFloat
+    var spacing: CGFloat
+
+    private struct Arrangement {
+        var size: CGSize
+        var chipOrigins: [CGPoint]
+        var chipsHeight: CGFloat
+        var chipsWidth: CGFloat
+        var trailingSize: CGSize
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(width: proposal.width, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let trailing = subviews.last else { return }
+        let result = arrange(width: bounds.width, subviews: subviews)
+        let chipsTop = bounds.minY + (bounds.height - result.chipsHeight) / 2
+        for (index, origin) in result.chipOrigins.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: chipsTop + origin.y), proposal: ProposedViewSize(width: result.chipsWidth, height: nil))
+        }
+        trailing.place(
+            at: CGPoint(x: bounds.maxX - result.trailingSize.width, y: bounds.minY + (bounds.height - result.trailingSize.height) / 2),
+            proposal: ProposedViewSize(width: result.trailingSize.width, height: nil)
+        )
+    }
+
+    private func arrange(width proposed: CGFloat?, subviews: Subviews) -> Arrangement {
+        guard let trailing = subviews.last else { return Arrangement(size: .zero, chipOrigins: [], chipsHeight: 0, chipsWidth: 0, trailingSize: .zero) }
+        let chips = subviews.dropLast()
+        let ideal = trailing.sizeThatFits(.unspecified)
+        let trailingWidth: CGFloat
+        if let proposed {
+            let widestChip = chips.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+            trailingWidth = ChipRowMetrics.trailingWidth(available: proposed, spacing: spacing, trailingIdeal: ideal.width, trailingMinimum: twoLineWidth(of: trailing, ideal: ideal), widestChip: widestChip)
+        } else {
+            trailingWidth = ideal.width
+        }
+        let trailingSize = trailing.sizeThatFits(ProposedViewSize(width: trailingWidth, height: nil))
+        let chipsWidth = proposed.map { max($0 - trailingSize.width - spacing, 0) } ?? .infinity
+
+        // Som `FlowLayout`: chipsen får högst områdets bredd och bryts till nästa rad när de inte ryms.
+        var origins: [CGPoint] = []
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxX: CGFloat = 0
+        for chip in chips {
+            let size = chip.sizeThatFits(ProposedViewSize(width: chipsWidth.isFinite ? chipsWidth : nil, height: nil))
+            if x > 0, x + size.width > chipsWidth {
+                x = 0
+                y += rowHeight + chipSpacing
+                rowHeight = 0
+            }
+            origins.append(CGPoint(x: x, y: y))
+            x += size.width + chipSpacing
+            rowHeight = max(rowHeight, size.height)
+            maxX = max(maxX, x - chipSpacing)
+        }
+        let chipsHeight = y + rowHeight
+        let width = proposed ?? (maxX + spacing + trailingSize.width)
+        return Arrangement(
+            size: CGSize(width: width, height: max(chipsHeight, trailingSize.height)),
+            chipOrigins: origins,
+            chipsHeight: chipsHeight,
+            chipsWidth: chipsWidth.isFinite ? chipsWidth : maxX,
+            trailingSize: trailingSize
+        )
+    }
+
+    /// Den smalaste bredden där texten ryms på två rader, till exempel "ca om" över "13 d".
+    private func twoLineWidth(of trailing: LayoutSubview, ideal: CGSize) -> CGFloat {
+        let twoLines = ideal.height * 2 + 1
+        var low: CGFloat = 0, high = ideal.width
+        for _ in 0..<12 {
+            let mid = (low + high) / 2
+            if trailing.sizeThatFits(ProposedViewSize(width: mid, height: nil)).height <= twoLines { high = mid } else { low = mid }
+        }
+        return ceil(high)
     }
 }
 
@@ -115,77 +204,49 @@ struct ScheduleList: View {
     }
 }
 
-/// Kort för ett kärl: ikon, namn, dagar kvar och datum. Läses som ett element av VoiceOver.
-/// Kortet är minst 3/7 av bredden och blir bredare, högst 2/3, när ett ord i namnet inte ryms i full storlek. Med
-/// tillgänglighetsstorlekar är det minst 4/5 och högst hela bredden.
-struct BinCard: View {
+/// En rad per kärl under "Per kärl": chipset till vänster, och datum och dagar kvar till höger. Läses som ett element
+/// av VoiceOver, med hela namnet. Med tillgänglighetsstorlekar står datumet under chipset.
+struct BinRow: View {
     let bin: AddressDetail.Bin
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
-    /// Bredden det längsta ordet i namnet behöver i full storlek.
-    @State private var wordWidth: CGFloat = 0
-
-    private var words: [String] {
-        bin.info.name.split(whereSeparator: \.isWhitespace).map { String($0) }
-    }
-
-    /// Lika många rader som namnet har ord, högst tre.
-    private var nameLines: Int {
-        min(max(words.count, 1), 3)
-    }
-
-    private var nameFont: Font { .ui(17, weight: .heavy, relativeTo: .headline) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            FractionIconView(id: bin.id, info: bin.info)
-            VStack(alignment: .leading, spacing: 2) {
-                // Högst en rad per ord, så att ett ord aldrig bryts mitt i. Ryms ordet inte ens i det bredaste kortet
-                // krymper det, i stället för att brytas.
-                Text(bin.info.name)
-                    .font(nameFont)
-                    .foregroundStyle(Color.Theme.text)
-                    .lineLimit(nameLines)
-                    .minimumScaleFactor(0.4)
-                Text(bin.daysText)
-                    .font(.ui(15, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(Color.Theme.brandText)
-                    .rollingNumbers(value: bin.daysText, reduceMotion: reduceMotion)
-                Text(bin.dateText)
-                    .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                    .foregroundStyle(Color.Theme.text2)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    chip
+                    when(alignment: .leading)
+                }
+            } else {
+                // Som raderna under Kommande: ryms inte chipet bredvid datumet bryts datumet, i stället för att namnet krymper.
+                ChipRowLayout(chipSpacing: 6, spacing: 14) {
+                    chip
+                    when(alignment: .trailing)
+                }
             }
-            Spacer(minLength: 0)
         }
-        .padding(BinCardMetrics.horizontalPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(alignment: .topLeading) { wordMeasure }
-        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(bin.accessibilityLabel)
-        .containerRelativeFrame(.horizontal) { length, _ in
-            BinCardMetrics.width(
-                container: length,
-                content: wordWidth + BinCardMetrics.horizontalPadding * 2,
-                accessibilitySize: typeSize.isAccessibilitySize
-            )
-        }
     }
 
-    /// Orden i namnet i full storlek, osynliga och utan plats i layouten. Det bredaste bestämmer kortets bredd. Bara
-    /// bredden mäts, typsnittet följer alltid textstorleken.
-    private var wordMeasure: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
-                Text(word).font(nameFont).lineLimit(1).fixedSize()
-            }
+    private var chip: some View {
+        FractionChip(id: bin.id, info: bin.info)
+    }
+
+    private func when(alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text(bin.dateText)
+                .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                .foregroundStyle(Color.Theme.text)
+            Text(bin.daysText)
+                .font(.ui(14, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Color.Theme.text2)
         }
-        .fixedSize()
-        .hidden()
-        .accessibilityHidden(true)
-        .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.size.width }, action: { width in wordWidth = width })
+        .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
     }
 }
 
@@ -215,6 +276,7 @@ struct FullScheduleView: View {
                 .padding(.bottom, 32)
             }
             .refreshable { await model.refreshAll(manual: true) }
+            .scrollEdgeEffectStyle(.hard, for: .top)
         }
         .navigationTitle("Hela schemat")
         .navigationBarTitleDisplayMode(.large)

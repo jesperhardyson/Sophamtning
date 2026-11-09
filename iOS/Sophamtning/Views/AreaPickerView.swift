@@ -18,11 +18,8 @@ struct AreaPickerView: View {
     @State private var finderOpen = false
     @State private var query = ""
 
-    /// Områdena som matchar sökfältet, i listans ordning. Ett tomt fält visar alla.
-    private var visibleHits: [SearchHit] { AreaFilter.filter(hits, query: query) }
-    /// Samma gräns som filtret: med ett enda tecken visas hela listan, och då står varningen och förklaringen kvar.
-    private var isSearching: Bool { trimmedQuery.count >= AreaFilter.minimumLength }
-    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// Områdena som matchar sökfältet, varningen och Hitta område.
+    private var content: AreaPickerContent { AreaPickerContent.make(hits, query: query, hasFinder: place != nil) }
 
     private var notice: String? { hits.lazy.compactMap(\.notice).first }
     /// Kortet överst: källans förklaring, eller `notice` när förklaringen saknas. `notice` står oförändrad i bekräftelsearket.
@@ -33,14 +30,15 @@ struct AreaPickerView: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Under en sökning visas bara träffarna, som i systemets egna sökningar. Varningen visas igen när fältet töms
                 // och `notice` står i bekräftelsearket, så den går inte förlorad.
-                if !isSearching {
+                let content = self.content
+                if content.showsWarning {
                     AreaWarningCard(warning: warning)
                         .padding(.top, 8)
                 }
-                let visible = visibleHits
-                if visible.isEmpty {
+                let visible = content.hits
+                if let emptyText = content.emptyText {
                     // Ett filter utan träffar säger inget om att något saknas hos källan: listan är bara filtrerad.
-                    Text("Inga områden matchar ”\(trimmedQuery)”.")
+                    Text(emptyText)
                         .font(.ui(17, weight: .semibold, relativeTo: .body))
                         .foregroundStyle(Color.Theme.text2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -48,14 +46,14 @@ struct AreaPickerView: View {
                         .padding(.top, 20)
                         .accessibilityAddTraits(.isStaticText)
                     // Vägen vidare när sökningen inte ger något.
-                    if place != nil {
+                    if content.showsFinderWhenEmpty {
                         ResultList { finderRow }
                             .padding(.top, 20)
                     }
                 } else {
                     ResultList {
                         // Hitta område är listans första rad, i samma stil som områdena. Under en sökning visas bara träffarna.
-                        if !isSearching, place != nil {
+                        if content.showsFinderFirst {
                             finderRow
                             ResultDivider()
                         }

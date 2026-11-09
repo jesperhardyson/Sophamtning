@@ -77,6 +77,15 @@ import SophamtningKit
         #expect(links[2].accessibilityLabel == "Mejla kundservice@uppsalavatten.se")
     }
 
+    @Test func baraTelefonenStarIAccentfargOchWebbsidorFarPil() throws {
+        let links = SourceLink.links(for: try decode(full), kommunInfo: URL(string: "https://www.uppsala.se/avfall"))
+        #expect(links.map(\.kind) == [.website, .kommunInfo, .phone, .email, .contactPage])
+        // Telefonnumret är det man oftast vill använda, så det står i accentfärg. Resten står i vanlig textfärg.
+        #expect(links.map(\.isPrimaryAction) == [false, false, true, false, false])
+        // Sidor som öppnas i appens webbvy får en pil, som rader i iOS listor. Telefon och e-post öppnas av iOS.
+        #expect(links.map(\.showsChevron) == [true, true, false, false, true])
+    }
+
     @Test func telefonUtanVisningsformVisarNumret() throws {
         let links = SourceLink.links(for: try decode(#"{"phone": {"number": "+46187279400", "display": null}}"#), kommunInfo: nil)
         #expect(links.last?.title == "+46187279400")

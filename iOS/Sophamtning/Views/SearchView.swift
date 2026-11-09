@@ -188,10 +188,7 @@ struct SearchView: View {
 
     /// Träffarna, med sin plats i svaret, utan områdesrader för en kommun vars områden redan nås med raden Välj område.
     private func visibleHits(_ hits: [SearchHit]) -> [EnumeratedSequence<[SearchHit]>.Element] {
-        let all = Array(hits.enumerated())
-        guard case .found(_, let areas, _)? = outcome.areas else { return all }
-        let kommuner = Set(areas.map(\.kommun))
-        return all.filter { !($0.element.isArea && kommuner.contains($0.element.kommun)) }
+        AreaLookup.visibleHits(hits, lookup: outcome.areas)
     }
 
     /// "Välj område i X": en egen grupp med en rad i adressradernas stil, så att man ser att adresserna under är något

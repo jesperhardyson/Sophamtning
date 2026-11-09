@@ -249,3 +249,15 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
         return
     }
 }
+
+@Test func installningarUtanForslagsfaltetLasesSomForut() throws {
+    // Inställningar sparade före fältet `reminderOfferShown` ska läsas som de är, inte som skadade.
+    let (store, dir, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    try Data(#"{"reminderMinutes":960,"liveActivityOn":true}"#.utf8).write(to: dir.appendingPathComponent("settings.json"))
+    let settings = store.settings()
+    #expect(settings.reminderMinutes == 960)
+    #expect(settings.liveActivityOn)
+    #expect(settings.reminderOfferShown == false)
+}

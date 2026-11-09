@@ -532,6 +532,26 @@ public final class AppModel {
         return setNotificationsOn(true, for: key) ? .granted : .failed
     }
 
+    /// Kortet "Vill du bli påmind?" på hemskärmen: efter att en adress har sparats, så länge ingen påminnelse är på och
+    /// förslaget inte har besvarats. Inte när iOS har nekat notiser, eftersom knappen då inte kan slå på något, och bara
+    /// när huvudadressen har en kommande hämtning, eftersom huvudkortet bara då har reglaget som visar vad som hände.
+    public var showsReminderOffer: Bool {
+        guard storageProblem == nil, !settings.reminderOfferShown, notificationAuthorization != .denied,
+              !addresses.contains(where: \.notificationsOn),
+              let primary = addresses.first(where: \.isPrimary),
+              let events = schedule(for: primary.key)?.response?.events
+        else { return false }
+        return ScheduleLogic.nextPickup(events, today: StockholmClock.today(now: now())) != nil
+    }
+
+    /// "Inte nu", eller en påminnelse som slogs på: förslaget visas inte igen.
+    public func dismissReminderOffer() {
+        guard !settings.reminderOfferShown else { return }
+        var updated = settings
+        updated.reminderOfferShown = true
+        saveSettings(updated)
+    }
+
     private func setNotificationsOn(_ on: Bool, for key: AddressKey) -> Bool {
         guard addresses.contains(where: { $0.key == key }) else { return false }
         let updated = addresses.map { address in
@@ -540,6 +560,13 @@ public final class AppModel {
             return copy
         }
         guard updated == addresses || saveAddresses(updated) else { return false }
+        // En påminnelse som slås på besvarar förslaget, så att det inte kommer tillbaka om den stängs av igen. Påminnelsen
+        // är redan sparad, så ett fel här rapporteras inte: det skulle säga att inget har ändrats.
+        // En fil som inte gick att läsa skrivs aldrig över, som i `saveSettings`.
+        if on, !settings.reminderOfferShown {
+            settings.reminderOfferShown = true
+            if settingsReadable { try? store.setSettings(settings) }
+        }
         applyReminders()
         return true
     }

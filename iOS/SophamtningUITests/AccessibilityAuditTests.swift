@@ -94,7 +94,7 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         audit("hem")
         card.tap()
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         audit("adress-ovre")
         app.swipeUp()
         audit("adress-mitt")
@@ -139,7 +139,7 @@ final class AccessibilityAuditTests: XCTestCase {
         app.swipeDown()
         app.swipeDown()
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch)
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         audit("hushall-adress-ovre")
         let share = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Dela med hushållet")).firstMatch
         scrollTo(share)
@@ -165,7 +165,7 @@ final class AccessibilityAuditTests: XCTestCase {
         app.swipeDown()
         app.swipeDown()
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch)
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         audit("hushall-adress-vantar")
 
         // Utan hushåll: förklaringen och Bjud in till hushållet.

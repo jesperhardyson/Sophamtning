@@ -32,7 +32,7 @@ extension View {
 // MARK: Snabbval på hemskärmen
 
 /// En VoiceOver-åtgärd för en adress: namnet som VoiceOver läser och vad den gör.
-struct AddressAction: Identifiable {
+struct AddressVoiceOverAction: Identifiable {
     let name: String
     let perform: @MainActor () -> Void
     var id: String { name }
@@ -40,7 +40,7 @@ struct AddressAction: Identifiable {
 
 extension EnvironmentValues {
     /// Adressens VoiceOver-åtgärder, när innehållet i `AddressQuickActions` själv lägger dem på sitt element.
-    @Entry var addressActions: [AddressAction] = []
+    @Entry var addressActions: [AddressVoiceOverAction] = []
 }
 
 /// En adress på hemskärmen med svep och snabbmeny. Svep åt vänster visar **Ta bort**, och ett långt tryck öppnar
@@ -64,9 +64,7 @@ struct AddressQuickActions<Content: View>: View {
     @State private var notificationsDenied = false
 
     /// Valen i snabbmenyn och bland VoiceOver-åtgärderna. En enda källa för båda.
-    private enum Choice: Hashable {
-        case rename, makePrimary, notifications, liveActivity, remove
-    }
+    private typealias Choice = AddressAction
 
     private var address: SavedAddress? { model.addresses.first { $0.key == key } }
 
@@ -103,12 +101,7 @@ struct AddressQuickActions<Content: View>: View {
 
     /// Valen i ordning, samma som i adressvyn. Live Activity gäller bara huvudadressen.
     private func choices(_ address: SavedAddress) -> [Choice] {
-        var choices: [Choice] = [.rename]
-        if !address.isPrimary { choices.append(.makePrimary) }
-        choices.append(.notifications)
-        if address.isPrimary { choices.append(.liveActivity) }
-        choices.append(.remove)
-        return choices
+        AddressAction.choices(isPrimary: address.isPrimary)
     }
 
     /// Samma ordning, texter och ikoner som i adressvyn.
@@ -123,7 +116,7 @@ struct AddressQuickActions<Content: View>: View {
             case .notifications:
                 // Closures i stället för metodreferenser: Swift 6.3 i Xcode 26.6 kraschar på omvandlingen av en metod till `set:`.
                 Toggle(isOn: Binding(get: { model.remindersOn(for: address) }, set: { setNotifications($0) })) {
-                    Label("Notis kvällen före", systemImage: "bell.badge")
+                    Label(HomeContent.reminderTitle, systemImage: "bell.badge")
                 }
             case .liveActivity:
                 // Avstängda i iOS visas överst på hemskärmen, och fel på hemkortet.
@@ -146,9 +139,9 @@ struct AddressQuickActions<Content: View>: View {
     }
 
     /// Samma åtgärder som en lista, för innehåll som lägger dem på sitt eget element.
-    private func actionList(_ address: SavedAddress) -> [AddressAction] {
+    private func actionList(_ address: SavedAddress) -> [AddressVoiceOverAction] {
         choices(address).map { choice in
-            AddressAction(name: actionName(choice, address)) { perform(choice, address) }
+            AddressVoiceOverAction(name: actionName(choice, address)) { perform(choice, address) }
         }
     }
 
@@ -156,7 +149,7 @@ struct AddressQuickActions<Content: View>: View {
         switch choice {
         case .rename: "Byt namn"
         case .makePrimary: "Gör till huvudadress"
-        case .notifications: model.remindersOn(for: address) ? "Stäng av notis kvällen före" : "Slå på notis kvällen före"
+        case .notifications: HomeContent.reminderActionTitle(isOn: model.remindersOn(for: address))
         case .liveActivity: model.settings.liveActivityOn ? "Stäng av Live Activity" : "Slå på Live Activity"
         case .remove: "Ta bort"
         }
@@ -229,8 +222,7 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
 
     /// Ett tryck på raden stänger den öppna raden, den här eller en annan, i stället för att öppna adressen.
     private var tapCloses: Bool {
-        if offset < 0 { return !dragging }
-        return openRow != nil && openRow != id
+        SwipeReveal.tapCloses(offset: offset, dragging: dragging, anotherRowOpen: openRow != nil && openRow != id)
     }
 
     var body: some View {

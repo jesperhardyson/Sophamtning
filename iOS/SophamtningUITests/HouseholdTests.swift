@@ -36,7 +36,7 @@ final class HouseholdTests: XCTestCase {
         XCTAssertFalse(placeOut.exists, "Knappen ska vara borta när kärlen är utställda")
         // Ett tryck på bocken gör ingenting: kortet öppnar inte adressen.
         mark.tap()
-        XCTAssertFalse(app.staticTexts["Kärlen"].waitForExistence(timeout: 2), "Bocken ska inte öppna adressen")
+        XCTAssertFalse(app.staticTexts["Per kärl"].waitForExistence(timeout: 2), "Bocken ska inte öppna adressen")
 
         let undo = app.buttons["Ångra"]
         XCTAssertTrue(undo.exists, "Bocken ska gå att ångra")
@@ -48,7 +48,7 @@ final class HouseholdTests: XCTestCase {
     func testDelaReglaget() {
         XCTAssertTrue(homeCard.waitForExistence(timeout: 20))
         homeCard.tap()
-        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 20))
 
         let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Dela med hushållet")).firstMatch
         for _ in 0..<8 where !(toggle.exists && toggle.isHittable) { app.swipeUp() }
