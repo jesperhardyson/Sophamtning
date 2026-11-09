@@ -228,3 +228,24 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
     try store.unmarkPlacedOut(first)
     #expect(store.placedOut() == [second])
 }
+
+@Test func raDataSkrivsLasesOchTasBort() throws {
+    let (store, _, temp) = tempStore()
+    _ = temp
+    guard case .missing = store.rawData(named: "household-engine-private.data") else {
+        Issue.record("En fil som saknas ska läsas som saknad")
+        return
+    }
+    try store.setRawData(Data([1, 2, 3]), named: "household-engine-private.data")
+    guard case .value(let data) = store.rawData(named: "household-engine-private.data") else {
+        Issue.record("Datan ska gå att läsa")
+        return
+    }
+    #expect(data == Data([1, 2, 3]))
+    try store.removeRawData(named: "household-engine-private.data")
+    try store.removeRawData(named: "household-engine-private.data")
+    guard case .missing = store.rawData(named: "household-engine-private.data") else {
+        Issue.record("Filen ska vara borttagen")
+        return
+    }
+}

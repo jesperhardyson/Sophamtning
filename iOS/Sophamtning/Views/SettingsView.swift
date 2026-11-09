@@ -68,8 +68,7 @@ struct SettingsView: View {
             .task { await loadSources() }
             .inAppBrowser(item: $link)
             .sheet(isPresented: $showsHousehold) {
-                // Inbjudan och medlemmarna kopplas till iCloud-delningen när den finns.
-                HouseholdSheet(model: model, onInvite: {}, onManage: {})
+                HouseholdSheet(model: model)
             }
         }
     }

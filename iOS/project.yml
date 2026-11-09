@@ -41,6 +41,12 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.se.hardyson.sophamtning
+        # Hushållet synkas med CloudKit (docs/specs/2026-11-09-hushall.md). Push behövs för CKSyncEngines prenumerationer.
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.se.hardyson.sophamtning
+        com.apple.developer.icloud-services:
+          - CloudKit
+        aps-environment: development
     info:
       path: Sophamtning/Info.plist
       properties:
@@ -53,6 +59,10 @@ targets:
           - se.hardyson.sophamtning.refresh
         UIBackgroundModes:
           - fetch
+          # Tyst push när någon i hushållet ändrar något.
+          - remote-notification
+        # Appen öppnar inbjudningar till ett hushåll (CKShare).
+        CKSharingSupported: true
         # Appen använder bara kryptering som ingår i iOS (HTTPS), vilket är undantaget från exportreglerna.
         ITSAppUsesNonExemptEncryption: false
         # Stillbilden som visas direkt vid start. Introt i appen tar över med exakt samma bild.

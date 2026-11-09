@@ -236,6 +236,30 @@ public final class LocalStore: Sendable {
         }
     }
 
+    // MARK: Rå data
+
+    /// En fil med data som paketet inte tolkar, till exempel tillståndet för hushållets synk. Namnet är ett filnamn i katalogen.
+    public func rawData(named name: String) -> StoreRead<Data> {
+        let url = directory.appendingPathComponent(name)
+        guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
+        guard let data = try? Data(contentsOf: url) else { return .unavailable }
+        return .value(data)
+    }
+
+    public func setRawData(_ data: Data, named name: String) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try data.write(to: directory.appendingPathComponent(name), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    /// Tar bort filen. En fil som redan saknas är inte ett fel.
+    public func removeRawData(named name: String) throws {
+        do {
+            try FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            // Redan borta.
+        }
+    }
+
     /// Flyttar en fil som inte går att läsa åt sidan (`<namn>.skadad-<tid>`) i stället för att radera den.
     public func moveAsideAddresses(at date: Date) throws { try moveAside("addresses.json", at: date) }
     public func moveAsideSettings(at date: Date) throws { try moveAside("settings.json", at: date) }

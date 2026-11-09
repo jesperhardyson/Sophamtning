@@ -5,13 +5,15 @@ import UIKit
 
 /// Arket Hushåll från Inställningar. Utan hushåll: en förklaring och **Bjud in till hushållet**. Med hushåll: deltagarna,
 /// **Hantera medlemmar** för ägaren, valen för notiser och **Lämna hushållet** eller **Avsluta hushållet**.
-/// Knapparna för att bjuda in och hantera medlemmar anropar sina closurer, så att delningen med iCloud kan kopplas in utanför.
+/// **Bjud in till hushållet** är en `ShareLink` med CloudKit-samarbete, och **Hantera medlemmar** öppnar
+/// `UICloudSharingController`. Utan synk med CloudKit (UI-testerna) gör knapparna ingenting.
 struct HouseholdSheet: View {
     let model: AppModel
-    let onInvite: () -> Void
-    let onManage: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.cloudHousehold) private var cloud
+    @State private var invitation = InvitationInProgress()
+    @State private var managing = false
     @State private var confirmingLeave = false
     @State private var notifyPulse = 0
     /// Valet för notisen medan frågan om tillstånd pågår, så att reglaget inte hoppar tillbaka under tiden.
@@ -20,6 +22,8 @@ struct HouseholdSheet: View {
 
     private var household: HouseholdState { model.household }
     private var isMember: Bool { household.role != .none && household.status != .removed }
+    /// Inbjudan står kvar medan delningsarket är öppet, även när jag just blivit ägare.
+    private var showsMember: Bool { isMember && !invitation.active }
     private var isOwner: Bool { household.role == .owner }
 
     var body: some View {
@@ -27,7 +31,7 @@ struct HouseholdSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     notices
-                    if isMember {
+                    if showsMember {
                         participants
                         notifications
                         leaveSection
@@ -54,8 +58,17 @@ struct HouseholdSheet: View {
             } message: {
                 Text(isOwner ? HouseholdTexts.endConfirmMessage : HouseholdTexts.leaveConfirmMessage)
             }
-            // Raden om att man lämnat visas en gång.
-            .onDisappear { model.clearHouseholdNotice() }
+            .sheet(isPresented: $managing) {
+                if let cloud, let share = cloud.share {
+                    CloudSharingView(share: share, sync: cloud)
+                        .ignoresSafeArea()
+                }
+            }
+            // Raden om att man lämnat visas en gång. Nästa gång arket öppnas visas deltagarna.
+            .onDisappear {
+                model.clearHouseholdNotice()
+                invitation.active = false
+            }
         }
     }
 
@@ -119,13 +132,32 @@ struct HouseholdSheet: View {
                 .font(.ui(18, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
-            Button { onInvite() } label: { PrimaryButtonLabel(title: HouseholdTexts.invite) }
-                .buttonStyle(.pressable)
+            inviteButton
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(SurfaceCard())
         .padding(.top, 16)
+    }
+
+    @ViewBuilder
+    private var inviteButton: some View {
+        if let cloud {
+            let invitation = invitation
+            ShareLink(
+                item: HouseholdInvitation(container: cloud.container) {
+                    await MainActor.run { invitation.active = true }
+                    return try await cloud.makeShare()
+                },
+                preview: SharePreview(HouseholdTexts.title)
+            ) {
+                PrimaryButtonLabel(title: HouseholdTexts.invite)
+            }
+            .buttonStyle(.pressable)
+        } else {
+            Button {} label: { PrimaryButtonLabel(title: HouseholdTexts.invite) }
+                .buttonStyle(.pressable)
+        }
     }
 
     // MARK: Med hushåll
@@ -153,7 +185,7 @@ struct HouseholdSheet: View {
                 }
                 if isOwner {
                     ResultDivider()
-                    Button { onManage() } label: {
+                    Button { managing = cloud?.share != nil } label: {
                         Label(HouseholdTexts.manage, systemImage: "person.badge.plus")
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.primary)
