@@ -138,6 +138,9 @@ public struct AddressDetail: Equatable, Sendable {
     public let reminderText: String
     public let liveActivityText: String
     public let isPrimary: Bool
+    /// Delen Påminnelser visas när det finns hämtningar. Utan hämtningar visas den bara när en påminnelse redan är på
+    /// (notisen för adressen, eller Live Activity för huvudadressen), så att den går att stänga av.
+    public let showsReminders: Bool
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när notiser är på och tiden redan passerat.
     public let missedReminder: String?
 
@@ -172,6 +175,11 @@ public struct AddressDetail: Equatable, Sendable {
         case nil: notice = nil
         }
 
+        let liveActivityOn = settings.liveActivityOn && address.isPrimary
+        let showsReminders = mode == .schedule || (mode == .noUpcoming && (address.notificationsOn || liveActivityOn))
+        // Utan hämtningar står samma rad under båda reglagen, eftersom det inte finns någon tid att visa.
+        let nothingToRemind = mode == .noUpcoming ? Self.nothingToRemindText : nil
+
         let scheduleRows = response.map { rows(in: $0, today: today) } ?? []
         let bins = response.map { response in
             ScheduleLogic.nextByFraction(response.events, today: today).map { pickup in
@@ -201,12 +209,16 @@ public struct AddressDetail: Equatable, Sendable {
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
-            reminderText: reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
-            liveActivityText: liveActivityText(settings: settings),
+            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
+            showsReminders: showsReminders,
             missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
         )
     }
+
+    /// Raden under reglagen när adressen inte har några kommande hämtningar.
+    static let nothingToRemindText = "Inga hämtningar att påminna om just nu."
 
     /// Raden visas när källan anger en period som inte har passerat och det finns kommande hämtningar. Utan kommande
     /// hämtningar står perioden i meddelandet i stället, så att texterna inte motsäger varandra. Live-källor har ingen

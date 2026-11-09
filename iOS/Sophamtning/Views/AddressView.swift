@@ -103,7 +103,8 @@ struct AddressView: View {
                     Group { schedule(detail) }
                         .transition(.opacity)
                 }
-                if detail.mode == .schedule || detail.mode == .noUpcoming {
+                // Utan hämtningar bara när en påminnelse är på, så att den går att stänga av.
+                if detail.showsReminders {
                     reminders(detail)
                 }
                 footer(detail)
