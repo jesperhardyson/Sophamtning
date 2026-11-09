@@ -57,7 +57,7 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
                 }
             }
             emit()
-            Task { await fetchChanges() }
+            fetchChangesOutsideCallback()
         case .signOut:
             mutate { inner in
                 inner.signedIn = false
@@ -73,10 +73,16 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
                 inner.trust.switchedAccount()
             }
             emit()
-            Task { await fetchChanges() }
+            fetchChangesOutsideCallback()
         @unknown default:
             break
         }
+    }
+
+    /// Hämtar ändringar utanför motorns callback. En vanlig `Task` ärver callbackens sammanhang, och då stoppar
+    /// CKSyncEngine appen ("Cannot await a call into CKSyncEngine from within a delegate callback"). Därför `detached`.
+    private func fetchChangesOutsideCallback() {
+        Task.detached { [self] in await fetchChanges() }
     }
 
     static func clearHousehold(_ inner: inout Inner) {
