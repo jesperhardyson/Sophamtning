@@ -267,10 +267,20 @@ public struct AddressDetail: Equatable, Sendable {
         return "\(weekday.prefix(1).uppercased() + weekday.dropFirst()) kl. \(clock(of: reserveAt)) inför \(SwedishFormat.weekdayName(evening.adding(days: 1)))ens tömning, om aktiviteten inte syns."
     }
 
-    /// Texten vid valet för Live Activity.
+    /// Texten vid valet för Live Activity: en mening. Resten står i `liveActivityDetails()`.
+    /// Det som står bakom knappen Mer om Live Activity, en mening per rad.
+    public static func liveActivityDetails() -> [String] {
+        [
+            "Starten aviseras med ljud.",
+            "Den försvinner senast efter 12 timmar.",
+            "Öppna appen ibland, så att nästa tömning kommer med.",
+            "Med notiser på får du en reserv om du inte bekräftar.",
+        ]
+    }
+
     public static func liveActivityText(settings: ReminderSettings) -> String {
         let time = SwedishFormat.clock(minutes: settings.reminderMinutes)
-        return "Visas på låsskärmen från kl. \(time) kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med. Med notiser på får du också en reserv om du inte bekräftar."
+        return "Visas på låsskärmen från kl. \(time) kvällen före."
     }
 
     /// Tömning i morgon men påminnelsetiden i dag har redan passerat, till exempel efter att tiden ändrats eller notisen slagits på sent.
