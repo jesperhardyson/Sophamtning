@@ -597,7 +597,7 @@ public final class AppModel {
         // bara en bevisat visad aktivitet släcker reserven (`shownActivities` i planeraren).
         let stopped = Set(store.shownActivities()).union(store.endedActivities()).subtracting(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
         let desired = reminderPlan(existing: counted, placedOut: placedOut.union(stopped), activitiesAllowed: systemAllows).liveActivity
-        let todayContent = ReminderPlanner.activityContent(on: today, input: plannerInput(existing: counted, placedOut: placedOut, activitiesAllowed: systemAllows))
+        let todayContent = ReminderPlanner.activityContent(on: today, input: plannerInput(existing: counted, placedOut: placedOut, activitiesAllowed: systemAllows), household: inHousehold ? household : .empty)
         var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent)
         // Utan läsbart schema för huvudadressen går det inte att planera någon ersättning, så dess aktiviteter står kvar.
         if settings.liveActivityOn, let primary, schedules[primary]?.response == nil {

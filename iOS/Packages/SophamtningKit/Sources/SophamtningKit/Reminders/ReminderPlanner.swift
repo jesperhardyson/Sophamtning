@@ -277,12 +277,16 @@ public enum ReminderPlanner {
     }
 
     /// Innehållet för huvudadressens tömning ett visst datum, för en aktivitet som redan pågår. `nil` utan sådan tömning.
-    public static func activityContent(on date: DayDate, input: PlannerInput) -> PickupActivityContent? {
+    public static func activityContent(on date: DayDate, input: PlannerInput, household: HouseholdState = .empty) -> PickupActivityContent? {
         guard let primary = input.addresses.first(where: { $0.address.isPrimary }),
               let response = primary.schedule?.response,
               let pickup = pickups(in: response, today: date).first(where: { $0.date == date })
         else { return nil }
-        return content(of: pickup, address: primary.address, response: response)
+        let result = content(of: pickup, address: primary.address, response: response)
+        // Har någon i hushållet bockat för tömningen visas bocken, också när det var någon annan än jag.
+        let key = primary.address.key
+        let marked = household.role != .none && household.marks.contains { $0.placedOut == PlacedOut(key: key, date: date) }
+        return marked ? result.markedPlacedOut() : result
     }
 
     private static func content(of pickup: Pickup, address: SavedAddress, response: AddressResponse) -> PickupActivityContent {

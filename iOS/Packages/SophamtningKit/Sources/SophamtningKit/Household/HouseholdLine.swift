@@ -1,0 +1,37 @@
+import Foundation
+
+/// Hushållets rad på ett kort och i adressvyn. `nil` utan hushåll.
+public struct HouseholdLine: Equatable, Sendable {
+    /// Adressen delas med hushållet.
+    public var isShared: Bool
+    /// Knappen Ställ ut kärlen visas: delad adress, tömning i dag eller i morgon, och ingen bock än.
+    public var showsButton: Bool
+    /// "Utställt av Kim, kl. 19:42", när nästa tömning har en bock.
+    public var placedOutText: String?
+    /// Bocken har inte nått iCloud än, och en klocka visas bredvid den.
+    public var isPending: Bool
+    /// Hushållets läge när något inte fungerar, annars `nil`.
+    public var statusText: String?
+
+    public init(isShared: Bool, showsButton: Bool, placedOutText: String?, isPending: Bool, statusText: String?) {
+        self.isShared = isShared
+        self.showsButton = showsButton
+        self.placedOutText = placedOutText
+        self.isPending = isPending
+        self.statusText = statusText
+    }
+
+    /// Raden för en adress och dess nästa tömning. `nil` när jag inte delar med något hushåll.
+    public static func make(household: HouseholdState, key: AddressKey, nextPickup: DayDate?, today: DayDate) -> HouseholdLine? {
+        guard household.role != .none else { return nil }
+        let isShared = household.addresses.contains { $0.address.key == key }
+        let mark = HouseholdLogic.currentMark(for: key, nextPickup: nextPickup, in: household.marks)
+        return HouseholdLine(
+            isShared: isShared,
+            showsButton: mark == nil && HouseholdLogic.showsPlaceOutButton(isShared: isShared, nextPickup: nextPickup, today: today),
+            placedOutText: mark.map { HouseholdTexts.placedOut($0, participants: household.participants, myId: household.myId) },
+            isPending: mark?.isPending ?? false,
+            statusText: HouseholdTexts.status(household.status)
+        )
+    }
+}

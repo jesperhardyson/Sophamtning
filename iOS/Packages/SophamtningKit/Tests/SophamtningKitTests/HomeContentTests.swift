@@ -642,3 +642,66 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
     #expect(content.others[0].scheduleEnding == nil)
     #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
 }
+
+// MARK: Hushåll
+
+private let sunday = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
+private let kim = HouseholdParticipant(id: "kim", name: "Kim", isOwner: true)
+
+private func household(addresses: [SavedAddress] = [home], marks: [HouseholdMark] = [], status: HouseholdStatus = .synced) -> HouseholdState {
+    HouseholdState(role: .member, myId: "jag", participants: [kim], addresses: addresses.map { HouseholdAddress(address: $0, addedBy: "kim") }, marks: marks, status: status)
+}
+
+private func householdMark(pending: Bool = false) -> HouseholdMark {
+    // 18:42 UTC är 19:42 i Stockholm i november.
+    let at = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60 + 42)
+    return HouseholdMark(placedOut: PlacedOut(key: home.key, date: monday), by: "kim", at: at, isPending: pending)
+}
+
+private func householdLine(_ state: HouseholdState, at time: Date = sunday) -> HouseholdLine? {
+    let content = HomeContent.make(addresses: [home], schedules: [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings(), now: time, household: state)
+    guard case .upcoming(let pickup) = content.primary?.status else { return nil }
+    return pickup.household
+}
+
+@Test func utanHushallIngenRad() {
+    #expect(householdLine(.empty) == nil)
+}
+
+@Test func deladAdressDagenForeVisarKnappen() throws {
+    let line = try #require(householdLine(household()))
+    #expect(line.isShared)
+    #expect(line.showsButton)
+    #expect(line.placedOutText == nil)
+    #expect(line.statusText == nil)
+}
+
+@Test func bockadVisarTextenInteKnappen() throws {
+    let line = try #require(householdLine(household(marks: [householdMark()])))
+    #expect(!line.showsButton)
+    #expect(line.placedOutText == "Utställt av Kim, kl. 19:42")
+    #expect(!line.isPending)
+}
+
+@Test func vantandeBockHarKlocka() throws {
+    let line = try #require(householdLine(household(marks: [householdMark(pending: true)])))
+    #expect(line.isPending)
+}
+
+@Test func delningenSynsInteForEnAdressSomInteDelas() throws {
+    let line = try #require(householdLine(household(addresses: [cabin])))
+    #expect(!line.isShared)
+    #expect(!line.showsButton)
+}
+
+@Test func knappenSaknasLangtForeTomningen() throws {
+    let line = try #require(householdLine(household()))
+    #expect(line.showsButton)
+    let early = try #require(householdLine(household(), at: now))
+    #expect(!early.showsButton)
+}
+
+@Test func statusTextenFolerHushallets() throws {
+    let line = try #require(householdLine(household(status: .notSignedIn)))
+    #expect(line.statusText == "Synkar inte just nu")
+}

@@ -229,7 +229,8 @@ struct FullScheduleView: View {
             schedule: model.schedule(for: key),
             settings: model.settings,
             sourceName: sources.map { sourceName(key.source, in: $0) },
-            now: model.currentDate
+            now: model.currentDate,
+            household: model.household
         )
         // Rubriken är "Hela schemat", så namnet står här, och gatan när den skiljer sig från namnet.
         AddressLinesView(lines: detail.namedLines, size: 18, addressStyle: .body)

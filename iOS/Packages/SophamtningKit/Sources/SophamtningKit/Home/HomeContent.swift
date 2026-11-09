@@ -18,6 +18,8 @@ public struct HomeContent: Equatable, Sendable {
         public let headline: String
         /// "Måndag 9 november", med "Ca" först när datumet är uppskattat.
         public let longDate: String
+        /// Hushållets rad för den här tömningen. `nil` utan hushåll.
+        public let household: HouseholdLine?
 
         /// Datum, dagar kvar och kärlen i ett: "Nästa tömning. Om 3 dagar. Måndag 9 november. Restavfall, Matavfall".
         public var accessibilityLabel: String {
@@ -156,11 +158,11 @@ public struct HomeContent: Equatable, Sendable {
 
     /// `remindersAllowed` är sant när iOS tillåter notiser, `remindersDenied` när iOS har nekat dem. Är frågan inte ställd än
     /// är båda falska, och raderna visar då det planerade läget.
-    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, remindersDenied: Bool = false, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil, reserveAt: Date? = nil) -> HomeContent {
+    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, remindersDenied: Bool = false, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil, reserveAt: Date? = nil, household: HouseholdState = .empty) -> HomeContent {
         let today = StockholmClock.today(now: now)
         let primaryAddress = addresses.first(where: \.isPrimary) ?? addresses.first
         let primary = primaryAddress.map { address in
-            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, asRow: false, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt)
+            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, asRow: false, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt, household: household)
         }
         let others = addresses
             .filter { $0.key != primaryAddress?.key }
@@ -173,13 +175,13 @@ public struct HomeContent: Equatable, Sendable {
                 let missed = address.notificationsOn && remindersAllowed
                     ? AddressDetail.missedReminder(events: schedule?.response?.events ?? [], settings: settings, now: now)
                     : nil
-                return entry(address, schedule: schedule, settings: notificationsOnly, today: today, now: now, asRow: true, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: missed, reserveAt: nil)
+                return entry(address, schedule: schedule, settings: notificationsOnly, today: today, now: now, asRow: true, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: missed, reserveAt: nil, household: household)
             }
         return HomeContent(primary: primary, others: others)
     }
 
-    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> Entry {
-        let status = status(of: schedule, today: today)
+    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?, household: HouseholdState) -> Entry {
+        let status = status(of: schedule, key: address.key, household: household, today: today)
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
         var rowReminder: RowReminder?
         var primaryReminder: PrimaryReminder?
@@ -250,7 +252,7 @@ public struct HomeContent: Equatable, Sendable {
         return AddressLines(name: name, address: base.address, place: base.place)
     }
 
-    private static func status(of schedule: CachedSchedule?, today: DayDate) -> Status {
+    private static func status(of schedule: CachedSchedule?, key: AddressKey? = nil, household: HouseholdState = .empty, today: DayDate) -> Status {
         guard let schedule else { return .loading }
         guard let response = schedule.response else {
             return schedule.lastError.map { .failed($0) } ?? .loading
@@ -267,7 +269,8 @@ public struct HomeContent: Equatable, Sendable {
                 FractionItem(id: $0, info: ScheduleLogic.displayInfo(for: $0, in: response.fractions))
             },
             headline: capitalized(headline),
-            longDate: capitalized(longDate)
+            longDate: capitalized(longDate),
+            household: key.flatMap { HouseholdLine.make(household: household, key: $0, nextPickup: event.date, today: today) }
         ))
     }
 
