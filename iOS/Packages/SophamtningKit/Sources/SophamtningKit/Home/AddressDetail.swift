@@ -209,7 +209,7 @@ public struct AddressDetail: Equatable, Sendable {
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil, sourceName: sourceName),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
-            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0, timing: settings.timing) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
             liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             showsReminders: showsReminders,
@@ -262,9 +262,12 @@ public struct AddressDetail: Equatable, Sendable {
 
     /// "Söndag kl. 18:45 inför måndagens tömning, om aktiviteten inte syns." eller "Måndag kl. 06:45, samma dag som
     /// tömningen, om aktiviteten inte syns." När det är reserven som gäller.
-    static func reserveText(_ reserveAt: Date, timing: ReminderTiming) -> String {
+    /// Tömningsdagen räknas från reservens klockslag, inte från det som är valt nu: en notis från det andra valet kan stå kvar
+    /// efter ett byte.
+    static func reserveText(_ reserveAt: Date) -> String {
         let day = StockholmClock.today(now: reserveAt)
-        let pickup = ReminderTime.pickupDay(remindedOn: day, timing: timing)
+        let pickup = ReminderTime.pickupDay(forReminderAt: reserveAt)
+        let timing: ReminderTiming = pickup == day ? .sameMorning : .eveningBefore
         return "\(when(day: day, pickup: pickup, time: clock(of: reserveAt), timing: timing)), om aktiviteten inte syns."
     }
 

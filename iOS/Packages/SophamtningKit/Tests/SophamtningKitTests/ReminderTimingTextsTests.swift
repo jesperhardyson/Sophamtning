@@ -71,8 +71,8 @@ private func schedule(_ events: [PickupEvent]) -> CachedSchedule {
 }
 
 @Test func reservenPåMorgonen() {
-    #expect(AddressDetail.reserveText(StockholmClock.date(on: wednesday, minutes: 6 * 60 + 45), timing: .sameMorning) == "Onsdag kl. 06:45, samma dag som tömningen, om aktiviteten inte syns.")
-    #expect(AddressDetail.reserveText(StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 18 * 60 + 45), timing: .eveningBefore) == "Tisdag kl. 18:45 inför onsdagens tömning, om aktiviteten inte syns.")
+    #expect(AddressDetail.reserveText(StockholmClock.date(on: wednesday, minutes: 6 * 60 + 45)) == "Onsdag kl. 06:45, samma dag som tömningen, om aktiviteten inte syns.")
+    #expect(AddressDetail.reserveText(StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 18 * 60 + 45)) == "Tisdag kl. 18:45 inför onsdagens tömning, om aktiviteten inte syns.")
 }
 
 @Test func liveActivityPåMorgonen() {
@@ -84,4 +84,10 @@ private func schedule(_ events: [PickupEvent]) -> CachedSchedule {
     #expect(try #require(on.primary?.reminder).detail == "Onsdag kl. 06:00")
     let off = HomeContent.make(addresses: [saved(notifications: false)], schedules: [key: schedule([event(wednesday)])], settings: morning, now: at("2026-11-10", 20))
     #expect(try #require(off.primary?.reminder) == HomeContent.PrimaryReminder(isOn: false, isDenied: false, title: "Påminn mig samma morgon", detail: nil))
+}
+
+@Test func reservtextenFöljerNotisensDagEfterByte() {
+    // Morgonens notis står kvar som reserv efter bytet tillbaka till kvällen. Den gäller ändå onsdagens tömning.
+    #expect(AddressDetail.reserveText(StockholmClock.date(on: wednesday, minutes: 6 * 60)) == "Onsdag kl. 06:00, samma dag som tömningen, om aktiviteten inte syns.")
+    #expect(AddressDetail.reserveText(StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 18 * 60 + 45)) == "Tisdag kl. 18:45 inför onsdagens tömning, om aktiviteten inte syns.")
 }

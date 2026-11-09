@@ -360,10 +360,10 @@ private func mondayNotification(_ p: ReminderPlan) -> PlannedNotification? {
 
 @Test func reservnotisensTidHarTak() {
     // Start 22:59 ger 23:44, 23:00 ger 23:45 och en senare start ger aldrig mer än 23:45.
-    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T15:00"), timing: .eveningBefore) == stockholm("2026-11-08T15:45"))
-    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T22:59"), timing: .eveningBefore) == stockholm("2026-11-08T23:44"))
-    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T23:00"), timing: .eveningBefore) == stockholm("2026-11-08T23:45"))
-    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T23:30"), timing: .eveningBefore) == stockholm("2026-11-08T23:45"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T15:00")) == stockholm("2026-11-08T15:45"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T22:59")) == stockholm("2026-11-08T23:44"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T23:00")) == stockholm("2026-11-08T23:45"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-08T23:30")) == stockholm("2026-11-08T23:45"))
 }
 
 @Test func reserventRaknasFranAktivitetensEgenStart() throws {
@@ -599,8 +599,8 @@ private func homeNotification(_ plan: ReminderPlan, on date: String) -> PlannedN
 }
 
 @Test func reservensTakPåMorgonen() {
-    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-09T11:30"), timing: .sameMorning) == stockholm("2026-11-09T12:00"))
-    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-09T09:00"), timing: .sameMorning) == stockholm("2026-11-09T09:45"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-09T11:30")) == stockholm("2026-11-09T12:00"))
+    #expect(ReminderPlanner.fallbackDate(start: stockholm("2026-11-09T09:00")) == stockholm("2026-11-09T09:45"))
 }
 
 @Test func morgonRetainable() {
@@ -636,4 +636,18 @@ private func homeNotification(_ plan: ReminderPlan, on date: String) -> PlannedN
 @Test func morgonUtställdIDag() throws {
     let p = plan(live: true, now: stockholm("2026-11-09T07:30"), placedOut: [PlacedOut(key: homeKey, date: day("2026-11-09"))], timing: .sameMorning)
     #expect(try #require(p.liveActivity).pickupDate == day("2026-11-12"))
+}
+
+@Test func reservenFöljerAktivitetensStartEfterBytTillMorgon() throws {
+    // Kvällens väntande aktivitet står kvar efter bytet till samma morgon, till exempel när den nya inte kunde startas.
+    let id = PlacedOut(key: homeKey, date: day("2026-11-09"))
+    let p = plan(notifications: true, live: true, now: stockholm("2026-11-08T10:00"), existing: [id], timing: .sameMorning, starts: [id: stockholm("2026-11-08T18:00")])
+    #expect(try #require(homeNotification(p, on: "2026-11-09")).fireDate == stockholm("2026-11-08T18:45"))
+}
+
+@Test func tömningsdagenFrånPåminnelsensKlockslag() {
+    #expect(ReminderTime.pickupDay(forReminderAt: stockholm("2026-11-09T06:00")) == day("2026-11-09"))
+    #expect(ReminderTime.pickupDay(forReminderAt: stockholm("2026-11-09T11:59")) == day("2026-11-09"))
+    #expect(ReminderTime.pickupDay(forReminderAt: stockholm("2026-11-08T18:45")) == day("2026-11-09"))
+    #expect(ReminderTime.pickupDay(forReminderAt: stockholm("2026-11-08T23:45")) == day("2026-11-09"))
 }

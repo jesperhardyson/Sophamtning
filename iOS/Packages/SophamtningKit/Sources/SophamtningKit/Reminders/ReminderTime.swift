@@ -13,6 +13,18 @@ public enum ReminderTime {
         timing == .eveningBefore ? day.adding(days: 1) : day
     }
 
+    /// Tömningen som en påminnelse vid ett visst klockslag gäller, oberoende av vad som är valt nu. Morgonens tider (05:00 till
+    /// reservens tak 12:00) och kvällens (15:00 till 23:45) överlappar aldrig, så klockslaget avgör. Det gör att en notis eller
+    /// aktivitet från det andra valet, som står kvar efter ett byte, ändå räknas till rätt tömning.
+    public static func pickupDay(forReminderAt date: Date) -> DayDate {
+        let day = StockholmClock.today(now: date)
+        return StockholmClock.date(on: day, minutes: sameDayLatestMinutes) > date ? day : day.adding(days: 1)
+    }
+
+    /// Klockslag före vilket en påminnelse gäller samma dags tömning: 12:00.
+    static let sameDayLatestMinutes = 12 * 60
+
+    /// Påminnelsens tid för en tömning, med det valda och dess tid.
     public static func date(forPickup pickup: DayDate, settings: ReminderSettings) -> Date {
         StockholmClock.date(on: reminderDay(forPickup: pickup, timing: settings.timing), minutes: settings.activeMinutes)
     }

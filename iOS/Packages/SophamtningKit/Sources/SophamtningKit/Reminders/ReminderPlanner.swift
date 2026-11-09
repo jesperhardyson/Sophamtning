@@ -169,7 +169,8 @@ public enum ReminderPlanner {
     /// Senaste klockslag för reservnotisen kvällen före, i minuter efter midnatt: 23:45. Kvällstiden stannar vid 23:00, så
     /// starten är aldrig senare än taket.
     static let fallbackLatestMinutes = 23 * 60 + 45
-    /// Senaste klockslag för reservnotisen samma morgon: 12:00. Morgontiden stannar vid 09:00, så starten är aldrig senare.
+    /// Senaste klockslag för reservnotisen samma morgon: 12:00. Morgontiden stannar vid 09:00, så taket binder i praktiken
+    /// aldrig (09:00 + 45 minuter är 09:45). Det finns för att reserven aldrig ska räknas till nästa dags tömning.
     static let morningFallbackLatestMinutes = 12 * 60
     /// Med samma morgon gäller dagens tömning för Live Activity fram till 12:00, i minuter efter midnatt.
     static let morningActivityCutoffMinutes = 12 * 60
@@ -177,10 +178,12 @@ public enum ReminderPlanner {
     static let fallbackTitle = "Har du ställt ut kärlen?"
     static let ordinaryTitle = "Ställ ut kärlen"
 
-    /// Reservnotisens tid för en aktivitet som startar `start`: 45 minuter senare, högst 23:45 samma dag i svensk tid, och med
-    /// samma morgon högst 12:00.
-    static func fallbackDate(start: Date, timing: ReminderTiming) -> Date {
-        let cap = timing == .eveningBefore ? fallbackLatestMinutes : morningFallbackLatestMinutes
+    /// Reservnotisens tid för en aktivitet som startar `start`: 45 minuter senare, högst 23:45 samma dag i svensk tid, och för en
+    /// morgonstart högst 12:00. Taket följer aktivitetens egen start, inte det som är valt nu, eftersom en aktivitet från det
+    /// andra valet kan stå kvar efter ett byte.
+    static func fallbackDate(start: Date) -> Date {
+        let sameDay = ReminderTime.pickupDay(forReminderAt: start) == StockholmClock.today(now: start)
+        let cap = sameDay ? morningFallbackLatestMinutes : fallbackLatestMinutes
         let latest = StockholmClock.date(on: StockholmClock.today(now: start), minutes: cap)
         return min(start.addingTimeInterval(TimeInterval(fallbackDelayMinutes * 60)), latest)
     }
@@ -213,7 +216,7 @@ public enum ReminderPlanner {
                 // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
                 if activitiesActive, input.existingActivities.contains(id) {
                     if input.shownActivities.contains(id) { continue }
-                    fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate, timing: input.settings.timing)
+                    fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate)
                     title = fallbackTitle
                 }
                 guard fireDate > input.now else { continue }
