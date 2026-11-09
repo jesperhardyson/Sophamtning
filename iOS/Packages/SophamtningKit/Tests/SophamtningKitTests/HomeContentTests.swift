@@ -642,3 +642,8 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
     #expect(content.others[0].scheduleEnding == nil)
     #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
 }
+
+@Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
+    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse kvällen före")
+}

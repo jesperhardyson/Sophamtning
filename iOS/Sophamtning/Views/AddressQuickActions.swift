@@ -126,7 +126,7 @@ struct AddressQuickActions<Content: View>: View {
         switch choice {
         case .rename: "Byt namn"
         case .makePrimary: "Gör till huvudadress"
-        case .notifications: model.remindersOn(for: address) ? "Stäng av notis kvällen före" : "Slå på notis kvällen före"
+        case .notifications: HomeContent.reminderActionTitle(isOn: model.remindersOn(for: address))
         case .liveActivity: model.settings.liveActivityOn ? "Stäng av Live Activity" : "Slå på Live Activity"
         case .remove: "Ta bort"
         }

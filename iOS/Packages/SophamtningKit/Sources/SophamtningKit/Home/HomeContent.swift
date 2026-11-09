@@ -5,6 +5,10 @@ import Foundation
 public struct HomeContent: Equatable, Sendable {
     /// Valets namn på huvudkortet, i adressvyn och i snabbmenyn.
     public static let reminderTitle = "Påminn mig kvällen före"
+    /// VoiceOvers åtgärd för samma val, på huvudkortet och raderna.
+    public static func reminderActionTitle(isOn: Bool) -> String {
+        isOn ? "Stäng av påminnelse kvällen före" : "Slå på påminnelse kvällen före"
+    }
 
     public struct FractionItem: Equatable, Sendable, Identifiable {
         public let id: String
