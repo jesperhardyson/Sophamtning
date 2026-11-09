@@ -30,6 +30,8 @@ struct UITestAPI: SoporAPI {
             let response: AddressResponse = try Self.load("uitest-adress-avesta")
             return UITestSupport.endsSoon ? Self.endingSoon(response) : response
         }
+        // Testgatan 4 har ett schema utan kommande hämtningar.
+        if url.path.contains("/testgatan-4_") { return try Self.load("uitest-adress-tom") }
         return try Self.load("uitest-adress")
     }
 

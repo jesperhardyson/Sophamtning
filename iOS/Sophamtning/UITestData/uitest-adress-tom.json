@@ -1,0 +1,68 @@
+{
+  "apiVersion": "1",
+  "today": "2026-11-06",
+  "address": {
+    "id": "testgatan-4_uppsala-0000004",
+    "street": "Testgatan 4",
+    "locality": "Uppsala",
+    "kommun": "Uppsala kommun",
+    "source": "uppsala",
+    "detail": null,
+    "selection": "address",
+    "notice": null
+  },
+  "next": [],
+  "summary": "Plast & glas – om 5 dagar",
+  "events": [],
+  "bins": [],
+  "fractions": {
+    "rest": {
+      "name": "Restavfall",
+      "short": "Rest",
+      "color": "#474C48",
+      "icon": "trash-2"
+    },
+    "papper": {
+      "name": "Pappersförpackningar",
+      "short": "Papper",
+      "color": "#2E5E86",
+      "icon": "package"
+    },
+    "plast": {
+      "name": "Plastförpackningar",
+      "short": "Plast",
+      "color": "#A8431F",
+      "icon": "cup-soda"
+    },
+    "glas": {
+      "name": "Glas",
+      "short": "Glas",
+      "color": "#1F6A7A",
+      "icon": "wine"
+    },
+    "metall": {
+      "name": "Metall",
+      "short": "Metall",
+      "color": "#6B4F7A",
+      "icon": "cylinder"
+    },
+    "tidningar": {
+      "name": "Tidningar",
+      "short": "Tidn.",
+      "color": "#2E5E86",
+      "icon": "newspaper"
+    },
+    "mat": {
+      "name": "Matavfall",
+      "short": "Mat",
+      "color": "#7A4A1E",
+      "icon": "apple"
+    }
+  },
+  "links": {
+    "ics": "https://sopor.hardyson.se/ics/uppsala/testgatan-1_uppsala-0000001.ics",
+    "web": "https://sopor.hardyson.se/uppsala/testgatan-1_uppsala-0000001"
+  },
+  "updatedAt": "2026-11-06",
+  "schedule": null
+}
