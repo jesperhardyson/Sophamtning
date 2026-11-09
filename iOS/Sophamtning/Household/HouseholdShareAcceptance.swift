@@ -1,24 +1,22 @@
 import CloudKit
 import os
 import SophamtningKit
-import SwiftUI
 import UIKit
 
 /// Tar emot inbjudningar till ett hushåll. Den som redan är med i ett hushåll, som ägare eller medlem, får först frågan
 /// `HouseholdTexts.leaveFirst`. Svarar personen nej accepteras ingenting.
 @MainActor
-@Observable
 final class HouseholdShareAcceptance {
     static let shared = HouseholdShareAcceptance()
 
     /// Inbjudan som väntar på svar om att lämna det nuvarande hushållet först.
-    private(set) var awaitingAnswer: CKShare.Metadata?
+    private var awaitingAnswer: CKShare.Metadata?
 
-    @ObservationIgnored private var sync: CloudKitHouseholdSync?
-    @ObservationIgnored private var model: AppModel?
+    private var sync: CloudKitHouseholdSync?
+    private var model: AppModel?
     /// En inbjudan som kom innan appen hade startat klart, till exempel när appen öppnades av länken.
-    @ObservationIgnored private var early: CKShare.Metadata?
-    @ObservationIgnored private let logger = Logger(subsystem: "se.hardyson.sophamtning", category: "Hushall")
+    private var early: CKShare.Metadata?
+    private let logger = Logger(subsystem: "se.hardyson.sophamtning", category: "Hushall")
 
     func configure(sync: CloudKitHouseholdSync, model: AppModel) {
         self.sync = sync
@@ -41,9 +39,25 @@ final class HouseholdShareAcceptance {
         }
         let household = model.household
         if household.role != .none, household.status != .removed {
-            awaitingAnswer = metadata
+            ask(metadata)
         } else {
             accept(metadata)
+        }
+    }
+
+    /// Frågan visas som en dialog från UIKit ovanpå det som visas, även när Inställningar eller Hushåll är öppet.
+    private func ask(_ metadata: CKShare.Metadata) {
+        // En ny inbjudan ersätter en obesvarad.
+        awaitingAnswer = metadata
+        let alert = UIAlertController(title: HouseholdTexts.leaveFirst, message: nil, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Avbryt", style: .cancel) { _ in self.answer(leaveFirst: false) })
+        alert.addAction(UIAlertAction(title: "Lämna och gå med", style: .destructive) { _ in self.answer(leaveFirst: true) })
+        guard let top = UIApplication.shared.topViewController else { return }
+        if let shown = top as? UIAlertController, let below = shown.presentingViewController {
+            // En obesvarad fråga byts mot den nya.
+            shown.dismiss(animated: false) { below.present(alert, animated: true) }
+        } else {
+            top.present(alert, animated: true)
         }
     }
 
@@ -85,32 +99,6 @@ extension CloudKitHouseholdSync {
             }
         }
         emit()
-    }
-}
-
-/// Frågan om att lämna det nuvarande hushållet, på hemskärmen.
-struct HouseholdInvitationDialog: ViewModifier {
-    @State private var acceptance = HouseholdShareAcceptance.shared
-
-    func body(content: Content) -> some View {
-        content.confirmationDialog(
-            HouseholdTexts.leaveFirst,
-            isPresented: Binding(
-                get: { acceptance.awaitingAnswer != nil },
-                // Stängs frågan utan svar är svaret nej. Det väntar ett varv, så att en knapps svar alltid hinner före.
-                set: { shown in if !shown { Task { @MainActor in acceptance.answer(leaveFirst: false) } } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Lämna och gå med", role: .destructive) { acceptance.answer(leaveFirst: true) }
-            Button("Avbryt", role: .cancel) { acceptance.answer(leaveFirst: false) }
-        }
-    }
-}
-
-extension View {
-    func householdInvitationDialog() -> some View {
-        modifier(HouseholdInvitationDialog())
     }
 }
 

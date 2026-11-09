@@ -6,8 +6,8 @@ import SophamtningKit
 extension CloudKitHouseholdSync {
     // MARK: Lagring
 
-    func engineState(named name: String) -> CKSyncEngine.State.Serialization? {
-        guard case .value(let data) = stateStore.rawData(named: name) else { return nil }
+    static func engineState(named name: String, in store: LocalStore) -> CKSyncEngine.State.Serialization? {
+        guard case .value(let data) = store.rawData(named: name) else { return nil }
         return try? PropertyListDecoder().decode(CKSyncEngine.State.Serialization.self, from: data)
     }
 
@@ -22,8 +22,7 @@ extension CloudKitHouseholdSync {
 
     /// Läser kopian av posterna. `false` när den saknas eller inte går att läsa, och motorerna då ska börja om.
     static func loadCache(into inner: inout Inner, from store: LocalStore) -> Bool {
-        guard case .value(let data) = store.rawData(named: HouseholdRecordCache.fileName),
-              let cache = try? PropertyListDecoder().decode(HouseholdRecordCache.self, from: data) else { return false }
+        guard case .value(let cache) = HouseholdSyncCache.load(from: store) else { return false }
         inner.myId = cache.myId
         inner.hasPrivateZone = cache.hasPrivateZone
         if let name = cache.sharedZoneName, let owner = cache.sharedZoneOwner {
@@ -35,18 +34,19 @@ extension CloudKitHouseholdSync {
         for record in cache.sharedRecords.compactMap(HouseholdRecords.unarchive) {
             inner.sharedRecords[record.recordID.recordName] = record
         }
-        inner.known = true
+        inner.trust = cache.trust
         return true
     }
 
-    static func cache(of inner: Inner) -> HouseholdRecordCache {
-        HouseholdRecordCache(
+    static func cache(of inner: Inner) -> HouseholdSyncCache {
+        HouseholdSyncCache(
             myId: inner.myId,
             hasPrivateZone: inner.hasPrivateZone,
             sharedZoneName: inner.sharedZoneID?.zoneName,
             sharedZoneOwner: inner.sharedZoneID?.ownerName,
             privateRecords: inner.privateRecords.values.compactMap(HouseholdRecords.archive),
-            sharedRecords: inner.sharedRecords.values.compactMap(HouseholdRecords.archive)
+            sharedRecords: inner.sharedRecords.values.compactMap(HouseholdRecords.archive),
+            trust: inner.trust
         )
     }
 }

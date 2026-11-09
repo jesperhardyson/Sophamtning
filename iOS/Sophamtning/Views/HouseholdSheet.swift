@@ -5,15 +5,14 @@ import UIKit
 
 /// Arket Hushåll från Inställningar. Utan hushåll: en förklaring och **Bjud in till hushållet**. Med hushåll: deltagarna,
 /// **Hantera medlemmar** för ägaren, valen för notiser och **Lämna hushållet** eller **Avsluta hushållet**.
-/// **Bjud in till hushållet** är en `ShareLink` med CloudKit-samarbete, och **Hantera medlemmar** öppnar
-/// `UICloudSharingController`. Utan synk med CloudKit (UI-testerna) gör knapparna ingenting.
+/// **Bjud in till hushållet** är en `ShareLink` med CloudKit-samarbete, och **Hantera medlemmar** visar
+/// `UICloudSharingController` modalt ovanpå arket. Utan synk med CloudKit (UI-testerna) gör knapparna ingenting.
 struct HouseholdSheet: View {
     let model: AppModel
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.cloudHousehold) private var cloud
     @State private var invitation = InvitationInProgress()
-    @State private var managing = false
     @State private var confirmingLeave = false
     @State private var notifyPulse = 0
     /// Valet för notisen medan frågan om tillstånd pågår, så att reglaget inte hoppar tillbaka under tiden.
@@ -57,12 +56,6 @@ struct HouseholdSheet: View {
                 Button("Avbryt", role: .cancel) {}
             } message: {
                 Text(isOwner ? HouseholdTexts.endConfirmMessage : HouseholdTexts.leaveConfirmMessage)
-            }
-            .sheet(isPresented: $managing) {
-                if let cloud, let share = cloud.share {
-                    CloudSharingView(share: share, sync: cloud)
-                        .ignoresSafeArea()
-                }
             }
             // Raden om att man lämnat visas en gång. Nästa gång arket öppnas visas deltagarna.
             .onDisappear {
@@ -185,7 +178,7 @@ struct HouseholdSheet: View {
                 }
                 if isOwner {
                     ResultDivider()
-                    Button { managing = cloud?.share != nil } label: {
+                    Button { manageMembers() } label: {
                         Label(HouseholdTexts.manage, systemImage: "person.badge.plus")
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.primary)
@@ -290,6 +283,12 @@ struct HouseholdSheet: View {
             notifyDenied = on && result == .denied
             if on, result == .granted { notifyPulse += 1 }
         }
+    }
+
+    /// Systemets vy för deltagarna, modalt ovanpå arket. Utan CloudKit (UI-testerna) gör knappen ingenting.
+    private func manageMembers() {
+        guard let cloud, let share = cloud.share else { return }
+        CloudSharingPresenter.present(share: share, sync: cloud)
     }
 
     private func openAppSettings() {

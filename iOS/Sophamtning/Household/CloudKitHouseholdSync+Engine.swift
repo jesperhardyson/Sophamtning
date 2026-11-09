@@ -33,8 +33,12 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
         let changes = syncEngine.state.pendingRecordZoneChanges.filter { context.options.scope.contains($0) }
         let records = inner.withLock { Self.records(in: $0, scope: scope) }
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: changes) { recordID in
-            // En post som har tagits bort lokalt, eller hör till en annan zon, hoppas över.
-            guard let record = records[recordID.recordName], record.recordID == recordID else { return nil }
+            // En post som har tagits bort lokalt, eller hör till en annan zon, ska inte sparas. Den väntande sparningen
+            // tas bort, som i Apples exempel, så att den inte ligger kvar och visas som väntande.
+            guard let record = records[recordID.recordName], record.recordID == recordID else {
+                syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(recordID)])
+                return nil
+            }
             return record
         }
     }
@@ -47,11 +51,9 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
         case .signIn:
             mutate { inner in
                 inner.signedIn = true
-                if inner.resetOnSignIn {
-                    // Motorerna började om vid utloggningen, så allt hämtas igen. Innan dess skickas inget tomt läge.
+                if inner.trust.signedIn() {
+                    // Motorerna började om vid utloggningen, så allt hämtas igen. Innan dess skickas inget synkat läge.
                     Self.clearHousehold(&inner)
-                    inner.known = false
-                    inner.resetOnSignIn = false
                 }
             }
             emit()
@@ -59,16 +61,16 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
         case .signOut:
             mutate { inner in
                 inner.signedIn = false
-                inner.resetOnSignIn = true
+                inner.trust.signedOut()
             }
             emit()
         case .switchAccounts:
             mutate { inner in
                 Self.clearHousehold(&inner)
                 inner.myId = nil
-                inner.known = true
                 inner.signedIn = true
-                inner.resetOnSignIn = false
+                // Det nya kontot är inte med i hushållet, men det syns först när dess hämtning har lyckats.
+                inner.trust.switchedAccount()
             }
             emit()
             Task { await fetchChanges() }
@@ -77,7 +79,7 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
         }
     }
 
-    private static func clearHousehold(_ inner: inout Inner) {
+    static func clearHousehold(_ inner: inout Inner) {
         inner.hasPrivateZone = false
         inner.privateRecords = [:]
         inner.sharedZoneID = nil
@@ -214,7 +216,6 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
             if scope == .private { inner.retry += retry } else { inner.retryShared += retry }
         }
 
-        engine.state.remove(pendingRecordZoneChanges: sent.savedRecords.map { .saveRecord($0.recordID) })
         engine.state.add(pendingRecordZoneChanges: requeue)
         if let zoneGone { dropZone(zoneGone, scope: scope) }
         emit()

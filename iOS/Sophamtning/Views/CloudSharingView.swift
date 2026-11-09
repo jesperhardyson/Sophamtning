@@ -32,23 +32,22 @@ final class InvitationInProgress {
     var active = false
 }
 
-/// **Hantera medlemmar**: systemets `UICloudSharingController` för ägarens delning.
-struct CloudSharingView: UIViewControllerRepresentable {
-    let share: CKShare
-    let sync: CloudKitHouseholdSync
+/// **Hantera medlemmar**: systemets `UICloudSharingController`, presenterad modalt från UIKit ovanpå det som visas.
+/// Inuti ett SwiftUI-ark blir kontrollern ofta tom, så den visas inte där.
+@MainActor
+enum CloudSharingPresenter {
+    /// Delegaten hålls kvar så länge kontrollern visas, eftersom `delegate` är svag.
+    private static var current: Coordinator?
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(sync: sync)
-    }
-
-    func makeUIViewController(context: Context) -> UICloudSharingController {
+    static func present(share: CKShare, sync: CloudKitHouseholdSync) {
+        guard let presenter = UIApplication.shared.topViewController else { return }
+        let coordinator = Coordinator(sync: sync)
         let controller = UICloudSharingController(share: share, container: sync.container)
         controller.availablePermissions = [.allowPrivate, .allowReadWrite]
-        controller.delegate = context.coordinator
-        return controller
+        controller.delegate = coordinator
+        current = coordinator
+        presenter.present(controller, animated: true)
     }
-
-    func updateUIViewController(_ controller: UICloudSharingController, context: Context) {}
 
     final class Coordinator: NSObject, UICloudSharingControllerDelegate {
         let sync: CloudKitHouseholdSync
@@ -74,5 +73,18 @@ struct CloudSharingView: UIViewControllerRepresentable {
             let sync = sync
             Task { await sync.sharingDidStop() }
         }
+    }
+}
+
+extension UIApplication {
+    /// Den översta vykontrollern i den aktiva scenen, också när ett ark eller en dialog visas.
+    var topViewController: UIViewController? {
+        let scenes = connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        var top = scene?.keyWindow?.rootViewController ?? scene?.windows.first?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
+            top = presented
+        }
+        return top
     }
 }

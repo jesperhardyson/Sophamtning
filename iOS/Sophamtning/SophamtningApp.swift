@@ -54,8 +54,6 @@ struct SophamtningApp: App {
             HomeView(model: model, entrance: entrance, onEntranceFinished: { entrance.finish() })
                 .environment(\.entranceEnabled, !StartIntroState.skipsIntro)
                 .environment(\.cloudHousehold, cloudHousehold)
-                // Frågan om att lämna det nuvarande hushållet när en inbjudan kommer.
-                .householdInvitationDialog()
                 .overlay {
                     if showsIntro {
                         StartIntroView(

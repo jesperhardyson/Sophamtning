@@ -149,11 +149,22 @@ enum HouseholdRecords {
         case .quotaExceeded:
             .quotaExceeded(ownerName: ownerName())
         case .partialFailure:
-            // Det första felet för en post avgör.
-            (error.partialErrorsByItemID?.values.compactMap { $0 as? CKError }.first)
+            // Det allvarligaste felet för en post avgör, så att svaret inte beror på ordningen i ordboken.
+            (error.partialErrorsByItemID?.values.compactMap { $0 as? CKError }.max { severity($0.code) < severity($1.code) })
                 .map { status(for: $0, ownerName: ownerName()) } ?? .failed
         default:
             .failed
+        }
+    }
+
+    /// Hur allvarligt ett fel i en `partialFailure` är: `notAuthenticated` före `quotaExceeded`, före en borttagen zon,
+    /// före övriga fel.
+    static func severity(_ code: CKError.Code) -> Int {
+        switch code {
+        case .notAuthenticated: 3
+        case .quotaExceeded: 2
+        case .zoneNotFound, .userDeletedZone: 1
+        default: 0
         }
     }
 
@@ -167,17 +178,4 @@ enum HouseholdRecords {
     static func unarchive(_ data: Data) -> CKRecord? {
         try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [CKRecord.self, CKShare.self], from: data) as? CKRecord
     }
-}
-
-/// Synkens lokala kopia av hushållet: posterna med systemfält, vilken zon som gäller och mitt id.
-/// Sparas som `household-records.data`, så att hushållet finns utan nät och motorerna kan fortsätta där de slutade.
-struct HouseholdRecordCache: Codable {
-    var myId: String?
-    var hasPrivateZone: Bool
-    var sharedZoneName: String?
-    var sharedZoneOwner: String?
-    var privateRecords: [Data]
-    var sharedRecords: [Data]
-
-    static let fileName = "household-records.data"
 }

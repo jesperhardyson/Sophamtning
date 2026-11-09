@@ -26,9 +26,9 @@ final class CloudKitHouseholdSync: HouseholdSync {
         var myId: String?
         var signedIn = true
         var status: HouseholdStatus = .synced
-        /// Om posterna går att lita på: kopian lästes, eller en hämtning har lyckats. Innan dess skickas bara lägen med fel,
-        /// så att appen aldrig tror att hushållet är tomt.
-        var known = false
+        /// Om posterna går att lita på. Sparas med kopian. Innan en fullständig hämtning har lyckats skickas bara lägen med
+        /// fel, så att appen aldrig tror att hushållet är tomt eller saknar adresser.
+        var trust = HouseholdSyncTrust()
         var hasPrivateZone = false
         var sharedZoneID: CKRecordZone.ID?
         var privateRecords: [String: CKRecord] = [:]
@@ -36,8 +36,6 @@ final class CloudKitHouseholdSync: HouseholdSync {
         /// Ändringar som motorn inte försöker igen med själv, till exempel efter `quotaExceeded`. De köas vid nästa hämtning.
         var retry: [CKSyncEngine.PendingRecordZoneChange] = []
         var retryShared: [CKSyncEngine.PendingRecordZoneChange] = []
-        /// Efter en utloggning har motorerna börjat om, så posterna hämtas på nytt när kontot är tillbaka.
-        var resetOnSignIn = false
         var lastEmitted: HouseholdState?
         var continuations: [UUID: AsyncStream<HouseholdState>.Continuation] = [:]
         var privateEngine: CKSyncEngine?
@@ -54,20 +52,28 @@ final class CloudKitHouseholdSync: HouseholdSync {
         self.stateStore = stateStore
         var initial = Inner()
         let loaded = Self.loadCache(into: &initial, from: stateStore)
-        inner = Mutex(initial)
-        if !loaded {
-            // Utan kopian av posterna måste motorerna hämta allt från början.
+        var privateState = loaded ? Self.engineState(named: Self.privateEngineFile, in: stateStore) : nil
+        var sharedState = loaded ? Self.engineState(named: Self.sharedEngineFile, in: stateStore) : nil
+        if privateState == nil || sharedState == nil {
+            // Motorerna börjar om från början och hämtar allt igen. Kopian töms och gäller inte förrän den hämtningen
+            // har lyckats, så att den aldrig blandar poster från före och efter omstarten.
+            privateState = nil
+            sharedState = nil
+            Self.clearHousehold(&initial)
+            initial.trust.restarted()
             try? stateStore.removeRawData(named: Self.privateEngineFile)
             try? stateStore.removeRawData(named: Self.sharedEngineFile)
+            try? Self.cache(of: initial).save(to: stateStore)
         }
+        inner = Mutex(initial)
         let privateEngine = CKSyncEngine(CKSyncEngine.Configuration(
             database: container.privateCloudDatabase,
-            stateSerialization: loaded ? engineState(named: Self.privateEngineFile) : nil,
+            stateSerialization: privateState,
             delegate: self
         ))
         let sharedEngine = CKSyncEngine(CKSyncEngine.Configuration(
             database: container.sharedCloudDatabase,
-            stateSerialization: loaded ? engineState(named: Self.sharedEngineFile) : nil,
+            stateSerialization: sharedState,
             delegate: self
         ))
         inner.withLock {
@@ -164,14 +170,16 @@ final class CloudKitHouseholdSync: HouseholdSync {
 
     func fetchChanges() async {
         await refreshAccount()
-        let (signedIn, privateEngine, sharedEngine, retry, retryShared) = inner.withLock { inner in
+        let engines = inner.withLock { inner -> (CKSyncEngine, CKSyncEngine, [CKSyncEngine.PendingRecordZoneChange], [CKSyncEngine.PendingRecordZoneChange])? in
+            // Utloggad ligger omförsöken kvar till nästa hämtning.
+            guard inner.signedIn, let privateEngine = inner.privateEngine, let sharedEngine = inner.sharedEngine else { return nil }
             defer {
                 inner.retry = []
                 inner.retryShared = []
             }
-            return (inner.signedIn, inner.privateEngine, inner.sharedEngine, inner.retry, inner.retryShared)
+            return (privateEngine, sharedEngine, inner.retry, inner.retryShared)
         }
-        guard signedIn, let privateEngine, let sharedEngine else {
+        guard let (privateEngine, sharedEngine, retry, retryShared) = engines else {
             emit()
             return
         }
@@ -181,7 +189,8 @@ final class CloudKitHouseholdSync: HouseholdSync {
             try await privateEngine.fetchChanges()
             try await sharedEngine.fetchChanges()
             mutate { inner in
-                inner.known = true
+                // Bara en hämtning av båda databaserna gör kopian komplett.
+                inner.trust.fetchCompleted()
                 if inner.status == .failed { inner.status = .synced }
             }
         } catch {
@@ -200,16 +209,24 @@ final class CloudKitHouseholdSync: HouseholdSync {
     // MARK: Läget
 
     /// Ändrar läget och sparar kopian. Skickar inget nytt läge, det gör `emit()` när motorerna har fått sina ändringar.
+    ///
+    /// Kopian skrivs medan låset hålls, så att skrivningarna alltid kommer i samma ordning som ändringarna och en äldre
+    /// bild aldrig skriver över en nyare. Den är skriven innan funktionen svarar, alltså innan motorn får spara ett
+    /// tillstånd som räknar med ändringen.
     @discardableResult
     func mutate<T>(_ change: (inout Inner) -> T) -> T {
-        let (result, cache) = inner.withLock { inner in
-            (change(&inner), Self.cache(of: inner))
+        let (result, failure) = inner.withLock { inner -> (T, (any Error)?) in
+            let result = change(&inner)
+            do {
+                try Self.cache(of: inner).save(to: stateStore)
+                return (result, nil)
+            } catch {
+                return (result, error)
+            }
         }
-        do {
-            try stateStore.setRawData(try PropertyListEncoder().encode(cache), named: HouseholdRecordCache.fileName)
-        } catch {
+        if let failure {
             // Kopian skrivs igen vid nästa ändring.
-            logger.error("Kunde inte spara hushållets poster: \(error.localizedDescription, privacy: .public)")
+            logger.error("Kunde inte spara hushållets poster: \(failure.localizedDescription, privacy: .public)")
         }
         return result
     }
@@ -240,11 +257,14 @@ final class CloudKitHouseholdSync: HouseholdSync {
     }
 
     static func state(of inner: Inner, pending: Set<String>) -> HouseholdState? {
+        inner.trust.gate(fullState(of: inner, pending: pending))
+    }
+
+    /// Läget enligt kopian, innan det prövas mot om kopian går att lita på.
+    private static func fullState(of inner: Inner, pending: Set<String>) -> HouseholdState {
         let status = inner.signedIn ? inner.status : .notSignedIn
         let role = role(of: inner)
-        guard inner.known, role != .none else {
-            // Utan hushåll, eller innan posterna går att lita på. Ett okänt läge skickas bara när något är fel.
-            guard inner.known || status != .synced else { return nil }
+        guard role != .none else {
             return HouseholdState(role: .none, myId: inner.myId, participants: [], addresses: [], marks: [], status: status)
         }
         let records = role == .owner ? inner.privateRecords : inner.sharedRecords
@@ -392,6 +412,8 @@ final class CloudKitHouseholdSync: HouseholdSync {
 
     /// Ett fel från en hämtning eller ett skick som inte gäller en enskild post.
     func record(_ error: any Error, scope: CKDatabase.Scope?) {
+        // Ett avbrott är inget fel. Det förra läget gäller.
+        if error is CancellationError { return }
         guard let error = error as? CKError else {
             mutate { $0.status = .failed }
             return

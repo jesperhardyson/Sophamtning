@@ -27,6 +27,7 @@ extension CloudKitHouseholdSync {
         newShare[CKShare.SystemFieldKey.title] = HouseholdRecords.shareTitle as NSString
         newShare.publicPermission = .none
         let saved: CKShare
+        var reused = false
         do {
             let results = try await database.modifyRecords(saving: [newShare], deleting: [])
             guard let result = results.saveResults.values.first, let share = try result.get() as? CKShare else {
@@ -37,14 +38,18 @@ extension CloudKitHouseholdSync {
             // En annan av mina enheter hann skapa delningen först. Den gäller.
             guard let server = error.serverRecord as? CKShare else { throw error }
             saved = server
+            reused = true
         }
         mutate { inner in
             inner.hasPrivateZone = true
             inner.privateRecords[saved.recordID.recordName] = saved
-            inner.known = true
             inner.status = .synced
+            // En delning som en annan av mina enheter skapade kan ha poster som inte hämtats än.
+            if reused { inner.trust.restarted() }
         }
         emit()
+        // Är kopian inte komplett, eller fanns delningen redan, syns hushållet först efter en hämtning.
+        if reused || !inner.withLock({ $0.trust.complete }) { Task { await fetchChanges() } }
         return saved
     }
 
@@ -81,6 +86,8 @@ extension CloudKitHouseholdSync {
             inner.sharedZoneID = accepted.recordID.zoneID
             inner.sharedRecords = [accepted.recordID.recordName: accepted]
             inner.status = .synced
+            // Hushållets poster är inte hämtade än. Inget synkat läge skickas förrän de är det.
+            inner.trust.restarted()
         }
         emit()
         await fetchChanges()
