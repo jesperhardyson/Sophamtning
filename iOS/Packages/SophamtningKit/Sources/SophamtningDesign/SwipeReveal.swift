@@ -35,6 +35,13 @@ public enum SwipeReveal {
     /// Hur långt rörelsen förväntas fortsätta efter släppet, i sekunder av hastigheten.
     static let projection: CGFloat = 0.1
 
+    /// Sant när ett tryck på raden ska stänga en öppen rad i stället för att öppna adressen: raden själv står öppen och
+    /// fingret drar inte, eller en annan rad står öppen. Bara en rad är öppen åt gången.
+    public static func tapCloses(offset: CGFloat, dragging: Bool, anotherRowOpen: Bool) -> Bool {
+        if offset < 0 { return !dragging }
+        return anotherRowOpen
+    }
+
     /// Om en rörelse ska bli ett svep. Bara en tydligt vågrät rörelse räknas, och åt höger bara när raden redan är öppen.
     public static func begins(movement: CGSize, isOpen: Bool) -> Bool {
         guard abs(movement.width) > abs(movement.height) * horizontalRatio else { return false }

@@ -73,6 +73,13 @@ private func areaHit(detail: String? = "Måndag, udda vecka · Område 1", area:
         #expect(row.showAllPlacesText == "Visa alla 18 platser")
     }
 
+    @Test func knappenIBekraftelsenFallerUtOchIhop() throws {
+        let hit = try #require(try areas("omraden-detaljer").addresses.first)
+        let row = AreaRowContent.make(hit)
+        #expect(row.placesToggleText(expanded: false) == "Visa alla 18 platser")
+        #expect(row.placesToggleText(expanded: true) == "Visa färre platser")
+    }
+
     @Test func fåPlatserVisasAllaUtanMfl() {
         let three = AreaRowContent.make(areaHit(area: AreaDetails(day: "Onsdag, udda vecka", label: "Område 3", places: ["Fors", "Nordanö", "Brogård"])))
         #expect(three.places == "Fors, Nordanö, Brogård")

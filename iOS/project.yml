@@ -114,4 +114,15 @@ schemes:
         Sophamtning: all
     test:
       targets:
-        - SophamtningUITests
+        # Granskningen och största texten körs en gång före release, med schemat Granskning.
+        - name: SophamtningUITests
+          skippedTests: [AccessibilityAuditTests, LargestTextTests]
+  # Tillgänglighetsgranskningen och största texten. Körs innan release-PR:en mergas (CLAUDE.md, Releaser).
+  Granskning:
+    build:
+      targets:
+        Sophamtning: all
+    test:
+      targets:
+        - name: SophamtningUITests
+          selectedTests: [AccessibilityAuditTests, LargestTextTests]

@@ -40,6 +40,11 @@ public struct AreaRowContent: Equatable, Sendable {
     /// "Visa alla 18 platser".
     public var showAllPlacesText: String { "Visa alla \(placeCount) platser" }
 
+    /// Knappen i bekräftelsen: "Visa alla 18 platser", och "Visa färre platser" när listan är utfälld.
+    public func placesToggleText(expanded: Bool) -> String {
+        expanded ? "Visa färre platser" : showAllPlacesText
+    }
+
     public static func make(_ hit: SearchHit) -> AreaRowContent {
         let detail = hit.detail?.trimmedNonEmpty
         guard let area = hit.area, let day = area.day.trimmedNonEmpty else {
