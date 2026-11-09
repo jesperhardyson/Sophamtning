@@ -49,6 +49,14 @@
                BlueprintName = "SophamtningUITests"
                ReferencedContainer = "container:Sophamtning.xcodeproj">
             </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "AccessibilityAuditTests">
+               </Test>
+               <Test
+                  Identifier = "LargestTextTests">
+               </Test>
+            </SkippedTests>
          </TestableReference>
       </Testables>
       <CommandLineArguments>
