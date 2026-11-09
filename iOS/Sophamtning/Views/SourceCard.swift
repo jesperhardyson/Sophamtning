@@ -67,17 +67,26 @@ struct SourceLinkButton: View {
         Button {
             if let web = link.webLink { webLink = web } else { openURL(link.url) }
         } label: {
+            // Som en rad i en iOS-lista: ikonen i accentfärg, texten i vanlig textfärg och en pil för sidor som öppnas i
+            // appen. Telefonnumret står i accentfärg, eftersom det oftast är det man vill använda.
             HStack(spacing: 12) {
                 Image(systemName: link.icon)
                     .font(.system(.body, weight: .semibold))
+                    .foregroundStyle(Color.Theme.primary)
                     .frame(minWidth: 24)
                     .accessibilityHidden(true)
                 Text(link.title)
-                    .font(.ui(17, weight: .heavy, relativeTo: .body))
+                    .font(.ui(17, weight: link.isPrimaryAction ? .heavy : .semibold, relativeTo: .body))
+                    .foregroundStyle(link.isPrimaryAction ? Color.Theme.primary : Color.Theme.text)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
+                if link.showsChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Color.Theme.text2)
+                        .accessibilityHidden(true)
+                }
             }
-            .foregroundStyle(Color.Theme.primary)
             .frame(minHeight: 28)
             .contentShape(Rectangle())
         }
