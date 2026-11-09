@@ -75,7 +75,8 @@ struct AddressView: View {
             now: model.currentDate,
             remindersOn: model.missedReminderApplies(to: address),
             reserveAt: model.reserveNotificationDate(for: address),
-            household: model.household
+            household: model.household,
+            ownPlacedOut: model.ownPlacedOut
         )
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {

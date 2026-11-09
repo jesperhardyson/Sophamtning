@@ -121,10 +121,16 @@ private func kimsMark(_ key: AddressKey = home, date: DayDate = tomorrow) -> Hou
     HouseholdMark(placedOut: PlacedOut(key: key, date: date), by: "kim", at: noon, isPending: false)
 }
 
+/// Räknar hur ofta widgeten laddas om.
+@MainActor
+private final class WidgetReloads {
+    var count = 0
+}
+
 /// Hemmaadressen sparad och hämtad, med notiser på. Hushållet är inte startat än.
 @MainActor
-private func makeModel(_ sync: some HouseholdSync, scheduler: FakeScheduler, clock: TestClock, directory: URL) async throws -> AppModel {
-    let model = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: directory), now: { clock.now }, scheduler: scheduler, household: sync)
+private func makeModel(_ sync: some HouseholdSync, scheduler: FakeScheduler, clock: TestClock, directory: URL, widget: WidgetReloads? = nil) async throws -> AppModel {
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: directory), now: { clock.now }, scheduler: scheduler, widgetReloader: { widget?.count += 1 }, household: sync)
     model.add(hit())
     await model.refreshAll(manual: false)
     _ = await model.setNotifications(true, for: home)
@@ -462,3 +468,84 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
 
     #expect(LocalStore(directory: temp.url).placedOut() == [PlacedOut(key: home, date: tomorrow)])
 }
+
+// MARK: Slutgranskningen
+
+@Test @MainActor func utstalltFranLiveActivitySkickasNarLagetArOforandrat() async throws {
+    let entry = PlacedOut(key: home, date: tomorrow)
+    let shared = [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]
+    let temp = TempDir()
+    // Som CloudKit: ett oförändrat läge skickas inte igen, så en hämtning utan ändringar ger inget nytt läge.
+    let sync = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: shared), resendsUnchanged: false))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    // Knappen i Live Activity skriver i lagringen medan appen inte körs.
+    try LocalStore(directory: temp.url).markPlacedOut(entry, today: DayDate("2026-11-10")!)
+    await settle(model) { await model.fetchHouseholdChanges() }
+
+    #expect(sync.markCalls == 1)
+    #expect(await currentState(sync).marks.map(\.placedOut) == [entry])
+    await model.fetchHouseholdChanges()
+    #expect(sync.markCalls == 1)
+}
+
+@Test @MainActor func widgetenLaddasOmNarBockarAndras() async throws {
+    let temp = TempDir()
+    let widget = WidgetReloads()
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url, widget: widget)
+    await settle(model) { model.startHousehold() }
+
+    // Ett oförändrat läge laddar inte om widgeten.
+    widget.count = 0
+    await settle(model) { await sync.fetchChanges() }
+    #expect(widget.count == 0)
+
+    // Kims bock från en annan telefon.
+    await settle(model) { sync.simulateRemote { $0.marks.append(kimsMark()) } }
+    #expect(widget.count >= 1)
+
+    widget.count = 0
+    await settle(model) { await model.undoPlaceOut(home) }
+    #expect(widget.count >= 1)
+    // Widgeten läser hushållet från lagringen, där Ångra syns.
+    if case .value(let saved) = LocalStore(directory: temp.url).householdState() {
+        #expect(!saved.marks.contains { $0.by == "kim" })
+    } else {
+        Issue.record("Hushållet ska vara sparat")
+    }
+
+    widget.count = 0
+    await settle(model) { await model.placeOut(home) }
+    #expect(widget.count >= 1)
+
+    // Ett nytt läge för hushållet, till exempel utloggat.
+    widget.count = 0
+    await settle(model) { sync.simulateRemote { $0.status = .notSignedIn } }
+    #expect(widget.count >= 1)
+}
+
+@Test @MainActor func felLageVisarMinNyaBock() async throws {
+    let temp = TempDir()
+    let entry = PlacedOut(key: home, date: tomorrow)
+    let sync = CountingHousehold(InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")])))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    // Utan nät: min bock väntar på att skickas, och synken säger att något inte fungerar.
+    let mine = HouseholdMark(placedOut: entry, by: "jag", at: noon, isPending: true)
+    await settle(model) {
+        sync.inner.simulateRemote { state in
+            state.status = .failed
+            state.marks = [mine]
+        }
+    }
+
+    #expect(model.household.status == .failed)
+    #expect(model.household.marks == [mine])
+    let line = try #require(HouseholdLine.make(household: model.household, key: home, nextPickup: tomorrow, today: DayDate("2026-11-10")!))
+    #expect(!line.showsButton)
+    #expect(line.isPending)
+}
+

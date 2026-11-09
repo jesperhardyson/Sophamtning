@@ -32,9 +32,6 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
         self.pickupDate = pickupDate.iso
     }
 
-    /// Hur länge bocken visas innan aktiviteten försvinner.
-    private static let checkmarkSeconds: TimeInterval = 3
-
     func perform() async throws -> some IntentResult {
         let key = AddressKey(source: source, id: addressID)
         let iso = pickupDate
@@ -50,7 +47,7 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
                 default:
                     // Bocken står kvar i tre sekunder innan aktiviteten försvinner.
                     let done = ActivityContent(state: activity.content.state.markedPlacedOut(), staleDate: nil)
-                    await activity.end(done, dismissalPolicy: .after(Date().addingTimeInterval(Self.checkmarkSeconds)))
+                    await activity.end(done, dismissalPolicy: .after(Date().addingTimeInterval(PlacedOutAction.checkmarkSeconds)))
                 }
             }
         }

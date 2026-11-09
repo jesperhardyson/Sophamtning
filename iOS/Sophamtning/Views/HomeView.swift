@@ -43,7 +43,8 @@ struct HomeView: View {
             liveActivityError: model.liveActivityError,
             missedReminder: model.addresses.first(where: \.isPrimary).flatMap { model.missedReminderText(for: $0) },
             reserveAt: model.addresses.first(where: \.isPrimary).flatMap { model.reserveNotificationDate(for: $0) },
-            household: model.household
+            household: model.household,
+            ownPlacedOut: model.ownPlacedOut
         )
     }
 

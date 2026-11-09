@@ -25,11 +25,25 @@ public struct HouseholdLine: Equatable, Sendable {
     }
 
     /// Raden för en adress och dess nästa tömning. `nil` när det inte finns något hushåll.
-    public static func make(household: HouseholdState, key: AddressKey, nextPickup: DayDate?, today: DayDate) -> HouseholdLine? {
+    ///
+    /// - Parameter ownPlacedOut: mina egna utställda i `placed-out.json`. En sådan för en delad adress, som hushållet saknar
+    ///   bock för, visas som en bock som väntar på att skickas, till exempel efter knappen i Live Activity.
+    public static func make(household: HouseholdState, key: AddressKey, nextPickup: DayDate?, today: DayDate, ownPlacedOut: Set<PlacedOut> = []) -> HouseholdLine? {
         // Utan roll men med adresser kvar, till exempel efter ett fel, visas raden ändå.
         guard household.role != .none || !household.addresses.isEmpty else { return nil }
         let isShared = household.addresses.contains { $0.address.key == key }
         let mark = HouseholdLogic.currentMark(for: key, nextPickup: nextPickup, in: household.marks)
+        let ownPending = mark == nil && isShared && nextPickup.map { ownPlacedOut.contains(PlacedOut(key: key, date: $0)) } == true
+        if ownPending {
+            return HouseholdLine(
+                isShared: true,
+                showsButton: false,
+                placedOutText: HouseholdTexts.placedOutByMe,
+                placedOutSubtitle: HouseholdTexts.pendingSubtitle,
+                isPending: true,
+                statusText: HouseholdTexts.status(household.status)
+            )
+        }
         return HouseholdLine(
             isShared: isShared,
             showsButton: mark == nil && HouseholdLogic.showsPlaceOutButton(isShared: isShared, nextPickup: nextPickup, today: today),

@@ -35,6 +35,9 @@ public final class AppModel {
     public private(set) var currentLiveActivity: ExistingActivity?
     /// Om aktiviteten inte gick att lägga in, annars `nil`. Notisen står då kvar, och försöket upprepas vid nästa körning.
     public private(set) var liveActivityError: String?
+    /// Mina egna utställda i `placed-out.json`, utan andras bockar. Hushållets rad visar en sådan som en väntande bock när
+    /// hushållet saknar den. Läses om av `applyReminders()`.
+    public private(set) var ownPlacedOut: Set<PlacedOut> = []
     /// Tömningar som redan är påminda: utställda, visade eller med en aktivitet som syns nu. Läses om av `applyReminders()`.
     private var handledPickups: Set<PlacedOut> = []
     /// Reservnotiser som väntar framför, med sina tider. Läses om av `applyReminders()`.
@@ -611,6 +614,7 @@ public final class AppModel {
         // Det går inte att veta vad som är utställt, så inget ändras.
         case .unavailable: return
         }
+        ownPlacedOut = placedOut
         // Andras bockar räknas som utställda bara i minnet, så att Ångra eller att valet stängs av ger tillbaka påminnelsen.
         placedOut.formUnion(householdSilenced(today: today))
 
@@ -625,20 +629,28 @@ public final class AppModel {
         let stopped = Set(store.shownActivities()).union(store.endedActivities()).subtracting(existing.map { PlacedOut(key: $0.key, date: $0.pickupDate) })
         let desired = reminderPlan(existing: counted, placedOut: placedOut.union(stopped), activitiesAllowed: systemAllows).liveActivity
         let todayContent = ReminderPlanner.activityContent(on: today, input: plannerInput(existing: counted, placedOut: placedOut, activitiesAllowed: systemAllows), household: inHousehold ? household : .empty)
-        var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent)
+        let householdMarked = inHousehold ? Set(household.marks.map(\.placedOut)) : []
+        var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent, householdMarked: householdMarked)
         // Utan läsbart schema för huvudadressen går det inte att planera någon ersättning, så dess aktiviteter står kvar.
         if settings.liveActivityOn, let primary, schedules[primary]?.response == nil {
             let protected = Set(existing.filter { $0.key == primary }.map(\.id))
             actions.removeAll { action in
-                if case .remove(let id) = action { return protected.contains(id) }
-                return false
+                switch action {
+                case .remove(let id), .end(let id, _): protected.contains(id)
+                default: false
+                }
             }
         }
 
         let removals = actions.compactMap { action -> String? in
-            if case .remove(let id) = action { return id }
-            return nil
+            switch action {
+            case .remove(let id), .end(let id, _): id
+            default: nil
+            }
         }
+        // Aktiviteter som visar bocken för Utställt en kort stund innan de avslutas.
+        var endings: [String: PickupActivityContent] = [:]
+        for case .end(let id, let content) in actions { endings[id] = content }
         if !removals.isEmpty, status == .authorized {
             // Även en passerad väntande aktivitet finns kvar hos systemet, och dess reservnotis ska ligga kvar.
             let remaining = existing.filter { !removals.contains($0.id) }
@@ -650,7 +662,7 @@ public final class AppModel {
         var startFailed = false
         for action in actions {
             switch action {
-            case .remove: break
+            case .remove, .end: break
             case .update(let id, let content): await activities.update(id: id, content: content)
             case .start(let activity):
                 do {
@@ -672,7 +684,11 @@ public final class AppModel {
             let activity = existing.first { $0.id == id }
             if notStarted.contains(where: { $0.key == activity?.key && $0.pickupDate == activity?.pickupDate }) { continue }
             removedActivityIds.insert(id)
-            await activities.remove(id: id)
+            if let content = endings[id] {
+                await activities.end(id: id, showing: content)
+            } else {
+                await activities.remove(id: id)
+            }
         }
         // En inaktuell aktivitet räknas inte, och den visas inte längre med rätt innehåll.
         for item in snapshot where item.phase == .stale {

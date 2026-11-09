@@ -19,9 +19,12 @@ extension AppModel {
         }
     }
 
-    /// Hämtar hushållets ändringar nu, till exempel när appen blir aktiv.
+    /// Hämtar hushållets ändringar nu, till exempel när appen blir aktiv och i bakgrundsuppdateringen.
     public func fetchHouseholdChanges() async {
         await householdSync.fetchChanges()
+        // Synken skickar inget nytt läge när inget har ändrats. Egna utställda från knappen i Live Activity skickas därför här.
+        guard household.status == .synced, inHousehold else { return }
+        await sendPendingMarks(in: household, today: StockholmClock.today(now: now()))
     }
 
     /// Med i ett hushåll: en roll, och inte borttagen.
@@ -81,8 +84,11 @@ extension AppModel {
                 effective.status = incoming.status
             } else if householdCacheKnown {
                 effective.addresses = previous.addresses
-                effective.marks = previous.marks
                 effective.participants = previous.participants
+                // Mina egna nya bockar, som väntar på att skickas, visas ändå. Andras gäller som de senast sparades.
+                let myId = incoming.myId ?? previous.myId
+                let known = Set(previous.marks.map(\.placedOut))
+                effective.marks = previous.marks + incoming.marks.filter { $0.by == myId && !known.contains($0.placedOut) }
             }
         }
 
@@ -111,6 +117,10 @@ extension AppModel {
         pruneNotifiedMarks(today: today)
 
         if previous != effective || addressesChanged { applyReminders() }
+        // Widgeten visar Utställt från `household.json`. Adresserna laddar om den själva i `mergeShared`.
+        if previous.marks != effective.marks || previous.role != effective.role || previous.status != effective.status {
+            widgetReloader()
+        }
         // En ny adress från hushållet har inget schema än.
         if !addedKeys.isEmpty { await refreshAll(manual: false) }
         // En gång per dag, så att en post som inte går att ta bort inte ger en slinga av nya lägen.
@@ -177,7 +187,10 @@ extension AppModel {
             saveHouseholdPreferences()
         }
         if wasMember { householdNotice = HouseholdTexts.leftNote }
-        if changed { applyReminders() }
+        if changed {
+            applyReminders()
+            widgetReloader()
+        }
     }
 
     /// En egen bock som fanns i hushållet och nu är borta har ångrats av någon annan. Då tas den bort även lokalt.
@@ -295,9 +308,11 @@ extension AppModel {
             return
         }
         applyReminders()
-        if isShared(key), !household.marks.contains(where: { $0.placedOut == entry }) {
+        guard isShared(key) else { return }
+        if !household.marks.contains(where: { $0.placedOut == entry }) {
             await sendMark(entry)
         }
+        widgetReloader()
     }
 
     /// Ångrar bocken för nästa tömning, min egen eller någon annans. Påminnelsen kommer tillbaka om tiden inte har passerat.
@@ -317,6 +332,11 @@ extension AppModel {
         household.marks.removeAll { $0.placedOut == entry }
         applyReminders()
         guard hadMark || isShared(key) else { return }
+        if hadMark, householdCacheKnown {
+            // Widgeten läser bocken från lagringen. Nästa läge från synken skriver över det här.
+            try? store.setHouseholdState(household)
+        }
+        widgetReloader()
         do {
             try await householdSync.unmark(entry)
         } catch {

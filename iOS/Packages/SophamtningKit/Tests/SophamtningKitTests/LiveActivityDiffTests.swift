@@ -21,8 +21,8 @@ private func existing(_ id: String, key: AddressKey = home, date: DayDate = mond
     ExistingActivity(id: id, key: key, pickupDate: date, content: c, isPending: pending, start: s)
 }
 
-private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil) -> [LiveActivityAction] {
-    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent)
+private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = []) -> [LiveActivityAction] {
+    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent, householdMarked: householdMarked)
 }
 
 @Test func ingenOnskadTarBortAlla() {
@@ -278,4 +278,36 @@ private func withFractions(_ count: Int, warning: String? = nil) -> PickupActivi
     #expect(withFractions(3).warningLineLimit == 2)
     #expect(withFractions(4).warningLineLimit == 1)
     #expect(withFractions(6).warningLineLimit == 1)
+}
+
+// MARK: Hushållets bockar kvällen före
+
+private let mondayMarked: Set<PlacedOut> = [PlacedOut(key: home, date: monday)]
+
+@Test func andrasBockUppdaterarPagaendeKvallenFore() {
+    // Tysta är av, så aktiviteten för måndag är fortfarande den önskade. Den visar bocken.
+    let running = existing("a", pending: false)
+    #expect(actions(plan, [running], householdMarked: mondayMarked) == [.update(id: "a", content().markedPlacedOut())])
+}
+
+@Test func andrasBockStartarMedBock() {
+    let marked = PlannedLiveActivity(key: home, pickupDate: monday, start: start, startsImmediately: false, content: content().markedPlacedOut())
+    #expect(actions(plan, [], householdMarked: mondayMarked) == [.start(marked)])
+}
+
+@Test func andrasBockAvslutarPagaendeMedBock() {
+    // Tysta är på, så måndag räknas som utställd och torsdag är den önskade. Måndagens aktivitet visar bocken innan den försvinner.
+    let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: start.addingTimeInterval(3 * 86_400), startsImmediately: false, content: content(date: "Torsdag 12 november"))
+    let running = existing("a", pending: false)
+    #expect(actions(next, [running], householdMarked: mondayMarked) == [.end(id: "a", content().markedPlacedOut()), .start(next)])
+    #expect(actions(nil, [running], householdMarked: mondayMarked) == [.end(id: "a", content().markedPlacedOut())])
+}
+
+@Test func andrasBockTarBortVantandeUtanBock() {
+    // En väntande aktivitet har aldrig visats, så den tas bort direkt, som när knappen trycks.
+    #expect(actions(nil, [existing("a")], householdMarked: mondayMarked) == [.remove(id: "a")])
+}
+
+@Test func utanHushalletAvslutasIngetMedBock() {
+    #expect(actions(nil, [existing("a", pending: false)]) == [.remove(id: "a")])
 }

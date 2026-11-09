@@ -66,6 +66,8 @@ private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable 
     var keepsRemoved = false
     private(set) var starts: [PlannedLiveActivity] = []
     private(set) var updates: [String] = []
+    /// Aktiviteter som avslutats med bocken för Utställt.
+    private(set) var endedWithPlacedOut: [String] = []
     let log: Log
 
     init(log: Log, enabled: Bool = true) { self.log = log; self.enabled = enabled }
@@ -104,6 +106,13 @@ private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable 
             }
         }
         log.add("remove \(id)")
+    }
+    func end(id: String, showing content: PickupActivityContent) async {
+        lock.withLock {
+            if content.placedOut { endedWithPlacedOut.append(id) }
+            list.removeAll { $0.activity.id == id }
+        }
+        log.add("end \(id)")
     }
 
     func setFailing(_ on: Bool, with error: any Error = StartFailed()) { lock.withLock { failing = on; failure = error } }
@@ -972,4 +981,48 @@ private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_source
     let broken = f.model()
     await apply(broken)
     #expect(f.activities.ids == [id])
+}
+
+// MARK: Hushållets bockar
+
+/// Hemma delas med Kim, som har ställt ut kärlen för måndagens tömning.
+private func kimHasPlacedOut(_ store: LocalStore, silence: Bool) throws {
+    try store.setHouseholdState(HouseholdState(
+        role: .member,
+        myId: "jag",
+        participants: [HouseholdParticipant(id: "jag", name: "Jesper", isOwner: false), HouseholdParticipant(id: "kim", name: "Kim", isOwner: true)],
+        addresses: [HouseholdAddress(address: saved(homeKey, name: "Hemma", primary: false), addedBy: "kim")],
+        marks: [HouseholdMark(placedOut: PlacedOut(key: homeKey, date: monday), by: "kim", at: sundayEvening, isPending: false)],
+        status: .synced
+    ))
+    try store.setHouseholdPreferences(HouseholdPreferences(silenceWhenOthersPlaceOut: silence))
+}
+
+@Test @MainActor func kvallenForeVisarAndrasBockMedTystaAv() async throws {
+    let f = try Fixture(now: sundayEvening)
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+    #expect(f.activities.activities.first?.content.placedOut == false)
+
+    // Kim ställer ut. Appen öppnas igen och läser hushållet.
+    try kimHasPlacedOut(f.store, silence: false)
+    await apply(f.model())
+
+    #expect(f.activities.ids == [id])
+    #expect(f.activities.activities.first?.content.placedOut == true)
+}
+
+@Test @MainActor func kvallenForeVisarAndrasBockInnanDenForsvinnerMedTystaPa() async throws {
+    let f = try Fixture(now: sundayEvening)
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+    f.log.clear()
+
+    try kimHasPlacedOut(f.store, silence: true)
+    await apply(f.model())
+
+    // Bocken visas först, som när knappen trycks, och sedan avslutas aktiviteten.
+    #expect(f.activities.endedWithPlacedOut == [id])
+    #expect(!f.activities.ids.contains(id))
+    #expect(f.notifications.notification("2026-11-09") == nil)
 }

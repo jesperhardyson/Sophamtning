@@ -132,4 +132,25 @@ struct HouseholdLogicTests {
         // VoiceOver läser fortfarande hela meningen.
         #expect(pending?.placedOutText == "Utställt av Kim, kl. 19:42")
     }
+
+    @Test func egenUtstalldUtanBockVantar() {
+        // Knappen i Live Activity har skrivit min utställda, men bocken har inte skickats till hushållet än.
+        let address = HouseholdAddress(address: SavedAddress.fixture(key: home, isPrimary: true), addedBy: "jag")
+        let state = HouseholdState(role: .member, myId: "jag", participants: [], addresses: [address], marks: [], status: .failed)
+        let next = DayDate("2026-11-11")!
+        let line = HouseholdLine.make(household: state, key: home, nextPickup: next, today: today, ownPlacedOut: [PlacedOut(key: home, date: next)])
+        #expect(line?.showsButton == false)
+        #expect(line?.isPending == true)
+        #expect(line?.placedOutText == "Utställt av dig")
+        #expect(line?.placedOutSubtitle == HouseholdTexts.pendingSubtitle)
+        // En utställd för en annan tömning räknas inte.
+        let later = HouseholdLine.make(household: state, key: home, nextPickup: next, today: today, ownPlacedOut: [PlacedOut(key: home, date: DayDate("2026-11-18")!)])
+        #expect(later?.showsButton == true)
+        // Hushållets bock går före min egen post.
+        var marked = state
+        marked.marks = [mark(home, "2026-11-11", by: "kim", at: StockholmClock.date(on: today, minutes: 19 * 60 + 42))]
+        let kims = HouseholdLine.make(household: marked, key: home, nextPickup: next, today: today, ownPlacedOut: [PlacedOut(key: home, date: next)])
+        #expect(kims?.isPending == false)
+        #expect(kims?.placedOutText == "Utställt av någon, kl. 19:42")
+    }
 }

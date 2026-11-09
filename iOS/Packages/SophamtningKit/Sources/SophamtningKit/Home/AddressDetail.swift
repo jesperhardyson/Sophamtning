@@ -146,11 +146,11 @@ public struct AddressDetail: Equatable, Sendable {
     /// Hushållets rad, för varje läge. `nil` utan hushåll.
     public let household: HouseholdLine?
 
-    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil, household: HouseholdState = .empty) -> AddressDetail {
+    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil, household: HouseholdState = .empty, ownPlacedOut: Set<PlacedOut> = []) -> AddressDetail {
         let today = StockholmClock.today(now: now)
         var asPrimary = address
         asPrimary.isPrimary = true
-        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: settings, now: now, household: household).primary!
+        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: settings, now: now, household: household, ownPlacedOut: ownPlacedOut).primary!
         let response = schedule?.response
 
         let mode: Mode

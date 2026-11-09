@@ -8,6 +8,9 @@ public enum HouseholdTexts {
         return "Utställt av \(who), kl. \(time)"
     }
 
+    /// Min egen bock som inte har skickats än, och vars tid appen inte vet.
+    public static let placedOutByMe = "Utställt av dig"
+
     /// Rubriken i raden för en bock.
     public static let placedOutTitle = "Utställt"
 

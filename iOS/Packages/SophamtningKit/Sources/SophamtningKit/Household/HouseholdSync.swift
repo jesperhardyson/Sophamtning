@@ -44,10 +44,13 @@ public final class InMemoryHouseholdSync: HouseholdSync {
 
     private let inner: Mutex<Inner>
     private let now: @Sendable () -> Date
+    /// Falskt: ett oförändrat läge skickas inte igen, som i CloudKit-synken. Sant: varje ändring och hämtning ger ett läge.
+    private let resendsUnchanged: Bool
 
-    public init(state: HouseholdState, now: @escaping @Sendable () -> Date = { Date() }) {
+    public init(state: HouseholdState, now: @escaping @Sendable () -> Date = { Date() }, resendsUnchanged: Bool = true) {
         inner = Mutex(Inner(state: state))
         self.now = now
+        self.resendsUnchanged = resendsUnchanged
     }
 
     public func states() -> AsyncStream<HouseholdState> {
@@ -103,14 +106,16 @@ public final class InMemoryHouseholdSync: HouseholdSync {
         }
     }
 
-    /// Inget att hämta i minnet, men prenumeranterna får läget igen.
+    /// Inget att hämta i minnet, men prenumeranterna får läget igen, om inte `resendsUnchanged` är falskt.
     public func fetchChanges() async {
         update { _ in }
     }
 
     private func update(_ change: (inout HouseholdState) -> Void) {
         inner.withLock { inner in
+            let before = inner.state
             change(&inner.state)
+            guard resendsUnchanged || inner.state != before else { return }
             for continuation in inner.continuations.values {
                 continuation.yield(inner.state)
             }
