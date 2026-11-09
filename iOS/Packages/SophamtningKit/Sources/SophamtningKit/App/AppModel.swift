@@ -436,6 +436,7 @@ public final class AppModel {
         case .sameMorning: updated.morningMinutes = minutes
         }
         guard saveSettings(updated) else { return false }
+        forgetStoppedActivities()
         applyReminders()
         return true
     }
@@ -448,8 +449,16 @@ public final class AppModel {
         var updated = settings
         updated.timing = timing
         guard saveSettings(updated) else { return false }
+        forgetStoppedActivities()
         applyReminders()
         return true
+    }
+
+    /// En ändrad påminnelse är ett nytt val: en aktivitet som svepts bort eller försvunnit får starta igen med den nya tiden.
+    /// Det som är markerat som utställt ändras inte. Går det inte att spara startar aktiviteten bara inte om.
+    private func forgetStoppedActivities() {
+        try? store.clearShown()
+        try? store.clearEnded()
     }
 
     @discardableResult

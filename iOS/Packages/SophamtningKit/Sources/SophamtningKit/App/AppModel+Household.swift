@@ -63,6 +63,53 @@ extension AppModel {
         return names.isEmpty ? nil : HouseholdTexts.joined(names)
     }
 
+    // MARK: Mitt namn
+
+    /// Namnet i fältet Ditt namn: det jag har sparat, annars det som står i hushållet, annars förnamnet från Apple-kontot.
+    public var householdName: String {
+        householdPreferences.myName ?? household.myName ?? household.suggestedName ?? ""
+    }
+
+    /// Sant när jag är med i ett hushåll men inte har sparat något namn, så att de andra skulle se "Någon".
+    public var householdNameMissing: Bool {
+        inHousehold && (householdPreferences.myName ?? household.myName).map(Self.trimmed)?.isEmpty != false
+    }
+
+    /// Sparar mitt namn och skickar det till hushållet. Ett tomt namn sparas inte. Svarar med om namnet sparades lokalt;
+    /// går det inte att skicka nu skickas det vid nästa synkade läge.
+    @discardableResult
+    public func setHouseholdName(_ name: String) async -> Bool {
+        let cleaned = Self.trimmed(name)
+        guard !cleaned.isEmpty else { return false }
+        if householdPreferences.myName != cleaned {
+            householdPreferences.myName = cleaned
+            guard saveHouseholdPreferences() else {
+                lastStorageError = "Kunde inte spara namnet. Inget har ändrats."
+                return false
+            }
+        }
+        if inHousehold, household.myName != cleaned {
+            try? await householdSync.setMyName(cleaned)
+        }
+        return true
+    }
+
+    private static func trimmed(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Mitt sparade namn skickas till hushållet tills det står där. Har jag inget sparat men hushållet har ett, från en
+    /// annan av mina enheter, används det.
+    private func syncMyName(in state: HouseholdState) async {
+        guard Self.isMember(state) else { return }
+        if let wanted = householdPreferences.myName {
+            if state.myName != wanted { try? await householdSync.setMyName(wanted) }
+        } else if let existing = state.myName, !Self.trimmed(existing).isEmpty {
+            householdPreferences.myName = existing
+            saveHouseholdPreferences()
+        }
+    }
+
     /// Raden om nya deltagare har setts i arket Hushåll eller stängts på hemskärmen.
     public func clearJoinedNotice() {
         guard !householdPreferences.joinedNames.isEmpty else { return }
@@ -161,6 +208,7 @@ extension AppModel {
             await sendPendingMarks(in: effective, today: today)
             await notifyOthersPlacedOut(in: effective, today: today)
             await noticeNewParticipants(in: effective)
+            await syncMyName(in: effective)
             if let owner = pendingWelcomeOwner, Self.isMember(effective) {
                 pendingWelcomeOwner = nil
                 householdNotice = HouseholdTexts.welcome(ownerName: owner)
@@ -403,6 +451,8 @@ extension AppModel {
             return
         }
         sentHouseholdMarks.remove(entry)
+        // Live Activity får starta igen för samma tömning. Går det inte att spara startar den bara inte om.
+        try? store.forgetActivity(entry)
         // Bocken tas bort i minnet direkt, så att påminnelsen kommer tillbaka utan att vänta på nästa läge.
         let hadMark = household.marks.contains { $0.placedOut == entry }
         household.marks.removeAll { $0.placedOut == entry }

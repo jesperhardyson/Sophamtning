@@ -11,6 +11,8 @@ public protocol HouseholdSync: AnyObject, Sendable {
     func unmark(_ placedOut: PlacedOut) async throws
     func leave() async throws
     func removeExpired(today: DayDate) async
+    /// Sparar mitt namn i hushållet, så att de andra ser det i stället för "Någon".
+    func setMyName(_ name: String) async throws
     /// Hämtar ändringar nu, vid start, när appen blir aktiv och i bakgrundsuppdateringen.
     func fetchChanges() async
 }
@@ -33,6 +35,7 @@ public final class DisabledHousehold: HouseholdSync {
     public func leave() async throws {}
     public func removeExpired(today: DayDate) async {}
     public func fetchChanges() async {}
+    public func setMyName(_ name: String) async throws {}
 }
 
 /// Hushållet i minnet, för tester och UI-tester.
@@ -103,6 +106,14 @@ public final class InMemoryHouseholdSync: HouseholdSync {
         update { state in
             let expired = Set(HouseholdLogic.expired(state.marks, today: today).map(\.placedOut))
             state.marks.removeAll { expired.contains($0.placedOut) }
+        }
+    }
+
+    public func setMyName(_ name: String) async throws {
+        update { state in
+            state.myName = name
+            guard let myId = state.myId, let index = state.participants.firstIndex(where: { $0.id == myId }) else { return }
+            state.participants[index].name = name
         }
     }
 

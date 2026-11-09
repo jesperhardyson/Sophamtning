@@ -12,6 +12,7 @@ enum HouseholdRecords {
     static let zoneName = "Hushall"
     static let addressType = "HushallAdress"
     static let markType = "Utstallt"
+    static let participantType = "HushallDeltagare"
     /// Rubriken som systemets delningsark visar för inbjudan.
     static let shareTitle = "Hushåll"
 
@@ -28,7 +29,11 @@ enum HouseholdRecords {
         static let date = "date"
         static let by = "by"
         static let at = "at"
+        static let name = "name"
     }
+
+    /// Början av postnamnet för en deltagares namn. Resten är deltagarens användar-id.
+    private static let participantPrefix = "deltagare-"
 
     // MARK: Postnamn
 
@@ -38,6 +43,38 @@ enum HouseholdRecords {
 
     static func recordName(for placedOut: PlacedOut) -> String {
         placedOut.key.fileName + "-" + placedOut.date.iso
+    }
+
+    static func recordName(forParticipant id: String) -> String {
+        participantPrefix + id
+    }
+
+    // MARK: Namn
+
+    /// Mitt namn i hushållet. Finns posten redan ändras bara namnet, så att serverns systemfält följer med.
+    static func participantRecord(id: String, name: String, existing: CKRecord?, zoneID: CKRecordZone.ID) -> CKRecord {
+        let record = existing ?? CKRecord(recordType: participantType, recordID: CKRecord.ID(recordName: recordName(forParticipant: id), zoneID: zoneID))
+        record[Field.name] = name as NSString
+        return record
+    }
+
+    /// Deltagarens id och namn ur en post, eller `nil` för andra poster och tomma namn.
+    static func participantName(from record: CKRecord) -> (id: String, name: String)? {
+        let recordName = record.recordID.recordName
+        guard record.recordType == participantType, recordName.hasPrefix(participantPrefix),
+              let name = (record[Field.name] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty
+        else { return nil }
+        return (String(recordName.dropFirst(participantPrefix.count)), name)
+    }
+
+    /// Mitt förnamn från Apple-kontot, när iOS lämnar ut det.
+    static func suggestedName(in share: CKShare) -> String? {
+        guard let components = share.currentUserParticipant?.userIdentity.nameComponents else { return nil }
+        if let given = components.givenName, !given.isEmpty { return given }
+        let formatter = PersonNameComponentsFormatter()
+        formatter.style = .short
+        let name = formatter.string(from: components)
+        return name.isEmpty ? nil : name
     }
 
     // MARK: Adresser

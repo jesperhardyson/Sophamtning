@@ -580,7 +580,7 @@ private struct AddressRow: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([entry.accessibilityLabel, entry.household?.isShared == true ? HouseholdTexts.shared : nil, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityLabel([entry.accessibilityLabel, entry.household?.sharedText, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
     }
 
     private var title: some View {
@@ -589,19 +589,26 @@ private struct AddressRow: View {
                 .font(.ui(22, weight: .heavy, relativeTo: .title3))
                 .foregroundStyle(Color.Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
-            // En delad adress har en liten hushållsikon. Radens etikett säger "Delas med hushållet".
-            if entry.household?.isShared == true {
-                Image(systemName: "person.2.fill")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Color.Theme.brandText)
-                    .accessibilityHidden(true)
-            }
         }
     }
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
             AddressLinesView(lines: entry.lines, size: 17, addressStyle: .body)
+            // "Delas med Sofie" för en delad adress, som på huvudkortet.
+            if let shared = entry.household?.sharedText {
+                Label {
+                    Text(shared)
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Color.Theme.brandText)
+                        .accessibilityHidden(true)
+                }
+            }
             // Ett datum står i accentfärg. En lugn statustext, som "Inga kommande hämtningar", står neutralt.
             Text(entry.summary)
                 .font(.ui(16, weight: entry.summaryTone == .neutral ? .bold : .heavy, relativeTo: .callout))

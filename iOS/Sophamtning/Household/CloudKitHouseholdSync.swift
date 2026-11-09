@@ -116,6 +116,21 @@ final class CloudKitHouseholdSync: HouseholdSync {
         emit()
     }
 
+    /// Mitt namn skrivs i en egen post. Bara jag skriver den, så en ändring ersätter det förra namnet.
+    func setMyName(_ name: String) async throws {
+        let myId = try await requireMyId()
+        let target = try requireTarget()
+        let recordName = HouseholdRecords.recordName(forParticipant: myId)
+        let record = mutate { inner -> CKRecord in
+            let existing = Self.records(in: inner, scope: target.scope)[recordName]
+            let record = HouseholdRecords.participantRecord(id: myId, name: name, existing: existing, zoneID: target.zoneID)
+            if target.scope == .private { inner.privateRecords[recordName] = record } else { inner.sharedRecords[recordName] = record }
+            return record
+        }
+        target.engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+        emit()
+    }
+
     func unshare(_ key: AddressKey) async throws {
         let target = try requireTarget()
         try remove(recordName: HouseholdRecords.recordName(for: key), target: target)
@@ -188,6 +203,7 @@ final class CloudKitHouseholdSync: HouseholdSync {
         do {
             try await privateEngine.fetchChanges()
             try await sharedEngine.fetchChanges()
+            await refreshShare()
             mutate { inner in
                 // Bara en hämtning av båda databaserna gör kopian komplett.
                 inner.trust.fetchCompleted()
@@ -277,13 +293,22 @@ final class CloudKitHouseholdSync: HouseholdSync {
         }.sorted {
             ($0.placedOut.date.iso, $0.placedOut.key.fileName) < ($1.placedOut.date.iso, $1.placedOut.key.fileName)
         }
+        // Namnen som deltagarna själva har skrivit går före namnen från iCloud, som oftast saknas för andra än mig.
+        let names = Dictionary(records.values.compactMap(HouseholdRecords.participantName(from:)), uniquingKeysWith: { first, _ in first })
+        let participants = (share.map { HouseholdRecords.participants(of: $0, myId: inner.myId) } ?? []).map { participant in
+            var named = participant
+            if let name = names[participant.id] { named.name = name }
+            return named
+        }
         return HouseholdState(
             role: role,
             myId: inner.myId,
-            participants: share.map { HouseholdRecords.participants(of: $0, myId: inner.myId) } ?? [],
+            participants: participants,
             addresses: addresses,
             marks: marks,
-            status: status == .removed ? .synced : status
+            status: status == .removed ? .synced : status,
+            myName: inner.myId.flatMap { names[$0] },
+            suggestedName: share.flatMap(HouseholdRecords.suggestedName(in:))
         )
     }
 

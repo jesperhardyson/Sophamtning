@@ -92,7 +92,7 @@ struct PrimaryCard: View {
 
     private var accessibilityText: String {
         var parts = [entry.accessibilityLabel]
-        if entry.household?.isShared == true { parts.append(HouseholdTexts.shared) }
+        if let shared = entry.household?.sharedText { parts.append(shared) }
         if let note = entry.dayNote { parts.append(note) }
         if case .upcoming = entry.status, let reminder = entry.reminder {
             parts.append(reminder.isDenied ? reminder.title : "\(reminder.title): \(reminder.isOn ? "på" : "av")")
@@ -140,9 +140,9 @@ struct PrimaryCard: View {
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
                             .lineLimit(2)
                             .minimumScaleFactor(0.5)
-                        sharedIcon
                     }
                     placeLines
+                    sharedLine
                 }
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -151,12 +151,10 @@ struct PrimaryCard: View {
                         .accessibilityHidden(true)
                     // Platsen under namnet, så att den får hela bredden. Den bryts i stället för att kapas.
                     VStack(alignment: .leading, spacing: 2) {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(entry.title)
-                                .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                            sharedIcon
-                        }
+                        Text(entry.title)
+                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
                         placeLines
+                        sharedLine
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
@@ -170,14 +168,21 @@ struct PrimaryCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Den lilla hushållsikonen bredvid namnet för en delad adress. Kortets etikett säger "Delas med hushållet".
+    /// "Delas med Sofie" under adressen för en delad adress, så att det syns med vem och inte bara att den delas.
     @ViewBuilder
-    private var sharedIcon: some View {
-        if entry.household?.isShared == true {
-            Image(systemName: "person.2.fill")
-                .font(.system(.footnote, weight: .semibold))
-                .opacity(0.9)
-                .accessibilityHidden(true)
+    private var sharedLine: some View {
+        if let shared = entry.household?.sharedText {
+            Label {
+                Text(shared)
+                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "person.2.fill")
+                    .font(.system(.footnote, weight: .semibold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(foreground.opacity(0.9))
+            .padding(.top, 4)
         }
     }
 

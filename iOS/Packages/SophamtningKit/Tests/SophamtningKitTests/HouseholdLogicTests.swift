@@ -133,6 +133,21 @@ struct HouseholdLogicTests {
         #expect(pending?.placedOutText == "Utställt av Kim, kl. 19:42")
     }
 
+    @Test func radenSagerVilkaAdressenDelasMed() {
+        let address = HouseholdAddress(address: SavedAddress.fixture(key: home, isPrimary: true), addedBy: "jag")
+        let jag = HouseholdParticipant(id: "jag", name: "Jesper", isOwner: true)
+        var state = HouseholdState(role: .owner, myId: "jag", participants: [jag], addresses: [address], marks: [], status: .synced)
+        // Ingen annan har gått med än.
+        #expect(HouseholdLine.make(household: state, key: home, nextPickup: nil, today: today)?.sharedText == "Delas med hushållet")
+        state.participants.append(HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: false))
+        #expect(HouseholdLine.make(household: state, key: home, nextPickup: nil, today: today)?.sharedText == "Delas med Sofie")
+        state.participants.append(HouseholdParticipant(id: "kim", name: "Kim", isOwner: false))
+        #expect(HouseholdLine.make(household: state, key: home, nextPickup: nil, today: today)?.sharedText == "Delas med Sofie och Kim")
+        // En adress som inte delas har ingen rad.
+        #expect(HouseholdLine.make(household: state, key: work, nextPickup: nil, today: today)?.sharedText == nil)
+        #expect(HouseholdTexts.sharedWith(["Sofie", "Kim", "Alex"]) == "Delas med Sofie, Kim och Alex")
+    }
+
     @Test func egenUtstalldUtanBockVantar() {
         // Knappen i Live Activity har skrivit min utställda, men bocken har inte skickats till hushållet än.
         let address = HouseholdAddress(address: SavedAddress.fixture(key: home, isPrimary: true), addedBy: "jag")

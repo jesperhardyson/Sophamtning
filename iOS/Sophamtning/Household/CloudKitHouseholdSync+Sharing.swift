@@ -61,6 +61,35 @@ extension CloudKitHouseholdSync {
         emit()
     }
 
+    /// Hämtar delningen direkt från iCloud. Att någon har accepterat inbjudan kommer inte alltid som en ändring i zonen,
+    /// så deltagarna läses om vid varje hämtning. Ett fel här ändrar ingenting: zonens ändringar gäller då som förut.
+    func refreshShare() async {
+        let target = inner.withLock { inner -> (CKDatabase, CKRecordZone.ID)? in
+            if inner.hasPrivateZone, inner.privateRecords[CKRecordNameZoneWideShare] is CKShare {
+                return (container.privateCloudDatabase, HouseholdRecords.privateZoneID)
+            }
+            if let zoneID = inner.sharedZoneID { return (container.sharedCloudDatabase, zoneID) }
+            return nil
+        }
+        guard let (database, zoneID) = target else { return }
+        let id = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zoneID)
+        let fetched: CKShare
+        do {
+            guard let share = try await database.record(for: id) as? CKShare else { return }
+            fetched = share
+        } catch {
+            logger.error("Kunde inte hämta delningen: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        mutate { inner in
+            if database.databaseScope == .private, inner.hasPrivateZone {
+                inner.privateRecords[CKRecordNameZoneWideShare] = fetched
+            } else if database.databaseScope == .shared, inner.sharedZoneID == zoneID {
+                inner.sharedRecords[CKRecordNameZoneWideShare] = fetched
+            }
+        }
+    }
+
     /// Ägaren slutade dela i `UICloudSharingController`. Då avslutas hushållet, som med Avsluta hushållet.
     func sharingDidStop() async {
         do {

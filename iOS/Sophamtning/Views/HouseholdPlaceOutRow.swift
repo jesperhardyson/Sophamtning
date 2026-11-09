@@ -2,8 +2,8 @@ import SophamtningDesign
 import SophamtningKit
 import SwiftUI
 
-/// Hushållets rad för en delad adress: **Ställ ut kärlen**, eller bocken "Utställt av …" med **Ångra** under, och hushållets
-/// läge när något inte fungerar. På huvudkortet står raden på kortets gröna yta, i adressvyn på en vanlig yta.
+/// Raden för Utställt. För en delad adress: **Ställ ut kärlen**, eller bocken "Utställt av …" med **Ångra**, och hushållets
+/// läge när något inte fungerar. För andra adresser bara "Kärlen är utställda" med **Ångra** när nästa tömning är markerad. På huvudkortet står raden på kortets gröna yta, i adressvyn på en vanlig yta.
 struct HouseholdPlaceOutRow: View {
     let line: HouseholdLine
     /// Sant på det gröna huvudkortet.
@@ -13,9 +13,9 @@ struct HouseholdPlaceOutRow: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// Raden visas bara för en delad adress, och bara när den har något att visa.
+    /// Raden visas när kärlen är utställda, för alla adresser, och för en delad adress också med knappen eller hushållets läge.
     static func hasContent(_ line: HouseholdLine) -> Bool {
-        line.isShared && (line.showsButton || line.placedOutText != nil || line.statusText != nil)
+        line.placedOutText != nil || (line.isShared && (line.showsButton || line.statusText != nil))
     }
 
     private var foreground: Color { onCard ? Color.Theme.onPrimary : Color.Theme.text }
@@ -102,9 +102,9 @@ struct HouseholdPlaceOutRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Group {
                 if inlineClock {
-                    Text("\(HouseholdTexts.placedOutTitle) \(Image(systemName: "clock"))")
+                    Text("\(line.placedOutTitle) \(Image(systemName: "clock"))")
                 } else {
-                    Text(HouseholdTexts.placedOutTitle)
+                    Text(line.placedOutTitle)
                 }
             }
             .font(.ui(17, weight: .heavy, relativeTo: .headline))

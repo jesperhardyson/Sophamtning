@@ -60,14 +60,20 @@ public struct HouseholdState: Hashable, Codable, Sendable {
     public var addresses: [HouseholdAddress]
     public var marks: [HouseholdMark]
     public var status: HouseholdStatus
+    /// Mitt namn som det är sparat i hushållet, eller `nil` när jag inte har skrivit något än.
+    public var myName: String?
+    /// Mitt förnamn från Apple-kontot, när iOS vet det. Fyller i fältet Ditt namn.
+    public var suggestedName: String?
 
-    public init(role: HouseholdRole, myId: String?, participants: [HouseholdParticipant], addresses: [HouseholdAddress], marks: [HouseholdMark], status: HouseholdStatus) {
+    public init(role: HouseholdRole, myId: String?, participants: [HouseholdParticipant], addresses: [HouseholdAddress], marks: [HouseholdMark], status: HouseholdStatus, myName: String? = nil, suggestedName: String? = nil) {
         self.role = role
         self.myId = myId
         self.participants = participants
         self.addresses = addresses
         self.marks = marks
         self.status = status
+        self.myName = myName
+        self.suggestedName = suggestedName
     }
 
     /// Inget hushåll: ingen roll, inget innehåll och inga fel.
@@ -84,6 +90,8 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
     public var receivedKeys: Set<AddressKey>
     /// Andras bockar som redan gett en notis, så att ingen visas två gånger.
     public var notifiedMarks: Set<PlacedOut>
+    /// Mitt namn i hushållet, som de andra ser. Skrivs när jag sparar det och skickas till hushållet tills det står där.
+    public var myName: String?
     /// Deltagarna som redan är kända. `nil` tills hushållet har setts synkat en gång, och då räknas ingen som ny.
     public var knownParticipants: Set<String>?
     /// Namnen i raden "{namn} gick med i hushållet", tills arket Hushåll har öppnats eller raden stängts.
@@ -95,8 +103,10 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         receivedKeys: Set<AddressKey> = [],
         notifiedMarks: Set<PlacedOut> = [],
         knownParticipants: Set<String>? = nil,
-        joinedNames: [String] = []
+        joinedNames: [String] = [],
+        myName: String? = nil
     ) {
+        self.myName = myName
         self.silenceWhenOthersPlaceOut = silenceWhenOthersPlaceOut
         self.notifyWhenOthersPlaceOut = notifyWhenOthersPlaceOut
         self.receivedKeys = receivedKeys
@@ -113,5 +123,6 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         notifiedMarks = try container.decodeIfPresent(Set<PlacedOut>.self, forKey: .notifiedMarks) ?? []
         knownParticipants = try container.decodeIfPresent(Set<String>.self, forKey: .knownParticipants)
         joinedNames = try container.decodeIfPresent([String].self, forKey: .joinedNames) ?? []
+        myName = try container.decodeIfPresent(String.self, forKey: .myName)
     }
 }

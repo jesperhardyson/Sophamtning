@@ -11,6 +11,9 @@ public enum HouseholdTexts {
     /// Min egen bock som inte har skickats än, och vars tid appen inte vet.
     public static let placedOutByMe = "Utställt av dig"
 
+    /// Raden för en adress som inte delas, när jag har markerat nästa tömning.
+    public static let ownPlacedOut = "Kärlen är utställda"
+
     /// Rubriken i raden för en bock.
     public static let placedOutTitle = "Utställt"
 
@@ -44,10 +47,19 @@ public enum HouseholdTexts {
         "\(name) ställde ut kärlen för \(address)"
     }
 
+    /// "Delas med Sofie", "Delas med Sofie och Kim". Utan andra deltagare än jag: "Delas med hushållet".
+    public static func sharedWith(_ names: [String]) -> String {
+        names.isEmpty ? shared : "Delas med \(list(names))"
+    }
+
+    /// "Sofie", "Sofie och Kim", "Sofie, Kim och Alex".
+    private static func list(_ names: [String]) -> String {
+        names.count < 2 ? names.joined() : names.dropLast().joined(separator: ", ") + " och " + names.last!
+    }
+
     /// "Sofie gick med i hushållet", och "Sofie och Kim gick med i hushållet" för flera.
     public static func joined(_ names: [String]) -> String {
-        let who = names.count < 2 ? names.joined() : names.dropLast().joined(separator: ", ") + " och " + names.last!
-        return "\(who) gick med i hushållet"
+        "\(list(names)) gick med i hushållet"
     }
 
     /// Raden i arket Hushåll när jag just har gått med via en inbjudan.
@@ -95,6 +107,11 @@ public enum HouseholdTexts {
     /// Rubriken i Inställningar över raden Hushåll.
     public static let sharingHeading = "Delning"
     public static let undoHint = "Tar bort att kärlen är utställda"
+    public static let nameTitle = "Ditt namn"
+    public static let namePlaceholder = "Ditt förnamn"
+    public static let nameNote = "Så ser de andra i hushållet dig."
+    /// Uppmaningen när jag är med i ett hushåll men inte har skrivit mitt namn.
+    public static let nameMissing = "Skriv ditt namn, så att de andra i hushållet ser vem du är."
     public static let intro = "Dela adresser med dem du bor med. Ni ser samma schema, och när någon ställer ut kärlen syns det för alla. Hushållet sparas i ert iCloud."
     public static let participants = "Deltagare"
     public static let owner = "Ägare"

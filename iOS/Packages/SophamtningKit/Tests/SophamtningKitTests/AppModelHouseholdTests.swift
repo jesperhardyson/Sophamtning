@@ -83,6 +83,7 @@ private final class CountingHousehold: HouseholdSync, @unchecked Sendable {
         if removalFails { await inner.fetchChanges() } else { await inner.removeExpired(today: today) }
     }
     func fetchChanges() async { await inner.fetchChanges() }
+    func setMyName(_ name: String) async throws { try await inner.setMyName(name) }
 }
 
 private let home = AddressKey(source: "orebro", id: "1")
@@ -701,4 +702,115 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     await model.sendLiveActivityMarks()
 
     #expect(sync.markCalls == 0)
+}
+
+// MARK: Utställt för alla adresser
+
+@Test @MainActor func egenMarkeringVisasForAdressSomInteDelas() throws {
+    let next = DayDate("2026-11-11")!
+    let empty = HouseholdLine.make(household: .empty, key: home, nextPickup: next, today: DayDate("2026-11-10")!)
+    #expect(empty == nil)
+    let line = try #require(HouseholdLine.make(household: .empty, key: home, nextPickup: next, today: DayDate("2026-11-10")!, ownPlacedOut: [PlacedOut(key: home, date: next)]))
+    #expect(line.placedOutTitle == "Kärlen är utställda")
+    #expect(line.placedOutText == "Kärlen är utställda")
+    #expect(!line.isShared && !line.showsButton && line.sharedText == nil)
+    // En markering för en annan tömning visas inte.
+    #expect(HouseholdLine.make(household: .empty, key: home, nextPickup: next, today: DayDate("2026-11-10")!, ownPlacedOut: [PlacedOut(key: home, date: DayDate("2026-11-18")!)]) == nil)
+}
+
+@Test @MainActor func angraLaterLiveActivityStartaIgen() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: .empty)
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    let store = LocalStore(directory: temp.url)
+    let entry = PlacedOut(key: home, date: tomorrow)
+    // Klart i Live Activity: markerad och aktiviteten avslutad.
+    try store.markPlacedOut(entry, today: DayDate("2026-11-10")!)
+    try store.markEnded([entry], today: DayDate("2026-11-10")!)
+    try store.markShown([entry], today: DayDate("2026-11-10")!)
+
+    await model.undoPlaceOut(home)
+
+    guard case .value(let left) = store.placedOutState() else { Issue.record("placed-out.json gick inte att läsa"); return }
+    #expect(left.isEmpty)
+    #expect(store.endedActivities().isEmpty)
+    #expect(store.shownActivities().isEmpty)
+}
+
+@Test @MainActor func nyPaminnelsetidLaterBortsveptAktivitetStartaIgen() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(InMemoryHouseholdSync(state: .empty), scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    let store = LocalStore(directory: temp.url)
+    let entry = PlacedOut(key: home, date: tomorrow)
+    try store.markEnded([entry], today: DayDate("2026-11-10")!)
+    try store.markPlacedOut(PlacedOut(key: storgatan, date: tomorrow), today: DayDate("2026-11-10")!)
+
+    #expect(model.setReminderMinutes(19 * 60))
+
+    #expect(store.endedActivities().isEmpty)
+    // En markering som utställd ändras inte av en ny tid.
+    guard case .value(let kept) = store.placedOutState() else { Issue.record("placed-out.json gick inte att läsa"); return }
+    #expect(kept == [PlacedOut(key: storgatan, date: tomorrow)])
+}
+
+// MARK: Mitt namn
+
+@Test @MainActor func namnetSkickasTillHushalletOchSparas() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(model.householdNameMissing)
+
+    await settle(model) { #expect(await model.setHouseholdName("  Sofie ")) }
+
+    #expect(!model.householdNameMissing)
+    #expect(model.householdName == "Sofie")
+    #expect(model.household.myName == "Sofie")
+    #expect(model.household.participants.first { $0.id == "jag" }?.name == "Sofie")
+    #expect(LocalStore(directory: temp.url).householdPreferences().myName == "Sofie")
+}
+
+@Test @MainActor func tomtNamnSparasInte() async throws {
+    let temp = TempDir()
+    let model = try await makeModel(InMemoryHouseholdSync(state: householdState()), scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    #expect(await model.setHouseholdName("   ") == false)
+    #expect(model.householdPreferences.myName == nil)
+}
+
+@Test @MainActor func namnetFranInnanJagGickMedSkickasNarHushalletKommer() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: .empty)
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    // Namnet skrivs innan Bjud in, när det ännu inte finns något hushåll.
+    #expect(await model.setHouseholdName("Jesper"))
+    #expect(model.household.myName == nil)
+
+    await settle(model) { sync.simulateRemote { $0 = householdState() } }
+    await settle(model) { await sync.fetchChanges() }
+
+    #expect(await currentState(sync).myName == "Jesper")
+}
+
+@Test @MainActor func namnetFranEnAnnanEnhetAnvands() async throws {
+    let temp = TempDir()
+    var state = householdState()
+    state.myName = "Jesper"
+    let model = try await makeModel(InMemoryHouseholdSync(state: state), scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(model.householdPreferences.myName == "Jesper")
+    #expect(!model.householdNameMissing)
+}
+
+@Test @MainActor func forslagetFranAppleKontotFyllerFaltet() async throws {
+    let temp = TempDir()
+    var state = householdState()
+    state.suggestedName = "Jesper"
+    let model = try await makeModel(InMemoryHouseholdSync(state: state), scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(model.householdName == "Jesper")
+    // Ett förslag är inget sparat namn.
+    #expect(model.householdNameMissing)
 }

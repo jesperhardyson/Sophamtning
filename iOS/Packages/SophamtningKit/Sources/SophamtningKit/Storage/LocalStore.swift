@@ -156,6 +156,12 @@ public final class LocalStore: Sendable {
         try updateCoordinated(Self.endedFile) { _ in [] }
     }
 
+    /// Glömmer att tömningens aktivitet har visats eller avslutats, så att den får starta igen, till exempel efter Ångra.
+    public func forgetActivity(_ entry: PlacedOut) throws {
+        try updateCoordinated(Self.shownFile) { saved in saved.filter { $0 != entry } }
+        try updateCoordinated(Self.endedFile) { saved in saved.filter { $0 != entry } }
+    }
+
     private func mark(_ entries: [PlacedOut], in file: String, today: DayDate) throws {
         try updateCoordinated(file) { saved in
             var current = saved.filter { $0.date >= today }

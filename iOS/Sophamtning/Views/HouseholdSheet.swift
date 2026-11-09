@@ -18,6 +18,9 @@ struct HouseholdSheet: View {
     /// Valet för notisen medan frågan om tillstånd pågår, så att reglaget inte hoppar tillbaka under tiden.
     @State private var pendingNotify: Bool?
     @State private var notifyDenied = false
+    /// Fältet Ditt namn. Fylls från modellen när arket öppnas och sparas när fältet lämnas.
+    @State private var nameDraft = ""
+    @FocusState private var nameFocused: Bool
 
     private var household: HouseholdState { model.household }
     private var isMember: Bool { household.role != .none && household.status != .removed }
@@ -31,7 +34,10 @@ struct HouseholdSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     notices
                     if showsMember {
+                        // Saknas mitt namn står fältet först, så att det är det första den som just gått med ser.
+                        if model.householdNameMissing { nameSection }
                         participants
+                        if !model.householdNameMissing { nameSection }
                         notifications
                         leaveSection
                     } else {
@@ -44,6 +50,14 @@ struct HouseholdSheet: View {
             // Tyst push kommer inte alltid. Arket hämtar därför själv, så att en ny deltagare syns utan omstart.
             .refreshable { await model.fetchHouseholdChanges() }
             .task { await model.fetchHouseholdChanges() }
+            .onAppear { nameDraft = model.householdName }
+            // Ett namn från Apple-kontot kan komma först efter hämtningen. Det fyller bara ett tomt fält.
+            .onChange(of: model.householdName) { _, name in
+                if nameDraft.isEmpty, !nameFocused { nameDraft = name }
+            }
+            .onChange(of: nameFocused) { _, focused in
+                if !focused { saveName() }
+            }
             .onChange(of: invitation.active) { _, active in
                 if !active { Task { await model.fetchHouseholdChanges() } }
             }
@@ -65,6 +79,7 @@ struct HouseholdSheet: View {
             }
             // Raden om att man lämnat visas en gång. Nästa gång arket öppnas visas deltagarna.
             .onDisappear {
+                saveName()
                 model.clearHouseholdNotice()
                 model.clearJoinedNotice()
                 invitation.active = false
@@ -135,6 +150,19 @@ struct HouseholdSheet: View {
                 .font(.ui(18, weight: .semibold, relativeTo: .body))
                 .foregroundStyle(Color.Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
+            // Namnet behövs innan inbjudan, så att de andra aldrig ser "Någon".
+            VStack(alignment: .leading, spacing: 6) {
+                Text(HouseholdTexts.nameTitle)
+                    .font(.ui(16, weight: .heavy, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.text)
+                nameField
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 50)
+                    .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Text(HouseholdTexts.nameNote)
+                    .font(.ui(15, weight: .semibold, relativeTo: .footnote))
+                    .foregroundStyle(Color.Theme.text2)
+            }
             inviteButton
         }
         .padding(20)
@@ -145,22 +173,29 @@ struct HouseholdSheet: View {
 
     @ViewBuilder
     private var inviteButton: some View {
-        if let cloud {
-            let invitation = invitation
-            ShareLink(
-                item: HouseholdInvitation(container: cloud.container) {
-                    await MainActor.run { invitation.active = true }
-                    return try await cloud.makeShare()
-                },
-                preview: SharePreview(HouseholdTexts.title)
-            ) {
-                PrimaryButtonLabel(title: HouseholdTexts.invite)
+        let hasName = !nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        Group {
+            if let cloud {
+                let invitation = invitation
+                let name = nameDraft
+                ShareLink(
+                    item: HouseholdInvitation(container: cloud.container) {
+                        await MainActor.run { invitation.active = true }
+                        // Namnet sparas först och skickas till hushållet när det har skapats.
+                        _ = await model.setHouseholdName(name)
+                        return try await cloud.makeShare()
+                    },
+                    preview: SharePreview(HouseholdTexts.title)
+                ) {
+                    PrimaryButtonLabel(title: HouseholdTexts.invite)
+                }
+            } else {
+                Button { Task { await model.setHouseholdName(nameDraft) } } label: { PrimaryButtonLabel(title: HouseholdTexts.invite) }
             }
-            .buttonStyle(.pressable)
-        } else {
-            Button {} label: { PrimaryButtonLabel(title: HouseholdTexts.invite) }
-                .buttonStyle(.pressable)
         }
+        .buttonStyle(.pressable)
+        .disabled(!hasName)
+        .opacity(hasName ? 1 : 0.5)
     }
 
     // MARK: Med hushåll
@@ -201,6 +236,45 @@ struct HouseholdSheet: View {
             }
             .modifier(SurfaceCard())
         }
+    }
+
+    /// Ditt namn, som de andra i hushållet ser. Saknas det står en uppmaning över fältet.
+    private var nameSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(HouseholdTexts.nameTitle)
+            if model.householdNameMissing {
+                MessageCard(style: .warning, icon: "person.crop.circle.badge.exclamationmark", title: HouseholdTexts.nameTitle, message: HouseholdTexts.nameMissing)
+                    .padding(.bottom, 12)
+            }
+            nameField
+                .padding(.horizontal, 20)
+                .frame(minHeight: 56)
+                .modifier(SurfaceCard())
+            Text(HouseholdTexts.nameNote)
+                .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Color.Theme.text2)
+                .padding(.top, 12)
+        }
+    }
+
+    private var nameField: some View {
+        TextField(HouseholdTexts.namePlaceholder, text: $nameDraft)
+            .font(.ui(19, weight: .heavy, relativeTo: .headline))
+            .foregroundStyle(Color.Theme.text)
+            .textContentType(.givenName)
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+            .focused($nameFocused)
+            .onSubmit { saveName() }
+            .accessibilityLabel(HouseholdTexts.nameTitle)
+    }
+
+    /// Sparar namnet om det är ändrat. Ett tomt fält sparas inte, och det förra namnet står kvar.
+    private func saveName() {
+        let name = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != model.householdPreferences.myName || model.householdNameMissing else { return }
+        Task { await model.setHouseholdName(name) }
     }
 
     private var notifications: some View {
