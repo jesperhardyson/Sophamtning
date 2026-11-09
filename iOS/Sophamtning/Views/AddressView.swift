@@ -303,7 +303,7 @@ struct AddressView: View {
         }
         VStack(spacing: 0) {
             ReminderToggleRow(
-                title: "Notis kvällen före",
+                title: HomeContent.reminderTitle,
                 text: detail.reminderText,
                 symbol: "bell.badge",
                 pulse: notificationPulse,

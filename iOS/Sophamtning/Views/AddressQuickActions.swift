@@ -100,7 +100,7 @@ struct AddressQuickActions<Content: View>: View {
             case .notifications:
                 // Closures i stället för metodreferenser: Swift 6.3 i Xcode 26.6 kraschar på omvandlingen av en metod till `set:`.
                 Toggle(isOn: Binding(get: { model.remindersOn(for: address) }, set: { setNotifications($0) })) {
-                    Label("Notis kvällen före", systemImage: "bell.badge")
+                    Label(HomeContent.reminderTitle, systemImage: "bell.badge")
                 }
             case .liveActivity:
                 // Avstängda i iOS visas överst på hemskärmen, och fel på hemkortet.
