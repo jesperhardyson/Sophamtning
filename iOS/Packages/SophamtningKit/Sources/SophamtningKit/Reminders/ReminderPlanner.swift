@@ -163,26 +163,29 @@ public enum ReminderPlanner {
     /// Taket håller appen under iOS gräns för väntande notiser.
     static let maxNotifications = 60
     static let maxAddressNameLength = 60
-    static let defaultReminderMinutes = 1080
 
     /// Reservnotisen kommer så här många minuter efter aktivitetens start, om aktiviteten inte syntes eller bekräftades.
     static let fallbackDelayMinutes = 45
-    /// Senaste klockslag för reservnotisen, i minuter efter midnatt: 23:45. Påminnelsetiden stannar vid 23:00, så starten är
-    /// aldrig senare än taket.
+    /// Senaste klockslag för reservnotisen kvällen före, i minuter efter midnatt: 23:45. Kvällstiden stannar vid 23:00, så
+    /// starten är aldrig senare än taket.
     static let fallbackLatestMinutes = 23 * 60 + 45
+    /// Senaste klockslag för reservnotisen samma morgon: 12:00. Morgontiden stannar vid 09:00, så taket binder i praktiken
+    /// aldrig (09:00 + 45 minuter är 09:45). Det finns för att reserven aldrig ska räknas till nästa dags tömning.
+    static let morningFallbackLatestMinutes = 12 * 60
+    /// Med samma morgon gäller dagens tömning för Live Activity fram till 12:00, i minuter efter midnatt.
+    static let morningActivityCutoffMinutes = 12 * 60
 
     static let fallbackTitle = "Har du ställt ut kärlen?"
     static let ordinaryTitle = "Ställ ut kärlen"
 
-    /// Reservnotisens tid för en aktivitet som startar `start`: 45 minuter senare, högst 23:45 samma dag i svensk tid.
+    /// Reservnotisens tid för en aktivitet som startar `start`: 45 minuter senare, högst 23:45 samma dag i svensk tid, och för en
+    /// morgonstart högst 12:00. Taket följer aktivitetens egen start, inte det som är valt nu, eftersom en aktivitet från det
+    /// andra valet kan stå kvar efter ett byte.
     static func fallbackDate(start: Date) -> Date {
-        let latest = StockholmClock.date(on: StockholmClock.today(now: start), minutes: fallbackLatestMinutes)
+        let sameDay = ReminderTime.pickupDay(forReminderAt: start) == StockholmClock.today(now: start)
+        let cap = sameDay ? morningFallbackLatestMinutes : fallbackLatestMinutes
+        let latest = StockholmClock.date(on: StockholmClock.today(now: start), minutes: cap)
         return min(start.addingTimeInterval(TimeInterval(fallbackDelayMinutes * 60)), latest)
-    }
-
-    /// Ogiltig tid ger standardtiden, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
-    private static func effectiveMinutes(_ settings: ReminderSettings) -> Int {
-        ReminderSettings.isValid(minutes: settings.reminderMinutes) ? settings.reminderMinutes : defaultReminderMinutes
     }
 
     /// En tömningsdag, med händelser samma dag ihopslagna.
@@ -200,7 +203,6 @@ public enum ReminderPlanner {
 
         let liveActivity = planLiveActivity(entries, input: input, today: today)
         let activitiesActive = input.settings.liveActivityOn && input.liveActivitiesAllowed
-        let minutes = effectiveMinutes(input.settings)
 
         var notifications: [PlannedNotification] = []
         for entry in entries where entry.address.notificationsOn {
@@ -208,7 +210,7 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) { continue }
-                var fireDate = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                var fireDate = ReminderTime.date(forPickup: pickup.date, settings: input.settings)
                 var title = ordinaryTitle
                 // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse
                 // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
@@ -239,14 +241,13 @@ public enum ReminderPlanner {
     /// Adresser med notiser avstängda ingår inte, så avstängda val tar fortfarande bort sina notiser.
     public static func retainable(_ input: PlannerInput) -> [String: PlacedOut] {
         let today = StockholmClock.today(now: input.now)
-        let minutes = effectiveMinutes(input.settings)
         var result: [String: PlacedOut] = [:]
         for entry in input.addresses where entry.address.notificationsOn {
             guard let response = entry.schedule?.response else { continue }
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
-                let ordinary = StockholmClock.date(on: pickup.date.adding(days: -1), minutes: minutes)
+                let ordinary = ReminderTime.date(forPickup: pickup.date, settings: input.settings)
                 if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date)] = id }
             }
         }
@@ -260,18 +261,23 @@ public enum ReminderPlanner {
         else { return nil }
 
         let key = primary.address.key
-        // Första tömning efter i dag som inte är utställd. På tömningsdagen gäller alltså nästa tömning.
+        let timing = input.settings.timing
+        // Kvällen före gäller första tömning efter i dag, så på tömningsdagen gäller nästa. Samma morgon gäller också dagens
+        // tömning fram till 12:00.
+        let morningOpen = input.now < StockholmClock.date(on: today, minutes: morningActivityCutoffMinutes)
         guard let next = pickups(in: response, today: today).first(where: {
-            $0.date > today && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
+            let eligible = $0.date > today || (timing == .sameMorning && $0.date == today && morningOpen)
+            return eligible && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
         }) else { return nil }
 
-        let start = StockholmClock.date(on: next.date.adding(days: -1), minutes: effectiveMinutes(input.settings))
-        let isTomorrow = next.date == today.adding(days: 1)
+        let start = ReminderTime.date(forPickup: next.date, settings: input.settings)
+        // Passerad start ger direktstart, men bara när påminnelsedagen är i dag.
+        let remindedToday = ReminderTime.reminderDay(forPickup: next.date, timing: timing) == today
         return PlannedLiveActivity(
             key: key,
             pickupDate: next.date,
             start: start,
-            startsImmediately: isTomorrow && input.now >= start,
+            startsImmediately: remindedToday && input.now >= start,
             content: content(of: next, address: primary.address, response: response)
         )
     }

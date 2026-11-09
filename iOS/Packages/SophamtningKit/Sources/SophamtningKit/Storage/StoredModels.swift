@@ -47,34 +47,74 @@ public struct SavedAddress: Hashable, Codable, Sendable {
     }
 }
 
+/// När påminnelsen kommer: kvällen före tömningen eller samma morgon. Aldrig båda.
+public enum ReminderTiming: String, Codable, Sendable, CaseIterable {
+    case eveningBefore, sameMorning
+
+    /// Förvald tid i minuter efter midnatt: 18:00 eller 06:00.
+    public var defaultMinutes: Int {
+        switch self {
+        case .eveningBefore: 1080
+        case .sameMorning: 360
+        }
+    }
+
+    /// Giltiga tider: 15:00–23:00 eller 05:00–09:00.
+    var range: ClosedRange<Int> {
+        switch self {
+        case .eveningBefore: 900...1380
+        case .sameMorning: 300...540
+        }
+    }
+
+    /// Alla giltiga tider i ordning, i steg om 15 minuter.
+    public var times: [Int] { Array(stride(from: range.lowerBound, through: range.upperBound, by: 15)) }
+}
+
 public struct ReminderSettings: Hashable, Codable, Sendable {
-    /// Minuter efter midnatt i Europe/Stockholm. 1080 är 18:00.
+    public var timing: ReminderTiming
+    /// Kvällstiden, i minuter efter midnatt i Europe/Stockholm. 1080 är 18:00.
     public var reminderMinutes: Int
+    /// Morgontiden, i minuter efter midnatt i Europe/Stockholm. 360 är 06:00. Båda sparas, så ett byte tillbaka behåller tiden.
+    public var morningMinutes: Int
     public var liveActivityOn: Bool
     /// Förslaget om påminnelse efter första adressen har visats och besvarats, eller en påminnelse har slagits på.
     public var reminderOfferShown: Bool
 
-    public init(reminderMinutes: Int = 1080, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
+    public init(timing: ReminderTiming = .eveningBefore, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
+        self.timing = timing
         self.reminderMinutes = reminderMinutes
+        self.morningMinutes = morningMinutes
         self.liveActivityOn = liveActivityOn
         self.reminderOfferShown = reminderOfferShown
     }
 
     private enum CodingKeys: String, CodingKey {
-        case reminderMinutes, liveActivityOn, reminderOfferShown
+        case timing, reminderMinutes, morningMinutes, liveActivityOn, reminderOfferShown
     }
 
-    /// Inställningar sparade före `reminderOfferShown` saknar fältet och läses som att förslaget inte har visats.
+    /// Inställningar sparade före `reminderOfferShown` läses som att förslaget inte har visats. Sparade före valet av tid
+    /// läses de som kvällen före, med morgontiden 06:00. Ett okänt val, till exempel från en senare version, läses som
+    /// kvällen före, så att inställningarna inte blir oläsliga.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         reminderMinutes = try container.decode(Int.self, forKey: .reminderMinutes)
         liveActivityOn = try container.decode(Bool.self, forKey: .liveActivityOn)
         reminderOfferShown = try container.decodeIfPresent(Bool.self, forKey: .reminderOfferShown) ?? false
+        let rawTiming = try container.decodeIfPresent(String.self, forKey: .timing)
+        timing = rawTiming.flatMap(ReminderTiming.init(rawValue:)) ?? .eveningBefore
+        morningMinutes = try container.decodeIfPresent(Int.self, forKey: .morningMinutes) ?? ReminderTiming.sameMorning.defaultMinutes
     }
 
-    /// Giltigt är 15:00 till 23:00 i steg om 15 minuter.
-    public static func isValid(minutes: Int) -> Bool {
-        (900...1380).contains(minutes) && minutes % 15 == 0
+    /// Giltigt är det valdas tider i steg om 15 minuter.
+    public static func isValid(minutes: Int, for timing: ReminderTiming) -> Bool {
+        timing.range.contains(minutes) && minutes % 15 == 0
+    }
+
+    /// Tiden för det valda. En ogiltig sparad tid ger förvalet, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
+    public var activeMinutes: Int {
+        let minutes = timing == .eveningBefore ? reminderMinutes : morningMinutes
+        return Self.isValid(minutes: minutes, for: timing) ? minutes : timing.defaultMinutes
     }
 }
 

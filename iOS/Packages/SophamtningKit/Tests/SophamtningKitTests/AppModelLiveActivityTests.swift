@@ -972,3 +972,18 @@ private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_source
     await apply(broken)
     #expect(f.activities.ids == [id])
 }
+
+// MARK: Samma morgon
+
+@Test @MainActor func bytTillMorgonErsätterVäntandeAktivitet() async throws {
+    let f = try Fixture()
+    let model = f.model()
+    await apply(model)
+    let evening = try #require(f.activities.activities.first)
+    #expect(evening.start == sundayAt(18 * 60))
+    #expect(model.setReminderTiming(.sameMorning))
+    await model.settleReminders()
+    #expect(!f.activities.ids.contains(evening.id))
+    #expect(f.activities.activities.map(\.start) == [StockholmClock.date(on: monday, minutes: 6 * 60)])
+    #expect(f.activities.activities.map(\.pickupDate) == [monday])
+}
