@@ -22,6 +22,8 @@ public final class LocalStore: Sendable {
     private static let placedOutFile = "placed-out.json"
     private static let shownFile = "shown-activities.json"
     private static let endedFile = "ended-activities.json"
+    private static let householdFile = "household.json"
+    private static let householdPreferencesFile = "household-preferences.json"
 
     private let directory: URL
 
@@ -92,9 +94,33 @@ public final class LocalStore: Sendable {
         }
     }
 
+    /// Tar bort en enskild post, till exempel när jag ångrar min bock. Finns den inte skrivs ingenting.
+    public func unmarkPlacedOut(_ entry: PlacedOut) throws {
+        try updateCoordinated(Self.placedOutFile) { saved in saved.filter { $0 != entry } }
+    }
+
     /// Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting.
     public func prunePlacedOut(today: DayDate) throws {
         try updateCoordinated(Self.placedOutFile) { saved in saved.filter { $0.date >= today } }
+    }
+
+    // MARK: Hushåll
+
+    /// Det senast kända hushållet. En fil som saknas är `missing`, och en som inte går att läsa är aldrig ett tomt hushåll.
+    public func householdState() -> StoreRead<HouseholdState> {
+        readState(HouseholdState.self, from: Self.householdFile)
+    }
+
+    public func setHouseholdState(_ state: HouseholdState) throws {
+        try write(state, to: Self.householdFile)
+    }
+
+    public func householdPreferences() -> HouseholdPreferences {
+        read(HouseholdPreferences.self, from: Self.householdPreferencesFile) ?? HouseholdPreferences()
+    }
+
+    public func setHouseholdPreferences(_ preferences: HouseholdPreferences) throws {
+        try write(preferences, to: Self.householdPreferencesFile)
     }
 
     // MARK: Visade och avslutade aktiviteter

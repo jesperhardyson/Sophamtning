@@ -179,3 +179,52 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
     try Data("skräp".utf8).write(to: file)
     if case .unreadable = store.addressesState() {} else { Issue.record("ett innehåll som inte går att tolka ska vara unreadable") }
 }
+
+// MARK: Hushåll
+
+@Test func hushalletSparasOchLasesTillbaka() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    let state = HouseholdState(
+        role: .owner,
+        myId: "jag",
+        participants: [HouseholdParticipant(id: "jag", name: "Jesper", isOwner: true)],
+        addresses: [HouseholdAddress(address: .fixture(), addedBy: "jag")],
+        marks: [HouseholdMark(placedOut: PlacedOut(key: testKey, date: DayDate("2026-11-09")!), by: "jag", at: Date(timeIntervalSince1970: 1_800_000_000), isPending: false)],
+        status: .quotaExceeded(ownerName: "Jesper")
+    )
+    try store.setHouseholdState(state)
+    guard case .value(let read) = store.householdState() else {
+        Issue.record("Hushållet gick inte att läsa")
+        return
+    }
+    #expect(read == state)
+}
+
+@Test func saknadHushallsfilArMissing() {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    guard case .missing = store.householdState() else {
+        Issue.record("Väntade .missing")
+        return
+    }
+}
+
+@Test func hushallsinstallningarSparasOchLases() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    #expect(store.householdPreferences() == HouseholdPreferences())
+    let preferences = HouseholdPreferences(silenceWhenOthersPlaceOut: false, notifyWhenOthersPlaceOut: true, receivedKeys: [testKey])
+    try store.setHouseholdPreferences(preferences)
+    #expect(store.householdPreferences() == preferences)
+}
+
+@Test func unmarkTarBortBaraDenBocken() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    let first = PlacedOut(key: testKey, date: DayDate("2026-11-09")!)
+    let second = PlacedOut(key: testKey, date: DayDate("2026-11-10")!)
+    try store.setPlacedOut([first, second])
+    try store.unmarkPlacedOut(first)
+    #expect(store.placedOut() == [second])
+}
