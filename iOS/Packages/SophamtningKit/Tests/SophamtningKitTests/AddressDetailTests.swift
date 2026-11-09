@@ -139,7 +139,17 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
 @Test func tiderVisasMedValdTid() {
     let result = AddressDetail.make(address: address, schedule: nil, settings: ReminderSettings(reminderMinutes: 20 * 60 + 15), sourceName: nil, now: noon)
     #expect(result.reminderText == "Kvällen före varje tömning kl. 20:15.")
-    #expect(result.liveActivityText == "Visas på låsskärmen från kl. 20:15 kvällen före. Starten aviseras med ljud, och den försvinner senast efter 12 timmar. Öppna appen ibland, så att nästa tömning kommer med. Med notiser på får du också en reserv om du inte bekräftar.")
+    #expect(result.liveActivityText == "Visas på låsskärmen från kl. 20:15 kvällen före.")
+}
+
+@Test func liveActivityTextenArEnMening() {
+    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 1080)) == "Visas på låsskärmen från kl. 18:00 kvällen före.")
+    #expect(AddressDetail.liveActivityDetails() == [
+        "Starten aviseras med ljud.",
+        "Den försvinner senast efter 12 timmar.",
+        "Öppna appen ibland, så att nästa tömning kommer med.",
+        "Med notiser på får du en reserv om du inte bekräftar.",
+    ])
 }
 
 @Test func fyrahundraArVarkenNatfelEllerSaknadAdressOchHarEgenText() throws {
