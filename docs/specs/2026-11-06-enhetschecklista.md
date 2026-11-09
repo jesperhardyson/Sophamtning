@@ -165,7 +165,7 @@ Kräver ett bygge med iCloud-behörigheten och containern `iCloud.se.hardyson.so
 
 iPhonen och simulatorn är inloggade med samma Apple-konto. Det räcker för det som inte kräver en andra person.
 
-- [ ] **H1. Hemkortets snabbval med VoiceOver.** Med VoiceOver på huvudkortet nås **Byt namn**, **Gör till huvudadress** (bara på en rad), notis kvällen före, Live Activity och **Ta bort**. Raden **Utställt** läses som ett enda element, med **Ångra** som åtgärd. **Ångra** nås inte två gånger på ett förvirrande sätt, till exempel både som eget element och som åtgärd på raden.
+- [ ] **H1. Hemkortets snabbval med VoiceOver.** Med VoiceOver på huvudkortet nås **Byt namn**, **Gör till huvudadress** (bara på en rad), **Påminn mig kvällen före**, Live Activity och **Ta bort**. Raden **Utställt** läses som ett enda element, med **Ångra** som åtgärd. **Ångra** nås inte två gånger på ett förvirrande sätt, till exempel både som eget element och som åtgärd på raden.
 - [ ] **H2. Tryck på Utställt-raden.** Ett tryck på raden **Utställt** öppnar inte adressen. **Ångra** på raden tar bort bocken.
 - [ ] **H3. Bjud in.** Inställningar, Hushåll, **Bjud in**. Delningsarket med samarbete visas, och länken går att skicka via Meddelanden. Arket och Meddelanden stängs inte av sig självt när du blir ägare. Stänger och öppnar du arket visas du som ägare.
 - [ ] **H4. Hantera medlemmar.** `UICloudSharingController` visas modalt med innehåll, och arket finns kvar när det stängts.
@@ -191,6 +191,9 @@ Kräver en andra person eller en andra telefon med ett annat Apple-konto. A bjud
 - [ ] **H19. Notis när någon ställer ut.** Med **Notis när någon ställer ut kärlen** på hos B kommer en notis per bock. Ingen notis kommer för egna bockar, och inte på samma kontos andra enhet.
 - [ ] **H20. Ta bort en medlem.** A tar bort B under **Hantera medlemmar**: B får raden om att inte längre vara med, och adresserna blir kvar. **Sluta dela** avslutar hushållet för B.
 - [ ] **H21. Lämna och avsluta.** B trycker **Lämna hushållet**: A ser B försvinna. A trycker **Avsluta hushållet**: B får raden om att hushållet är avslutat, och adresserna blir kvar.
+- [ ] **H22. Utställt från Live Activity.** A har Live Activity på för en delad huvudadress kvällen före. A trycker **Utställt** i aktiviteten med appen avslutad och öppnar sedan appen, eller väntar på bakgrundsuppdateringen. Bocken syns hos B med A:s namn. Hos A visar kortet bocken med klockan och **skickas när nätet finns** tills den har skickats, och aldrig **Ställ ut kärlen**.
+- [ ] **H23. Widgeten efter någon annans bock.** B har widgeten på hemskärmen för samma delade huvudadress. A ställer ut kärlen: B:s widget visar **Utställt** när B:s app har fått bocken, med tyst push eller när appen öppnas. **Ångra** tar bort det i widgeten.
+- [ ] **H24. Live Activity kvällen före med någon annans bock.** B har Live Activity igång för en delad huvudadress kvällen före. A ställer ut kärlen. Med **Tysta min påminnelse när någon annan har ställt ut** av visar B:s aktivitet bocken och står kvar. Med valet på visar den bocken några sekunder och försvinner sedan, som när knappen **Utställt** trycks.
 
 ## När listan är körd
 
