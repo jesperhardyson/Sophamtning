@@ -155,6 +155,19 @@ final class AccessibilityAuditTests: XCTestCase {
         app.swipeUp()
         audit("hushall-ark-nedre")
 
+        // Min bock som inte har skickats än: klockan bredvid bocken, på kortet och i adressvyn.
+        app.terminate()
+        launch(["-uitest-hushall", "-uitest-hushall-vantar"] + arguments)
+        let pending = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Utställt av dig")).firstMatch
+        XCTAssertTrue(pending.waitForExistence(timeout: 20))
+        scrollTo(app.buttons["Ångra"])
+        audit("hushall-hem-vantar")
+        app.swipeDown()
+        app.swipeDown()
+        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch)
+        XCTAssertTrue(app.staticTexts["Kärlen"].waitForExistence(timeout: 10))
+        audit("hushall-adress-vantar")
+
         // Utan hushåll: förklaringen och Bjud in till hushållet.
         app.terminate()
         launch(["-uitest-hushall-tomt"] + arguments)

@@ -48,6 +48,11 @@ struct UITestAPI: SoporAPI {
         )
     }
 
+    /// Testgatans första tömning i testdatat, flyttad som alla datum. Med hushåll är det i morgon.
+    static func testgatanFirstPickup() -> DayDate {
+        DayDate("2026-11-11")!.adding(days: recordedDay.days(until: StockholmClock.today(now: Date())) + UITestSupport.extraDays)
+    }
+
     /// Sökträffen för Testgatan 1, så att hushållets delade adress byggs som när adressen sparas från sökningen.
     static func testgatanHit() -> SearchHit? {
         let response: SearchResponse? = try? load("uitest-sok")
@@ -93,7 +98,8 @@ enum UITestSupport {
     // MARK: Hushåll
 
     /// `-uitest-hushall`: jag är medlem, Kim är ägare och Testgatan 1 delas. `-uitest-hushall-agare` gör mig till ägare, och
-    /// `-uitest-hushall-synkar-inte` ger läget "Synkar inte just nu" strax efter starten. `-uitest-hushall-tomt` ger en synk
+    /// `-uitest-hushall-synkar-inte` ger läget "Synkar inte just nu" strax efter starten, och `-uitest-hushall-vantar` ger min
+    /// bock för testgatans nästa tömning som ännu inte har skickats, med klockan. `-uitest-hushall-tomt` ger en synk
     /// utan hushåll.
     private static func has(_ argument: String) -> Bool { ProcessInfo.processInfo.arguments.contains(argument) }
 
@@ -127,7 +133,9 @@ enum UITestSupport {
                 HouseholdParticipant(id: "jag", name: "Alex", isOwner: owner),
             ],
             addresses: [HouseholdAddress(address: address, addedBy: "kim")],
-            marks: [],
+            marks: has("-uitest-hushall-vantar")
+                ? [HouseholdMark(placedOut: PlacedOut(key: address.key, date: UITestAPI.testgatanFirstPickup()), by: "jag", at: Date(), isPending: true)]
+                : [],
             status: .synced
         )
         let sync = InMemoryHouseholdSync(state: state)

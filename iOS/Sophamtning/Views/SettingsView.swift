@@ -116,7 +116,7 @@ struct SettingsView: View {
     /// Raden Hushåll, som öppnar arket. Med hushåll står antalet deltagare som värde.
     private var household: some View {
         VStack(alignment: .leading, spacing: 0) {
-            heading("Delning")
+            heading(HouseholdTexts.sharingHeading)
             VStack(spacing: 0) {
                 Button { showsHousehold = true } label: {
                     SettingsRow(title: HouseholdTexts.title, value: householdValue)

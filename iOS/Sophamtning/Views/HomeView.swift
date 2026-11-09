@@ -257,7 +257,7 @@ struct HomeView: View {
                 })
                 .padding(.top, Self.titleTopPadding)
                 .padding(.bottom, 12)
-            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
+            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow, actionsInContent: true) {
                 PrimaryCard(
                     entry: primary,
                     opening: opening(for: primary),

@@ -53,6 +53,9 @@ public enum HouseholdTexts {
     // MARK: Arket och vyerna
 
     public static let title = "Hushåll"
+    /// Rubriken i Inställningar över raden Hushåll.
+    public static let sharingHeading = "Delning"
+    public static let undoHint = "Tar bort att kärlen är utställda"
     public static let intro = "Dela adresser med dem du bor med. Ni ser samma schema, och när någon ställer ut kärlen syns det för alla. Hushållet sparas i ert iCloud."
     public static let participants = "Deltagare"
     public static let owner = "Ägare"

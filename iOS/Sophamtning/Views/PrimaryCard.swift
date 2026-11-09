@@ -21,6 +21,8 @@ struct PrimaryCard: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Snabbvalen från `AddressQuickActions`, som VoiceOver-åtgärder på kortets element.
+    @Environment(\.addressActions) private var addressActions
     @State private var pressed = false
 
     private var foreground: Color { Color.Theme.onPrimary }
@@ -61,6 +63,9 @@ struct PrimaryCard: View {
             .accessibilityActions {
                 if entry.reminder?.isDenied == true {
                     Button("Öppna Inställningar") { onOpenSettings() }
+                }
+                ForEach(addressActions) { action in
+                    Button(action.name) { action.perform() }
                 }
             }
             if let household = entry.household, HouseholdPlaceOutRow.hasContent(household) {
@@ -327,6 +332,8 @@ struct HouseholdPlaceOutRow: View {
     let onPlaceOut: () -> Void
     let onUndo: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     /// Raden visas bara för en delad adress, och bara när den har något att visa.
     static func hasContent(_ line: HouseholdLine) -> Bool {
         line.isShared && (line.showsButton || line.placedOutText != nil || line.statusText != nil)
@@ -348,7 +355,7 @@ struct HouseholdPlaceOutRow: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityHint("Tar bort att kärlen är utställda")
+                .accessibilityHint(HouseholdTexts.undoHint)
             } else if line.showsButton {
                 Button { onPlaceOut() } label: { placeOutLabel }
                     .buttonStyle(.pressable)
@@ -370,6 +377,9 @@ struct HouseholdPlaceOutRow: View {
         .padding(.horizontal, onCard ? 16 : 0)
         .padding(.vertical, onCard ? 12 : 0)
         .background(onCard ? Color.Theme.cardOverlay : Color.clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // Raden tar emot sina egna tryck, så att bara knapparna gör något. På kortet öppnar ett tryck på bocken inte adressen.
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture {}
     }
 
     /// "Utställt av Kim, kl. 19:42" med en bock, och en klocka när bocken inte har skickats än. Läses som en rad.
@@ -378,11 +388,19 @@ struct HouseholdPlaceOutRow: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(.body, weight: .semibold))
                 .foregroundStyle(accent)
-            Text(text)
-                .font(.ui(17, weight: .heavy, relativeTo: .headline))
-                .foregroundStyle(foreground)
-                .fixedSize(horizontal: false, vertical: true)
-            if line.isPending {
+            // Vid största text står klockan i texten, så att den bryts med orden i stället för att ta en egen spalt.
+            let inlineClock = line.isPending && typeSize.isAccessibilitySize
+            Group {
+                if inlineClock {
+                    Text("\(text) \(Image(systemName: "clock"))")
+                } else {
+                    Text(text)
+                }
+            }
+            .font(.ui(17, weight: .heavy, relativeTo: .headline))
+            .foregroundStyle(foreground)
+            .fixedSize(horizontal: false, vertical: true)
+            if line.isPending, !inlineClock {
                 Image(systemName: "clock")
                     .font(.system(.footnote, weight: .semibold))
                     .foregroundStyle(onCard ? foreground.opacity(0.85) : Color.Theme.text2)

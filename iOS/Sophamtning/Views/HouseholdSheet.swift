@@ -61,18 +61,21 @@ struct HouseholdSheet: View {
 
     // MARK: Lägen
 
-    /// Raden om vad som hänt och hushållets läge när något inte fungerar. Samma text visas bara en gång.
+    /// Raden om vad som hänt och hushållets läge när något inte fungerar. Samma text visas bara en gång. Är det ett fel
+    /// står statuskortet kvar, eftersom det har knappen Försök igen, och raden släpps.
     @ViewBuilder
     private var notices: some View {
         let status = HouseholdTexts.status(household.status)
-        let notice = model.householdNotice
-        if notice != nil || status != nil {
+        let duplicate = model.householdNotice != nil && model.householdNotice == status
+        let notice = duplicate && household.status == .failed ? nil : model.householdNotice
+        let shownStatus = duplicate && household.status != .failed ? nil : status
+        if notice != nil || shownStatus != nil {
             VStack(alignment: .leading, spacing: 12) {
                 if let notice {
                     MessageCard(style: .neutral, icon: "person.2", title: HouseholdTexts.title, message: notice)
                 }
-                if let status, status != notice {
-                    statusCard(status)
+                if let shownStatus {
+                    statusCard(shownStatus)
                 }
             }
             .padding(.top, 8)
@@ -170,7 +173,7 @@ struct HouseholdSheet: View {
             sectionHeader(HouseholdTexts.notifications)
             if notifyDenied {
                 VStack(alignment: .leading, spacing: 12) {
-                    MessageCard(style: .warning, icon: "bell.slash", title: "Notiser är avstängda", message: "Du har stängt av notiser för Sophämtning i iOS.")
+                    MessageCard(style: .warning, icon: "bell.slash", title: NotificationTexts.deniedTitle, message: NotificationTexts.deniedMessage)
                     Button { openNotificationSettings() } label: {
                         Text("Öppna Inställningar")
                             .font(.ui(17, weight: .heavy, relativeTo: .headline))

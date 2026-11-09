@@ -34,6 +34,9 @@ final class HouseholdTests: XCTestCase {
         let mark = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Utställt av dig, kl.")).firstMatch
         XCTAssertTrue(mark.waitForExistence(timeout: 20), "Bocken ska säga vem som ställde ut och när")
         XCTAssertFalse(placeOut.exists, "Knappen ska vara borta när kärlen är utställda")
+        // Ett tryck på bocken gör ingenting: kortet öppnar inte adressen.
+        mark.tap()
+        XCTAssertFalse(app.staticTexts["Kärlen"].waitForExistence(timeout: 2), "Bocken ska inte öppna adressen")
 
         let undo = app.buttons["Ångra"]
         XCTAssertTrue(undo.exists, "Bocken ska gå att ångra")
@@ -51,6 +54,16 @@ final class HouseholdTests: XCTestCase {
         for _ in 0..<8 where !(toggle.exists && toggle.isHittable) { app.swipeUp() }
         XCTAssertTrue(toggle.isHittable, "Adressvyn ska ha reglaget Dela med hushållet")
         XCTAssertEqual(toggle.value as? String, "1", "Testgatan delas med hushållet")
+    }
+
+    func testVantandeBockHarKlocka() {
+        app.terminate()
+        app.launchArguments += ["-uitest-hushall-vantar"]
+        app.launch()
+        let mark = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Utställt av dig, kl.")).firstMatch
+        XCTAssertTrue(mark.waitForExistence(timeout: 20), "Min bock ska visas")
+        XCTAssertTrue(mark.label.hasSuffix("väntar på att skickas"), "En bock som inte skickats ska läsas med klockan: \(mark.label)")
+        XCTAssertTrue(app.buttons["Ångra"].exists)
     }
 
     // MARK: Hjälpare

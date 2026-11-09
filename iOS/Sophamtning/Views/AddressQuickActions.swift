@@ -31,6 +31,18 @@ extension View {
 
 // MARK: Snabbval på hemskärmen
 
+/// En VoiceOver-åtgärd för en adress: namnet som VoiceOver läser och vad den gör.
+struct AddressAction: Identifiable {
+    let name: String
+    let perform: @MainActor () -> Void
+    var id: String { name }
+}
+
+extension EnvironmentValues {
+    /// Adressens VoiceOver-åtgärder, när innehållet i `AddressQuickActions` själv lägger dem på sitt element.
+    @Entry var addressActions: [AddressAction] = []
+}
+
 /// En adress på hemskärmen med svep och snabbmeny. Svep åt vänster visar **Ta bort**, och ett långt tryck öppnar
 /// systemets snabbmeny med samma val som menyn i adressvyn, plus påminnelserna. VoiceOver får samma val som åtgärder.
 /// Allt går via `AppModel`, med samma regler som i adressvyn, så inget slås på utan användarens val.
@@ -40,6 +52,9 @@ struct AddressQuickActions<Content: View>: View {
     let cornerRadius: CGFloat
     /// Raden som står öppen. Bara en åt gången.
     @Binding var openRow: AddressKey?
+    /// Sant när innehållet själv lägger VoiceOver-åtgärderna på sitt element, via `addressActions`. Huvudkortet gör det,
+    /// eftersom det inte är ett enda element: hushållets knappar står utanför kortets knapp.
+    var actionsInContent = false
     @ViewBuilder let content: () -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -60,7 +75,8 @@ struct AddressQuickActions<Content: View>: View {
             content()
                 .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .contextMenu { if let address { menu(address) } }
-                .accessibilityActions { if let address { actions(address) } }
+                .environment(\.addressActions, actionsInContent ? address.map { actionList($0) } ?? [] : [])
+                .accessibilityActions { if !actionsInContent, let address { actions(address) } }
         }
         .renameAddressAlert(isPresented: $renaming, name: $newName) {
             model.clearStorageError()
@@ -77,11 +93,11 @@ struct AddressQuickActions<Content: View>: View {
             if !shown, openRow == key { openRow = nil }
         }
         // Snabbmenyn stängs när ett val görs, så nekad behörighet visas här i stället för i en rad som inte syns.
-        .alert("Notiser är avstängda", isPresented: $notificationsDenied) {
+        .alert(NotificationTexts.deniedTitle, isPresented: $notificationsDenied) {
             Button("Öppna Inställningar") { openNotificationSettings() }
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Du har stängt av notiser för Sophämtning i iOS.")
+            Text(NotificationTexts.deniedMessage)
         }
     }
 
@@ -126,6 +142,13 @@ struct AddressQuickActions<Content: View>: View {
     private func actions(_ address: SavedAddress) -> some View {
         ForEach(choices(address), id: \.self) { choice in
             Button(actionName(choice, address)) { perform(choice, address) }
+        }
+    }
+
+    /// Samma åtgärder som en lista, för innehåll som lägger dem på sitt eget element.
+    private func actionList(_ address: SavedAddress) -> [AddressAction] {
+        choices(address).map { choice in
+            AddressAction(name: actionName(choice, address)) { perform(choice, address) }
         }
     }
 

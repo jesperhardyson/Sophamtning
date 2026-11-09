@@ -291,7 +291,7 @@ struct AddressView: View {
         }
         if model.notificationAuthorization == .denied {
             VStack(alignment: .leading, spacing: 12) {
-                MessageCard(style: .warning, icon: "bell.slash", title: "Notiser är avstängda", message: "Du har stängt av notiser för Sophämtning i iOS.")
+                MessageCard(style: .warning, icon: "bell.slash", title: NotificationTexts.deniedTitle, message: NotificationTexts.deniedMessage)
                 Button { openNotificationSettings() } label: {
                     Text("Öppna Inställningar")
                         .font(.ui(17, weight: .heavy, relativeTo: .headline))
