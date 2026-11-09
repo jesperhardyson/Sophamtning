@@ -153,9 +153,10 @@ import Testing
 
     @Test func texternaStammerMedWebben() {
         #expect(BinLoaderTexts.all.contains("Plattar till pizzakartongen…"))
-        #expect(BinLoaderTexts.all.count == 21)
+        #expect(BinLoaderTexts.all.count == 22)
         #expect(BinLoaderTexts.all.first == "Slänger rester från middagen…")
-        #expect(BinLoaderTexts.all.last == "Sorterar som ett proffs…")
+        #expect(BinLoaderTexts.all[20] == "Sorterar som ett proffs…")
+        #expect(BinLoaderTexts.all.last == "Tjabba, tjena hallå! /Louie")
     }
 
     @Test func textBytsAldrigTillSamma() {
