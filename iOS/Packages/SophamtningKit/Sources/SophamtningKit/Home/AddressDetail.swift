@@ -84,10 +84,6 @@ public struct AddressDetail: Equatable, Sendable {
         public let warning: String?
         public var id: DayDate { date }
 
-        var withoutWarning: Row {
-            Row(date: date, dateText: dateText, dayNumber: dayNumber, month: month, daysText: daysText, shortDaysText: shortDaysText, fractions: fractions, deviation: deviation, warning: nil)
-        }
-
         public var accessibilityLabel: String {
             (["\(dateText), \(daysText)", fractions.map(\.info.name).joined(separator: ", ")] + [deviation, warning].compactMap { $0 }).joined(separator: ". ")
         }
@@ -111,16 +107,20 @@ public struct AddressDetail: Equatable, Sendable {
     /// Hur många datum som visas under "Kommande".
     public static let upcomingCount = 3
 
-    /// De närmaste datumen under "Kommande". Det första kan vara samma dag som nästa tömning. Dess varning står då
-    /// bara i rutan för nästa tömning (`nextWarning`), inte en gång till under raden. Avvikelsen står kvar.
+    /// De närmaste datumen under "Kommande", efter nästa tömning. Nästa tömning står redan i kortet ovanför, med sin
+    /// varning (`nextWarning`) och avvikelse (`nextDeviation`). Tom när det inte finns fler datum.
     public var upcoming: [Row] {
-        rows.prefix(Self.upcomingCount).map { row in
-            row.date == next?.date ? row.withoutWarning : row
-        }
+        Array(rows.filter { $0.date != next?.date }.prefix(Self.upcomingCount))
     }
 
-    /// Länken "Hela schemat" visas bara när det finns fler datum än under "Kommande".
-    public var hasFullSchedule: Bool { rows.count > Self.upcomingCount }
+    /// Länken "Hela schemat" visas bara när det finns fler datum än de som redan står på sidan: nästa tömning och
+    /// raderna under "Kommande".
+    public var hasFullSchedule: Bool { rows.count > Self.upcomingCount + (next == nil ? 0 : 1) }
+
+    /// "Flyttad från sön 8 nov" för nästa tömning, som står i kortet eftersom raden inte finns under "Kommande".
+    public var nextDeviation: String? {
+        rows.first { $0.date == next?.date }?.deviation
+    }
     /// "Schemat gäller till 10 januari 2027." med källans orsak. `nil` för live-källor och när perioden har passerat.
     public let schedulePeriod: SchedulePeriodLine?
     /// Rutan när schemat tar slut inom 14 dagar. Bara med kommande hämtningar: utan dem säger meddelandet nedan hur långt

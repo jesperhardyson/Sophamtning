@@ -183,28 +183,35 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
         event("2026-11-23", ["glas"]),
     ]
     let result = detail(try schedule(events))
-    #expect(result.upcoming.map(\.date.iso) == ["2026-11-09", "2026-11-12", "2026-11-16"])
-    #expect(result.hasFullSchedule)
+    // Nästa tömning (9 nov) står i kortet ovanför, så Kommande börjar efter den.
+    #expect(result.upcoming.map(\.date.iso) == ["2026-11-12", "2026-11-16", "2026-11-23"])
+    #expect(!result.hasFullSchedule, "Alla datum står redan på sidan")
     // Hela schemat har alla datum, i samma format.
     #expect(result.rows.map(\.date.iso) == ["2026-11-09", "2026-11-12", "2026-11-16", "2026-11-23"])
 }
 
-@Test func utanFlerAnTreDatumFinnsIngenLank() throws {
-    let three = detail(try schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["mat"]), event("2026-11-16", ["plast"])]))
-    #expect(three.upcoming.count == 3)
-    #expect(!three.hasFullSchedule)
+@Test func helaSchematVisasNarFlerAnKommandeFinns() throws {
+    let five = detail(try schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["mat"]), event("2026-11-16", ["plast"]), event("2026-11-23", ["glas"]), event("2026-11-30", ["rest"])]))
+    #expect(five.upcoming.count == 3)
+    #expect(five.hasFullSchedule)
+    let four = detail(try schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["mat"]), event("2026-11-16", ["plast"]), event("2026-11-23", ["glas"])]))
+    #expect(four.upcoming.count == 3)
+    #expect(!four.hasFullSchedule)
+}
+
+@Test func utanFlerAnNastaTomningArKommandeTom() throws {
     let one = detail(try schedule([event("2026-11-09", ["rest"])]))
-    #expect(one.upcoming.count == 1)
+    #expect(one.upcoming.isEmpty)
     #expect(!one.hasFullSchedule)
     let none = detail(try schedule([]))
     #expect(none.upcoming.isEmpty)
     #expect(!none.hasFullSchedule)
 }
 
-@Test func forstaRadenKanVaraSammaDagSomNastaTomning() throws {
-    let result = detail(try schedule([event("2026-11-09", ["rest", "mat"]), event("2026-11-12", ["papper"])]))
-    #expect(result.next?.date == result.upcoming.first?.date)
-    #expect(result.upcoming.first?.fractions.map(\.id) == ["rest", "mat"])
+@Test func kommandeBorjarEfterNastaTomning() throws {
+    let result = detail(try schedule([event("2026-11-09", ["rest", "mat"]), event("2026-11-11", ["papper"]), event("2026-11-12", ["glas"]), event("2026-11-16", ["plast"])]))
+    #expect(result.next?.date == DayDate("2026-11-09"))
+    #expect(result.upcoming.map(\.date.iso) == ["2026-11-11", "2026-11-12", "2026-11-16"])
 }
 
 @Test func radenHarDatumbrickaOchDagarKvarRaknatFranIDag() throws {
@@ -235,8 +242,8 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
     let result = detail(CachedSchedule(response: response, fetchedAt: old, lastAttemptAt: old, lastError: nil))
     #expect(result.next?.headline == "Om 3 dagar")
     #expect(result.next?.longDate == "Måndag 9 november")
-    #expect(result.upcoming.first?.daysText == "om 3 dagar")
-    #expect(result.upcoming.first?.shortDaysText == "om 3\u{00A0}d", "Talet och d hålls ihop med hårt mellanslag")
+    #expect(result.rows.first?.daysText == "om 3 dagar")
+    #expect(result.rows.first?.shortDaysText == "om 3\u{00A0}d", "Talet och d hålls ihop med hårt mellanslag")
     #expect(result.bins.first?.daysText == "om 3 dagar")
 }
 
@@ -246,12 +253,21 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
         event("2026-11-12", ["mat"], warning: "Ställ ut tidigt"),
     ]))
     #expect(result.nextWarning == "Helgdag")
-    // Under "Kommande" står varningen inte en gång till, men avvikelsen står kvar.
-    #expect(result.upcoming.map(\.warning) == [nil, "Ställ ut tidigt"])
-    #expect(result.upcoming.first?.deviation == "Flyttad från sön 8 nov")
-    #expect(result.upcoming.first?.accessibilityLabel == "Mån 9 nov, om 3 dagar. Restavfall. Flyttad från sön 8 nov")
+    // Kommande har bara datumen efter nästa tömning, med sina egna varningar.
+    #expect(result.upcoming.map(\.date.iso) == ["2026-11-12"])
+    #expect(result.upcoming.map(\.warning) == ["Ställ ut tidigt"])
     // Hela schemat visar alla varningar.
     #expect(result.rows.map(\.warning) == ["Helgdag", "Ställ ut tidigt"])
+}
+
+@Test func nastaTomningsAvvikelseStarIKortet() throws {
+    let result = detail(try schedule([
+        event("2026-11-09", ["rest"], deviation: Deviation(originalDate: DayDate("2026-11-08"), reason: "Helg"), warning: "Helgdag"),
+        event("2026-11-12", ["mat"]),
+    ]))
+    #expect(result.nextDeviation == "Flyttad från sön 8 nov")
+    let plain = detail(try schedule([event("2026-11-09", ["rest"]), event("2026-11-12", ["mat"])]))
+    #expect(plain.nextDeviation == nil)
 }
 
 @Test func voiceOverLaserRadenMedDagarKvar() throws {
