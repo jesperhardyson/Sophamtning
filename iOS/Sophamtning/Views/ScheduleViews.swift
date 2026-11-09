@@ -34,8 +34,13 @@ struct ScheduleRowView: View {
             } else {
                 HStack(spacing: 14) {
                     badge
-                    chips
-                    days
+                    // Chipsen och dagarna delar bredden. Dagarna bryts hellre än att ett långt namn krymper.
+                    ChipRowLayout(chipSpacing: 6, spacing: 14) {
+                        ForEach(row.fractions) { fraction in
+                            FractionChip(id: fraction.id, info: fraction.info)
+                        }
+                        days
+                    }
                 }
             }
             // Avvikelse och varning tar hela radens bredd, så att ingen text trängs ihop.
@@ -89,6 +94,90 @@ struct ScheduleRowView: View {
             .foregroundStyle(Color.Theme.brandText)
             .multilineTextAlignment(.trailing)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Chipsen flödar till vänster och den sista vyn, texten med dagar kvar, står till höger. Båda centreras vertikalt.
+/// Ryms inte det bredaste chipet bredvid texten bryts texten till två rader ("ca om" och "13 d") i stället för att chipets
+/// namn krymper. Bredden bestäms av `ChipRowMetrics.trailingWidth`.
+struct ChipRowLayout: Layout {
+    var chipSpacing: CGFloat
+    var spacing: CGFloat
+
+    private struct Arrangement {
+        var size: CGSize
+        var chipOrigins: [CGPoint]
+        var chipsHeight: CGFloat
+        var chipsWidth: CGFloat
+        var trailingSize: CGSize
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(width: proposal.width, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let trailing = subviews.last else { return }
+        let result = arrange(width: bounds.width, subviews: subviews)
+        let chipsTop = bounds.minY + (bounds.height - result.chipsHeight) / 2
+        for (index, origin) in result.chipOrigins.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: chipsTop + origin.y), proposal: ProposedViewSize(width: result.chipsWidth, height: nil))
+        }
+        trailing.place(
+            at: CGPoint(x: bounds.maxX - result.trailingSize.width, y: bounds.minY + (bounds.height - result.trailingSize.height) / 2),
+            proposal: ProposedViewSize(width: result.trailingSize.width, height: nil)
+        )
+    }
+
+    private func arrange(width proposed: CGFloat?, subviews: Subviews) -> Arrangement {
+        guard let trailing = subviews.last else { return Arrangement(size: .zero, chipOrigins: [], chipsHeight: 0, chipsWidth: 0, trailingSize: .zero) }
+        let chips = subviews.dropLast()
+        let ideal = trailing.sizeThatFits(.unspecified)
+        let trailingWidth: CGFloat
+        if let proposed {
+            let widestChip = chips.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+            trailingWidth = ChipRowMetrics.trailingWidth(available: proposed, spacing: spacing, trailingIdeal: ideal.width, trailingMinimum: twoLineWidth(of: trailing, ideal: ideal), widestChip: widestChip)
+        } else {
+            trailingWidth = ideal.width
+        }
+        let trailingSize = trailing.sizeThatFits(ProposedViewSize(width: trailingWidth, height: nil))
+        let chipsWidth = proposed.map { max($0 - trailingSize.width - spacing, 0) } ?? .infinity
+
+        // Som `FlowLayout`: chipsen får högst områdets bredd och bryts till nästa rad när de inte ryms.
+        var origins: [CGPoint] = []
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxX: CGFloat = 0
+        for chip in chips {
+            let size = chip.sizeThatFits(ProposedViewSize(width: chipsWidth.isFinite ? chipsWidth : nil, height: nil))
+            if x > 0, x + size.width > chipsWidth {
+                x = 0
+                y += rowHeight + chipSpacing
+                rowHeight = 0
+            }
+            origins.append(CGPoint(x: x, y: y))
+            x += size.width + chipSpacing
+            rowHeight = max(rowHeight, size.height)
+            maxX = max(maxX, x - chipSpacing)
+        }
+        let chipsHeight = y + rowHeight
+        let width = proposed ?? (maxX + spacing + trailingSize.width)
+        return Arrangement(
+            size: CGSize(width: width, height: max(chipsHeight, trailingSize.height)),
+            chipOrigins: origins,
+            chipsHeight: chipsHeight,
+            chipsWidth: chipsWidth.isFinite ? chipsWidth : maxX,
+            trailingSize: trailingSize
+        )
+    }
+
+    /// Den smalaste bredden där texten ryms på två rader, till exempel "ca om" över "13 d".
+    private func twoLineWidth(of trailing: LayoutSubview, ideal: CGSize) -> CGFloat {
+        let twoLines = ideal.height * 2 + 1
+        var low: CGFloat = 0, high = ideal.width
+        for _ in 0..<12 {
+            let mid = (low + high) / 2
+            if trailing.sizeThatFits(ProposedViewSize(width: mid, height: nil)).height <= twoLines { high = mid } else { low = mid }
+        }
+        return ceil(high)
     }
 }
 
