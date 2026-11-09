@@ -4,11 +4,11 @@ import os
 import SophamtningKit
 import UserNotifications
 
-/// Knappen **Utställt**: sparar att soporna är utställda, så att samma tömning inte startas igen, avslutar aktiviteten och tar bort
+/// Knappen **Klart**: sparar att soporna är utställda, så att samma tömning inte startas igen, avslutar aktiviteten och tar bort
 /// tömningens väntande reservnotis.
 /// Ingår i både app- och widgetmålet, och körs utan att appen öppnas.
 struct MarkPlacedOutIntent: LiveActivityIntent {
-    static let title: LocalizedStringResource = "Utställt"
+    static let title: LocalizedStringResource = "Klart"
     static let isDiscoverable = false
 
     @Parameter(title: "Källa")

@@ -336,8 +336,11 @@ private func mark(_ iso: String, key: AddressKey = home.key) -> HouseholdMark {
     try store.setHouseholdState(household(marks: [mark("2026-11-07")]))
     let data = WidgetData.read(from: store)
     #expect(data.placedOut(at: now))
+    // Kim finns inte bland deltagarna i det här hushållet.
+    #expect(data.placedOutBy(at: now) == "av någon")
     // Dagen efter gäller nästa tömning, som inte är bockad.
     #expect(!data.placedOut(at: stockholm("2026-11-08T08:00")))
+    #expect(data.placedOutBy(at: stockholm("2026-11-08T08:00")) == nil)
 }
 
 @Test func widgetenVisarInteUtstalltForEnAnnanTomningEllerUtanHushall() throws {

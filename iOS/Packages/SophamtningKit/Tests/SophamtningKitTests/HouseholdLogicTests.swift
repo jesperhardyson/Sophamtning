@@ -188,4 +188,13 @@ struct HouseholdLogicTests {
         #expect(decoded.joinedNames.isEmpty)
         #expect(decoded.notifyWhenOthersPlaceOut)
     }
+
+    @Test func widgetensRadOmVem() {
+        let mark = HouseholdMark(placedOut: PlacedOut(key: home, date: today), by: "sofie", at: Date(), isPending: false)
+        let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: false)
+        #expect(HouseholdTexts.widgetPlacedOut == "Utställda")
+        #expect(HouseholdTexts.placedOutBy(mark, participants: [sofie], myId: "jag") == "av Sofie")
+        #expect(HouseholdTexts.placedOutBy(mark, participants: [sofie], myId: "sofie") == "av dig")
+        #expect(HouseholdTexts.placedOutBy(mark, participants: [], myId: "jag") == "av någon")
+    }
 }

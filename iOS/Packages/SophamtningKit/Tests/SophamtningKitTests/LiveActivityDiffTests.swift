@@ -290,6 +290,13 @@ private let mondayMarked: Set<PlacedOut> = [PlacedOut(key: home, date: monday)]
     #expect(actions(plan, [running], householdMarked: mondayMarked) == [.update(id: "a", content().markedPlacedOut())])
 }
 
+@Test func andrasBockVisarVemOchNar() {
+    let running = existing("a", pending: false)
+    let detail = [PlacedOut(key: home, date: monday): "av Sofie · kl. 19:42"]
+    let result = LiveActivityDiff.actions(desired: plan, existing: [running], today: today, enabled: true, now: start.addingTimeInterval(-3600), householdMarked: mondayMarked, householdMarkDetails: detail)
+    #expect(result == [.update(id: "a", content().markedPlacedOut(detail: "av Sofie · kl. 19:42"))])
+}
+
 @Test func andrasBockStartarMedBock() {
     let marked = PlannedLiveActivity(key: home, pickupDate: monday, start: start, startsImmediately: false, content: content().markedPlacedOut())
     #expect(actions(plan, [], householdMarked: mondayMarked) == [.start(marked)])

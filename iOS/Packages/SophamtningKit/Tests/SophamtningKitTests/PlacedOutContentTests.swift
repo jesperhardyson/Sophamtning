@@ -37,6 +37,27 @@ import SophamtningKit
         #expect(marked != content())
     }
 
+    @Test func rubrikenOchRadenNarKarlenArUtstallda() {
+        #expect(content().title == "Ställ ut kärlen")
+        #expect(content().detailLine == "Hemma · måndag 9 november")
+        // Mitt eget tryck: vem och när är okänt, så adressen och datumet står kvar.
+        #expect(content().markedPlacedOut().title == "Kärlen är utställda")
+        #expect(content().markedPlacedOut().detailLine == "Hemma · måndag 9 november")
+        let marked = content().markedPlacedOut(detail: "av Sofie · kl. 19:42")
+        #expect(marked.detailLine == "av Sofie · kl. 19:42")
+        #expect(PickupActivityContent.doneButton == "Klart")
+    }
+
+    @Test func vemOchNarFoljerMedKodningenOchBaraNarUtstallt() throws {
+        let marked = content().markedPlacedOut(detail: "av Sofie · kl. 19:42")
+        let decoded = try JSONDecoder().decode(PickupActivityContent.self, from: JSONEncoder().encode(marked))
+        #expect(decoded == marked)
+        #expect(decoded.placedOutDetail == "av Sofie · kl. 19:42")
+        // Utan bock finns ingen rad om vem.
+        let unmarked = PickupActivityContent(addressName: "Hemma", dateText: "Måndag 9 november", shortDateText: "Mån 9 nov", fractions: [], estimated: false, warning: nil, placedOut: false, placedOutDetail: "av Sofie · kl. 19:42")
+        #expect(unmarked.placedOutDetail == nil)
+    }
+
     // MARK: Hushåll
 
     private let homeKey = AddressKey(source: "kallor", id: "hem")
@@ -65,6 +86,8 @@ import SophamtningKit
     @Test func liveActivityVisarAndrasBock() {
         let content = ReminderPlanner.activityContent(on: monday, input: input(), household: household(markDate: monday))
         #expect(content?.placedOut == true)
+        // Kim saknas bland deltagarna och visas som "någon". Klockslaget är 01:00 svensk tid för tidpunkten 0.
+        #expect(content?.placedOutDetail == "av någon · kl. 01:00")
     }
 
     @Test func liveActivityUtanBockEllerMedAnnatDatumVisarInteBocken() {

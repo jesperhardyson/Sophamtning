@@ -20,6 +20,11 @@ public enum HouseholdTexts {
         return "av \(who) · kl. \(time)"
     }
 
+    /// Widgetens rad under "Utställda": "av Kim", "av dig" eller "av någon".
+    public static func placedOutBy(_ mark: HouseholdMark, participants: [HouseholdParticipant], myId: String?) -> String {
+        "av \(whoAndTime(mark, participants: participants, myId: myId).0)"
+    }
+
     /// Undertexten för en bock som inte har nått iCloud än.
     public static let pendingSubtitle = "skickas när nätet finns"
 
@@ -97,7 +102,7 @@ public enum HouseholdTexts {
     public static let notSignedInNote = "Logga in på iCloud och låt Sophämtning använda iCloud i Inställningar. De delade adresserna visas som de senast sparades."
     public static let shared = "Delas med hushållet"
     public static let shareNote = "Alla i hushållet ser adressen och kan ställa ut kärlen."
-    public static let widgetPlacedOut = "Utställt"
+    public static let widgetPlacedOut = "Utställda"
     public static let leaveConfirm = "Lämna hushållet?"
     public static let leaveConfirmMessage = "Adresserna finns kvar som dina egna. Bockarna för Utställt försvinner."
     public static let endConfirm = "Avsluta hushållet?"

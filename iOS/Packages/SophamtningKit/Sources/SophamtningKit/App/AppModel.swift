@@ -653,7 +653,11 @@ public final class AppModel {
         let desired = reminderPlan(existing: counted, placedOut: placedOut.union(stopped), activitiesAllowed: systemAllows).liveActivity
         let todayContent = ReminderPlanner.activityContent(on: today, input: plannerInput(existing: counted, placedOut: placedOut, activitiesAllowed: systemAllows), household: inHousehold ? household : .empty)
         let householdMarked = inHousehold ? Set(household.marks.map(\.placedOut)) : []
-        var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent, householdMarked: householdMarked, householdSilenced: silenced)
+        // Vem och när, "av Sofie · kl. 19:42", visas under rubriken i aktiviteten.
+        let markDetails = inHousehold
+            ? Dictionary(household.marks.map { ($0.placedOut, HouseholdTexts.placedOutSubtitle($0, participants: household.participants, myId: household.myId)) }, uniquingKeysWith: { first, _ in first })
+            : [:]
+        var actions = LiveActivityDiff.actions(desired: desired, existing: existing, today: today, enabled: settings.liveActivityOn, primary: primary, canStart: startingActivities, now: current, todayContent: todayContent, householdMarked: householdMarked, householdMarkDetails: markDetails, householdSilenced: silenced)
         // Utan läsbart schema för huvudadressen går det inte att planera någon ersättning, så dess aktiviteter står kvar.
         if settings.liveActivityOn, let primary, schedules[primary]?.response == nil {
             let protected = Set(existing.filter { $0.key == primary }.map(\.id))

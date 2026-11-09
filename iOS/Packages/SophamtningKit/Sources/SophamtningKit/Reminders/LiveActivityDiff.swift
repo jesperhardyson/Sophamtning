@@ -51,20 +51,22 @@ public enum LiveActivityDiff {
     ///   - todayContent: dagens innehåll för huvudadressen, så att en pågående aktivitet får ny varning eller nytt namn.
     ///   - householdMarked: tömningar som någon i hushållet har bockat för. Den önskade aktiviteten visar då bocken, och en
     ///     pågående som ska bort visar bocken en kort stund innan den avslutas, som när knappen Utställt trycks.
+    ///   - householdMarkDetails: vem och när för hushållets bockar, "av Sofie · kl. 19:42", som visas under rubriken.
     ///   - householdSilenced: tömningar som hushållets bockar tystar. En pågående aktivitet för dagens tömning lever annars
     ///     tills Utställt, men tystas den av hushållet avslutas den, med bocken. Det gör att samma morgon beter sig som kvällen före.
-    public static func actions(desired: PlannedLiveActivity?, existing: [ExistingActivity], today: DayDate, enabled: Bool, primary: AddressKey? = nil, canStart: Bool = true, now: Date = .distantPast, todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = [], householdSilenced: Set<PlacedOut> = []) -> [LiveActivityAction] {
+    public static func actions(desired: PlannedLiveActivity?, existing: [ExistingActivity], today: DayDate, enabled: Bool, primary: AddressKey? = nil, canStart: Bool = true, now: Date = .distantPast, todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = [], householdMarkDetails: [PlacedOut: String] = [:], householdSilenced: Set<PlacedOut> = []) -> [LiveActivityAction] {
         guard enabled else { return existing.map { .remove(id: $0.id) } }
         let main = primary ?? desired?.key
         let desired = desired.map { planned in
-            householdMarked.contains(PlacedOut(key: planned.key, date: planned.pickupDate)) ? planned.markedPlacedOut() : planned
+            let entry = PlacedOut(key: planned.key, date: planned.pickupDate)
+            return householdMarked.contains(entry) ? planned.markedPlacedOut(detail: householdMarkDetails[entry]) : planned
         }
         // En visad aktivitet som tas bort för att någon i hushållet har ställt ut visar bocken först. En väntande har aldrig visats.
         let removal: (String) -> LiveActivityAction = { id in
             guard let activity = existing.first(where: { $0.id == id }), !activity.isPending,
                   householdMarked.contains(PlacedOut(key: activity.key, date: activity.pickupDate))
             else { return .remove(id: id) }
-            return .end(id: id, activity.content.markedPlacedOut())
+            return .end(id: id, activity.content.markedPlacedOut(detail: householdMarkDetails[PlacedOut(key: activity.key, date: activity.pickupDate)]))
         }
 
         var removals: [String] = []
@@ -107,8 +109,8 @@ public enum LiveActivityDiff {
 
 extension PlannedLiveActivity {
     /// Samma aktivitet med bocken för Utställt.
-    func markedPlacedOut() -> PlannedLiveActivity {
-        PlannedLiveActivity(key: key, pickupDate: pickupDate, start: start, startsImmediately: startsImmediately, content: content.markedPlacedOut())
+    func markedPlacedOut(detail: String?) -> PlannedLiveActivity {
+        PlannedLiveActivity(key: key, pickupDate: pickupDate, start: start, startsImmediately: startsImmediately, content: content.markedPlacedOut(detail: detail))
     }
 
     public enum StartMode: Equatable, Sendable {

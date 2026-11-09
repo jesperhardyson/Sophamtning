@@ -22,7 +22,7 @@ struct PickupLiveActivity: Widget {
                 // Rubriken ligger bredvid kameran. Den nedre regionen har ungefär 90 pt i höjd. Samma regel som på låsskärmen:
                 // fraktionerna och knappen går före varningen, som får en rad och hellre kapas.
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(PickupActivityContent.alertTitle)
+                    Text(content.title)
                         .font(.ui(16, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -42,7 +42,8 @@ struct PickupLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(content.addressName)
+                        // Utställt: vem och när i stället för adressen, när det är känt.
+                        Text(content.placedOutDetail ?? content.addressName)
                             .font(.ui(14, weight: .semibold, relativeTo: .subheadline))
                             .foregroundStyle(.white.opacity(0.85))
                             .lineLimit(1)
@@ -85,12 +86,21 @@ private struct LockScreenPickup: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                ActivityAppIcon()
+                if content.placedOut {
+                    // Klart: en fylld bock i appikonens storlek, så att det inte ser ut som något kvar att göra.
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(ThemeToken.primary.color)
+                        .frame(width: 44, height: 44)
+                        .accessibilityHidden(true)
+                } else {
+                    ActivityAppIcon()
+                }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(PickupActivityContent.alertTitle)
+                    Text(content.title)
                         .font(.ui(20, weight: .heavy, relativeTo: .headline))
                         .foregroundStyle(.white)
-                    Text(content.subtitle)
+                    Text(content.detailLine)
                         .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
                         .foregroundStyle(.white.opacity(0.85))
                         .lineLimit(1)
@@ -156,45 +166,32 @@ private struct FractionChips: View {
     }
 }
 
-/// Knappen **Utställt**, eller bocken när den är tryckt. Bocken är ingen knapp och kan inte tryckas igen.
+/// Knappen **Klart** med en tom ring, som en bock att kryssa i. När kärlen är utställda finns ingen knapp: rubriken säger det.
 private struct PlacedOutControl: View {
     let attributes: PickupActivityAttributes
     let content: PickupActivityContent
     var height: CGFloat = 40
 
     var body: some View {
-        if content.placedOut {
-            PlacedOutLabel(height: height, done: true)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Utställt")
-        } else {
+        if !content.placedOut {
             Button(intent: MarkPlacedOutIntent(key: attributes.key, pickupDate: attributes.pickupDate)) {
-                PlacedOutLabel(height: height)
+                HStack(spacing: 6) {
+                    Image(systemName: "circle")
+                        .font(.system(size: 16, weight: .bold))
+                        .accessibilityHidden(true)
+                    Text(PickupActivityContent.doneButton)
+                        .font(.ui(17, weight: .heavy, relativeTo: .headline))
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .foregroundStyle(ThemeToken.onPrimary.color)
+                .padding(.horizontal, 14)
+                .frame(minHeight: height)
+                .background(ThemeToken.primary.color, in: Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(PickupActivityContent.placedOutTitle)
         }
-    }
-}
-
-/// `done` är bocken efter trycket: dämpad bakgrund, så att den inte ser ut som en knapp.
-private struct PlacedOutLabel: View {
-    let height: CGFloat
-    var done = false
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 14, weight: .bold))
-                .accessibilityHidden(true)
-            Text("Utställt")
-                .font(.ui(17, weight: .heavy, relativeTo: .headline))
-                .lineLimit(1)
-                .fixedSize()
-        }
-        .foregroundStyle(done ? ThemeToken.primary.color : ThemeToken.onPrimary.color)
-        .padding(.horizontal, 14)
-        .frame(minHeight: height)
-        .background(done ? ThemeToken.primary.color.opacity(0.22) : ThemeToken.primary.color, in: Capsule())
     }
 }
 
@@ -213,7 +210,7 @@ private struct ActivityGlyph: View {
         }
         .foregroundStyle(ThemeToken.primary.color)
         .environment(\.colorScheme, .dark)
-        .accessibilityLabel(placedOut ? "Utställt" : PickupActivityContent.alertTitle)
+        .accessibilityLabel(placedOut ? PickupActivityContent.placedOutTitle : PickupActivityContent.alertTitle)
     }
 }
 
@@ -239,9 +236,9 @@ private func lockPreview(width: CGFloat) -> some View {
         .environment(\.colorScheme, .dark)
 }
 
-private let placedOutSixFractions = sixFractions.markedPlacedOut()
+private let placedOutSixFractions = sixFractions.markedPlacedOut(detail: "av Sofie · kl. 19:42")
 
-#Preview("Utställt, 375 pt") {
+#Preview("Utställda, 375 pt") {
     LockScreenPickup(attributes: PickupActivityAttributes(key: AddressKey(source: "a", id: "b"), pickupDate: DayDate("2026-11-09")!, start: Date()), content: placedOutSixFractions)
         .frame(width: 345, alignment: .leading)
         .frame(maxHeight: 160)

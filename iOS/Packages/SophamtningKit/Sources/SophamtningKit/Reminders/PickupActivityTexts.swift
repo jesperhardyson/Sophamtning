@@ -3,6 +3,16 @@ import Foundation
 /// Aktivitetens texter. De använder datum, aldrig "i morgon", eftersom innehållet inte uppdateras under natten.
 extension PickupActivityContent {
     public static let alertTitle = "Ställ ut kärlen"
+    /// Rubriken när kärlen är utställda.
+    public static let placedOutTitle = "Kärlen är utställda"
+    /// Knappen i aktiviteten. VoiceOver läser den som `placedOutTitle`.
+    public static let doneButton = "Klart"
+
+    /// Rubriken: vad som ska göras, eller att det är gjort.
+    public var title: String { placedOut ? Self.placedOutTitle : Self.alertTitle }
+
+    /// Raden under rubriken: vem och när när kärlen är utställda och det är känt, annars adressen och datumet.
+    public var detailLine: String { placedOutDetail ?? subtitle }
 
     /// "måndag 9 november", eller "ca måndag 9 november".
     private var lowercasedDate: String {
