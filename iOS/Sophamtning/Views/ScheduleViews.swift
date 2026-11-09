@@ -204,77 +204,49 @@ struct ScheduleList: View {
     }
 }
 
-/// Kort för ett kärl: ikon, namn, dagar kvar och datum. Läses som ett element av VoiceOver.
-/// Kortet är minst 3/7 av bredden och blir bredare, högst 2/3, när ett ord i namnet inte ryms i full storlek. Med
-/// tillgänglighetsstorlekar är det minst 4/5 och högst hela bredden.
-struct BinCard: View {
+/// En rad per kärl under "Per kärl": chipset till vänster, och datum och dagar kvar till höger. Läses som ett element
+/// av VoiceOver, med hela namnet. Med tillgänglighetsstorlekar står datumet under chipset.
+struct BinRow: View {
     let bin: AddressDetail.Bin
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
-    /// Bredden det längsta ordet i namnet behöver i full storlek.
-    @State private var wordWidth: CGFloat = 0
-
-    private var words: [String] {
-        bin.info.name.split(whereSeparator: \.isWhitespace).map { String($0) }
-    }
-
-    /// Lika många rader som namnet har ord, högst tre.
-    private var nameLines: Int {
-        min(max(words.count, 1), 3)
-    }
-
-    private var nameFont: Font { .ui(17, weight: .heavy, relativeTo: .headline) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            FractionIconView(id: bin.id, info: bin.info)
-            VStack(alignment: .leading, spacing: 2) {
-                // Högst en rad per ord, så att ett ord aldrig bryts mitt i. Ryms ordet inte ens i det bredaste kortet
-                // krymper det, i stället för att brytas.
-                Text(bin.info.name)
-                    .font(nameFont)
-                    .foregroundStyle(Color.Theme.text)
-                    .lineLimit(nameLines)
-                    .minimumScaleFactor(0.4)
-                Text(bin.daysText)
-                    .font(.ui(15, weight: .heavy, relativeTo: .callout))
-                    .foregroundStyle(Color.Theme.brandText)
-                    .rollingNumbers(value: bin.daysText, reduceMotion: reduceMotion)
-                Text(bin.dateText)
-                    .font(.ui(15, weight: .semibold, relativeTo: .subheadline))
-                    .foregroundStyle(Color.Theme.text2)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    chip
+                    when(alignment: .leading)
+                }
+            } else {
+                // Som raderna under Kommande: ryms inte chipet bredvid datumet bryts datumet, i stället för att namnet krymper.
+                ChipRowLayout(chipSpacing: 6, spacing: 14) {
+                    chip
+                    when(alignment: .trailing)
+                }
             }
-            Spacer(minLength: 0)
         }
-        .padding(BinCardMetrics.horizontalPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(alignment: .topLeading) { wordMeasure }
-        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(bin.accessibilityLabel)
-        .containerRelativeFrame(.horizontal) { length, _ in
-            BinCardMetrics.width(
-                container: length,
-                content: wordWidth + BinCardMetrics.horizontalPadding * 2,
-                accessibilitySize: typeSize.isAccessibilitySize
-            )
-        }
     }
 
-    /// Orden i namnet i full storlek, osynliga och utan plats i layouten. Det bredaste bestämmer kortets bredd. Bara
-    /// bredden mäts, typsnittet följer alltid textstorleken.
-    private var wordMeasure: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
-                Text(word).font(nameFont).lineLimit(1).fixedSize()
-            }
+    private var chip: some View {
+        FractionChip(id: bin.id, info: bin.info)
+    }
+
+    private func when(alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text(bin.dateText)
+                .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                .foregroundStyle(Color.Theme.text)
+            Text(bin.daysText)
+                .font(.ui(14, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Color.Theme.text2)
         }
-        .fixedSize()
-        .hidden()
-        .accessibilityHidden(true)
-        .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.size.width }, action: { width in wordWidth = width })
+        .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
     }
 }
 
