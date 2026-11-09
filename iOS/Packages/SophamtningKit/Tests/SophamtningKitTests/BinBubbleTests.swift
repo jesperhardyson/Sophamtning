@@ -65,6 +65,10 @@ import Testing
         // Bredvid rubriken står spetsen ovanför hela kärlets ram, så att bubblan inte täcker kärlet eller texten.
         #expect(BinBubbleTimeline.tipY(binWidth: 30, placement: .aboveBin) == -4)
         #expect(BinBubbleTimeline.tipY(binWidth: 56, placement: .aboveBin) == -4)
+        // Under kärlet: kärlets höjd (560 av 360 i bredd) och luften.
+        #expect(abs(BinBubbleTimeline.tipY(binWidth: 36, placement: .belowBin) - (36 * 560 / 360 + 4)) < 0.001)
+        #expect(BinBubbleTimeline.Placement.belowBin.isBelow)
+        #expect(!BinBubbleTimeline.Placement.aboveBin.isBelow)
     }
 
     @Test func nastaTryckGerEnAnnanText() {

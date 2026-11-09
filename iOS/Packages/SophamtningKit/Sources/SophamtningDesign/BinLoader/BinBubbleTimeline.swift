@@ -47,6 +47,11 @@ public enum BinBubbleTimeline {
         case overLid
         /// Spetsen ovanför kärlets hela ram. För det lilla kärlet bredvid rubriken, där texten når högre än locket.
         case aboveBin
+        /// Spetsen under kärlets ram, och bubblan växer nedåt. För kärlet i rubriken, där fältet ovanför annars döljer bubblan.
+        case belowBin
+
+        /// Sant när bubblan står under kärlet och spetsen pekar uppåt.
+        public var isBelow: Bool { self == .belowBin }
     }
 
     /// Luften mellan spetsen och det den pekar på, i punkter.
@@ -59,6 +64,7 @@ public enum BinBubbleTimeline {
         switch placement {
         case .overLid: binWidth * 150 / 360 - tipGap
         case .aboveBin: -tipGap
+        case .belowBin: binWidth * 560 / 360 + tipGap
         }
     }
 
