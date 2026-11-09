@@ -3,6 +3,13 @@ import Foundation
 /// Hemskärmens innehåll, räknat från sparade adresser och scheman och given tid.
 /// Allt räknas lokalt: dagar, datum och påminnelsetext kommer aldrig från sparade `next`-fält.
 public struct HomeContent: Equatable, Sendable {
+    /// Valets namn på huvudkortet, i adressvyn och i snabbmenyn.
+    public static let reminderTitle = "Påminn mig kvällen före"
+    /// VoiceOvers åtgärd för samma val, på huvudkortet och raderna.
+    public static func reminderActionTitle(isOn: Bool) -> String {
+        isOn ? "Stäng av påminnelse kvällen före" : "Slå på påminnelse kvällen före"
+    }
+
     public struct FractionItem: Equatable, Sendable, Identifiable {
         public let id: String
         public let info: FractionInfo
@@ -55,7 +62,7 @@ public struct HomeContent: Equatable, Sendable {
 
     /// Reglaget för påminnelsen på huvudkortet, som i adressvyn: av, på eller nekat i iOS.
     public struct PrimaryReminder: Equatable, Sendable {
-        /// Notis kvällen före är på och tillåten i iOS.
+        /// Påminnelsen kvällen före är på och tillåten i iOS.
         public let isOn: Bool
         /// iOS har nekat notiser. Reglaget är av, och en knapp öppnar Inställningar.
         public let isDenied: Bool
@@ -72,7 +79,7 @@ public struct HomeContent: Equatable, Sendable {
             self.detail = detail
         }
 
-        static let offTitle = "Påminn mig kvällen före"
+        static let offTitle = HomeContent.reminderTitle
 
         /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
         /// "Söndag kl. 18:00" under den.
@@ -136,7 +143,28 @@ public struct HomeContent: Equatable, Sendable {
         /// Raden under adressen: "Ons 18 nov · om 12 dagar" eller en statustext.
         public let summary: String
 
+        /// Hur raden under adressen visas: som ett datum, som en lugn statustext eller som en varning.
+        public enum SummaryTone: Sendable { case date, neutral, warning }
+
+        /// "Inga kommande hämtningar" och "Hämtar schema…" är neutrala, så att de inte ser ut som ett datum. Ett
+        /// misslyckat försök utan sparat schema är en varning.
+        public var summaryTone: SummaryTone {
+            switch status {
+            case .upcoming: .date
+            case .noUpcoming, .loading: .neutral
+            case .failed: .warning
+            }
+        }
+
         public var id: AddressKey { key }
+
+        /// Raden under datumet på huvudkortet när nästa tömning är i dag. `nil` alla andra dagar.
+        public var dayNote: String? {
+            guard case .upcoming(let pickup) = status, pickup.daysUntil == 0 else { return nil }
+            return pickup.estimated
+                ? "Kärlen ska stå ute i dag, om tömningen kommer som beräknat."
+                : "Kärlen ska stå ute i dag."
+        }
 
         /// Alla fraktioner som text, så att VoiceOver kan läsa dem även när raden bara visar ikoner.
         public var accessibilityLabel: String {

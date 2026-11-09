@@ -34,6 +34,12 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
     }
 
     /// Länkar som öppnas i appens webbvy. Telefon och e-post öppnas av iOS.
+    /// Telefonnumret står i accentfärg, eftersom det oftast är det man vill använda. Övriga länkar står i vanlig textfärg.
+    public var isPrimaryAction: Bool { kind == .phone }
+
+    /// Sidor som öppnas i appens webbvy får en pil, som rader i iOS listor. Telefon och e-post öppnas av iOS.
+    public var showsChevron: Bool { webLink != nil }
+
     public var webLink: WebLink? {
         switch kind {
         case .website, .kommunInfo, .contactPage: WebLink(url: url)

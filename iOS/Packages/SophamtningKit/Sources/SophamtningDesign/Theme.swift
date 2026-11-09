@@ -9,6 +9,7 @@ public enum ThemeToken: CaseIterable, Sendable {
     case warn, warnBg
     case fracRest, fracRestBg, fracMat, fracMatBg, fracPapper, fracPapperBg
     case fracPlast, fracPlastBg, fracGlas, fracGlasBg, fracMetall, fracMetallBg
+    case fracTidningar, fracTidningarBg
     case cardOverlay
     /// Reglaget som är på, på det gröna huvudkortet. Mörkt i båda lägena, så att det syns mot kortet och den vita knoppen.
     case toggleOn
@@ -49,6 +50,9 @@ public enum ThemeToken: CaseIterable, Sendable {
         case .fracGlasBg: (0xDDEFF2, 0x173238)
         case .fracMetall: (0x6B4F7A, 0xC6A9D6)
         case .fracMetallBg: (0xEEE6F1, 0x2E2436)
+        // Senapsgul, så att tidningar går att skilja från pappersförpackningar (blå) och glas (turkos).
+        case .fracTidningar: (0x6B5A0E, 0xE3C866)
+        case .fracTidningarBg: (0xF4EECF, 0x2F2A15)
         case .cardOverlay: (0xFFFFFF, 0x0B2416)
         case .toggleOn: (0x0B2416, 0x0B2416)
         }

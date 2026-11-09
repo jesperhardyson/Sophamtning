@@ -116,6 +116,28 @@ private func make(_ addresses: [SavedAddress], _ schedules: [AddressKey: CachedS
     #expect(content.others[0].summary == "ca Ons 18 nov\u{00A0}· om 12 dagar")
 }
 
+// MARK: Tömningsdagen
+
+@Test func tomningIDagGerRad() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-06", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == "Kärlen ska stå ute i dag.")
+}
+
+@Test func tomningIMorgonGerIngenRad() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-07", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == nil)
+}
+
+@Test func beraknadTomningIDagSagerSomBeraknat() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-06", ["rest"], estimated: true)])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == "Kärlen ska stå ute i dag, om tömningen kommer som beräknat.")
+}
+
+@Test func utanHamtningarGerIngenRad() throws {
+    let primary = try #require(make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(primary.dayNote == nil)
+}
+
 @Test func passeratSchemaGerIngaKommandeHamtningar() throws {
     let content = make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings())
     let primary = try #require(content.primary)
@@ -238,6 +260,11 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     #expect(try #require(denied.primary).reminder?.detail == nil)
     let liveOnly = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(liveActivityOn: true), now: now, remindersAllowed: false)
     #expect(try #require(liveOnly.primary).reminder?.detail == "Ingen Live Activity planerad")
+}
+
+@Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
+    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse kvällen före")
 }
 
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {
@@ -641,4 +668,15 @@ private func endingHome(_ cached: CachedSchedule?) -> HomeContent {
     #expect(content.primary?.accessibilityLabel.contains("Schemat slutar") == true)
     #expect(content.others[0].scheduleEnding == nil)
     #expect(content.others[0].accessibilityLabel.contains("Schemat slutar") == false)
+}
+
+@Test func ingaKommandeHamtningarArNeutral() throws {
+    let none = try #require(make([home], [home.key: schedule([event("2026-11-02", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(none.summaryTone == .neutral)
+    let upcoming = try #require(make([home], [home.key: schedule([event("2026-11-09", ["rest"])])], settings: ReminderSettings()).primary)
+    #expect(upcoming.summaryTone == .date)
+    let loading = try #require(make([home], [:]).primary)
+    #expect(loading.summaryTone == .neutral)
+    let failed = try #require(make([home], [home.key: CachedSchedule(response: nil, fetchedAt: nil, lastAttemptAt: now, lastError: .network)]).primary)
+    #expect(failed.summaryTone == .warning)
 }
