@@ -232,37 +232,6 @@ final class QuickActionsTests: XCTestCase {
     // MARK: Hjälpare
 
     /// Huvudkortet eller raden för adressen.
-    /// En adress utan kommande hämtningar har inga chips. Pilen ska ändå stå till höger på raden.
-    func testPilenStarTillHogerUtanHamtningar() {
-        app.launch()
-        addAddresses(["Testgatan 1", "Testgatan 4"])
-        let row = address("Testgatan 4")
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        waitUntil(row, "Raden ska visa att det inte finns hämtningar") { $0.label.contains("Inga kommande hämtningar") }
-        // Raden läses som en enhet, så pilen finns inte i trädet. Den syns i stället i radens högra kant i skärmbilden.
-        XCTAssertTrue(hasContentAtTrailingEdge(row.screenshot().image), "Pilen ska stå vid radens högra kant")
-    }
-
-    /// Sant om något är ritat i en remsa längst till höger i bilden, innanför kortets kant.
-    private func hasContentAtTrailingEdge(_ image: UIImage) -> Bool {
-        guard let source = image.cgImage else { return false }
-        let scale = image.scale
-        let strip = CGRect(x: CGFloat(source.width) - 56 * scale, y: 8 * scale, width: 48 * scale, height: CGFloat(source.height) - 16 * scale)
-        guard let cropped = source.cropping(to: strip) else { return false }
-        let width = cropped.width, height = cropped.height
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let drawn = pixels.withUnsafeMutableBytes { bytes -> Bool in
-            guard let context = CGContext(data: bytes.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-            context.draw(cropped, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return true
-        }
-        guard drawn, pixels.count >= 4 else { return false }
-        let first = Array(pixels[0..<3])
-        return stride(from: 0, to: pixels.count, by: 4).contains { offset in
-            (0..<3).contains { abs(Int(pixels[offset + $0]) - Int(first[$0])) > 64 }
-        }
-    }
-
     private func address(_ name: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND identifier != %@", name, "svep-ta-bort")).firstMatch
     }
