@@ -2,6 +2,9 @@ import Foundation
 
 /// Rena regler för hushållet. Inget här läser klockan eller rör CloudKit.
 public enum HouseholdLogic {
+    /// Hur ofta hushållets ändringar hämtas medan appen är öppen, som reserv när den tysta pushen dröjer.
+    public static let liveFetchInterval: Duration = .seconds(15)
+
     /// Sant för en delad adress när nästa tömning är i dag eller i morgon.
     public static func showsPlaceOutButton(isShared: Bool, nextPickup: DayDate?, today: DayDate) -> Bool {
         guard isShared, let nextPickup else { return false }

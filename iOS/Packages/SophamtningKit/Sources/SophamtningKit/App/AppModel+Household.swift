@@ -42,7 +42,7 @@ extension AppModel {
         state.role != .none && state.status != .removed
     }
 
-    var inHousehold: Bool { Self.isMember(household) }
+    public var inHousehold: Bool { Self.isMember(household) }
 
     public func isShared(_ key: AddressKey) -> Bool {
         inHousehold && household.addresses.contains { $0.address.key == key }

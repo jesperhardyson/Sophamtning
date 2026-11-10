@@ -87,6 +87,15 @@ struct HomeView: View {
         }
         // En öppen rad stängs när en adress öppnas eller stängs, och när appen byter läge.
         .onChange(of: path) { openRow = nil }
+        // Medan appen är öppen och jag är med i ett hushåll hämtas ändringarna regelbundet, som reserv för tyst push.
+        .task(id: scenePhase == .active && model.inHousehold) {
+            guard scenePhase == .active, model.inHousehold else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: HouseholdLogic.liveFetchInterval)
+                guard !Task.isCancelled else { return }
+                await model.fetchHouseholdChanges()
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             openRow = nil
             // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.

@@ -221,6 +221,22 @@ struct HouseholdSheet: View {
                     .frame(minHeight: 56)
                     .accessibilityElement(children: .combine)
                 }
+                // De som har bjudits in men inte svarat än. Bara ägaren får dem.
+                ForEach(Array(household.invited.enumerated()), id: \.offset) { _, invitee in
+                    ResultDivider()
+                    HStack(spacing: 12) {
+                        Text(HouseholdTexts.invitedName(invitee))
+                            .font(.ui(19, weight: .heavy, relativeTo: .headline))
+                            .foregroundStyle(Color.Theme.text2)
+                        Spacer(minLength: 8)
+                        Text(HouseholdTexts.waitingForAnswer)
+                            .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                            .foregroundStyle(Color.Theme.text2)
+                    }
+                    .padding(.horizontal, 20)
+                    .frame(minHeight: 56)
+                    .accessibilityElement(children: .combine)
+                }
                 if isOwner {
                     ResultDivider()
                     Button { manageMembers() } label: {

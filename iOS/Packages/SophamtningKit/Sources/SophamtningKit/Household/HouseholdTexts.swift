@@ -115,6 +115,7 @@ public enum HouseholdTexts {
     public static let intro = "Dela adresser med dem du bor med. Ni ser samma schema, och när någon ställer ut kärlen syns det för alla. Hushållet sparas i ert iCloud."
     public static let participants = "Deltagare"
     public static let owner = "Ägare"
+    public static let waitingForAnswer = "Väntar på svar"
     public static let notifications = "Notiser"
     public static let notSignedInNote = "Logga in på iCloud och låt Sophämtning använda iCloud i Inställningar. De delade adresserna visas som de senast sparades."
     public static let shared = "Delas med hushållet"
@@ -128,6 +129,12 @@ public enum HouseholdTexts {
     /// Värdet på raden Hushåll i Inställningar: "2 deltagare", eller tomt utan hushåll.
     public static func participantCount(_ count: Int) -> String {
         count > 0 ? "\(count) deltagare" : ""
+    }
+
+    /// En inbjuden i listan: namnet iOS vet om personen, annars "Inbjuden".
+    public static func invitedName(_ invitee: HouseholdInvitee) -> String {
+        let name = invitee.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? "Inbjuden" : name
     }
 
     /// En deltagare i listan: "Alex (du)" för mig själv, annars namnet.
