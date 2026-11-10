@@ -269,6 +269,8 @@ struct HomeView: View {
                 })
                 .padding(.top, Self.titleTopPadding)
                 .padding(.bottom, 12)
+                // Bubblan vid kärlet står under rubriken, ovanpå korten.
+                .zIndex(1)
             if model.showsReminderOffer {
                 ReminderOfferCard(
                     onAccept: { setNotifications(true, for: primary.key) },
@@ -462,7 +464,7 @@ private struct HomeTitle: View {
 
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 6) {
-            BinRoundView(firstRound: binFirstRound, width: 30, maxWidth: 56, bubbleTip: .leading, bubblePlacement: .aboveBin, tapTrigger: titleTaps)
+            BinRoundView(firstRound: binFirstRound, width: 30, maxWidth: 56, bubbleTip: .leading, bubblePlacement: .belowBin, tapTrigger: titleTaps)
                 // Kärlets botten står på textens baslinje.
                 .alignmentGuide(.lastTextBaseline) { d in d.height * Self.binBaseline }
                 // Pratbubblan står framför rubriken.

@@ -120,15 +120,17 @@ public struct BinRoundView: View {
             let tipY = BinBubbleTimeline.tipY(binWidth: width, placement: bubblePlacement)
             // En linje utan höjd i kärlets överkant. Bubblans underkant står på linjen och flyttas sedan till spetsens
             // plats, så att bubblan växer uppåt oavsett hur många rader den har.
+            // Under kärlet står bubblans överkant på linjen i stället, och den växer och svävar nedåt.
+            let below = bubblePlacement.isBelow
             Color.clear
                 .frame(height: 0)
-                .overlay(alignment: Alignment(horizontal: bubbleTip, vertical: .bottom)) {
+                .overlay(alignment: Alignment(horizontal: bubbleTip, vertical: below ? .top : .bottom)) {
                     TimelineView(.animation) { context in
                         let elapsed = context.date.timeIntervalSince(bubbleStart)
-                        BinSpeechBubble(text: bubbleText, tip: bubbleTip)
-                            .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: 1))
+                        BinSpeechBubble(text: bubbleText, tip: bubbleTip, pointsUp: below)
+                            .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: below ? 0 : 1))
                             .opacity(BinBubbleTimeline.opacity(at: elapsed))
-                            .offset(y: -BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
+                            .offset(y: (below ? 1 : -1) * BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
                     }
                 }
                 .offset(y: tipY)

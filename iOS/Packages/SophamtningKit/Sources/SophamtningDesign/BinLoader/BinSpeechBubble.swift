@@ -6,10 +6,13 @@ public struct BinSpeechBubble: View {
     let text: String
     /// Var spetsen står i bubblans bredd, så att den pekar på kärlet.
     let tip: HorizontalAlignment
+    /// Sant när bubblan står under kärlet: spetsen sitter överst och pekar uppåt.
+    let pointsUp: Bool
 
-    public init(text: String, tip: HorizontalAlignment = .center) {
+    public init(text: String, tip: HorizontalAlignment = .center, pointsUp: Bool = false) {
         self.text = text
         self.tip = tip
+        self.pointsUp = pointsUp
     }
 
     /// Smal nog att stå ovanför kärlet. Med större text bryts den på fler rader i samma bredd.
@@ -17,6 +20,7 @@ public struct BinSpeechBubble: View {
 
     public var body: some View {
         VStack(alignment: tip, spacing: -1) {
+            if pointsUp { tipShape }
             Text(text)
                 .font(.ui(15, weight: .bold, relativeTo: .subheadline))
                 .foregroundStyle(Color.Theme.text)
@@ -27,11 +31,9 @@ public struct BinSpeechBubble: View {
                 .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.Theme.border))
                 .frame(maxWidth: maxWidth, alignment: Alignment(horizontal: tip, vertical: .center))
-            BubbleTip()
-                .fill(Color.Theme.surface)
-                .overlay(BubbleTip().stroke(Color.Theme.border, lineWidth: 1))
-                .frame(width: 14, height: 8)
-                .padding(.horizontal, 12)
+                // Spetsen ritas ovanpå bubblans kant, så att kanten inte syns där de möts.
+                .zIndex(0)
+            if !pointsUp { tipShape }
         }
         .fixedSize()
         // Bubblan är kort och tillfällig, så den växer högst till den största vanliga textstorleken och täcker inte
@@ -39,6 +41,16 @@ public struct BinSpeechBubble: View {
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
         .accessibilityHidden(true)
+    }
+
+    private var tipShape: some View {
+        BubbleTip()
+            .fill(Color.Theme.surface)
+            .overlay(BubbleTip().stroke(Color.Theme.border, lineWidth: 1))
+            .frame(width: 14, height: 8)
+            .rotationEffect(pointsUp ? .degrees(180) : .zero)
+            .padding(.horizontal, 12)
+            .zIndex(1)
     }
 }
 
