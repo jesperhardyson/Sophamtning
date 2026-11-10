@@ -20,7 +20,10 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
             handleSentRecordZoneChanges(sent, scope: scope, engine: syncEngine)
         case .didFetchRecordZoneChanges(let fetched):
             if let error = fetched.error { handleZoneError(error, zoneID: fetched.zoneID, scope: scope) }
-        case .sentDatabaseChanges, .willFetchChanges, .willFetchRecordZoneChanges, .didFetchChanges, .willSendChanges, .didSendChanges:
+        case .didFetchChanges:
+            // En hämtning som en tyst push startade läser också om delningen, så att nya och inbjudna deltagare syns.
+            refreshShareOutsideCallback()
+        case .sentDatabaseChanges, .willFetchChanges, .willFetchRecordZoneChanges, .willSendChanges, .didSendChanges:
             // Zonerna skapas och tas bort direkt mot databasen, inte via motorn.
             break
         @unknown default:
@@ -83,6 +86,14 @@ extension CloudKitHouseholdSync: CKSyncEngineDelegate {
     /// CKSyncEngine appen ("Cannot await a call into CKSyncEngine from within a delegate callback"). Därför `detached`.
     private func fetchChangesOutsideCallback() {
         Task.detached { [self] in await fetchChanges() }
+    }
+
+    /// Läser om delningen utanför motorns callback, av samma skäl som ovan, och skickar det nya läget.
+    private func refreshShareOutsideCallback() {
+        Task.detached { [self] in
+            await refreshShare()
+            emit()
+        }
     }
 
     static func clearHousehold(_ inner: inout Inner) {

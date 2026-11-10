@@ -308,7 +308,8 @@ final class CloudKitHouseholdSync: HouseholdSync {
             marks: marks,
             status: status == .removed ? .synced : status,
             myName: inner.myId.flatMap { names[$0] },
-            suggestedName: share.flatMap(HouseholdRecords.suggestedName(in:))
+            suggestedName: share.flatMap(HouseholdRecords.suggestedName(in:)),
+            invited: role == .owner ? (share.map(HouseholdRecords.invitees(of:)) ?? []) : []
         )
     }
 

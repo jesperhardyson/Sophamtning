@@ -37,7 +37,7 @@ private final class CountingScheduler: NotificationScheduling, @unchecked Sendab
     func pending() async -> [PendingNotification] { [] }
     func schedule(_ notifications: [PlannedNotification]) async -> [String] { [] }
     func cancel(identifiers: [String]) async {}
-    func deliverNow(identifier: String, body: String) async {}
+    func deliverNow(identifier: String, title: String, body: String) async {}
 }
 
 @MainActor

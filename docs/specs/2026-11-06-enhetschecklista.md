@@ -194,6 +194,12 @@ Kräver en andra person eller en andra telefon med ett annat Apple-konto. A bjud
 - [ ] **H22. Utställt från Live Activity.** A har Live Activity på för en delad huvudadress kvällen före. A trycker **Klart** i aktiviteten med appen avslutad. Bocken syns hos B med A:s namn inom några sekunder, utan att A öppnar appen. Hos A visar kortet bocken med klockan och **skickas när nätet finns** tills den har skickats, och aldrig **Ställ ut kärlen**.
 - [ ] **H23. Widgeten efter någon annans bock.** B har widgeten på hemskärmen för samma delade huvudadress. A ställer ut kärlen: B:s widget visar **Utställda** och **av** A:s namn när B:s app har fått bocken, med tyst push eller när appen öppnas. **Ångra** tar bort det i widgeten.
 - [ ] **H24. Live Activity kvällen före med någon annans bock.** B har Live Activity igång för en delad huvudadress kvällen före. A ställer ut kärlen. Med **Tysta min påminnelse när någon annan har ställt ut** av visar B:s aktivitet **Kärlen är utställda** och **av** A:s namn **· kl.** och står kvar. Med valet på visar den bocken några sekunder och försvinner sedan, som när knappen **Klart** trycks.
+- [ ] **H25. Ny deltagare utan omstart.** A har appen öppen på hemskärmen. B accepterar inbjudan. Inom cirka 15 sekunder syns B i arket Hushåll hos A, och raden **{B} gick med i hushållet** visas, utan att A startar om appen eller byter app.
+- [ ] **H26. Väntar på svar.** A bjuder in B via Meddelanden. Innan B har öppnat länken står B (eller **Inbjuden**) med **Väntar på svar** under Deltagare hos A. När B har accepterat blir raden en vanlig deltagare.
+- [ ] **H27. Utställt syns inom 15 sekunder.** Båda har appen öppen. A trycker **Ställ ut kärlen**: bocken syns hos B inom cirka 15 sekunder. **Ångra** syns lika snabbt.
+- [ ] **H28. Utställt på listraden.** En delad adress som inte är huvudadress har tömning i morgon. A ställer ut: raden i adresslistan hos B visar **Utställt av** A:s namn **· kl.** med en bock.
+- [ ] **H29. Någon är inte längre med.** B lämnar hushållet. A ser raden **{B} är inte längre med i hushållet** på hemskärmen och i arket, och får en notis med rubriken **Hushållet** om **Notiser från hushållet** är på. B själv får ingen sådan rad.
+- [ ] **H30. Notisernas rubriker.** Notisen om utställda kärl har rubriken **Kärlen är utställda**, och notisen om att någon gick med har rubriken **Hushållet**.
 
 ## När listan är körd
 

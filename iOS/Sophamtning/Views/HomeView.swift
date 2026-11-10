@@ -87,6 +87,15 @@ struct HomeView: View {
         }
         // En öppen rad stängs när en adress öppnas eller stängs, och när appen byter läge.
         .onChange(of: path) { openRow = nil }
+        // Medan appen är öppen och jag är med i ett hushåll hämtas ändringarna regelbundet, som reserv för tyst push.
+        .task(id: scenePhase == .active && model.inHousehold) {
+            guard scenePhase == .active, model.inHousehold else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: HouseholdLogic.liveFetchInterval)
+                guard !Task.isCancelled else { return }
+                await model.fetchHouseholdChanges()
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             openRow = nil
             // Påminnelserna räknas om när appen blir aktiv, och tillståndet läses om, så att ändringar i iOS Inställningar syns.
@@ -279,11 +288,11 @@ struct HomeView: View {
                 .padding(.bottom, 16)
                 .transition(.opacity)
             }
-            if let joined = model.householdJoinedText {
+            if let joined = model.householdMembersText {
                 HouseholdJoinedCard(
                     text: joined,
                     onOpen: { sheet = .household },
-                    onClose: { withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.clearJoinedNotice() } }
+                    onClose: { withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.clearMembersNotice() } }
                 )
                 .padding(.bottom, 16)
                 .transition(.opacity)
@@ -579,7 +588,7 @@ private struct AddressRow: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([entry.accessibilityLabel, entry.household?.sharedText, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityLabel([entry.accessibilityLabel, entry.household?.sharedText, entry.household?.placedOutText, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
     }
 
     private var title: some View {
@@ -613,6 +622,21 @@ private struct AddressRow: View {
                 .font(.ui(16, weight: entry.summaryTone == .neutral ? .bold : .heavy, relativeTo: .callout))
                 .foregroundStyle(summaryColor)
                 .rollingNumbers(value: entry.summary, reduceMotion: reduceMotion)
+            // "Utställt av Kim · kl. 19:42" när nästa tömning har en bock, som på huvudkortet men utan knapp.
+            if let household = entry.household, household.placedOutText != nil {
+                Label {
+                    Text([household.placedOutTitle, household.placedOutSubtitle].compactMap { $0 }.joined(separator: household.isPending ? " · " : " "))
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Color.Theme.brandText)
+                }
+                .labelStyle(.titleAndIcon)
+                .padding(.top, 2)
+            }
             // Bara när notis är på för adressen. Ingen klocka när notis är av.
             if let reminder = entry.rowReminder {
                 Label {

@@ -822,3 +822,17 @@ private func lineFor(_ cached: CachedSchedule?, _ state: HouseholdState) -> Hous
     #expect(HomeContent.AddressLines(address: "", place: "Uppsala").singleLine == "Uppsala")
     #expect(HomeContent.AddressLines(address: "Testgatan 1", place: "").singleLine == "Testgatan 1")
 }
+
+@Test func listradenVisarUtstalltForEnAnnanAdress() throws {
+    let mark = HouseholdMark(placedOut: PlacedOut(key: cabin.key, date: monday), by: "kim", at: StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60 + 42), isPending: false)
+    let state = household(addresses: [home, cabin], marks: [mark])
+    let content = HomeContent.make(
+        addresses: [home, cabin],
+        schedules: [home.key: schedule([event("2026-11-10", ["rest"])]), cabin.key: schedule([event("2026-11-09", ["rest"])])],
+        settings: ReminderSettings(), now: sunday, household: state
+    )
+    let row = try #require(content.others.first { $0.key == cabin.key }?.household)
+    #expect(row.placedOutText == "Utställt av Kim, kl. 19:42")
+    #expect(row.placedOutTitle == "Utställt")
+    #expect(row.placedOutSubtitle == "av Kim · kl. 19:42")
+}

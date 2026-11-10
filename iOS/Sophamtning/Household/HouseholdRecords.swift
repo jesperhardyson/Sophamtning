@@ -147,6 +147,24 @@ enum HouseholdRecords {
         }
     }
 
+    /// De som har bjudits in men inte svarat än. Den som tackat nej eller tagits bort är inte med.
+    static func invitees(of share: CKShare) -> [HouseholdInvitee] {
+        share.participants
+            .filter { $0.role != .owner && $0.acceptanceStatus == .pending }
+            .map { participant in
+                let identity = participant.userIdentity
+                let formatted = identity.nameComponents.map { components -> String in
+                    let formatter = PersonNameComponentsFormatter()
+                    formatter.style = .short
+                    return formatter.string(from: components)
+                }
+                let name = [formatted, identity.lookupInfo?.emailAddress, identity.lookupInfo?.phoneNumber]
+                    .compactMap { $0 }
+                    .first { !$0.isEmpty }
+                return HouseholdInvitee(name: name)
+            }
+    }
+
     /// Ägarens namn, för texten om att ägarens iCloud är fullt.
     static func ownerName(of share: CKShare?) -> String {
         guard let owner = share?.participants.first(where: { $0.role == .owner }) else { return "Ägaren" }

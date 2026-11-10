@@ -5,6 +5,15 @@ public enum HouseholdRole: String, Codable, Sendable {
     case none, owner, member
 }
 
+/// Någon som har bjudits in till hushållet men inte svarat än. `name` är det iOS vet om personen, eller `nil`.
+public struct HouseholdInvitee: Hashable, Codable, Sendable {
+    public var name: String?
+
+    public init(name: String?) {
+        self.name = name
+    }
+}
+
 public struct HouseholdParticipant: Hashable, Codable, Sendable {
     public var id: String
     public var name: String
@@ -64,8 +73,10 @@ public struct HouseholdState: Hashable, Codable, Sendable {
     public var myName: String?
     /// Mitt förnamn från Apple-kontot, när iOS vet det. Fyller i fältet Ditt namn.
     public var suggestedName: String?
+    /// De som har bjudits in men inte svarat än. Bara ägaren ser dem.
+    public var invited: [HouseholdInvitee]
 
-    public init(role: HouseholdRole, myId: String?, participants: [HouseholdParticipant], addresses: [HouseholdAddress], marks: [HouseholdMark], status: HouseholdStatus, myName: String? = nil, suggestedName: String? = nil) {
+    public init(role: HouseholdRole, myId: String?, participants: [HouseholdParticipant], addresses: [HouseholdAddress], marks: [HouseholdMark], status: HouseholdStatus, myName: String? = nil, suggestedName: String? = nil, invited: [HouseholdInvitee] = []) {
         self.role = role
         self.myId = myId
         self.participants = participants
@@ -74,6 +85,25 @@ public struct HouseholdState: Hashable, Codable, Sendable {
         self.status = status
         self.myName = myName
         self.suggestedName = suggestedName
+        self.invited = invited
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case role, myId, participants, addresses, marks, status, myName, suggestedName, invited
+    }
+
+    /// En fil från en äldre version saknar `invited`, och då finns inga inbjudna.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        role = try container.decode(HouseholdRole.self, forKey: .role)
+        myId = try container.decodeIfPresent(String.self, forKey: .myId)
+        participants = try container.decode([HouseholdParticipant].self, forKey: .participants)
+        addresses = try container.decode([HouseholdAddress].self, forKey: .addresses)
+        marks = try container.decode([HouseholdMark].self, forKey: .marks)
+        status = try container.decode(HouseholdStatus.self, forKey: .status)
+        myName = try container.decodeIfPresent(String.self, forKey: .myName)
+        suggestedName = try container.decodeIfPresent(String.self, forKey: .suggestedName)
+        invited = try container.decodeIfPresent([HouseholdInvitee].self, forKey: .invited) ?? []
     }
 
     /// Inget hushåll: ingen roll, inget innehåll och inga fel.
@@ -96,6 +126,10 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
     public var knownParticipants: Set<String>?
     /// Namnen i raden "{namn} gick med i hushållet", tills arket Hushåll har öppnats eller raden stängts.
     public var joinedNames: [String]
+    /// Namnen i raden "{namn} är inte längre med i hushållet", tills arket Hushåll har öppnats eller raden stängts.
+    public var leftNames: [String]
+    /// Senast kända namn per deltagare, så att raden kan säga vem som inte längre är med.
+    public var participantNames: [String: String]
 
     public init(
         silenceWhenOthersPlaceOut: Bool = true,
@@ -104,7 +138,9 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         notifiedMarks: Set<PlacedOut> = [],
         knownParticipants: Set<String>? = nil,
         joinedNames: [String] = [],
-        myName: String? = nil
+        myName: String? = nil,
+        leftNames: [String] = [],
+        participantNames: [String: String] = [:]
     ) {
         self.myName = myName
         self.silenceWhenOthersPlaceOut = silenceWhenOthersPlaceOut
@@ -113,6 +149,8 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         self.notifiedMarks = notifiedMarks
         self.knownParticipants = knownParticipants
         self.joinedNames = joinedNames
+        self.leftNames = leftNames
+        self.participantNames = participantNames
     }
 
     public init(from decoder: any Decoder) throws {
@@ -124,5 +162,7 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         knownParticipants = try container.decodeIfPresent(Set<String>.self, forKey: .knownParticipants)
         joinedNames = try container.decodeIfPresent([String].self, forKey: .joinedNames) ?? []
         myName = try container.decodeIfPresent(String.self, forKey: .myName)
+        leftNames = try container.decodeIfPresent([String].self, forKey: .leftNames) ?? []
+        participantNames = try container.decodeIfPresent([String: String].self, forKey: .participantNames) ?? [:]
     }
 }
