@@ -81,7 +81,7 @@ struct HouseholdSheet: View {
             .onDisappear {
                 saveName()
                 model.clearHouseholdNotice()
-                model.clearJoinedNotice()
+                model.clearMembersNotice()
                 invitation.active = false
             }
         }
@@ -97,12 +97,12 @@ struct HouseholdSheet: View {
         let duplicate = model.householdNotice != nil && model.householdNotice == status
         let notice = duplicate && household.status == .failed ? nil : model.householdNotice
         let shownStatus = duplicate && household.status != .failed ? nil : status
-        if notice != nil || shownStatus != nil || model.householdJoinedText != nil {
+        if notice != nil || shownStatus != nil || model.householdMembersText != nil {
             VStack(alignment: .leading, spacing: 12) {
                 if let notice {
                     MessageCard(style: .neutral, icon: "person.2", title: HouseholdTexts.title, message: notice)
                 }
-                if let joined = model.householdJoinedText {
+                if let joined = model.householdMembersText {
                     MessageCard(style: .neutral, icon: "person.badge.plus", title: HouseholdTexts.title, message: joined)
                 }
                 if let shownStatus {

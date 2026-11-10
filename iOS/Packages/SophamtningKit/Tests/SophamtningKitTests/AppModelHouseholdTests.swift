@@ -32,6 +32,7 @@ private final class FakeScheduler: NotificationScheduling, @unchecked Sendable {
     private var store: [String: PlannedNotification] = [:]
     private var calls = 0
     private var deliveries: [(identifier: String, body: String)] = []
+    private var deliveredTitles: [String] = []
 
     func authorization() async -> NotificationAuthorization { .authorized }
     func requestAuthorization() async -> Bool { true }
@@ -48,10 +49,11 @@ private final class FakeScheduler: NotificationScheduling, @unchecked Sendable {
     func cancel(identifiers: [String]) async {
         lock.withLock { for id in identifiers { store[id] = nil } }
     }
-    func deliverNow(identifier: String, body: String) async {
-        lock.withLock { deliveries.append((identifier, body)) }
+    func deliverNow(identifier: String, title: String, body: String) async {
+        lock.withLock { deliveries.append((identifier, body)); deliveredTitles.append(title) }
     }
-    func resetCalls() { lock.withLock { calls = 0; deliveries = [] } }
+    func resetCalls() { lock.withLock { calls = 0; deliveries = []; deliveredTitles = [] } }
+    var titles: [String] { lock.withLock { deliveredTitles } }
     var scheduleCalls: Int { lock.withLock { calls } }
     var delivered: [(identifier: String, body: String)] { lock.withLock { deliveries } }
     func hasPending(for date: String) -> Bool { lock.withLock { store.values.contains { $0.pickupDate.iso == date } } }
@@ -323,6 +325,7 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     }
 
     #expect(scheduler.delivered.map(\.body) == ["Kim ställde ut kärlen för Storgatan 3"])
+    #expect(scheduler.titles == ["Kärlen är utställda"])
     #expect(scheduler.delivered.map(\.identifier) == ["hushall.\(storgatan.fileName).2026-11-11"])
     #expect(model.householdPreferences.notifiedMarks == [PlacedOut(key: storgatan, date: tomorrow)])
 
@@ -607,27 +610,27 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     #expect(await model.setNotifyWhenOthersPlaceOut(true) == .granted)
     await settle(model) { model.startHousehold() }
     // Kim fanns redan när hushållet sågs första gången.
-    #expect(model.householdJoinedText == nil)
+    #expect(model.householdMembersText == nil)
     #expect(scheduler.delivered.isEmpty)
 
     await settle(model) { sync.simulateRemote { $0.participants.append(sofie) } }
 
-    #expect(model.householdJoinedText == "Sofie gick med i hushållet")
+    #expect(model.householdMembersText == "Sofie gick med i hushållet")
     #expect(scheduler.delivered.map(\.body) == ["Sofie gick med i hushållet"])
     #expect(scheduler.delivered.map(\.identifier) == ["hushall.deltagare.sofie"])
 
     // Samma läge igen ger ingen ny notis, och raden står kvar tills den har setts.
     await settle(model) { await sync.fetchChanges() }
     #expect(scheduler.delivered.count == 1)
-    #expect(model.householdJoinedText == "Sofie gick med i hushållet")
+    #expect(model.householdMembersText == "Sofie gick med i hushållet")
 
     // Raden finns kvar efter en omstart.
     #expect(LocalStore(directory: temp.url).householdPreferences().joinedNames == ["Sofie"])
 
-    model.clearJoinedNotice()
-    #expect(model.householdJoinedText == nil)
+    model.clearMembersNotice()
+    #expect(model.householdMembersText == nil)
     await settle(model) { await sync.fetchChanges() }
-    #expect(model.householdJoinedText == nil)
+    #expect(model.householdMembersText == nil)
     #expect(scheduler.delivered.count == 1)
 }
 
@@ -640,7 +643,7 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
 
     await settle(model) { sync.simulateRemote { $0.participants.append(sofie) } }
 
-    #expect(model.householdJoinedText == "Sofie gick med i hushållet")
+    #expect(model.householdMembersText == "Sofie gick med i hushållet")
     #expect(scheduler.delivered.isEmpty)
 }
 
@@ -655,7 +658,7 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     await model.leaveHousehold()
 
     #expect(model.householdPreferences.knownParticipants == nil)
-    #expect(model.householdJoinedText == nil)
+    #expect(model.householdMembersText == nil)
 }
 
 @Test @MainActor func inbjudanOpnarArketMedValkomst() async throws {
@@ -671,7 +674,7 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     #expect(model.householdSheetRequested)
     #expect(model.householdNotice == "Du är med i Kims hushåll. Adresser som delas visas på hemskärmen.")
     // Kim var med redan när jag gick med och är inte ny.
-    #expect(model.householdJoinedText == nil)
+    #expect(model.householdMembersText == nil)
 
     model.householdSheetShown()
     #expect(!model.householdSheetRequested)
@@ -814,3 +817,70 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     // Ett förslag är inget sparat namn.
     #expect(model.householdNameMissing)
 }
+
+// MARK: Deltagare som inte längre är med
+
+@Test @MainActor func deltagareSomLamnarGerRadOchNotis() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    #expect(await model.setNotifyWhenOthersPlaceOut(true) == .granted)
+    await settle(model) { model.startHousehold() }
+
+    await settle(model) { sync.simulateRemote { $0.participants.removeAll { $0.id == "kim" } } }
+
+    #expect(model.householdMembersText == "Kim är inte längre med i hushållet")
+    #expect(scheduler.delivered.map(\.body) == ["Kim är inte längre med i hushållet"])
+    #expect(scheduler.titles == ["Hushållet"])
+
+    // Raden finns kvar efter en omstart, och försvinner när den har setts.
+    #expect(LocalStore(directory: temp.url).householdPreferences().leftNames == ["Kim"])
+    model.clearMembersNotice()
+    #expect(model.householdMembersText == nil)
+}
+
+@Test @MainActor func nyOchLamnadVisasEfterVarandra() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    await settle(model) { sync.simulateRemote { state in
+        state.participants.removeAll { $0.id == "kim" }
+        state.participants.append(sofie)
+    } }
+
+    #expect(model.householdMembersText == "Sofie gick med i hushållet. Kim är inte längre med i hushållet")
+}
+
+@Test @MainActor func deltagarlistanUtanMigGerIngenRad() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    #expect(await model.setNotifyWhenOthersPlaceOut(true) == .granted)
+    await settle(model) { model.startHousehold() }
+
+    // Delningen är inte hämtad, så listan är tom. Ingen har lämnat.
+    await settle(model) { sync.simulateRemote { $0.participants = [] } }
+    #expect(model.householdMembersText == nil)
+    #expect(scheduler.delivered.isEmpty)
+
+    // När listan kommer tillbaka är ingen ny heller.
+    await settle(model) { sync.simulateRemote { $0 = householdState() } }
+    #expect(model.householdMembersText == nil)
+}
+
+@Test @MainActor func jagSjalvLamnarGerIngenRad() async throws {
+    let temp = TempDir()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+
+    await model.leaveHousehold()
+
+    #expect(model.householdMembersText == nil)
+    #expect(model.householdPreferences.leftNames.isEmpty)
+}
+

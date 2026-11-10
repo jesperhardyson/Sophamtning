@@ -24,6 +24,14 @@ public enum HouseholdLogic {
         return participants.filter { $0.id != myId && !known.contains($0.id) }
     }
 
+    /// Id:n för deltagare som var kända men inte längre är med. Saknar listan mig är delningen inte hämtad, och då har
+    /// ingen lämnat.
+    public static func departedParticipants(_ participants: [HouseholdParticipant], known: Set<String>?, myId: String?) -> [String] {
+        guard let known, let myId, participants.contains(where: { $0.id == myId }) else { return [] }
+        let current = Set(participants.map(\.id))
+        return known.subtracting(current).subtracting([myId]).sorted()
+    }
+
     /// Bockar vars hämtdatum har passerat. Bocken gäller hela hämtdagen och förbrukas dagen efter.
     public static func expired(_ marks: [HouseholdMark], today: DayDate) -> [HouseholdMark] {
         marks.filter { $0.placedOut.date < today }

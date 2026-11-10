@@ -53,9 +53,9 @@ struct NotificationScheduler: NotificationScheduling {
 
     /// Visar notisen direkt, utan utlösare. Identifieraren känns inte igen av `NotificationDiff.isOwn`, så planeringen rör den aldrig.
     /// Ett fel tas inte om: notisen gäller bara just nu.
-    func deliverNow(identifier: String, body: String) async {
+    func deliverNow(identifier: String, title: String, body: String) async {
         let content = UNMutableNotificationContent()
-        content.title = "Utställt"
+        content.title = title
         content.body = body
         content.sound = .default
         try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))

@@ -64,7 +64,7 @@ private final class FakeScheduler: NotificationScheduling, @unchecked Sendable {
             for id in identifiers { store[id] = nil }
         }
     }
-    func deliverNow(identifier: String, body: String) async {}
+    func deliverNow(identifier: String, title: String, body: String) async {}
     func setStatus(_ new: NotificationAuthorization) { lock.withLock { status = new } }
     func failAll(_ on: Bool, ids: [String]) { lock.withLock { failing = on ? Set(ids) : [] } }
     func resetCalls() { lock.withLock { cancelled = []; scheduleCalls = 0 } }

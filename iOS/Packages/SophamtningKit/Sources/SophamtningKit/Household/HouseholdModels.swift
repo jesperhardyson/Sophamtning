@@ -126,6 +126,10 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
     public var knownParticipants: Set<String>?
     /// Namnen i raden "{namn} gick med i hushållet", tills arket Hushåll har öppnats eller raden stängts.
     public var joinedNames: [String]
+    /// Namnen i raden "{namn} är inte längre med i hushållet", tills arket Hushåll har öppnats eller raden stängts.
+    public var leftNames: [String]
+    /// Senast kända namn per deltagare, så att raden kan säga vem som inte längre är med.
+    public var participantNames: [String: String]
 
     public init(
         silenceWhenOthersPlaceOut: Bool = true,
@@ -134,7 +138,9 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         notifiedMarks: Set<PlacedOut> = [],
         knownParticipants: Set<String>? = nil,
         joinedNames: [String] = [],
-        myName: String? = nil
+        myName: String? = nil,
+        leftNames: [String] = [],
+        participantNames: [String: String] = [:]
     ) {
         self.myName = myName
         self.silenceWhenOthersPlaceOut = silenceWhenOthersPlaceOut
@@ -143,6 +149,8 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         self.notifiedMarks = notifiedMarks
         self.knownParticipants = knownParticipants
         self.joinedNames = joinedNames
+        self.leftNames = leftNames
+        self.participantNames = participantNames
     }
 
     public init(from decoder: any Decoder) throws {
@@ -154,5 +162,7 @@ public struct HouseholdPreferences: Hashable, Codable, Sendable {
         knownParticipants = try container.decodeIfPresent(Set<String>.self, forKey: .knownParticipants)
         joinedNames = try container.decodeIfPresent([String].self, forKey: .joinedNames) ?? []
         myName = try container.decodeIfPresent(String.self, forKey: .myName)
+        leftNames = try container.decodeIfPresent([String].self, forKey: .leftNames) ?? []
+        participantNames = try container.decodeIfPresent([String: String].self, forKey: .participantNames) ?? [:]
     }
 }

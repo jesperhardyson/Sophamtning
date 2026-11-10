@@ -57,10 +57,12 @@ extension AppModel {
         widgetReloader()
     }
 
-    /// Raden "{namn} gick med i hushållet", eller `nil`.
-    public var householdJoinedText: String? {
-        let names = householdPreferences.joinedNames
-        return names.isEmpty ? nil : HouseholdTexts.joined(names)
+    /// Raden "{namn} gick med i hushållet" och "{namn} är inte längre med i hushållet", efter varandra, eller `nil`.
+    public var householdMembersText: String? {
+        let joined = householdPreferences.joinedNames
+        let left = householdPreferences.leftNames
+        let parts = [joined.isEmpty ? nil : HouseholdTexts.joined(joined), left.isEmpty ? nil : HouseholdTexts.left(left)].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: ". ")
     }
 
     // MARK: Mitt namn
@@ -110,10 +112,11 @@ extension AppModel {
         }
     }
 
-    /// Raden om nya deltagare har setts i arket Hushåll eller stängts på hemskärmen.
-    public func clearJoinedNotice() {
-        guard !householdPreferences.joinedNames.isEmpty else { return }
+    /// Raden om vem som gått med eller inte längre är med har setts i arket Hushåll eller stängts på hemskärmen.
+    public func clearMembersNotice() {
+        guard !householdPreferences.joinedNames.isEmpty || !householdPreferences.leftNames.isEmpty else { return }
         householdPreferences.joinedNames = []
+        householdPreferences.leftNames = []
         saveHouseholdPreferences()
     }
 
@@ -123,6 +126,8 @@ extension AppModel {
         // Deltagarna som redan är med när jag går med är inte nya.
         householdPreferences.knownParticipants = nil
         householdPreferences.joinedNames = []
+        householdPreferences.leftNames = []
+        householdPreferences.participantNames = [:]
         saveHouseholdPreferences()
     }
 
@@ -284,11 +289,13 @@ extension AppModel {
             householdCacheKnown = true
         }
         sentHouseholdMarks = []
-        if !householdPreferences.receivedKeys.isEmpty || householdPreferences.knownParticipants != nil || !householdPreferences.joinedNames.isEmpty {
+        if !householdPreferences.receivedKeys.isEmpty || householdPreferences.knownParticipants != nil || !householdPreferences.joinedNames.isEmpty || !householdPreferences.leftNames.isEmpty {
             householdPreferences.receivedKeys = []
             // Ett nytt hushåll börjar utan kända deltagare, så att ingen räknas som ny när jag går med.
             householdPreferences.knownParticipants = nil
             householdPreferences.joinedNames = []
+            householdPreferences.leftNames = []
+            householdPreferences.participantNames = [:]
             saveHouseholdPreferences()
         }
         if wasMember { householdNotice = HouseholdTexts.leftNote }
@@ -349,27 +356,45 @@ extension AppModel {
             let name = state.participants.first { $0.id == mark.by }?.name ?? "Någon"
             await scheduler.deliverNow(
                 identifier: Self.householdNotificationId(mark.placedOut),
+                title: HouseholdTexts.placedOutNotificationTitle,
                 body: HouseholdTexts.othersPlacedOutNotification(name: name, address: addressName)
             )
         }
         saveHouseholdPreferences()
     }
 
-    /// Deltagare som gått med sedan förra synkade läget ger raden på hemskärmen och i arket, och en notis när valet är på.
+    /// Deltagare som gått med eller inte längre är med sedan förra synkade läget ger raden på hemskärmen och i arket,
+    /// och en notis när valet är på.
     /// Första gången hushållet ses, när jag själv gått med eller hämtar på nytt, blir deltagarna kända utan rad.
     private func noticeNewParticipants(in state: HouseholdState) async {
         guard Self.isMember(state) else { return }
-        let fresh = HouseholdLogic.newParticipants(state.participants, known: householdPreferences.knownParticipants, myId: state.myId)
+        let known = householdPreferences.knownParticipants
+        let fresh = HouseholdLogic.newParticipants(state.participants, known: known, myId: state.myId)
+        let departed = HouseholdLogic.departedParticipants(state.participants, known: known, myId: state.myId)
+        // Saknar listan mig är delningen inte hämtad. Då står de kända deltagarna kvar, så att ingen räknas som ny sedan.
+        guard state.participants.contains(where: { $0.id == state.myId }) else { return }
         let ids = Set(state.participants.map(\.id))
-        guard householdPreferences.knownParticipants != ids || !fresh.isEmpty else { return }
+        let names = Dictionary(state.participants.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        let departedNames = departed.map { householdPreferences.participantNames[$0] ?? "Någon" }
+        guard known != ids || !fresh.isEmpty || householdPreferences.participantNames != names else { return }
         householdPreferences.knownParticipants = ids
+        householdPreferences.participantNames = names
         householdPreferences.joinedNames += fresh.map(\.name).filter { !householdPreferences.joinedNames.contains($0) }
+        householdPreferences.leftNames += departedNames.filter { !householdPreferences.leftNames.contains($0) }
         saveHouseholdPreferences()
-        guard !fresh.isEmpty, householdPreferences.notifyWhenOthersPlaceOut, await scheduler.authorization() == .authorized else { return }
+        guard !fresh.isEmpty || !departed.isEmpty, householdPreferences.notifyWhenOthersPlaceOut, await scheduler.authorization() == .authorized else { return }
         for participant in fresh {
             await scheduler.deliverNow(
                 identifier: "hushall.deltagare.\(participant.id)",
+                title: HouseholdTexts.membersNotificationTitle,
                 body: HouseholdTexts.joined([participant.name])
+            )
+        }
+        for (id, name) in zip(departed, departedNames) {
+            await scheduler.deliverNow(
+                identifier: "hushall.lamnade.\(id)",
+                title: HouseholdTexts.membersNotificationTitle,
+                body: HouseholdTexts.left([name])
             )
         }
     }

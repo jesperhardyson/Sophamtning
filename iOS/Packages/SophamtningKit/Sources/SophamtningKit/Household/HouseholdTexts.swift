@@ -62,6 +62,16 @@ public enum HouseholdTexts {
         "\(list(names)) gick med i hushållet"
     }
 
+    /// Raden när någon har lämnat hushållet eller tagits bort.
+    public static func left(_ names: [String]) -> String {
+        "\(list(names)) är inte längre med i hushållet"
+    }
+
+    /// Rubriken på notisen om att någon annan har ställt ut kärlen.
+    public static let placedOutNotificationTitle = "Kärlen är utställda"
+    /// Rubriken på notiserna om vem som är med i hushållet.
+    public static let membersNotificationTitle = "Hushållet"
+
     /// Raden i arket Hushåll när jag just har gått med via en inbjudan.
     public static func welcome(ownerName: String) -> String {
         "Du är med i \(genitive(ownerName)) hushåll. Adresser som delas visas på hemskärmen."

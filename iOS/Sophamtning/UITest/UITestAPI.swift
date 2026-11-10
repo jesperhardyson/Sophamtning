@@ -200,6 +200,6 @@ actor UITestNotifications: NotificationScheduling {
         planned.removeAll { identifiers.contains($0.identifier) }
     }
 
-    func deliverNow(identifier: String, body: String) async {}
+    func deliverNow(identifier: String, title: String, body: String) async {}
 }
 #endif
