@@ -97,6 +97,8 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
         audit("adress-ovre")
         app.swipeUp()
+        // Påminnelserna och länken Öppna Inställningar helt synliga, oavsett hur långt svepet landade.
+        bringFullyIntoView(app.buttons["Öppna Inställningar"].firstMatch)
         audit("adress-mitt")
         app.swipeUp()
         app.swipeUp()
@@ -161,6 +163,8 @@ final class AccessibilityAuditTests: XCTestCase {
         let pending = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Utställt av dig")).firstMatch
         XCTAssertTrue(pending.waitForExistence(timeout: 20))
         scrollTo(app.buttons["Ångra"])
+        // Hela raden med bocken, klockan och Ångra under navigeringsfältet.
+        bringFullyIntoView(pending)
         audit("hushall-hem-vantar")
         app.swipeDown()
         app.swipeDown()
@@ -188,6 +192,35 @@ final class AccessibilityAuditTests: XCTestCase {
     /// Scrollar uppåt tills elementet går att trycka på.
     private func scrollTo(_ element: XCUIElement) {
         for _ in 0..<8 where !(element.exists && element.isHittable) { app.swipeUp() }
+    }
+
+    /// Drar innehållet långsamt, utan fart, tills elementet syns helt mellan navigeringsfältet och skärmens nederkant.
+    /// Ett svep landar olika långt beroende på innehållets höjd. Ligger en knapp eller rad då halvt utanför kanten blir
+    /// granskningen inte klar i tid (kod -56), så skärmen granskas med elementet helt synligt.
+    private func bringFullyIntoView(_ element: XCUIElement) {
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "Hittar inte \(element) i läget \(mode)")
+        let window = app.windows.firstMatch.frame
+        let navigationBar = app.navigationBars.firstMatch
+        let top = (navigationBar.exists ? navigationBar.frame.maxY : window.minY + 100) + 8
+        let bottom = window.maxY - 24
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        var frames: [CGRect] = []
+        for _ in 0..<20 {
+            let frame = element.frame
+            frames.append(frame)
+            let distance: CGFloat
+            if frame.maxY > bottom {
+                distance = -min(frame.maxY - bottom + 16, window.height * 0.35)
+            } else if frame.minY < top {
+                distance = min(top - frame.minY + 16, window.height * 0.35)
+            } else {
+                return
+            }
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: distance)), withVelocity: .slow, thenHoldForDuration: 0.3)
+        }
+        let frame = element.frame
+        if frame.minY >= top, frame.maxY <= bottom { return }
+        XCTFail("\(element) syns inte helt i läget \(mode): mellan \(top) och \(bottom), ramar \(frames + [frame])")
     }
 
     private func tap(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
