@@ -143,12 +143,14 @@ public struct AddressDetail: Equatable, Sendable {
     public let showsReminders: Bool
     /// "Tömning i morgon. Påminnelsen för i kväll har redan passerat." när notiser är på och tiden redan passerat.
     public let missedReminder: String?
+    /// Hushållets rad, för varje läge. `nil` utan hushåll.
+    public let household: HouseholdLine?
 
-    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil) -> AddressDetail {
+    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil, household: HouseholdState = .empty, ownPlacedOut: Set<PlacedOut> = []) -> AddressDetail {
         let today = StockholmClock.today(now: now)
         var asPrimary = address
         asPrimary.isPrimary = true
-        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: settings, now: now).primary!
+        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: settings, now: now, household: household, ownPlacedOut: ownPlacedOut).primary!
         let response = schedule?.response
 
         let mode: Mode
@@ -213,7 +215,8 @@ public struct AddressDetail: Equatable, Sendable {
             liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             showsReminders: showsReminders,
-            missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil
+            missedReminder: remindersOn ? missedReminder(events: response?.events ?? [], settings: settings, now: now) : nil,
+            household: entry.household
         )
     }
 

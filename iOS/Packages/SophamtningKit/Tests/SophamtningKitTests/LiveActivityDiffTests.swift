@@ -21,8 +21,8 @@ private func existing(_ id: String, key: AddressKey = home, date: DayDate = mond
     ExistingActivity(id: id, key: key, pickupDate: date, content: c, isPending: pending, start: s)
 }
 
-private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil) -> [LiveActivityAction] {
-    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent)
+private func actions(_ desired: PlannedLiveActivity?, _ list: [ExistingActivity], enabled: Bool = true, primary: AddressKey? = nil, canStart: Bool = true, now: Date = start.addingTimeInterval(-3600), todayContent: PickupActivityContent? = nil, householdMarked: Set<PlacedOut> = [], householdSilenced: Set<PlacedOut> = []) -> [LiveActivityAction] {
+    LiveActivityDiff.actions(desired: desired, existing: list, today: today, enabled: enabled, primary: primary, canStart: canStart, now: now, todayContent: todayContent, householdMarked: householdMarked, householdSilenced: householdSilenced)
 }
 
 @Test func ingenOnskadTarBortAlla() {
@@ -280,6 +280,45 @@ private func withFractions(_ count: Int, warning: String? = nil) -> PickupActivi
     #expect(withFractions(6).warningLineLimit == 1)
 }
 
+// MARK: Hushållets bockar kvällen före
+
+private let mondayMarked: Set<PlacedOut> = [PlacedOut(key: home, date: monday)]
+
+@Test func andrasBockUppdaterarPagaendeKvallenFore() {
+    // Tysta är av, så aktiviteten för måndag är fortfarande den önskade. Den visar bocken.
+    let running = existing("a", pending: false)
+    #expect(actions(plan, [running], householdMarked: mondayMarked) == [.update(id: "a", content().markedPlacedOut())])
+}
+
+@Test func andrasBockVisarVemOchNar() {
+    let running = existing("a", pending: false)
+    let detail = [PlacedOut(key: home, date: monday): "av Sofie · kl. 19:42"]
+    let result = LiveActivityDiff.actions(desired: plan, existing: [running], today: today, enabled: true, now: start.addingTimeInterval(-3600), householdMarked: mondayMarked, householdMarkDetails: detail)
+    #expect(result == [.update(id: "a", content().markedPlacedOut(detail: "av Sofie · kl. 19:42"))])
+}
+
+@Test func andrasBockStartarMedBock() {
+    let marked = PlannedLiveActivity(key: home, pickupDate: monday, start: start, startsImmediately: false, content: content().markedPlacedOut())
+    #expect(actions(plan, [], householdMarked: mondayMarked) == [.start(marked)])
+}
+
+@Test func andrasBockAvslutarPagaendeMedBock() {
+    // Tysta är på, så måndag räknas som utställd och torsdag är den önskade. Måndagens aktivitet visar bocken innan den försvinner.
+    let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: start.addingTimeInterval(3 * 86_400), startsImmediately: false, content: content(date: "Torsdag 12 november"))
+    let running = existing("a", pending: false)
+    #expect(actions(next, [running], householdMarked: mondayMarked) == [.end(id: "a", content().markedPlacedOut()), .start(next)])
+    #expect(actions(nil, [running], householdMarked: mondayMarked) == [.end(id: "a", content().markedPlacedOut())])
+}
+
+@Test func andrasBockTarBortVantandeUtanBock() {
+    // En väntande aktivitet har aldrig visats, så den tas bort direkt, som när knappen trycks.
+    #expect(actions(nil, [existing("a")], householdMarked: mondayMarked) == [.remove(id: "a")])
+}
+
+@Test func utanHushalletAvslutasIngetMedBock() {
+    #expect(actions(nil, [existing("a", pending: false)]) == [.remove(id: "a")])
+}
+
 // MARK: - Samma morgon
 
 @Test func bytTillMorgonErsätterVäntande() {
@@ -293,4 +332,26 @@ private func withFractions(_ count: Int, warning: String? = nil) -> PickupActivi
     let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: StockholmClock.date(on: thursday, minutes: 360), startsImmediately: false, content: content())
     let running = existing("a", date: today, pending: false, start: StockholmClock.date(on: today, minutes: 360))
     #expect(actions(next, [running], primary: home, now: StockholmClock.date(on: today, minutes: 13 * 60)) == [.start(next)])
+}
+
+// MARK: Hushållets bockar samma morgon
+
+@Test func andrasBockUppdaterarPagaendeSammaMorgon() {
+    // Samma morgon gäller dagens tömning. Tysta är av, så den är fortfarande den önskade och visar bocken.
+    let morningStart = StockholmClock.date(on: today, minutes: 360)
+    let desired = PlannedLiveActivity(key: home, pickupDate: today, start: morningStart, startsImmediately: true, content: content())
+    let running = existing("a", date: today, pending: false, start: morningStart)
+    let marked: Set<PlacedOut> = [PlacedOut(key: home, date: today)]
+    #expect(actions(desired, [running], now: morningStart.addingTimeInterval(3600), householdMarked: marked) == [.update(id: "a", content().markedPlacedOut())])
+}
+
+@Test func andrasBockAvslutarDagensMedTystaPa() {
+    // Tysta är på, så dagens tömning räknas som utställd och torsdag är den önskade. Dagens aktivitet visar bocken och avslutas.
+    let morningStart = StockholmClock.date(on: today, minutes: 360)
+    let next = PlannedLiveActivity(key: home, pickupDate: thursday, start: StockholmClock.date(on: thursday, minutes: 360), startsImmediately: false, content: content(date: "Torsdag 12 november"))
+    let running = existing("a", date: today, pending: false, start: morningStart)
+    let marked: Set<PlacedOut> = [PlacedOut(key: home, date: today)]
+    #expect(actions(next, [running], primary: home, now: morningStart.addingTimeInterval(3600), householdMarked: marked, householdSilenced: marked) == [.end(id: "a", content().markedPlacedOut()), .start(next)])
+    // Utan tystnad lever den kvar som förut, med bocken.
+    #expect(actions(next, [running], primary: home, now: morningStart.addingTimeInterval(3600), todayContent: content().markedPlacedOut(), householdMarked: marked) == [.update(id: "a", content().markedPlacedOut()), .start(next)])
 }

@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var sources: [Source]?
     @State private var sourcesLoading = true
     @State private var link: WebLink?
+    @State private var showsHousehold = false
 
     private var sourceCount: Int? { sources.map { $0.filter { !$0.testData }.count } }
 
@@ -35,6 +36,7 @@ struct SettingsView: View {
                             .padding(.top, 8)
                         }
                         reminders
+                        household
                         about
                         MessageCard(
                             style: .neutral,
@@ -65,6 +67,15 @@ struct SettingsView: View {
             }
             .task { await loadSources() }
             .inAppBrowser(item: $link)
+            // Efter en accepterad inbjudan öppnas arket Hushåll här, ovanpå Inställningar.
+            .onChange(of: model.householdSheetRequested, initial: true) { _, requested in
+                guard requested else { return }
+                model.householdSheetShown()
+                showsHousehold = true
+            }
+            .sheet(isPresented: $showsHousehold) {
+                HouseholdSheet(model: model)
+            }
         }
     }
 
@@ -105,6 +116,27 @@ struct SettingsView: View {
                 .foregroundStyle(Color.Theme.text2)
                 .padding(.top, 16)
         }
+    }
+
+    /// Raden Hushåll, som öppnar arket. Med hushåll står antalet deltagare som värde.
+    private var household: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            heading(HouseholdTexts.sharingHeading)
+            VStack(spacing: 0) {
+                Button { showsHousehold = true } label: {
+                    SettingsRow(title: HouseholdTexts.title, value: householdValue)
+                }
+            }
+            .buttonStyle(.pressable)
+            .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+        }
+    }
+
+    private var householdValue: String {
+        let household = model.household
+        guard household.role != .none, household.status != .removed else { return "" }
+        return HouseholdTexts.participantCount(household.participants.count)
     }
 
     private var about: some View {

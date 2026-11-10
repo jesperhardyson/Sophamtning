@@ -48,7 +48,7 @@ private func schedule(_ events: [PickupEvent]) -> CachedSchedule {
     #expect(ReminderTiming.eveningBefore.settingsValue(minutes: 1080) == "Kvällen före, 18:00")
     #expect(ReminderTiming.sameMorning.settingsValue(minutes: 360) == "Samma morgon, 06:00")
     #expect(ReminderTiming.eveningBefore.settingsFooter == "Påminnelsen kommer kvällen före, mellan 15:00 och 23:00. En Live Activity försvinner senast 12 timmar efter starten, så en sen tid håller den kvar längre på morgonen. Notiser väljer du per adress.")
-    #expect(ReminderTiming.sameMorning.settingsFooter == "Påminnelsen kommer samma morgon som tömningen, mellan 05:00 och 09:00. En Live Activity syns tills du trycker Utställt, eller i högst 12 timmar. Notiser väljer du per adress.")
+    #expect(ReminderTiming.sameMorning.settingsFooter == "Påminnelsen kommer samma morgon som tömningen, mellan 05:00 och 09:00. En Live Activity syns tills du trycker Klart, eller i högst 12 timmar. Notiser väljer du per adress.")
 }
 
 @Test func radenUnderReglagetPåMorgonen() {

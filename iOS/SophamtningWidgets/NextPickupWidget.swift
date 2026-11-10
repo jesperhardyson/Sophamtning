@@ -12,6 +12,10 @@ struct NextPickupEntry: TimelineEntry {
     let fractionInfo: [String: FractionInfo]
     /// "Schemat slutar 10 jan" när schemat tar slut inom 14 dagar.
     var scheduleEnding: ScheduleEnding?
+    /// Någon i hushållet har ställt ut kärlen för nästa tömning.
+    var placedOut = false
+    /// "av Sofie" eller "av dig", när det är känt vem som ställde ut.
+    var placedOutBy: String?
 
     func info(for id: String) -> FractionInfo {
         ScheduleLogic.displayInfo(for: id, in: fractionInfo)
@@ -50,10 +54,10 @@ struct NextPickupProvider: TimelineProvider {
 
     private func entries(data: WidgetData, now: Date) -> [NextPickupEntry] {
         if data.reloadDate(after: now) != nil {
-            return [NextPickupEntry(date: now, content: data.content(at: now), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: now))]
+            return [NextPickupEntry(date: now, content: data.content(at: now), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: now), placedOut: data.placedOut(at: now), placedOutBy: data.placedOutBy(at: now))]
         }
         return WidgetContent.timelineDates(from: now, days: Self.days).map {
-            NextPickupEntry(date: $0, content: data.content(at: $0), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: $0))
+            NextPickupEntry(date: $0, content: data.content(at: $0), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: $0), placedOut: data.placedOut(at: $0), placedOutBy: data.placedOutBy(at: $0))
         }
     }
 }
@@ -125,7 +129,7 @@ private func spokenSummary(name: String, relative: String, shortDate: String, fr
     let later = fractions.dropFirst(firstDay(fractions).count).map {
         "\(entry.info(for: $0.fraction).name) \(WidgetContent.rowDate($0))"
     }
-    return ([name, "\(capitalized(relative)), \(shortDate)", today] + (later.isEmpty ? [] : ["Senare: " + later.joined(separator: ", ")]) + [entry.scheduleEnding?.spokenText].compactMap { $0 })
+    return ([name, "\(capitalized(relative)), \(shortDate)", today] + (entry.placedOut ? [[HouseholdTexts.widgetPlacedOut, entry.placedOutBy].compactMap { $0 }.joined(separator: " ")] : []) + (later.isEmpty ? [] : ["Senare: " + later.joined(separator: ", ")]) + [entry.scheduleEnding?.spokenText].compactMap { $0 })
         .joined(separator: ". ")
 }
 
@@ -140,16 +144,18 @@ private struct SmallPickup: View {
     var body: some View {
         // Raden om att schemat slutar står längst ned, men bara när den ryms. Annars utelämnas den hellre än att något
         // annat klipps.
+        // "Utställt" går före raden om schemat.
         ViewThatFits(in: .vertical) {
-            content(showsEnding: entry.scheduleEnding != nil)
-            content(showsEnding: false)
+            content(showsEnding: entry.scheduleEnding != nil, showsPlacedOut: entry.placedOut)
+            content(showsEnding: false, showsPlacedOut: entry.placedOut)
+            content(showsEnding: false, showsPlacedOut: false)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenSummary(name: name, relative: relative, shortDate: shortDate, fractions: fractions, entry: entry))
     }
 
-    private func content(showsEnding: Bool) -> some View {
+    private func content(showsEnding: Bool, showsPlacedOut: Bool) -> some View {
         let shown = firstDay(fractions)
         return VStack(alignment: .leading, spacing: 0) {
             Text(name)
@@ -169,6 +175,10 @@ private struct SmallPickup: View {
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 6)
             icons(shown)
+            if showsPlacedOut {
+                PlacedOutLine(size: 13, by: entry.placedOutBy)
+                    .padding(.top, 6)
+            }
             if showsEnding, let ending = entry.scheduleEnding {
                 EndingLine(text: ending.shortText, size: 12)
                     .padding(.top, 6)
@@ -227,16 +237,18 @@ private struct MediumPickup: View {
     var body: some View {
         // Raden om att schemat slutar står under fraktionerna, men bara när den ryms. Annars utelämnas den hellre än att
         // något annat klipps.
+        // "Utställt" går före raden om schemat.
         ViewThatFits(in: .vertical) {
-            content(showsEnding: entry.scheduleEnding != nil)
-            content(showsEnding: false)
+            content(showsEnding: entry.scheduleEnding != nil, showsPlacedOut: entry.placedOut)
+            content(showsEnding: false, showsPlacedOut: entry.placedOut)
+            content(showsEnding: false, showsPlacedOut: false)
         }
         .frame(maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenSummary(name: name, relative: relative, shortDate: fractions.first.map { SwedishFormat.shortDate($0.date) } ?? "", fractions: fractions, entry: entry))
     }
 
-    private func content(showsEnding: Bool) -> some View {
+    private func content(showsEnding: Bool, showsPlacedOut: Bool) -> some View {
         let rows = fractions.count > Self.maxRows ? Array(fractions.prefix(Self.maxRows - 1)) : fractions
         let hidden = fractions.count - rows.count
         return HStack(alignment: .center, spacing: 16) {
@@ -265,6 +277,9 @@ private struct MediumPickup: View {
                     Text("+\(hidden) till")
                         .font(.ui(13, weight: .bold, relativeTo: .caption))
                         .foregroundStyle(Color.Theme.text2)
+                }
+                if showsPlacedOut {
+                    PlacedOutLine(size: 13, by: entry.placedOutBy)
                 }
                 if showsEnding, let ending = entry.scheduleEnding {
                     EndingLine(text: ending.shortText, size: 13)
@@ -310,6 +325,33 @@ private struct EndingLine: View {
                 .accessibilityHidden(true)
         }
         .foregroundStyle(Color.Theme.text2)
+    }
+}
+
+/// En fylld bock och "Utställda av Sofie", när någon i hushållet har ställt ut kärlen för nästa tömning. Raden är en rad
+/// hög, så att den inte tränger undan fraktionerna. Ryms inte namnet står bara "Utställda".
+private struct PlacedOutLine: View {
+    let size: CGFloat
+    let by: String?
+
+    var body: some View {
+        Label {
+            ViewThatFits(in: .horizontal) {
+                if let by {
+                    (Text(HouseholdTexts.widgetPlacedOut).font(.ui(size, weight: .heavy, relativeTo: .caption))
+                        + Text(" " + by).font(.ui(size, weight: .semibold, relativeTo: .caption)))
+                        .lineLimit(1)
+                }
+                Text(HouseholdTexts.widgetPlacedOut)
+                    .font(.ui(size, weight: .heavy, relativeTo: .caption))
+                    .lineLimit(1)
+            }
+        } icon: {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: size, weight: .semibold))
+                .accessibilityHidden(true)
+        }
+        .foregroundStyle(Color.Theme.brandText)
     }
 }
 
@@ -380,6 +422,7 @@ extension NextPickupEntry {
     /// Alla lägen, till förhandsvisningarna.
     static let previews: [(String, NextPickupEntry)] = [
         ("Nästa tömning", sample),
+        ("Utställt", NextPickupEntry(date: Date(), content: sample.content, fractionInfo: infoByFraction, placedOut: true, placedOutBy: "av Sofie")),
         ("Ensam fraktion", entry(.pickup(name: "Hemma", relative: "i morgon", shortDate: "Sön 8 nov", fractions: [pickup("plast", "2026-11-08", days: 1)]))),
         ("Beräknat datum", entry(.pickup(name: "Stugan", relative: "ca om 12 dagar", shortDate: "ca ons 18 nov", fractions: [
             pickup("rest", "2026-11-18", days: 12, estimated: true), pickup("mat", "2026-11-18", days: 12, estimated: true),

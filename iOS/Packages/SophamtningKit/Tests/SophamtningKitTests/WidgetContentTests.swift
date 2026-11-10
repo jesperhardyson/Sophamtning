@@ -317,3 +317,43 @@ private func endingSchedule(until: String?, events: [PickupEvent] = [event("2026
     #expect(old.scheduleEnding(at: now) == nil)
     guard case .pickup = old.content(at: now) else { Issue.record("Väntade kommande hämtning"); return }
 }
+
+// MARK: Hushållets bock
+
+private func household(marks: [HouseholdMark], role: HouseholdRole = .member, status: HouseholdStatus = .synced) -> HouseholdState {
+    HouseholdState(role: role, myId: "jag", participants: [], addresses: [HouseholdAddress(address: home, addedBy: "kim")], marks: marks, status: status)
+}
+
+private func mark(_ iso: String, key: AddressKey = home.key) -> HouseholdMark {
+    HouseholdMark(placedOut: PlacedOut(key: key, date: DayDate(iso)!), by: "kim", at: now, isPending: false)
+}
+
+@Test func widgetenVisarUtstalltNarHushalletHarBockatNastaTomning() throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    try store.setAddresses([home])
+    try store.setSchedule(schedule([event("2026-11-07", ["rest"]), event("2026-11-14", ["mat"])]), for: home.key)
+    try store.setHouseholdState(household(marks: [mark("2026-11-07")]))
+    let data = WidgetData.read(from: store)
+    #expect(data.placedOut(at: now))
+    // Kim finns inte bland deltagarna i det här hushållet.
+    #expect(data.placedOutBy(at: now) == "av någon")
+    // Dagen efter gäller nästa tömning, som inte är bockad.
+    #expect(!data.placedOut(at: stockholm("2026-11-08T08:00")))
+    #expect(data.placedOutBy(at: stockholm("2026-11-08T08:00")) == nil)
+}
+
+@Test func widgetenVisarInteUtstalltForEnAnnanTomningEllerUtanHushall() throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    try store.setAddresses([home, cabin])
+    try store.setSchedule(schedule([event("2026-11-07", ["rest"])]), for: home.key)
+    // Ingen fil: inget hushåll.
+    #expect(!WidgetData.read(from: store).placedOut(at: now))
+    // En bock för en annan adress.
+    try store.setHouseholdState(household(marks: [mark("2026-11-07", key: cabin.key)]))
+    #expect(!WidgetData.read(from: store).placedOut(at: now))
+    // Ingen roll: bocken räknas inte.
+    try store.setHouseholdState(household(marks: [mark("2026-11-07")], role: .none))
+    #expect(!WidgetData.read(from: store).placedOut(at: now))
+}

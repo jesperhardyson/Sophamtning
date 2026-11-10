@@ -35,6 +35,16 @@ public protocol LiveActivityScheduling: Sendable {
     func start(_ activity: PlannedLiveActivity) async throws
     func update(id: String, content: PickupActivityContent) async
     func remove(id: String) async
+    /// Visar innehållet en kort stund och avslutar sedan aktiviteten, som knappen Utställt gör.
+    func end(id: String, showing content: PickupActivityContent) async
+}
+
+extension LiveActivityScheduling {
+    /// Utan en egen avslutning uppdateras aktiviteten och tas sedan bort.
+    public func end(id: String, showing content: PickupActivityContent) async {
+        await update(id: id, content: content)
+        await remove(id: id)
+    }
 }
 
 /// Används när ingen schemaläggare angetts, till exempel i tester: inga aktiviteter finns och inga kan startas.

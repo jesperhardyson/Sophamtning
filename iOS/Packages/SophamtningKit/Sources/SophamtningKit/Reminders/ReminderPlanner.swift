@@ -90,11 +90,13 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
     public let warning: String?
     /// Sant när Utställt är tryckt. Aktiviteten visar då en bock i några sekunder innan den försvinner.
     public let placedOut: Bool
+    /// Vem och när, "av Sofie · kl. 19:42", när kärlen är utställda och det är känt. Annars visas adressen och datumet.
+    public let placedOutDetail: String?
 
     /// Längsta varning. Allt innehåll måste rymmas inom systemets 4 KB, och höjden på låsskärmen är begränsad.
     static let maxWarningLength = 200
 
-    public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?, placedOut: Bool = false) {
+    public init(addressName: String, dateText: String, shortDateText: String, fractions: [ActivityFraction], estimated: Bool, warning: String?, placedOut: Bool = false, placedOutDetail: String? = nil) {
         self.addressName = addressName
         self.dateText = dateText
         self.shortDateText = shortDateText
@@ -104,10 +106,11 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
             text.count > Self.maxWarningLength ? text.prefix(Self.maxWarningLength - 1) + "…" : text
         }
         self.placedOut = placedOut
+        self.placedOutDetail = placedOut ? placedOutDetail : nil
     }
 
     private enum CodingKeys: String, CodingKey {
-        case addressName, dateText, shortDateText, fractions, estimated, warning, placedOut
+        case addressName, dateText, shortDateText, fractions, estimated, warning, placedOut, placedOutDetail
     }
 
     /// Äldre innehåll, till exempel en schemalagd aktivitet från en tidigare version, saknar `placedOut` och får `false`.
@@ -120,11 +123,12 @@ public struct PickupActivityContent: Codable, Hashable, Sendable {
         estimated = try container.decode(Bool.self, forKey: .estimated)
         warning = try container.decodeIfPresent(String.self, forKey: .warning)
         placedOut = try container.decodeIfPresent(Bool.self, forKey: .placedOut) ?? false
+        placedOutDetail = placedOut ? try container.decodeIfPresent(String.self, forKey: .placedOutDetail) : nil
     }
 
-    /// Samma innehåll med Utställt tryckt.
-    public func markedPlacedOut() -> PickupActivityContent {
-        PickupActivityContent(addressName: addressName, dateText: dateText, shortDateText: shortDateText, fractions: fractions, estimated: estimated, warning: warning, placedOut: true)
+    /// Samma innehåll med kärlen utställda, och vem och när om det är känt.
+    public func markedPlacedOut(detail: String? = nil) -> PickupActivityContent {
+        PickupActivityContent(addressName: addressName, dateText: dateText, shortDateText: shortDateText, fractions: fractions, estimated: estimated, warning: warning, placedOut: true, placedOutDetail: detail)
     }
 }
 
@@ -283,12 +287,16 @@ public enum ReminderPlanner {
     }
 
     /// Innehållet för huvudadressens tömning ett visst datum, för en aktivitet som redan pågår. `nil` utan sådan tömning.
-    public static func activityContent(on date: DayDate, input: PlannerInput) -> PickupActivityContent? {
+    public static func activityContent(on date: DayDate, input: PlannerInput, household: HouseholdState = .empty) -> PickupActivityContent? {
         guard let primary = input.addresses.first(where: { $0.address.isPrimary }),
               let response = primary.schedule?.response,
               let pickup = pickups(in: response, today: date).first(where: { $0.date == date })
         else { return nil }
-        return content(of: pickup, address: primary.address, response: response)
+        let result = content(of: pickup, address: primary.address, response: response)
+        // Har någon i hushållet bockat för tömningen visas bocken, också när det var någon annan än jag.
+        let key = primary.address.key
+        guard household.role != .none, let mark = household.marks.first(where: { $0.placedOut == PlacedOut(key: key, date: date) }) else { return result }
+        return result.markedPlacedOut(detail: HouseholdTexts.placedOutSubtitle(mark, participants: household.participants, myId: household.myId))
     }
 
     private static func content(of pickup: Pickup, address: SavedAddress, response: AddressResponse) -> PickupActivityContent {

@@ -53,7 +53,7 @@ Animationerna är byggda och inspelade i simulatorn, men simulatorn har ingen ha
 
 ### Live Activity
 
-**Så startar du en aktivitet utan att vänta på kvällen.** Slå på **Live Activity** för huvudadressen, och ha en tömning i morgon. Ställ in påminnelsetiden på en tid som redan passerat i kväll (tidigast går tiden att sätta till 15:00, så det fungerar först efter 15:15). Öppna appen: planeraren körs och aktiviteten startas direkt. Ligger tiden framåt schemaläggs aktiviteten i stället, och startar då av sig själv vid tiden (se "Kvällar"). Aktiviteten kan bara starta när tömningen är i morgon, och den som har tryckt **Utställt** startar inte igen för samma tömning.
+**Så startar du en aktivitet utan att vänta på kvällen.** Slå på **Live Activity** för huvudadressen, och ha en tömning i morgon. Ställ in påminnelsetiden på en tid som redan passerat i kväll (tidigast går tiden att sätta till 15:00, så det fungerar först efter 15:15). Öppna appen: planeraren körs och aktiviteten startas direkt. Ligger tiden framåt schemaläggs aktiviteten i stället, och startar då av sig själv vid tiden (se "Kvällar"). Aktiviteten kan bara starta när tömningen är i morgon, och den som har tryckt **Klart** startar inte igen för samma tömning.
 
 - [ ] **15. Slå på Live Activity.** Slå på **Live Activity** för huvudadressen. Ingen tillståndsfråga från iOS visas. Specen säger i dag att ingen fråga visas. Kommer frågan **Vill du fortsätta tillåta liveaktiviteter**, notera när den kommer, eftersom specen då ska ändras. Ikonen studsar och telefonen vibrerar när valet slås på, och inte när iOS nekar.
 - [ ] **16. Avstängda i iOS.** Stäng av Live Activities för appen i iOS Inställningar. Appen visar **Live Activities är avstängda** med **Öppna Inställningar**. Valet i appen står kvar påslaget. Slå på dem i iOS igen: meddelandet försvinner.
@@ -121,13 +121,13 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 
 - [ ] **30. Schemalagd start.** Vid vald tid startar Live Activityn med appen avslutad och telefonen låst. Aktiviteten syns på låsskärmen med rätt adress, fraktioner och datum (veckodag och datum, inte **i morgon**). Noteras: tänds skärmen av sig själv, hörs ljud, känns vibration? I försöket på iOS 27 tändes skärmen inte, bara ljud och vibration. Skärmen som inte tänds är den enda oron för att påminnelsen missas.
 - [ ] **31. Inte två aviseringar.** Det kommer en avisering, inte två. Den vanliga notisen för just den tömningen kommer inte vid samma tid, eftersom den flyttats till reserven.
-- [ ] **32. Dynamic Island, på Jespers iPhone 17 Pro.** Starta aktiviteten som i punkt 30. Titta på kompakt läge när du lämnar låsskärmen: inget klipps. Håll ned på ön för det expanderade läget: knappen **Utställt** syns. Minimalt läge visas bara när ett annat program, till exempel en timer, har en aktivitet samtidigt: starta en timer och titta. Låsskärmens aktivitet på telefonens egen bredd tittar du på i samma ögonblick.
-- [ ] **33. Reservnotisen.** Gör inget, öppna inte appen, och tryck inte **Utställt**. Reservnotisen med rubriken **Har du ställt ut kärlen?** kommer 45 minuter efter starten. Tiden går att sätta till 23:00 som senast, så den senaste reserven kommer 23:45, och taket går därför inte att pröva med någon tid som tidsväljaren erbjuder. Pröva i stället 18:00 (reserv 18:45) och 23:00 (reserv 23:45, inte efter midnatt). Hemkortet säger **Reservpåminnelse kl. …** tills den kommit.
+- [ ] **32. Dynamic Island, på Jespers iPhone 17 Pro.** Starta aktiviteten som i punkt 30. Titta på kompakt läge när du lämnar låsskärmen: inget klipps. Håll ned på ön för det expanderade läget: knappen **Klart** syns. Minimalt läge visas bara när ett annat program, till exempel en timer, har en aktivitet samtidigt: starta en timer och titta. Låsskärmens aktivitet på telefonens egen bredd tittar du på i samma ögonblick.
+- [ ] **33. Reservnotisen.** Gör inget, öppna inte appen, och tryck inte **Klart**. Reservnotisen med rubriken **Har du ställt ut kärlen?** kommer 45 minuter efter starten. Tiden går att sätta till 23:00 som senast, så den senaste reserven kommer 23:45, och taket går därför inte att pröva med någon tid som tidsväljaren erbjuder. Pröva i stället 18:00 (reserv 18:45) och 23:00 (reserv 23:45, inte efter midnatt). Hemkortet säger **Reservpåminnelse kl. …** tills den kommit.
 - [ ] **34. Försvinner efter högst 12 timmar.** Aktiviteten försvinner av sig själv senast 12 timmar efter starten. Med start kl. 18:00 ska den vara borta senast 06:00, och med start 23:00 senast 11:00. Kontrollera låsskärmen kring tidpunkten. Är den kvar efter 12 timmar är det ett fel.
 
 ### Kväll 2: Utställt
 
-- [ ] **35. Utställt.** Upprepa förberedelsen. När aktiviteten startat: tryck **Utställt**. Knappen byts mot en bock och **Utställt**, och aktiviteten försvinner efter 3 sekunder. Noteras: syns bocken 3 sekunder på låsskärmen och i Dynamic Island? Apples text om `.after` nämner bara låsskärmen.
+- [ ] **35. Utställt.** Upprepa förberedelsen. När aktiviteten startat: tryck **Klart**. Rubriken byts mot en fylld bock och **Kärlen är utställda**, knappen försvinner, och aktiviteten försvinner efter 3 sekunder. Noteras: syns bocken 3 sekunder på låsskärmen och i Dynamic Island? Apples text om `.after` nämner bara låsskärmen.
 - [ ] **36. Ingen reservnotis efter Utställt.** Ingen reservnotis kommer 45 minuter senare.
 - [ ] **37. Inte igen vid öppning.** Öppna appen efteråt. Aktiviteten för samma tömning startas inte igen, och inte heller efter att appen avslutats och öppnats på nytt.
 
@@ -156,6 +156,44 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 - [ ] **44. Bakgrundsuppdatering.** Efter natten, utan att ha öppnat appen sedan kvällen: öppna adressvyn och läs **Hämtat i dag hh:mm**. Står tiden under natten eller morgonen har iOS kört bakgrundsuppdateringen. iOS bestämmer när, så noteras bara om den kom, och när. Aktivt Lågenergiläge eller avstängd bakgrundsuppdatering i iOS ger ingen körning, och det är inget fel.
 - [ ] **45. Kalenderbladet på morgonen.** Starta appen från början på morgonen efter en tömning: kalenderbladet vänds från dagens datum till nästa tömningsdag (se punkt 5). Hämtas ett nytt schema medan appen är öppen och nästa tömning byter datum, vänds bladet även då.
 - [ ] **46. Morgonen i appen.** Hemkortet visar inte längre **Live Activity visas nu** eller en gammal reservpåminnelse. Texten **Reservpåminnelse** visas bara när en reservnotis ligger framför.
+
+## Hushåll
+
+Kräver ett bygge med iCloud-behörigheten och containern `iCloud.se.hardyson.sophamtning`. Punkterna har nummer H1 och uppåt, så att de övriga hänvisningarna i listan inte ändras. CloudKit körs inte i UI-testerna, så allt nedan är ostött på riktig iCloud. Schemat skapas i Development när posterna skrivs första gången, och flyttas till Production före TestFlight (se `docs/specs/2026-11-08-release.md`).
+
+### Med ett konto
+
+iPhonen och simulatorn är inloggade med samma Apple-konto. Det räcker för det som inte kräver en andra person.
+
+- [ ] **H1. Hemkortets snabbval med VoiceOver.** Med VoiceOver på huvudkortet nås **Byt namn**, **Gör till huvudadress** (bara på en rad), **Påminn mig kvällen före**, Live Activity och **Ta bort**. Raden **Utställt** läses som ett enda element, med **Ångra** som åtgärd. **Ångra** nås inte två gånger på ett förvirrande sätt, till exempel både som eget element och som åtgärd på raden.
+- [ ] **H2. Tryck på Utställt-raden.** Ett tryck på raden **Utställt** öppnar inte adressen. **Ångra** på raden tar bort bocken.
+- [ ] **H3. Bjud in.** Inställningar, Hushåll, **Bjud in**. Delningsarket med samarbete visas, och länken går att skicka via Meddelanden. Arket och Meddelanden stängs inte av sig självt när du blir ägare. Stänger och öppnar du arket visas du som ägare.
+- [ ] **H4. Hantera medlemmar.** `UICloudSharingController` visas modalt med innehåll, och arket finns kvar när det stängts.
+- [ ] **H5. iCloud utloggat.** Logga ut ur iCloud, eller stäng av iCloud för appen. Hushållet visar **Synkar inte just nu** med det som låg i cachen kvar. Logga in igen: allt hämtas på nytt, och adresserna står kvar hela tiden tills hämtningen är klar.
+- [ ] **H6. Avbruten första hämtning.** Stäng appen (döda processen) mitt i den första hämtningen hos en medlem och starta om den utan nät. Ingen rad om att du inte längre är med visas, och adresserna står kvar. Med nät hämtas allt.
+- [ ] **H7. Motorernas tillstånd.** Starta appen utan nät två gånger efter en lyckad hämtning. Båda filerna `household-engine-*.data` finns. Saknas en börjar synken om vid varje start, och hushållet visas först efter hämtning.
+- [ ] **H8. Utställt vid hämtdatum.** Gamla `Utstallt`-poster tas bort dagen efter hämtdatumet.
+- [ ] **H9. Bakgrundsuppdatering.** Bakgrundsuppdateringen hämtar hushållet (simulera BG-tasken från Xcode).
+- [ ] **H10. Fullt iCloud.** Ägarens iCloud är fullt. Det är svårt att framkalla, så granska åtminstone texten.
+- [ ] **H11. Push i TestFlight-bygget.** `aps-environment` är `production` i TestFlight-bygget. I `project.yml` står `development`, och profilen ska sätta `production` vid export. Kontrollera i bygget som laddats ner från TestFlight.
+
+### Med två konton
+
+Kräver en andra person eller en andra telefon med ett annat Apple-konto. A bjuder in, B är medlem.
+
+- [ ] **H12. Acceptera inbjudan.** B utan hushåll öppnar länken, både med appen igång och med appen avslutad (kallstart). B blir medlem utan fråga, och båda ser varandra med namn i arket. B:s andra enheter ser också deltagarna.
+- [ ] **H13. Redan i ett hushåll.** B är redan med i ett annat hushåll och öppnar länken. Frågan **Du är redan med i ett hushåll** visas. Det gäller också när appen kallstartas från länken, och medan Inställningar eller Hushåll är öppet (frågan ligger ovanpå arket). **Avbryt** gör ingenting. **Lämna och gå med** lämnar det gamla hushållet och accepterar det nya. Öppnas en ny länk medan frågan väntar ersätter den den gamla.
+- [ ] **H14. Dela en adress.** A delar en adress: den kommer till B med hushållsikon. B slutar dela den: den försvinner hos A, om den inte var A:s egen.
+- [ ] **H15. Ställ ut kärlen.** A trycker **Ställ ut kärlen**: bocken syns hos B med A:s namn och tid, med tyst push eller när appen öppnas. **Ångra** på B tar bort bocken hos A, och A:s påminnelse kommer tillbaka.
+- [ ] **H16. Tystad påminnelse.** Med **Tysta min påminnelse när någon annan har ställt ut** på (förvalet) kommer ingen påminnelse hos B när A har ställt ut. Med valet av kommer den. **Ångra** återställer påminnelsen.
+- [ ] **H17. Samtidiga tryck.** Flygplansläge på ena telefonen, tryck **Ställ ut kärlen** på båda och slå på nätet: en bock finns kvar, den första vinner. Klockan och **skickas när nätet finns** visas medan bocken väntar.
+- [ ] **H18. Ångra och ställ ut igen.** Ångra och ställ ut igen snabbt, också offline: slutläget stämmer, alltså bocken finns om den sist ställdes ut.
+- [ ] **H19. Notis när någon ställer ut.** Med **Notis när någon ställer ut kärlen** på hos B kommer en notis per bock. Ingen notis kommer för egna bockar, och inte på samma kontos andra enhet.
+- [ ] **H20. Ta bort en medlem.** A tar bort B under **Hantera medlemmar**: B får raden om att inte längre vara med, och adresserna blir kvar. **Sluta dela** avslutar hushållet för B.
+- [ ] **H21. Lämna och avsluta.** B trycker **Lämna hushållet**: A ser B försvinna. A trycker **Avsluta hushållet**: B får raden om att hushållet är avslutat, och adresserna blir kvar.
+- [ ] **H22. Utställt från Live Activity.** A har Live Activity på för en delad huvudadress kvällen före. A trycker **Klart** i aktiviteten med appen avslutad. Bocken syns hos B med A:s namn inom några sekunder, utan att A öppnar appen. Hos A visar kortet bocken med klockan och **skickas när nätet finns** tills den har skickats, och aldrig **Ställ ut kärlen**.
+- [ ] **H23. Widgeten efter någon annans bock.** B har widgeten på hemskärmen för samma delade huvudadress. A ställer ut kärlen: B:s widget visar **Utställda** och **av** A:s namn när B:s app har fått bocken, med tyst push eller när appen öppnas. **Ångra** tar bort det i widgeten.
+- [ ] **H24. Live Activity kvällen före med någon annans bock.** B har Live Activity igång för en delad huvudadress kvällen före. A ställer ut kärlen. Med **Tysta min påminnelse när någon annan har ställt ut** av visar B:s aktivitet **Kärlen är utställda** och **av** A:s namn **· kl.** och står kvar. Med valet på visar den bocken några sekunder och försvinner sedan, som när knappen **Klart** trycks.
 
 ## När listan är körd
 

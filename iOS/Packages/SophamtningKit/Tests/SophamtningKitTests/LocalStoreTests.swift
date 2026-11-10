@@ -180,6 +180,76 @@ func giltigaPaminnelsetider(m: Int, ok: Bool) {
     if case .unreadable = store.addressesState() {} else { Issue.record("ett innehåll som inte går att tolka ska vara unreadable") }
 }
 
+// MARK: Hushåll
+
+@Test func hushalletSparasOchLasesTillbaka() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    let state = HouseholdState(
+        role: .owner,
+        myId: "jag",
+        participants: [HouseholdParticipant(id: "jag", name: "Jesper", isOwner: true)],
+        addresses: [HouseholdAddress(address: .fixture(), addedBy: "jag")],
+        marks: [HouseholdMark(placedOut: PlacedOut(key: testKey, date: DayDate("2026-11-09")!), by: "jag", at: Date(timeIntervalSince1970: 1_800_000_000), isPending: false)],
+        status: .quotaExceeded(ownerName: "Jesper")
+    )
+    try store.setHouseholdState(state)
+    guard case .value(let read) = store.householdState() else {
+        Issue.record("Hushållet gick inte att läsa")
+        return
+    }
+    #expect(read == state)
+}
+
+@Test func saknadHushallsfilArMissing() {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    guard case .missing = store.householdState() else {
+        Issue.record("Väntade .missing")
+        return
+    }
+}
+
+@Test func hushallsinstallningarSparasOchLases() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    #expect(store.householdPreferences() == HouseholdPreferences())
+    let preferences = HouseholdPreferences(silenceWhenOthersPlaceOut: false, notifyWhenOthersPlaceOut: true, receivedKeys: [testKey])
+    try store.setHouseholdPreferences(preferences)
+    #expect(store.householdPreferences() == preferences)
+}
+
+@Test func unmarkTarBortBaraDenBocken() throws {
+    let (store, _, temp) = tempStore()
+    defer { withExtendedLifetime(temp) {} }
+    let first = PlacedOut(key: testKey, date: DayDate("2026-11-09")!)
+    let second = PlacedOut(key: testKey, date: DayDate("2026-11-10")!)
+    try store.setPlacedOut([first, second])
+    try store.unmarkPlacedOut(first)
+    #expect(store.placedOut() == [second])
+}
+
+@Test func raDataSkrivsLasesOchTasBort() throws {
+    let (store, _, temp) = tempStore()
+    _ = temp
+    guard case .missing = store.rawData(named: "household-engine-private.data") else {
+        Issue.record("En fil som saknas ska läsas som saknad")
+        return
+    }
+    try store.setRawData(Data([1, 2, 3]), named: "household-engine-private.data")
+    guard case .value(let data) = store.rawData(named: "household-engine-private.data") else {
+        Issue.record("Datan ska gå att läsa")
+        return
+    }
+    #expect(data == Data([1, 2, 3]))
+    try store.removeRawData(named: "household-engine-private.data")
+    try store.removeRawData(named: "household-engine-private.data")
+    guard case .missing = store.rawData(named: "household-engine-private.data") else {
+        Issue.record("Filen ska vara borttagen")
+        return
+    }
+}
+
 @Test func installningarUtanForslagsfaltetLasesSomForut() throws {
     // Inställningar sparade före fältet `reminderOfferShown` ska läsas som de är, inte som skadade.
     let (store, dir, temp) = tempStore()

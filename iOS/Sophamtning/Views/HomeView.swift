@@ -42,7 +42,9 @@ struct HomeView: View {
             liveActivitiesEnabled: model.liveActivitiesEnabled,
             liveActivityError: model.liveActivityError,
             missedReminder: model.addresses.first(where: \.isPrimary).flatMap { model.missedReminderText(for: $0) },
-            reserveAt: model.addresses.first(where: \.isPrimary).flatMap { model.reserveNotificationDate(for: $0) }
+            reserveAt: model.addresses.first(where: \.isPrimary).flatMap { model.reserveNotificationDate(for: $0) },
+            household: model.household,
+            ownPlacedOut: model.ownPlacedOut
         )
     }
 
@@ -92,19 +94,31 @@ struct HomeView: View {
             if phase == .active {
                 model.applyReminders()
                 Task { await model.refreshAll(manual: false) }
+                // Som reserv för tyst push hämtas hushållets ändringar också när appen blir aktiv.
+                Task { await model.fetchHouseholdChanges() }
             } else if phase == .background {
                 // Bokar nästa bakgrundsuppdatering, tidigast om en timme.
                 BackgroundRefresh.schedule()
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: saves)
-        .sheet(item: $sheet, onDismiss: { replacing = nil }) { sheet in
+        // Efter en accepterad inbjudan öppnas arket Hushåll. Är Inställningar öppet öppnar den vyn arket i stället.
+        .onChange(of: model.householdSheetRequested, initial: true) { presentRequestedHousehold() }
+        .sheet(item: $sheet, onDismiss: { replacing = nil; presentRequestedHousehold() }) { sheet in
             switch sheet {
             case .settings: SettingsView(model: model, onClose: { self.sheet = nil })
+            case .household: HouseholdSheet(model: model)
             case .add: addFlow(root: .search(source: nil))
             case .kommun: addFlow(root: .kommun)
             }
         }
+    }
+
+    /// Öppnar arket Hushåll när en inbjudan har accepterats och inget annat ark är öppet.
+    private func presentRequestedHousehold() {
+        guard model.householdSheetRequested, sheet == nil else { return }
+        model.householdSheetShown()
+        sheet = .household
     }
 
     private func screen(_ content: HomeContent) -> some View {
@@ -266,14 +280,25 @@ struct HomeView: View {
                 .padding(.bottom, 16)
                 .transition(.opacity)
             }
-            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow) {
+            if let joined = model.householdJoinedText {
+                HouseholdJoinedCard(
+                    text: joined,
+                    onOpen: { sheet = .household },
+                    onClose: { withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.clearJoinedNotice() } }
+                )
+                .padding(.bottom, 16)
+                .transition(.opacity)
+            }
+            AddressQuickActions(model: model, key: primary.key, cornerRadius: 28, openRow: $openRow, actionsInContent: true) {
                 PrimaryCard(
                     entry: primary,
                     opening: opening(for: primary),
                     reminderPulse: reminderPulse,
                     onOpen: { path.append(primary.key) },
                     onReminderChange: { on in setNotifications(on, for: primary.key) },
-                    onOpenSettings: { openNotificationSettings() }
+                    onOpenSettings: { openNotificationSettings() },
+                    onPlaceOut: { Task { await model.placeOut(primary.key) } },
+                    onUndoPlaceOut: { Task { await model.undoPlaceOut(primary.key) } }
                 )
             }
             // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
@@ -468,7 +493,7 @@ private struct HomeTitle: View {
 }
 
 enum HomeSheet: String, Identifiable {
-    case settings, add, kommun
+    case settings, add, kommun, household
     var id: String { rawValue }
 }
 
@@ -557,19 +582,35 @@ private struct AddressRow: View {
         .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([entry.accessibilityLabel, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityLabel([entry.accessibilityLabel, entry.household?.sharedText, entry.rowReminder?.text].compactMap { $0 }.joined(separator: ", "))
     }
 
     private var title: some View {
-        Text(entry.title)
-            .font(.ui(22, weight: .heavy, relativeTo: .title3))
-            .foregroundStyle(Color.Theme.text)
-            .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(entry.title)
+                .font(.ui(22, weight: .heavy, relativeTo: .title3))
+                .foregroundStyle(Color.Theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
             AddressLinesView(lines: entry.lines, size: 17, addressStyle: .body)
+            // "Delas med Sofie" för en delad adress, som på huvudkortet.
+            if let shared = entry.household?.sharedText {
+                Label {
+                    Text(shared)
+                        .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                        .foregroundStyle(Color.Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Color.Theme.brandText)
+                        .accessibilityHidden(true)
+                }
+            }
             // Ett datum står i accentfärg. En lugn statustext, som "Inga kommande hämtningar", står neutralt.
             Text(entry.summary)
                 .font(.ui(16, weight: entry.summaryTone == .neutral ? .bold : .heavy, relativeTo: .callout))
@@ -632,4 +673,51 @@ private struct AddressRow: View {
 
 #Preview("Tomt") {
     HomeView(model: AppModel(api: SoporClient(version: "preview"), store: LocalStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("preview-empty"))), entrance: StartEntrance(plays: false), onEntranceFinished: {})
+}
+
+/// "Sofie gick med i hushållet" överst på hemskärmen, i samma stil som `MessageCard`. Ett tryck öppnar arket Hushåll,
+/// och krysset stänger raden. Krysset står i kortet, så att texten aldrig hamnar under det.
+private struct HouseholdJoinedCard: View {
+    let text: String
+    let onOpen: () -> Void
+    let onClose: () -> Void
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 18
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            Button(action: onOpen) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "person.2")
+                        .font(.system(size: iconSize))
+                        .foregroundStyle(Color.Theme.text)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(text)
+                            .font(.ui(15, weight: .heavy, relativeTo: .subheadline))
+                            .foregroundStyle(Color.Theme.text)
+                        Text("Tryck för att se hushållet.")
+                            .font(.ui(14, weight: .semibold, relativeTo: .footnote))
+                            .foregroundStyle(Color.Theme.text2)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(14)
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
+            }
+            .buttonStyle(.pressable)
+            .accessibilityHint("Öppnar Hushåll")
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(.footnote, weight: .bold))
+                    .foregroundStyle(Color.Theme.text2)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Stäng")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.Theme.surface2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
 }

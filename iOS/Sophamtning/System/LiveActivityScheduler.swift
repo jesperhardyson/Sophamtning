@@ -57,6 +57,14 @@ struct LiveActivityScheduler: LiveActivityScheduling {
         }
     }
 
+    /// Bocken står kvar några sekunder innan aktiviteten försvinner, som när knappen Utställt trycks.
+    func end(id: String, showing content: PickupActivityContent) async {
+        for activity in Activity<PickupActivityAttributes>.activities where activity.id == id {
+            let done = ActivityContent(state: content, staleDate: nil)
+            await activity.end(done, dismissalPolicy: .after(Date().addingTimeInterval(PlacedOutAction.checkmarkSeconds)))
+        }
+    }
+
     /// Ett okänt läge räknas som avslutat, så att notisen står kvar.
     private static func phase(of state: ActivityState) -> LiveActivityPhase {
         switch state {

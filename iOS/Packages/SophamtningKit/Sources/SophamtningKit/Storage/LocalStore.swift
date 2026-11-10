@@ -22,6 +22,8 @@ public final class LocalStore: Sendable {
     private static let placedOutFile = "placed-out.json"
     private static let shownFile = "shown-activities.json"
     private static let endedFile = "ended-activities.json"
+    private static let householdFile = "household.json"
+    private static let householdPreferencesFile = "household-preferences.json"
 
     private let directory: URL
 
@@ -92,9 +94,33 @@ public final class LocalStore: Sendable {
         }
     }
 
+    /// Tar bort en enskild post, till exempel när jag ångrar min bock. Finns den inte skrivs ingenting.
+    public func unmarkPlacedOut(_ entry: PlacedOut) throws {
+        try updateCoordinated(Self.placedOutFile) { saved in saved.filter { $0 != entry } }
+    }
+
     /// Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting.
     public func prunePlacedOut(today: DayDate) throws {
         try updateCoordinated(Self.placedOutFile) { saved in saved.filter { $0.date >= today } }
+    }
+
+    // MARK: Hushåll
+
+    /// Det senast kända hushållet. En fil som saknas är `missing`, och en som inte går att läsa är aldrig ett tomt hushåll.
+    public func householdState() -> StoreRead<HouseholdState> {
+        readState(HouseholdState.self, from: Self.householdFile)
+    }
+
+    public func setHouseholdState(_ state: HouseholdState) throws {
+        try write(state, to: Self.householdFile)
+    }
+
+    public func householdPreferences() -> HouseholdPreferences {
+        read(HouseholdPreferences.self, from: Self.householdPreferencesFile) ?? HouseholdPreferences()
+    }
+
+    public func setHouseholdPreferences(_ preferences: HouseholdPreferences) throws {
+        try write(preferences, to: Self.householdPreferencesFile)
     }
 
     // MARK: Visade och avslutade aktiviteter
@@ -128,6 +154,12 @@ public final class LocalStore: Sendable {
 
     public func clearEnded() throws {
         try updateCoordinated(Self.endedFile) { _ in [] }
+    }
+
+    /// Glömmer att tömningens aktivitet har visats eller avslutats, så att den får starta igen, till exempel efter Ångra.
+    public func forgetActivity(_ entry: PlacedOut) throws {
+        try updateCoordinated(Self.shownFile) { saved in saved.filter { $0 != entry } }
+        try updateCoordinated(Self.endedFile) { saved in saved.filter { $0 != entry } }
     }
 
     private func mark(_ entries: [PlacedOut], in file: String, today: DayDate) throws {
@@ -207,6 +239,30 @@ public final class LocalStore: Sendable {
             try FileManager.default.removeItem(at: directory.appendingPathComponent(scheduleFile(key)))
         } catch let error as CocoaError where error.code == .fileNoSuchFile {
             // Ett schema som redan saknas är inte ett fel.
+        }
+    }
+
+    // MARK: Rå data
+
+    /// En fil med data som paketet inte tolkar, till exempel tillståndet för hushållets synk. Namnet är ett filnamn i katalogen.
+    public func rawData(named name: String) -> StoreRead<Data> {
+        let url = directory.appendingPathComponent(name)
+        guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
+        guard let data = try? Data(contentsOf: url) else { return .unavailable }
+        return .value(data)
+    }
+
+    public func setRawData(_ data: Data, named name: String) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try data.write(to: directory.appendingPathComponent(name), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    /// Tar bort filen. En fil som redan saknas är inte ett fel.
+    public func removeRawData(named name: String) throws {
+        do {
+            try FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            // Redan borta.
         }
     }
 

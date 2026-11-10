@@ -47,6 +47,51 @@ final class LargestTextTests: XCTestCase {
         checkFits("hela-schemat", title: row, margin: 16)
     }
 
+    /// Hushållet: kortet med Ställ ut kärlen och bocken, reglaget i adressvyn och arket med deltagare.
+    func testStorstaTextenHushall() {
+        app.terminate()
+        app.launchArguments += ["-uitest-hushall"]
+        app.launch()
+
+        let placeOut = app.buttons["Ställ ut kärlen"]
+        XCTAssertTrue(placeOut.waitForExistence(timeout: 10), "Kortet ska ha knappen Ställ ut kärlen")
+        for _ in 0..<8 where !placeOut.isHittable { app.swipeUp() }
+        checkFits("hushall-hem", title: placeOut)
+        placeOut.tap()
+        let undo = app.buttons["Ångra"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 10))
+        for _ in 0..<8 where !undo.isHittable { app.swipeUp() }
+        let mark = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Utställt av dig, kl.")).firstMatch
+        checkFits("hushall-utstallt", title: mark)
+
+        // Adressvyn, med reglaget Dela med hushållet.
+        app.swipeDown()
+        app.swipeDown()
+        let card = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch
+        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: card)
+        wait(for: [hittable], timeout: 10)
+        card.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: card.frame.width / 2, dy: 200)).tap()
+        XCTAssertTrue(app.staticTexts["Per kärl"].waitForExistence(timeout: 10))
+        let share = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Dela med hushållet")).firstMatch
+        for _ in 0..<12 where !(share.exists && share.isHittable) { app.swipeUp() }
+        XCTAssertTrue(share.isHittable, "Reglaget Dela med hushållet ska finnas")
+        checkFits("hushall-adress", title: share, margin: 16)
+        app.buttons["BackButton"].firstMatch.tap()
+
+        // Arket Hushåll.
+        let settings = app.buttons["Inställningar"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.tap()
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hushåll")).firstMatch
+        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        row.tap()
+        let kim = app.staticTexts["Kim"]
+        XCTAssertTrue(kim.waitForExistence(timeout: 10), "Arket ska visa deltagarna")
+        checkFits("hushall-ark", title: kim, margin: 16)
+        app.swipeUp()
+        checkFits("hushall-ark-nedre", title: app.buttons["Lämna hushållet"], margin: 16)
+    }
+
     // MARK: Hjälpare
 
     /// Rubriken börjar vid marginalen, och inget element slutar till höger om fönstret.
@@ -54,11 +99,17 @@ final class LargestTextTests: XCTestCase {
         let width = app.windows.firstMatch.frame.width
         XCTAssertGreaterThanOrEqual(title.frame.minX, margin - 0.5, "\(screen): rubriken ska börja vid marginalen", file: file, line: line)
         guard let root = try? app.snapshot() else { return XCTFail("\(screen): ingen ögonblicksbild", file: file, line: line) }
-        // Systemets toning under navigeringsfältet i iOS 26 är bredare än fönstret, men är inget av appens element.
+        // Systemets toning under navigeringsfältet i iOS 26 är bredare än fönstret, men är inget av appens element. Detsamma
+        // gäller toningen bakom ett ark över ett annat ark: en tom vy utan etikett som går utanför fönstret åt alla håll.
         for element in flatten(root) where element.frame.maxX > width + 0.5 && !element.frame.isEmpty
-            && element.identifier != "AdditionalDimmingOverlay" {
+            && element.identifier != "AdditionalDimmingOverlay" && !isSheetDimming(element) {
             XCTFail("\(screen): \(element.elementType.rawValue) '\(element.label)' slutar vid \(element.frame.maxX), fönstret är \(width) brett", file: file, line: line)
         }
+    }
+
+    private func isSheetDimming(_ element: XCUIElementSnapshot) -> Bool {
+        element.elementType == .other && element.label.isEmpty && element.children.isEmpty
+            && element.frame.minX < 0 && element.frame.minY < 0
     }
 
     private func flatten(_ element: XCUIElementSnapshot) -> [XCUIElementSnapshot] {

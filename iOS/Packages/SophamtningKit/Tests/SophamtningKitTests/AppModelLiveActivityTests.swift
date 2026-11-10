@@ -37,6 +37,7 @@ private final class FakeNotifications: NotificationScheduling, @unchecked Sendab
         lock.withLock { for id in identifiers { store[id] = nil } }
         for id in identifiers { log.add("notis- \(id.suffix(10))") }
     }
+    func deliverNow(identifier: String, body: String) async {}
     var dates: [String] { lock.withLock { store.values.map(\.pickupDate.iso).sorted() } }
     /// Den väntande notisen för tömningen, om det finns någon.
     func notification(_ iso: String) -> PlannedNotification? { lock.withLock { store.values.first { $0.pickupDate.iso == iso } } }
@@ -65,6 +66,8 @@ private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable 
     var keepsRemoved = false
     private(set) var starts: [PlannedLiveActivity] = []
     private(set) var updates: [String] = []
+    /// Aktiviteter som avslutats med bocken för Utställt.
+    private(set) var endedWithPlacedOut: [String] = []
     let log: Log
 
     init(log: Log, enabled: Bool = true) { self.log = log; self.enabled = enabled }
@@ -103,6 +106,13 @@ private final class FakeActivities: LiveActivityScheduling, @unchecked Sendable 
             }
         }
         log.add("remove \(id)")
+    }
+    func end(id: String, showing content: PickupActivityContent) async {
+        lock.withLock {
+            if content.placedOut { endedWithPlacedOut.append(id) }
+            list.removeAll { $0.activity.id == id }
+        }
+        log.add("end \(id)")
     }
 
     func setFailing(_ on: Bool, with error: any Error = StartFailed()) { lock.withLock { failing = on; failure = error } }
@@ -973,6 +983,50 @@ private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_source
     #expect(f.activities.ids == [id])
 }
 
+// MARK: Hushållets bockar
+
+/// Hemma delas med Kim, som har ställt ut kärlen för måndagens tömning.
+private func kimHasPlacedOut(_ store: LocalStore, silence: Bool) throws {
+    try store.setHouseholdState(HouseholdState(
+        role: .member,
+        myId: "jag",
+        participants: [HouseholdParticipant(id: "jag", name: "Jesper", isOwner: false), HouseholdParticipant(id: "kim", name: "Kim", isOwner: true)],
+        addresses: [HouseholdAddress(address: saved(homeKey, name: "Hemma", primary: false), addedBy: "kim")],
+        marks: [HouseholdMark(placedOut: PlacedOut(key: homeKey, date: monday), by: "kim", at: sundayEvening, isPending: false)],
+        status: .synced
+    ))
+    try store.setHouseholdPreferences(HouseholdPreferences(silenceWhenOthersPlaceOut: silence))
+}
+
+@Test @MainActor func kvallenForeVisarAndrasBockMedTystaAv() async throws {
+    let f = try Fixture(now: sundayEvening)
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+    #expect(f.activities.activities.first?.content.placedOut == false)
+
+    // Kim ställer ut. Appen öppnas igen och läser hushållet.
+    try kimHasPlacedOut(f.store, silence: false)
+    await apply(f.model())
+
+    #expect(f.activities.ids == [id])
+    #expect(f.activities.activities.first?.content.placedOut == true)
+}
+
+@Test @MainActor func kvallenForeVisarAndrasBockInnanDenForsvinnerMedTystaPa() async throws {
+    let f = try Fixture(now: sundayEvening)
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+    f.log.clear()
+
+    try kimHasPlacedOut(f.store, silence: true)
+    await apply(f.model())
+
+    // Bocken visas först, som när knappen trycks, och sedan avslutas aktiviteten.
+    #expect(f.activities.endedWithPlacedOut == [id])
+    #expect(!f.activities.ids.contains(id))
+    #expect(f.notifications.notification("2026-11-09") == nil)
+}
+
 // MARK: Samma morgon
 
 @Test @MainActor func bytTillMorgonErsätterVäntandeAktivitet() async throws {
@@ -986,4 +1040,43 @@ private func reserveKvar(_ f: Fixture, sourceLocation: SourceLocation = #_source
     #expect(!f.activities.ids.contains(evening.id))
     #expect(f.activities.activities.map(\.start) == [StockholmClock.date(on: monday, minutes: 6 * 60)])
     #expect(f.activities.activities.map(\.pickupDate) == [monday])
+}
+
+/// Måndag 9 november 07:00, en timme efter morgonens påminnelse. Aktiviteten för dagens tömning visas.
+private let mondayMorning = StockholmClock.date(on: monday, minutes: 7 * 60)
+
+/// Samma morgon med påminnelsen 06:00.
+private func morningFixture() throws -> Fixture {
+    let f = try Fixture(now: mondayMorning)
+    try f.store.setSettings(ReminderSettings(timing: .sameMorning, reminderMinutes: 1080, morningMinutes: 6 * 60, liveActivityOn: true))
+    return f
+}
+
+@Test @MainActor func sammaMorgonVisarAndrasBockMedTystaAv() async throws {
+    let f = try morningFixture()
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+    #expect(f.activities.activities.first?.pickupDate == monday)
+    #expect(f.activities.activities.first?.isPending == false)
+    #expect(f.activities.activities.first?.content.placedOut == false)
+
+    try kimHasPlacedOut(f.store, silence: false)
+    await apply(f.model())
+
+    #expect(f.activities.ids == [id])
+    #expect(f.activities.activities.first?.content.placedOut == true)
+}
+
+@Test @MainActor func sammaMorgonVisarAndrasBockInnanDenForsvinnerMedTystaPa() async throws {
+    let f = try morningFixture()
+    await apply(f.model())
+    let id = try #require(f.activities.ids.first)
+
+    try kimHasPlacedOut(f.store, silence: true)
+    await apply(f.model())
+
+    // Dagens aktivitet lever annars tills Utställt, men hushållets bock avslutar den med bocken, som kvällen före.
+    #expect(f.activities.endedWithPlacedOut == [id])
+    #expect(!f.activities.ids.contains(id))
+    #expect(f.notifications.notification("2026-11-09") == nil)
 }

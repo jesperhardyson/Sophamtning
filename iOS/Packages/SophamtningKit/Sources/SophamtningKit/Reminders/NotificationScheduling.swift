@@ -42,6 +42,9 @@ public protocol NotificationScheduling: Sendable {
     /// Lägger in notiserna. En notis med samma identifierare ersätter den gamla. Svarar med identifierarna som inte gick att lägga in.
     func schedule(_ notifications: [PlannedNotification]) async -> [String]
     func cancel(identifiers: [String]) async
+    /// Visar en notis direkt, till exempel att någon i hushållet ställt ut kärlen. Identifieraren börjar med `hushall.`,
+    /// som `NotificationDiff.isOwn` inte känner igen, så att planeringen aldrig tar bort notisen.
+    func deliverNow(identifier: String, body: String) async
 }
 
 /// Används när ingen schemaläggare angetts, till exempel i tester: notiser är då alltid nekade.
@@ -52,4 +55,5 @@ public struct DisabledNotifications: NotificationScheduling {
     public func pending() async -> [PendingNotification] { [] }
     public func schedule(_ notifications: [PlannedNotification]) async -> [String] { [] }
     public func cancel(identifiers: [String]) async {}
+    public func deliverNow(identifier: String, body: String) async {}
 }

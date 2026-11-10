@@ -504,6 +504,47 @@ private func ending(_ untilDaysFromToday: Int?, events: [PickupEvent] = [event("
     #expect(result.scheduleEnding?.daysLeft == 14)
 }
 
+// MARK: Hushåll
+
+@Test func adressvynUtanHushallHarIngenRad() throws {
+    let result = detail(try schedule([event("2026-11-09", ["rest"])]))
+    #expect(result.household == nil)
+}
+
+@Test func adressvynVisarHushalletsBock() throws {
+    let at = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60 + 42)
+    let state = HouseholdState(
+        role: .member, myId: "jag",
+        participants: [HouseholdParticipant(id: "kim", name: "Kim", isOwner: true)],
+        addresses: [HouseholdAddress(address: address, addedBy: "kim")],
+        marks: [HouseholdMark(placedOut: PlacedOut(key: key, date: DayDate("2026-11-09")!), by: "kim", at: at, isPending: true)],
+        status: .synced
+    )
+    let sunday = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
+    let result = AddressDetail.make(address: address, schedule: try schedule([event("2026-11-09", ["rest"])]), settings: ReminderSettings(), sourceName: nil, now: sunday, household: state)
+    let line = try #require(result.household)
+    #expect(line.isShared)
+    #expect(!line.showsButton)
+    #expect(line.placedOutText == "Utställt av Kim, kl. 19:42")
+    #expect(line.isPending)
+}
+
+@Test func adressvynMedDeladAdressDagenForeVisarKnappen() throws {
+    let state = HouseholdState(role: .owner, myId: "jag", participants: [], addresses: [HouseholdAddress(address: address, addedBy: "jag")], marks: [], status: .synced)
+    let sunday = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 12 * 60)
+    let result = AddressDetail.make(address: address, schedule: try schedule([event("2026-11-09", ["rest"])]), settings: ReminderSettings(), sourceName: nil, now: sunday, household: state)
+    #expect(result.household?.showsButton == true)
+}
+
+@Test func adressvynHarHushallsradenAvenUtanKommandeTomning() throws {
+    var state = HouseholdState(role: .owner, myId: "jag", participants: [], addresses: [HouseholdAddress(address: address, addedBy: "jag")], marks: [], status: .notSignedIn)
+    state.role = .member
+    let result = AddressDetail.make(address: address, schedule: try schedule([]), settings: ReminderSettings(), sourceName: nil, now: noon, household: state)
+    #expect(result.mode == .noUpcoming)
+    #expect(result.household?.isShared == true)
+    #expect(result.household?.statusText == "Synkar inte just nu")
+}
+
 // MARK: Påminnelser utan hämtningar
 
 private func reminderDetail(_ schedule: CachedSchedule?, notificationsOn: Bool = false, isPrimary: Bool = true, liveActivityOn: Bool = false) -> AddressDetail {

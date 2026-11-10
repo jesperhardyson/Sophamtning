@@ -15,9 +15,14 @@ struct PrimaryCard: View {
     /// Reglaget slås på eller av. Samma flöde som i adressvyn.
     var onReminderChange: (Bool) -> Void = { _ in }
     var onOpenSettings: () -> Void = {}
+    /// Ställ ut kärlen och Ångra för en delad adress.
+    var onPlaceOut: () -> Void = {}
+    var onUndoPlaceOut: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Snabbvalen från `AddressQuickActions`, som VoiceOver-åtgärder på kortets element.
+    @Environment(\.addressActions) private var addressActions
     @State private var pressed = false
 
     private var foreground: Color { Color.Theme.onPrimary }
@@ -34,16 +39,37 @@ struct PrimaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Button(action: onOpen) { content }
-                .buttonStyle(PressReportingButtonStyle(pressed: $pressed))
-            if case .upcoming = entry.status, let reminder = entry.reminder {
-                PrimaryReminderRow(reminder: reminder, pulse: reminderPulse, onChange: { onReminderChange($0) }, onOpenSettings: { onOpenSettings() })
-                    .transition(.opacity)
+            VStack(alignment: .leading, spacing: 16) {
+                Button(action: onOpen) { content }
+                    .buttonStyle(PressReportingButtonStyle(pressed: $pressed))
+                if case .upcoming = entry.status, let reminder = entry.reminder {
+                    PrimaryReminderRow(reminder: reminder, pulse: reminderPulse, onChange: { onReminderChange($0) }, onOpenSettings: { onOpenSettings() })
+                        .transition(.opacity)
+                }
+                if entry.refreshFailed {
+                    Text("Kunde inte uppdatera schemat. Visar det senast hämtade.")
+                        .font(.ui(13, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(foreground.opacity(0.85))
+                        .transition(.opacity)
+                }
             }
-            if entry.refreshFailed {
-                Text("Kunde inte uppdatera schemat. Visar det senast hämtade.")
-                    .font(.ui(13, weight: .semibold, relativeTo: .footnote))
-                    .foregroundStyle(foreground.opacity(0.85))
+            // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist, och slås på och av med kortets
+            // åtgärder, som snabbmenyn. Hushållets knappar står utanför, så att de går att nå och trycka på.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
+            .accessibilityHint("Öppnar adressen")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { onOpen() }
+            .accessibilityActions {
+                if entry.reminder?.isDenied == true {
+                    Button("Öppna Inställningar") { onOpenSettings() }
+                }
+                ForEach(addressActions) { action in
+                    Button(action.name) { action.perform() }
+                }
+            }
+            if let household = entry.household, HouseholdPlaceOutRow.hasContent(household) {
+                HouseholdPlaceOutRow(line: household, onCard: true, onPlaceOut: onPlaceOut, onUndo: onUndoPlaceOut)
                     .transition(.opacity)
             }
         }
@@ -57,25 +83,16 @@ struct PrimaryCard: View {
         // Ett tryck utanför knappen och reglaget, till exempel i kanten, öppnar också adressen.
         .onTapGesture { onOpen() }
         .pressEffect(pressed: pressed)
-        // För VoiceOver är kortet en enda knapp, som förut. Påminnelsen läses sist, och slås på och av med kortets
-        // åtgärder, som snabbmenyn.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
-        .accessibilityHint("Öppnar adressen")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { onOpen() }
-        .accessibilityActions {
-            if entry.reminder?.isDenied == true {
-                Button("Öppna Inställningar") { onOpenSettings() }
-            }
-        }
+        .accessibilityElement(children: .contain)
         // Utanför padding och bakgrund, så att kortets höjd och bakgrund också följer med mjukt.
         .animation(Motion.transition(reduceMotion: reduceMotion), value: phase)
         .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.refreshFailed)
+        .animation(Motion.transition(reduceMotion: reduceMotion), value: entry.household)
     }
 
     private var accessibilityText: String {
         var parts = [entry.accessibilityLabel]
+        if let shared = entry.household?.sharedText { parts.append(shared) }
         if let note = entry.dayNote { parts.append(note) }
         if case .upcoming = entry.status, let reminder = entry.reminder {
             parts.append(reminder.isDenied ? reminder.title : "\(reminder.title): \(reminder.isOn ? "på" : "av")")
@@ -125,6 +142,7 @@ struct PrimaryCard: View {
                             .minimumScaleFactor(0.5)
                     }
                     placeLines
+                    sharedLine
                 }
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -136,6 +154,7 @@ struct PrimaryCard: View {
                         Text(entry.title)
                             .font(.ui(18, weight: .heavy, relativeTo: .headline))
                         placeLines
+                        sharedLine
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
@@ -147,6 +166,24 @@ struct PrimaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(foreground)
         .accessibilityElement(children: .combine)
+    }
+
+    /// "Delas med Sofie" under adressen för en delad adress, så att det syns med vem och inte bara att den delas.
+    @ViewBuilder
+    private var sharedLine: some View {
+        if let shared = entry.household?.sharedText {
+            Label {
+                Text(shared)
+                    .font(.ui(15, weight: .bold, relativeTo: .subheadline))
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "person.2.fill")
+                    .font(.system(.footnote, weight: .semibold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(foreground.opacity(0.9))
+            .padding(.top, 4)
+        }
     }
 
     /// Adressen och platsen. På det gröna kortet är platsen något svagare än adressen i stället för `text2`, som inte

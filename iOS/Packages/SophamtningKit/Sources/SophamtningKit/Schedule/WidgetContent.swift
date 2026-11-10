@@ -77,6 +77,8 @@ public struct WidgetData: Equatable, Sendable {
     }
 
     private let source: Source
+    /// Hushållet från `household.json`, för "Utställt". Går filen inte att läsa visas ingen bock.
+    private var household: HouseholdState = .empty
 
     /// Fraktionernas namn och ikoner ur det sparade schemat. Okända id:n får reservvärden av `ScheduleLogic.displayInfo`.
     public var fractionInfo: [String: FractionInfo] {
@@ -97,7 +99,10 @@ public struct WidgetData: Equatable, Sendable {
         }
         switch store.scheduleState(for: address.key) {
         case .missing: return WidgetData(source: .loaded(addresses: addresses, schedule: nil))
-        case .value(let schedule): return WidgetData(source: .loaded(addresses: addresses, schedule: schedule))
+        case .value(let schedule):
+            var data = WidgetData(source: .loaded(addresses: addresses, schedule: schedule))
+            if case .value(let household) = store.householdState() { data.household = household }
+            return data
         case .unavailable, .unreadable: return WidgetData(source: .unavailable)
         }
     }
@@ -115,6 +120,24 @@ public struct WidgetData: Equatable, Sendable {
         case .unavailable: nil
         case .loaded(let addresses, let schedule): WidgetContent.scheduleEnding(addresses: addresses, schedule: schedule, now: now)
         }
+    }
+
+    /// Sant när någon i hushållet har ställt ut kärlen för huvudadressens nästa tömning.
+    public func placedOut(at now: Date) -> Bool { placedOutMark(at: now) != nil }
+
+    /// Vem som ställde ut, "av Sofie" eller "av dig", eller `nil` utan bock.
+    public func placedOutBy(at now: Date) -> String? {
+        placedOutMark(at: now).map { HouseholdTexts.placedOutBy($0, participants: household.participants, myId: household.myId) }
+    }
+
+    private func placedOutMark(at now: Date) -> HouseholdMark? {
+        guard case .loaded(let addresses, let schedule?) = source,
+              household.role != .none, household.status != .removed,
+              let address = addresses.first(where: \.isPrimary) ?? addresses.first,
+              let events = schedule.response?.events,
+              let next = ScheduleLogic.nextPickup(events, today: StockholmClock.today(now: now))?.date
+        else { return nil }
+        return HouseholdLogic.currentMark(for: address.key, nextPickup: next, in: household.marks)
     }
 
     /// Visningsinfo för en fraktion, med samma reservvärden som appen.

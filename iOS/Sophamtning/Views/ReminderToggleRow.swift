@@ -16,6 +16,12 @@ extension AppModel {
     }
 }
 
+/// Texterna när iOS har nekat notiser, samma i adressvyn, hushållsarket och snabbmenyn.
+enum NotificationTexts {
+    static let deniedTitle = "Notiser är avstängda"
+    static let deniedMessage = "Du har stängt av notiser för Sophämtning i iOS."
+}
+
 /// Öppnar appens notisinställningar i iOS, där användaren kan slå på notiser igen.
 @MainActor
 func openNotificationSettings() {

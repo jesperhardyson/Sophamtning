@@ -1,0 +1,124 @@
+import CloudKit
+import Foundation
+import SophamtningKit
+
+/// Delningen av zonen `Hushall` och inbjudningarna till den.
+extension CloudKitHouseholdSync {
+    // MARK: Delning
+
+    /// Delningen för hushållet: ägarens om jag är ägare, annars den jag är med i.
+    var share: CKShare? {
+        inner.withLock { inner in
+            if inner.hasPrivateZone, let share = inner.privateRecords[CKRecordNameZoneWideShare] as? CKShare { return share }
+            return inner.sharedRecords[CKRecordNameZoneWideShare] as? CKShare
+        }
+    }
+
+    /// Skapar zonen `Hushall` och en delning av hela zonen, eller ger den som redan finns.
+    func makeShare() async throws -> CKShare {
+        if inner.withLock({ $0.hasPrivateZone }), let existing = share { return existing }
+        _ = try await requireMyId()
+        let database = container.privateCloudDatabase
+        let zoneID = HouseholdRecords.privateZoneID
+        let zones = try await database.modifyRecordZones(saving: [CKRecordZone(zoneID: zoneID)], deleting: [])
+        for result in zones.saveResults.values { _ = try result.get() }
+
+        let newShare = CKShare(recordZoneID: zoneID)
+        newShare[CKShare.SystemFieldKey.title] = HouseholdRecords.shareTitle as NSString
+        newShare.publicPermission = .none
+        let saved: CKShare
+        var reused = false
+        do {
+            let results = try await database.modifyRecords(saving: [newShare], deleting: [])
+            guard let result = results.saveResults.values.first, let share = try result.get() as? CKShare else {
+                throw HouseholdSyncError.shareMissing
+            }
+            saved = share
+        } catch let error as CKError where error.code == .serverRecordChanged {
+            // En annan av mina enheter hann skapa delningen först. Den gäller.
+            guard let server = error.serverRecord as? CKShare else { throw error }
+            saved = server
+            reused = true
+        }
+        mutate { inner in
+            inner.hasPrivateZone = true
+            inner.privateRecords[saved.recordID.recordName] = saved
+            inner.status = .synced
+            // En delning som en annan av mina enheter skapade kan ha poster som inte hämtats än.
+            if reused { inner.trust.restarted() }
+        }
+        emit()
+        // Är kopian inte komplett, eller fanns delningen redan, syns hushållet först efter en hämtning.
+        if reused || !inner.withLock({ $0.trust.complete }) { Task { await fetchChanges() } }
+        return saved
+    }
+
+    /// Delningen ändrades i `UICloudSharingController`, till exempel en ny deltagare.
+    func shareDidChange(_ share: CKShare) {
+        mutate { inner in
+            if inner.hasPrivateZone { inner.privateRecords[share.recordID.recordName] = share }
+        }
+        emit()
+    }
+
+    /// Hämtar delningen direkt från iCloud. Att någon har accepterat inbjudan kommer inte alltid som en ändring i zonen,
+    /// så deltagarna läses om vid varje hämtning. Ett fel här ändrar ingenting: zonens ändringar gäller då som förut.
+    func refreshShare() async {
+        let target = inner.withLock { inner -> (CKDatabase, CKRecordZone.ID)? in
+            if inner.hasPrivateZone, inner.privateRecords[CKRecordNameZoneWideShare] is CKShare {
+                return (container.privateCloudDatabase, HouseholdRecords.privateZoneID)
+            }
+            if let zoneID = inner.sharedZoneID { return (container.sharedCloudDatabase, zoneID) }
+            return nil
+        }
+        guard let (database, zoneID) = target else { return }
+        let id = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zoneID)
+        let fetched: CKShare
+        do {
+            guard let share = try await database.record(for: id) as? CKShare else { return }
+            fetched = share
+        } catch {
+            logger.error("Kunde inte hämta delningen: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        mutate { inner in
+            if database.databaseScope == .private, inner.hasPrivateZone {
+                inner.privateRecords[CKRecordNameZoneWideShare] = fetched
+            } else if database.databaseScope == .shared, inner.sharedZoneID == zoneID {
+                inner.sharedRecords[CKRecordNameZoneWideShare] = fetched
+            }
+        }
+    }
+
+    /// Ägaren slutade dela i `UICloudSharingController`. Då avslutas hushållet, som med Avsluta hushållet.
+    func sharingDidStop() async {
+        do {
+            try await deleteZone(HouseholdRecords.privateZoneID, in: container.privateCloudDatabase)
+        } catch {
+            logger.error("Kunde inte ta bort zonen efter att delningen slutade: \(error.localizedDescription, privacy: .public)")
+        }
+        dropPrivateZone()
+    }
+
+    // MARK: Inbjudan
+
+    /// Om inbjudan gäller hushållet jag redan är med i, som ägare eller medlem.
+    func isCurrentHousehold(_ metadata: CKShare.Metadata) -> Bool {
+        if metadata.participantRole == .owner { return true }
+        return inner.withLock { $0.sharedZoneID == metadata.share.recordID.zoneID }
+    }
+
+    /// Accepterar en inbjudan och hämtar hushållet.
+    func accept(_ metadata: CKShare.Metadata) async throws {
+        let accepted = try await container.accept(metadata)
+        mutate { inner in
+            inner.sharedZoneID = accepted.recordID.zoneID
+            inner.sharedRecords = [accepted.recordID.recordName: accepted]
+            inner.status = .synced
+            // Hushållets poster är inte hämtade än. Inget synkat läge skickas förrän de är det.
+            inner.trust.restarted()
+        }
+        emit()
+        await fetchChanges()
+    }
+}

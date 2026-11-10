@@ -50,12 +50,23 @@ struct UITestAPI: SoporAPI {
         )
     }
 
+    /// Testgatans första tömning i testdatat, flyttad som alla datum. Med hushåll är det i morgon.
+    static func testgatanFirstPickup() -> DayDate {
+        DayDate("2026-11-11")!.adding(days: recordedDay.days(until: StockholmClock.today(now: Date())) + UITestSupport.extraDays)
+    }
+
+    /// Sökträffen för Testgatan 1, så att hushållets delade adress byggs som när adressen sparas från sökningen.
+    static func testgatanHit() -> SearchHit? {
+        let response: SearchResponse? = try? load("uitest-sok")
+        return response?.addresses.first { $0.street == "Testgatan 1" }
+    }
+
     private static func load<Response: Decodable>(_ name: String) throws -> Response {
         guard let url = Bundle.main.url(forResource: name, withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data)
         else { throw APIError.unexpected(0) }
-        let shift = recordedDay.days(until: StockholmClock.today(now: Date()))
+        let shift = recordedDay.days(until: StockholmClock.today(now: Date())) + UITestSupport.extraDays
         let shifted = try JSONSerialization.data(withJSONObject: shiftDates(json, by: shift))
         return try JSONDecoder().decode(Response.self, from: shifted)
     }
@@ -85,6 +96,66 @@ enum UITestSupport {
     static var endsSoon: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-schemat-slutar") }
 
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") || runsEntrance }
+
+    // MARK: Hushåll
+
+    /// `-uitest-hushall`: jag är medlem, Kim är ägare och Testgatan 1 delas. `-uitest-hushall-agare` gör mig till ägare, och
+    /// `-uitest-hushall-synkar-inte` ger läget "Synkar inte just nu" strax efter starten, och `-uitest-hushall-vantar` ger min
+    /// bock för testgatans nästa tömning som ännu inte har skickats, med klockan. `-uitest-hushall-tomt` ger en synk
+    /// utan hushåll. `-uitest-hushall-ny-deltagare` låter Sofie gå med strax efter starten.
+    private static func has(_ argument: String) -> Bool { ProcessInfo.processInfo.arguments.contains(argument) }
+
+    private static var withHousehold: Bool { has("-uitest-hushall") }
+
+    /// Med hushåll flyttas schemat så att nästa tömning är i morgon, och knappen Ställ ut kärlen visas.
+    static var extraDays: Int { withHousehold ? -4 : 0 }
+
+    /// Hushållets synk i minnet, eller ett avstängt hushåll utan något av argumenten.
+    static func household() -> any HouseholdSync {
+        if has("-uitest-hushall-tomt") { return InMemoryHouseholdSync(state: .empty) }
+        guard withHousehold, let hit = UITestAPI.testgatanHit() else { return DisabledHousehold() }
+        let owner = has("-uitest-hushall-agare")
+        let address = SavedAddress(
+            key: AddressKey(source: hit.source, id: hit.id),
+            url: hit.url,
+            street: hit.street,
+            locality: hit.locality,
+            kommun: hit.kommun,
+            detail: hit.detail,
+            selection: hit.selection,
+            displayName: "Hemma",
+            isPrimary: true,
+            addedAt: Date()
+        )
+        let state = HouseholdState(
+            role: owner ? .owner : .member,
+            myId: "jag",
+            participants: [
+                HouseholdParticipant(id: "kim", name: "Kim", isOwner: !owner),
+                HouseholdParticipant(id: "jag", name: "Alex", isOwner: owner),
+            ],
+            addresses: [HouseholdAddress(address: address, addedBy: "kim")],
+            marks: has("-uitest-hushall-vantar")
+                ? [HouseholdMark(placedOut: PlacedOut(key: address.key, date: UITestAPI.testgatanFirstPickup()), by: "jag", at: Date(), isPending: true)]
+                : [],
+            status: .synced
+        )
+        let sync = InMemoryHouseholdSync(state: state)
+        if has("-uitest-hushall-ny-deltagare") {
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                sync.simulateRemote { $0.participants.append(HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: false)) }
+            }
+        }
+        if has("-uitest-hushall-synkar-inte") {
+            // Först ett synkat läge, så att adressen finns, och sedan iCloud utloggat.
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                sync.simulateRemote { $0.status = .notSignedIn }
+            }
+        }
+        return sync
+    }
 
     /// En lagring i en egen katalog, där inget delas med riktig data. Varje testkörning börjar från noll, utom med
     /// `-uitest-intrade`, som startar om appen med det som förra starten sparade.

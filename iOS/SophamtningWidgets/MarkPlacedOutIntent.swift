@@ -4,11 +4,11 @@ import os
 import SophamtningKit
 import UserNotifications
 
-/// Knappen **Utställt**: sparar att soporna är utställda, så att samma tömning inte startas igen, avslutar aktiviteten och tar bort
+/// Knappen **Klart**: sparar att soporna är utställda, så att samma tömning inte startas igen, avslutar aktiviteten och tar bort
 /// tömningens väntande reservnotis.
 /// Ingår i både app- och widgetmålet, och körs utan att appen öppnas.
 struct MarkPlacedOutIntent: LiveActivityIntent {
-    static let title: LocalizedStringResource = "Utställt"
+    static let title: LocalizedStringResource = "Klart"
     static let isDiscoverable = false
 
     @Parameter(title: "Källa")
@@ -32,9 +32,6 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
         self.pickupDate = pickupDate.iso
     }
 
-    /// Hur länge bocken visas innan aktiviteten försvinner.
-    private static let checkmarkSeconds: TimeInterval = 3
-
     func perform() async throws -> some IntentResult {
         let key = AddressKey(source: source, id: addressID)
         let iso = pickupDate
@@ -50,13 +47,16 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
                 default:
                     // Bocken står kvar i tre sekunder innan aktiviteten försvinner.
                     let done = ActivityContent(state: activity.content.state.markedPlacedOut(), staleDate: nil)
-                    await activity.end(done, dismissalPolicy: .after(Date().addingTimeInterval(Self.checkmarkSeconds)))
+                    await activity.end(done, dismissalPolicy: .after(Date().addingTimeInterval(PlacedOutAction.checkmarkSeconds)))
                 }
             }
         }
         if let date = DayDate(iso) {
             let saved = await PlacedOutAction.perform(store: LocalStore.shared(), entry: PlacedOut(key: key, date: date), today: StockholmClock.today(now: Date()), end: end, cancelReminder: Self.cancelReminder)
-            if !saved {
+            if saved {
+                // I appens process når bocken hushållet direkt. I widgetmålet görs det nästa gång appen körs.
+                await PlacedOutAction.sendToHousehold?()
+            } else {
                 // Aktiviteten är avslutad ändå. Nästa planering kan starta samma tömning igen.
                 Logger(subsystem: "se.hardyson.sophamtning", category: "LiveActivity").error("Kunde inte spara Utställt")
             }
