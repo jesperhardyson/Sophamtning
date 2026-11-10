@@ -58,7 +58,7 @@ public struct HomeContent: Equatable, Sendable {
         }
     }
 
-    /// Reglaget för påminnelsen på huvudkortet, som i adressvyn: av, på eller nekat i iOS.
+    /// Påminnelsen för huvudadressen. Kortet visar `line` i sin fot, eller rutan om nekade notiser.
     public struct PrimaryReminder: Equatable, Sendable {
         /// Påminnelsen är på och tillåten i iOS.
         public let isOn: Bool
@@ -69,19 +69,30 @@ public struct HomeContent: Equatable, Sendable {
         /// Raden under: när påminnelsen kommer ("Söndag kl. 18:00"), eller en väntande Live Activity ("Live Activity söndag
         /// kl. 17:30", och "Notis och Live Activity söndag kl. 17:30" när notisen också är på).
         public let detail: String?
+        /// Raden i huvudkortets fot: "Påminnelse söndag kl. 18:00", "Live Activity söndag kl. 17:30". `nil` när
+        /// påminnelsen är av, eftersom kortet inte har något reglage.
+        public let line: String?
+        /// Påminnelsen är på för adressen men iOS nekar notiser. Kortet visar då en ruta med Öppna Inställningar. Är
+        /// påminnelsen av visas ingen ruta, eftersom inget har slutat fungera.
+        public let showsDeniedNotice: Bool
 
-        public init(isOn: Bool, isDenied: Bool, title: String, detail: String?) {
+        public init(isOn: Bool, isDenied: Bool, title: String, detail: String?, line: String? = nil, showsDeniedNotice: Bool = false) {
             self.isOn = isOn
             self.isDenied = isDenied
             self.title = title
             self.detail = detail
+            self.line = line
+            self.showsDeniedNotice = showsDeniedNotice
         }
 
         /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
         /// "Söndag kl. 18:00" under den.
-        init(text: String, isOn: Bool, isDenied: Bool, timing: ReminderTiming) {
+        init(text: String, isOn: Bool, isDenied: Bool, isWanted: Bool, timing: ReminderTiming) {
             self.isOn = isOn
             self.isDenied = isDenied
+            // Inbjudan betyder att varken notis eller Live Activity är på.
+            line = text == timing.toggleTitle ? nil : text
+            showsDeniedNotice = isDenied && isWanted
             title = isDenied ? RowReminder.denied.text : timing.toggleTitle
             // Inbjudan är redan rubriken, och "Påminnelser på" säger bara det reglaget redan visar.
             if text == timing.toggleTitle || text == "Påminnelser på" {
@@ -109,6 +120,11 @@ public struct HomeContent: Equatable, Sendable {
             self.name = name
             self.address = address
             self.place = place
+        }
+
+        /// Gatan och platsen på en rad, med komma emellan: "Storgatan 12, Krylbo · Avesta kommun". Namnet står inte med.
+        public var singleLine: String {
+            [address, place].filter { !$0.isEmpty }.joined(separator: ", ")
         }
 
         /// "Hemma, Storgatan 12, Krylbo, Avesta kommun", utan mittpunkt och med vanliga mellanslag.
@@ -226,7 +242,7 @@ public struct HomeContent: Equatable, Sendable {
             let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
             let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
             if !asRow {
-                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, timing: settings.timing)
+                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn, timing: settings.timing)
             } else if address.notificationsOn {
                 if remindersDenied {
                     rowReminder = .denied

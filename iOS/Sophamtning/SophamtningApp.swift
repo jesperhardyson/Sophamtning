@@ -40,9 +40,9 @@ struct SophamtningApp: App {
     private static func makeModel(version: String, build: String) -> (AppModel, CloudKitHouseholdSync?) {
         #if DEBUG
         if UITestSupport.isActive {
-            // UI-testerna får en stubb, en tom lagring, inga notiser och ett hushåll i minnet. Ingen CloudKit-kod körs, och
+            // UI-testerna får en stubb, en tom lagring, inga notiser (eller notiser i minnet) och ett hushåll i minnet. Ingen CloudKit-kod körs, och
             // koden finns bara i Debug-bygget.
-            return (AppModel(api: UITestAPI(), store: UITestSupport.store(), household: UITestSupport.household()), nil)
+            return (AppModel(api: UITestAPI(), store: UITestSupport.store(), scheduler: UITestSupport.notifications(), household: UITestSupport.household()), nil)
         }
         #endif
         let store = LocalStore.shared()

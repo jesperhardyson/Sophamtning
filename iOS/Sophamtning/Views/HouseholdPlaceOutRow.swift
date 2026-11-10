@@ -3,7 +3,8 @@ import SophamtningKit
 import SwiftUI
 
 /// Raden för Utställt. För en delad adress: **Ställ ut kärlen**, eller bocken "Utställt av …" med **Ångra**, och hushållets
-/// läge när något inte fungerar. För andra adresser bara "Kärlen är utställda" med **Ångra** när nästa tömning är markerad. På huvudkortet står raden på kortets gröna yta, i adressvyn på en vanlig yta.
+/// läge när något inte fungerar. För andra adresser bara "Kärlen är utställda" med **Ångra** när nästa tömning är markerad.
+/// På huvudkortet står raden direkt på kortets gröna yta, utan egen ruta, och i adressvyn på en vanlig yta.
 struct HouseholdPlaceOutRow: View {
     let line: HouseholdLine
     /// Sant på det gröna huvudkortet.
@@ -42,9 +43,6 @@ struct HouseholdPlaceOutRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, onCard ? 16 : 0)
-        .padding(.vertical, onCard ? 12 : 0)
-        .background(onCard ? Color.Theme.cardOverlay : Color.clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         // Raden tar emot sina egna tryck, så att bara knapparna gör något. På kortet öppnar ett tryck på bocken inte adressen.
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onTapGesture {}

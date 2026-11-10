@@ -22,7 +22,6 @@ struct HomeView: View {
     /// uppdatering, så att den lätta vibrationen alltid hinner spelas.
     @State private var saves = 0
     /// Ökar när påminnelsen på huvudkortet faktiskt har slagits på.
-    @State private var reminderPulse = 0
     /// Sant när rubrikraden har scrollat in under fältet, och den lilla rubriken visas där.
     @State private var titleCollapsed = false
     /// Rubrikradens höjd, uppmätt. Den växer med textstorleken.
@@ -293,9 +292,7 @@ struct HomeView: View {
                 PrimaryCard(
                     entry: primary,
                     opening: opening(for: primary),
-                    reminderPulse: reminderPulse,
                     onOpen: { path.append(primary.key) },
-                    onReminderChange: { on in setNotifications(on, for: primary.key) },
                     onOpenSettings: { openNotificationSettings() },
                     onPlaceOut: { Task { await model.placeOut(primary.key) } },
                     onUndoPlaceOut: { Task { await model.undoPlaceOut(primary.key) } }
@@ -350,7 +347,7 @@ struct HomeView: View {
 
     /// Samma flöde som reglaget i adressvyn: frågan om tillstånd ställs bara när valet slås på.
     private func setNotifications(_ on: Bool, for key: AddressKey) {
-        model.toggleNotifications(on, for: key, onTurnedOn: { reminderPulse += 1 })
+        model.toggleNotifications(on, for: key, onTurnedOn: {})
     }
 
     /// Vändningen av kalenderbladet från dagens datum till tömningsdagen. Bara under starten, och inte om tömningen är i dag.
@@ -597,7 +594,7 @@ private struct AddressRow: View {
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
             AddressLinesView(lines: entry.lines, size: 17, addressStyle: .body)
-            // "Delas med Sofie" för en delad adress, som på huvudkortet.
+            // "Delas med Sofie" för en delad adress, som i huvudkortets fot.
             if let shared = entry.household?.sharedText {
                 Label {
                     Text(shared)

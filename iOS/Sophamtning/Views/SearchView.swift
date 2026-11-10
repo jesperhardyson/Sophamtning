@@ -206,7 +206,7 @@ struct SearchView: View {
     private func row(_ hit: SearchHit) -> some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                // Adressen och platsen som på korten: platsen en storlek mindre, med platsikonen.
+                // Adressen och platsen på en rad, som på korten.
                 AddressLinesView(
                     lines: HomeContent.AddressLines(address: hit.street, place: localityAndKommun(locality: hit.locality, kommun: hit.kommun)),
                     size: 18,
