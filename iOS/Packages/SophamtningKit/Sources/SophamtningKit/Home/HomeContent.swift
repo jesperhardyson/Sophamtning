@@ -329,7 +329,7 @@ public struct HomeContent: Equatable, Sendable {
                 // Aktiviteten och notiserna för samma tömning nämns tillsammans. Står bara aktiviteten ser det ut som att
                 // notisen är av.
                 let notes = notifications ? notificationDates(for: liveActivity.pickupDate, settings: settings, skipping: skipping, now: now) : []
-                return upcomingText(notifications: notes, activityStart: liveActivity.start)
+                return upcomingText(notifications: notes, activityStart: liveActivity.start, today: today)
             }
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.
@@ -342,7 +342,7 @@ public struct HomeContent: Equatable, Sendable {
         if let reserveAt { return "Reservpåminnelse kl. \(AddressDetail.clock(of: reserveAt))" }
         if let missedReminder { return missedReminder }
         if let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping) {
-            return upcomingText(notifications: notificationDates(for: next.pickup, settings: settings, skipping: skipping, now: now), activityStart: nil)
+            return upcomingText(notifications: notificationDates(for: next.pickup, settings: settings, skipping: skipping, now: now), activityStart: nil, today: today)
         }
         return "Påminnelser på"
     }
@@ -359,9 +359,9 @@ public struct HomeContent: Equatable, Sendable {
     /// Alla påminnelser som är kvar för samma tömning, i tidsordning. Bara notiser: "Påminnelse söndag kl. 15:00 och måndag
     /// kl. 06:00". Med en aktivitet får varje tid sitt slag: "Notis och Live Activity söndag kl. 15:00, notis måndag kl. 06:00".
     /// En notis inom en minut från starten räknas som samma tid, också när den har blivit reserv.
-    private static func upcomingText(notifications: [Date], activityStart: Date?) -> String {
+    private static func upcomingText(notifications: [Date], activityStart: Date?, today: DayDate) -> String {
         guard let activityStart else {
-            return "Påminnelse " + notifications.map(startText).joined(separator: " och ")
+            return "Påminnelse " + notifications.map { startText($0, today: today) }.joined(separator: " och ")
         }
         var moments: [(date: Date, label: String)] = []
         var activityPlaced = false
@@ -374,7 +374,7 @@ public struct HomeContent: Equatable, Sendable {
             }
         }
         if !activityPlaced { moments.append((activityStart, "Live Activity")) }
-        let text = moments.sorted { $0.date < $1.date }.map { "\($0.label) \(startText($0.date))" }.joined(separator: ", ")
+        let text = moments.sorted { $0.date < $1.date }.map { "\($0.label) \(startText($0.date, today: today))" }.joined(separator: ", ")
         return capitalized(text)
     }
 
@@ -384,9 +384,13 @@ public struct HomeContent: Equatable, Sendable {
         Set(ownPlacedOut.union(silencedPickups).filter { $0.key == key }.map(\.date))
     }
 
-    /// "tisdag kl. 18:00", i svensk tid.
-    private static func startText(_ date: Date) -> String {
-        "\(SwedishFormat.weekdayName(StockholmClock.today(now: date))) kl. \(AddressDetail.clock(of: date))"
+    /// "tisdag kl. 18:00", i svensk tid. Från en vecka bort räcker inte veckodagen, och då står datumet med:
+    /// "tisdag 8 dec kl. 18:00".
+    private static func startText(_ date: Date, today: DayDate) -> String {
+        let day = StockholmClock.today(now: date)
+        let weekday = SwedishFormat.weekdayName(day)
+        let when = today.days(until: day) >= 7 ? "\(weekday) \(SwedishFormat.dayMonth(day))" : weekday
+        return "\(when) kl. \(AddressDetail.clock(of: date))"
     }
 
     private static func capitalized(_ text: String) -> String {
