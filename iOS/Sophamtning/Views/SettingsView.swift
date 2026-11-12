@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var sourcesLoading = true
     @State private var link: WebLink?
     @State private var showsHousehold = false
+    @State private var showsChangelog = false
 
     private var sourceCount: Int? { sources.map { $0.filter { !$0.testData }.count } }
 
@@ -82,6 +83,10 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showsHousehold) {
                 HouseholdSheet(model: model)
+            }
+            // Nyheterna i ett eget ark ovanpå inställningarna.
+            .sheet(isPresented: $showsChangelog) {
+                ChangelogSheet(onClose: { showsChangelog = false })
             }
         }
     }
@@ -182,7 +187,9 @@ struct SettingsView: View {
                     SettingsRow(title: "Integritet", value: "")
                 }
                 ResultDivider()
-                SettingsRow(title: "Version", value: version, showsChevron: false)
+                Button { showsChangelog = true } label: {
+                    SettingsRow(title: "Version", value: version)
+                }
             }
             .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
