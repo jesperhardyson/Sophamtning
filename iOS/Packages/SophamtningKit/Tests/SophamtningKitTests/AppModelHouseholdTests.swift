@@ -216,7 +216,8 @@ private func currentState(_ sync: some HouseholdSync) async -> HouseholdState {
     let scheduler = FakeScheduler()
     let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "jag")]))
     let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
-    #expect(model.setReminderTiming(.sameMorning))
+    #expect(model.setReminder(.sameMorning, on: true))
+    #expect(model.setReminder(.eveningBefore, on: false))
     await settle(model) { model.startHousehold() }
     let morning = StockholmClock.date(on: tomorrow, minutes: 6 * 60)
     #expect(await scheduler.pending().contains { $0.fireDate == morning })
@@ -749,7 +750,7 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     try store.markEnded([entry], today: DayDate("2026-11-10")!)
     try store.markPlacedOut(PlacedOut(key: storgatan, date: tomorrow), today: DayDate("2026-11-10")!)
 
-    #expect(model.setReminderMinutes(19 * 60))
+    #expect(model.setReminderMinutes(19 * 60, for: .eveningBefore))
 
     #expect(store.endedActivities().isEmpty)
     // En markering som utställd ändras inte av en ny tid.

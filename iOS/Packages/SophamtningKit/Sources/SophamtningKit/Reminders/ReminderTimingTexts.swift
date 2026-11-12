@@ -18,11 +18,6 @@ extension ReminderTiming {
         }
     }
 
-    /// Värdet på raden Påminnelse i inställningarna: "Kvällen före, 18:00".
-    public func settingsValue(minutes: Int) -> String {
-        "\(title), \(SwedishFormat.clock(minutes: minutes))"
-    }
-
     /// Texten under delen för valet i inställningarna.
     public var sectionFooter: String {
         switch self {
@@ -30,16 +25,6 @@ extension ReminderTiming {
             "Dagen före tömningen, mellan 15:00 och 23:00."
         case .sameMorning:
             "Samma dag som tömningen, mellan 05:00 och 09:00. Minst en påminnelse är på. Notiser slår du på och av per adress."
-        }
-    }
-
-    /// Texten under listan med tider.
-    public var settingsFooter: String {
-        switch self {
-        case .eveningBefore:
-            "Påminnelsen kommer kvällen före, mellan 15:00 och 23:00. En Live Activity försvinner senast 12 timmar efter starten, så en sen tid håller den kvar längre på morgonen. Notiser väljer du per adress."
-        case .sameMorning:
-            "Påminnelsen kommer samma morgon som tömningen, mellan 05:00 och 09:00. En Live Activity syns tills du trycker Klart, eller i högst 12 timmar. Notiser väljer du per adress."
         }
     }
 

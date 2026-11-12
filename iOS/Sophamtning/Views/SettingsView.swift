@@ -8,6 +8,8 @@ let privacyLink = WebLink(url: URL(string: "https://sopor.hardyson.se/integritet
 
 private enum SettingsRoute: Hashable {
     case time, primary, sources
+    case times(ReminderTiming)
+    case liveActivityTiming
 }
 
 /// Inställningar i ett ark: påminnelsetid, huvudadress, Live Activity och om appen.
@@ -61,6 +63,8 @@ struct SettingsView: View {
             .navigationDestination(for: SettingsRoute.self) { route in
                 switch route {
                 case .time: ReminderTimeView(model: model)
+                case .times(let timing): ReminderTimesView(model: model, timing: timing)
+                case .liveActivityTiming: LiveActivityTimingView(model: model)
                 case .primary: PrimaryAddressView(model: model)
                 case .sources: SourcesView(sources: sources, loading: sourcesLoading, onRetry: { await loadSources() })
                 }
@@ -102,6 +106,12 @@ struct SettingsView: View {
                 }
                 ResultDivider()
                 LiveActivityToggleRow(model: model, text: AddressDetail.liveActivityText(settings: model.settings))
+                if model.settings.liveActivityOn {
+                    ResultDivider()
+                    NavigationLink(value: SettingsRoute.liveActivityTiming) {
+                        SettingsRow(title: "Visas från", value: model.settings.liveActivityTiming.title)
+                    }
+                }
             }
             .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -111,10 +121,6 @@ struct SettingsView: View {
                 MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
                     .padding(.top, 12)
             }
-            Text(model.settings.liveActivityTiming.settingsFooter)
-                .font(.ui(16, weight: .semibold, relativeTo: .footnote))
-                .foregroundStyle(Color.Theme.text2)
-                .padding(.top, 16)
         }
     }
 
@@ -274,8 +280,8 @@ private struct ChoiceRow: View {
     }
 }
 
-/// När påminnelsen kommer, kvällen före eller samma morgon, och tiden för det valda i steg om 15 minuter. Går sparandet fel
-/// visas felet och valet är kvar som förut.
+/// Kvällen före och samma morgon, var och en med ett eget reglage och en egen tid. Minst ett är alltid på, så det enda
+/// påslagna reglaget är avstängt. Går sparandet fel visas felet och valet är kvar som förut.
 private struct ReminderTimeView: View {
     let model: AppModel
 
@@ -290,31 +296,9 @@ private struct ReminderTimeView: View {
                         }
                         .buttonStyle(.pressable)
                     }
-                    section("När")
-                    ResultList {
-                        ForEach(Array(ReminderTiming.allCases.enumerated()), id: \.element) { index, timing in
-                            if index > 0 { ResultDivider() }
-                            ChoiceRow(title: timing.title, selected: timing == model.settings.liveActivityTiming) {
-                                model.clearStorageError()
-                                model.setReminderTiming(timing)
-                            }
-                        }
+                    ForEach(ReminderTiming.allCases, id: \.self) { timing in
+                        timingSection(timing)
                     }
-                    section("Tid")
-                    ResultList {
-                        ForEach(Array(model.settings.liveActivityTiming.times.enumerated()), id: \.element) { index, minutes in
-                            if index > 0 { ResultDivider() }
-                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.minutes(for: model.settings.liveActivityTiming)) {
-                                model.clearStorageError()
-                                model.setReminderMinutes(minutes)
-                            }
-                        }
-                    }
-                    Text(model.settings.liveActivityTiming.settingsFooter)
-                        .font(.ui(16, weight: .semibold, relativeTo: .footnote))
-                        .foregroundStyle(Color.Theme.text2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 4)
                 }
                 .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
@@ -324,13 +308,114 @@ private struct ReminderTimeView: View {
         .navigationBarTitleDisplayMode(.large)
     }
 
-    private func section(_ title: String) -> some View {
-        Text(title)
-            .font(.ui(20, weight: .heavy, relativeTo: .title3))
-            .foregroundStyle(Color.Theme.text)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 8)
-            .accessibilityAddTraits(.isHeader)
+    private func timingSection(_ timing: ReminderTiming) -> some View {
+        let settings = model.settings
+        let isOn = settings.isEnabled(timing)
+        return VStack(spacing: 12) {
+            Text(timing.title)
+                .font(.ui(20, weight: .heavy, relativeTo: .title3))
+                .foregroundStyle(Color.Theme.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+                .accessibilityAddTraits(.isHeader)
+            ResultList {
+                Toggle(isOn: Binding(
+                    get: { model.settings.isEnabled(timing) },
+                    set: { model.clearStorageError(); model.setReminder(timing, on: $0) }
+                )) {
+                    Text("Påminn mig")
+                        .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                        .foregroundStyle(Color.Theme.text)
+                }
+                .toggleStyle(.switch)
+                .tint(Color.Theme.primary)
+                .disabled(isOn && settings.enabledTimings.count == 1)
+                .padding(.horizontal, 20)
+                .frame(minHeight: 56)
+                .padding(.vertical, 6)
+                .accessibilityLabel("Påminn mig \(timing.title.lowercased())")
+                if isOn {
+                    ResultDivider()
+                    NavigationLink(value: SettingsRoute.times(timing)) {
+                        SettingsRow(title: "Tid", value: SwedishFormat.clock(minutes: settings.minutes(for: timing)))
+                    }
+                    .buttonStyle(.pressable)
+                }
+            }
+            Text(timing.sectionFooter)
+                .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Color.Theme.text2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Klockslagen för ett val i steg om 15 minuter.
+private struct ReminderTimesView: View {
+    let model: AppModel
+    let timing: ReminderTiming
+
+    var body: some View {
+        ZStack {
+            Color.Theme.bg.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 12) {
+                    if let error = model.lastStorageError {
+                        Button { model.clearStorageError() } label: {
+                            MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                    ResultList {
+                        ForEach(Array(timing.times.enumerated()), id: \.element) { index, minutes in
+                            if index > 0 { ResultDivider() }
+                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.minutes(for: timing)) {
+                                model.clearStorageError()
+                                model.setReminderMinutes(minutes, for: timing)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, PageMargin.horizontal)
+                .padding(.vertical, 16)
+            }
+        }
+        .navigationTitle("Tid")
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+/// När Live Activity visas, kvällen före eller samma morgon. Valet är skilt från vilka notiser som är på.
+private struct LiveActivityTimingView: View {
+    let model: AppModel
+
+    var body: some View {
+        ZStack {
+            Color.Theme.bg.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 12) {
+                    if let error = model.lastStorageError {
+                        Button { model.clearStorageError() } label: {
+                            MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Något gick fel", message: "\(error) Tryck för att stänga.")
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                    ResultList {
+                        ForEach(Array(ReminderTiming.allCases.enumerated()), id: \.element) { index, timing in
+                            if index > 0 { ResultDivider() }
+                            ChoiceRow(title: timing.title, selected: timing == model.settings.liveActivityTiming) {
+                                model.clearStorageError()
+                                model.setLiveActivityTiming(timing)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, PageMargin.horizontal)
+                .padding(.vertical, 16)
+            }
+        }
+        .navigationTitle("Visas från")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 

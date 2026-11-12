@@ -425,33 +425,45 @@ public final class AppModel {
         applyReminders()
     }
 
-    /// Tiden för det valda: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
-    /// lagringsfel, är allt kvar som förut. Den andra tiden rörs inte, så ett byte tillbaka ger den förra tiden.
-    // Brygga: ersätts i Uppgift 5.
+    /// Slår kvällen före eller samma morgon på eller av. Minst ett val är alltid på, så det sista går inte att stänga av. Då, eller
+    /// vid lagringsfel, är allt kvar som förut. En aktivitet som stoppats glöms inte: Live Activity följer sitt eget val.
     @discardableResult
-    public func setReminderMinutes(_ minutes: Int) -> Bool {
-        guard ReminderSettings.isValid(minutes: minutes, for: settings.liveActivityTiming) else { return false }
+    public func setReminder(_ timing: ReminderTiming, on: Bool) -> Bool {
         var updated = settings
-        switch settings.liveActivityTiming {
-        case .eveningBefore: updated.reminderMinutes = minutes
-        case .sameMorning: updated.morningMinutes = minutes
+        switch timing {
+        case .eveningBefore: updated.eveningOn = on
+        case .sameMorning: updated.morningOn = on
         }
+        guard updated.eveningOn || updated.morningOn else { return false }
+        guard updated != settings else { return true }
         guard saveSettings(updated) else { return false }
-        forgetStoppedActivities()
         applyReminders()
         return true
     }
 
-    /// Kvällen före eller samma morgon. Gäller notiser och Live Activity för alla adresser, men slår inte på något. Vid
-    /// lagringsfel är allt kvar som förut.
-    // Brygga: ersätts i Uppgift 5.
+    /// Tiden för ett val: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
+    /// lagringsfel, är allt kvar som förut. Bara en ändrad tid för Live Activitys val är ett nytt val för aktiviteten.
     @discardableResult
-    public func setReminderTiming(_ timing: ReminderTiming) -> Bool {
+    public func setReminderMinutes(_ minutes: Int, for timing: ReminderTiming) -> Bool {
+        guard ReminderSettings.isValid(minutes: minutes, for: timing) else { return false }
         var updated = settings
-        updated.eveningOn = timing == .eveningBefore
-        updated.morningOn = timing == .sameMorning
+        switch timing {
+        case .eveningBefore: updated.reminderMinutes = minutes
+        case .sameMorning: updated.morningMinutes = minutes
+        }
+        guard saveSettings(updated) else { return false }
+        if timing == settings.liveActivityTiming { forgetStoppedActivities() }
+        applyReminders()
+        return true
+    }
+
+    /// När Live Activity visas, kvällen före eller samma morgon, oberoende av vilka notiser som är på. Vid lagringsfel är allt
+    /// kvar som förut.
+    @discardableResult
+    public func setLiveActivityTiming(_ timing: ReminderTiming) -> Bool {
+        guard timing != settings.liveActivityTiming else { return true }
+        var updated = settings
         updated.liveActivityTiming = timing
-        guard updated != settings else { return true }
         guard saveSettings(updated) else { return false }
         forgetStoppedActivities()
         applyReminders()
