@@ -293,7 +293,8 @@ struct FullScheduleView: View {
             sourceName: sources.map { sourceName(key.source, in: $0) },
             now: model.currentDate,
             household: model.household,
-            ownPlacedOut: model.ownPlacedOut
+            ownPlacedOut: model.ownPlacedOut,
+            silencedPickups: model.householdSilencedPickups
         )
         // Rubriken är "Hela schemat", så namnet står här, och gatan när den skiljer sig från namnet.
         AddressLinesView(lines: detail.namedLines, size: 18, addressStyle: .body)

@@ -248,8 +248,12 @@ public enum ReminderPlanner {
     /// Notiser som står kvar när deras tid ligger framför även om planen inte längre innehåller dem. Gäller tömningar där den
     /// ordinarie notistiden har passerat, tömningen finns kvar i schemat och den varken är utställd eller bevisat visad:
     /// en väntande notis där är reserven, och tas den bort står tömningen utan påminnelse. Planeraren skapar aldrig en ny.
-    /// Adresser med notiser avstängda ingår inte, så avstängda val tar fortfarande bort sina notiser.
+    /// Bara aktivitetens val kan ha en reserv, så bara det valets notis behålls, och bara när valet är påslaget. Det andra
+    /// valets passerade notis är aldrig en reserv. Slås aktiviteten av står reserven kvar, så att tömningen inte lämnas utan
+    /// påminnelse. Adresser med notiser avstängda ingår inte, så avstängda val tar fortfarande bort sina notiser.
     public static func retainable(_ input: PlannerInput) -> [String: PlacedOut] {
+        guard input.settings.enabledTimings.contains(input.settings.liveActivityTiming) else { return [:] }
+        let timing = input.settings.liveActivityTiming
         let today = StockholmClock.today(now: input.now)
         var result: [String: PlacedOut] = [:]
         for entry in input.addresses where entry.address.notificationsOn {
@@ -257,10 +261,8 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
-                for timing in input.settings.enabledTimings {
-                    let ordinary = ReminderTime.date(forPickup: pickup.date, timing: timing, settings: input.settings)
-                    if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date, timing: timing)] = id }
-                }
+                let ordinary = ReminderTime.date(forPickup: pickup.date, timing: timing, settings: input.settings)
+                if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date, timing: timing)] = id }
             }
         }
         return result

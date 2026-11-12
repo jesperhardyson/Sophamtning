@@ -863,3 +863,30 @@ private func lineFor(_ cached: CachedSchedule?, _ state: HouseholdState) -> Hous
     let content = make([main, other], [main.key: schedule([event("2026-11-06", ["rest"])]), other.key: schedule([event("2026-11-06", ["rest"])])], settings: ReminderSettings(liveActivityOn: true))
     #expect(content.others.first?.household == nil)
 }
+
+// MARK: Utställda tömningar hoppas över i påminnelsetexten
+
+private let sundayEvening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60)
+
+private func footLine(placedOut: Set<PlacedOut> = [], silenced: Set<PlacedOut> = []) throws -> String? {
+    var on = home
+    on.notificationsOn = true
+    let events = [event("2026-11-09", ["rest"]), event("2026-11-11", ["rest"])]
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule(events)], settings: ReminderSettings(morningOn: true), now: sundayEvening, ownPlacedOut: placedOut, silencedPickups: silenced)
+    return try #require(content.primary?.reminder).line
+}
+
+@Test func morgonpaminnelsenLovasInteNarTomningenArUtstalld() throws {
+    // Kvällens tid har passerat. Utan bock är morgonen nästa.
+    #expect(try footLine() == "Påminnelse måndag kl. 06:00")
+    // Utställt tar bort morgonens notis, så raden går vidare till nästa tömning.
+    let mark = PlacedOut(key: home.key, date: monday)
+    #expect(try footLine(placedOut: [mark]) == "Påminnelse tisdag kl. 18:00")
+}
+
+@Test func hushallsbockenTystarMorgonpaminnelsenIFoten() throws {
+    let mark = PlacedOut(key: home.key, date: monday)
+    #expect(try footLine(silenced: [mark]) == "Påminnelse tisdag kl. 18:00")
+    // En bock för en annan adress påverkar inte.
+    #expect(try footLine(silenced: [PlacedOut(key: cabin.key, date: monday)]) == "Påminnelse måndag kl. 06:00")
+}

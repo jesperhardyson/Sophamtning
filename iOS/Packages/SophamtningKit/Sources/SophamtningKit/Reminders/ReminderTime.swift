@@ -42,10 +42,11 @@ public enum ReminderTime {
         }
     }
 
-    /// Den tidigaste påminnelsen efter `now`, över kommande tömningar med fraktioner och alla påslagna val.
-    public static func next(events: [PickupEvent], settings: ReminderSettings, now: Date) -> UpcomingReminder? {
+    /// Den tidigaste påminnelsen efter `now`, över kommande tömningar med fraktioner och alla påslagna val. Tömningar i
+    /// `skipping` (utställda, eller tystade av hushållet) har inga påminnelser kvar och hoppas över.
+    public static func next(events: [PickupEvent], settings: ReminderSettings, now: Date, skipping: Set<DayDate> = []) -> UpcomingReminder? {
         var best: UpcomingReminder?
-        for event in events where !event.fractions.isEmpty {
+        for event in events where !event.fractions.isEmpty && !skipping.contains(event.date) {
             for timing in settings.enabledTimings {
                 let date = date(forPickup: event.date, timing: timing, settings: settings)
                 guard date > now, best == nil || date < best!.date else { continue }

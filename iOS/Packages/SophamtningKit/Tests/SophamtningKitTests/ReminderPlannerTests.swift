@@ -731,6 +731,32 @@ private let morningId = PlannedNotification.identifier(key: homeKey, date: wed, 
 }
 
 @Test func retainablePerVal() {
-    let r = ReminderPlanner.retainable(twoInput(ReminderSettings(morningOn: true), now: stockholm("2026-11-10T19:00")))
+    // Bara aktivitetens val kan ha en reserv, så kvällens id behålls och morgonens (som inte passerat) inte.
+    let r = ReminderPlanner.retainable(twoInput(ReminderSettings(morningOn: true, liveActivityOn: true), now: stockholm("2026-11-10T19:00")))
     #expect(Set(r.keys) == [eveningId])
+}
+
+@Test func retainableBehållerBaraAktivitetensVal() {
+    let on = ReminderSettings(morningOn: true, liveActivityTiming: .eveningBefore, liveActivityOn: true)
+    // Kvällen före är aktivitetens val och dess tid har passerat: bara kvällens id kan vara en reserv.
+    let r = ReminderPlanner.retainable(twoInput(on, now: stockholm("2026-11-10T19:00")))
+    #expect(Set(r.keys) == [eveningId])
+    let morning = ReminderSettings(morningOn: true, liveActivityTiming: .sameMorning, liveActivityOn: true)
+    #expect(Set(ReminderPlanner.retainable(twoInput(morning, now: stockholm("2026-11-11T07:00"))).keys) == [morningId])
+    #expect(ReminderPlanner.retainable(twoInput(morning, now: stockholm("2026-11-10T19:00"))).isEmpty)
+}
+
+@Test func retainableBehållerBaraAktivitetensValÄvenMedAktivitetenAv() {
+    // Slås aktiviteten av står reserven kvar, men det andra valets passerade notis blir aldrig en reserv.
+    let off = ReminderSettings(morningOn: true, liveActivityTiming: .eveningBefore, liveActivityOn: false)
+    #expect(Set(ReminderPlanner.retainable(twoInput(off, now: stockholm("2026-11-10T19:00"))).keys) == [eveningId])
+    let morningOff = ReminderSettings(morningOn: true, liveActivityTiming: .sameMorning, liveActivityOn: false)
+    #expect(ReminderPlanner.retainable(twoInput(morningOff, now: stockholm("2026-11-10T19:00"))).isEmpty)
+    #expect(Set(ReminderPlanner.retainable(twoInput(morningOff, now: stockholm("2026-11-11T07:00"))).keys) == [morningId])
+}
+
+@Test func retainableBehållerInteValetNärAktivitetensValÄrAvslaget() {
+    // Aktiviteten följer morgonen men morgonen är avslagen: inget val har en reserv att behålla.
+    let s = ReminderSettings(eveningOn: true, morningOn: false, liveActivityTiming: .sameMorning, liveActivityOn: true)
+    #expect(ReminderPlanner.retainable(twoInput(s, now: stockholm("2026-11-10T19:00"))).isEmpty)
 }

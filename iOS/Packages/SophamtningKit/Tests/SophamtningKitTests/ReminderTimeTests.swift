@@ -114,3 +114,20 @@ private func event(_ iso: String, _ fractions: [String]) -> PickupEvent {
     #expect(ReminderTime.next(events: events, settings: s, now: stockholm("2026-11-10T19:00"))?.timing == .sameMorning)
     #expect(ReminderTime.next(events: events, settings: s, now: stockholm("2026-11-11T07:00")) == nil)
 }
+
+@Test func okäntLiveActivityValLäsesSomDetEnaValet() throws {
+    // Från en senare version: hela filen ska ändå gå att läsa.
+    let a = try decode(#"{"eveningOn":false,"morningOn":true,"reminderMinutes":1080,"liveActivityOn":true,"liveActivityTiming":"lunch"}"#)
+    #expect(a.morningOn && !a.eveningOn)
+    #expect(a.liveActivityTiming == .eveningBefore)
+    let b = try decode(#"{"timing":"sameMorning","reminderMinutes":1080,"liveActivityOn":true,"liveActivityTiming":"lunch"}"#)
+    #expect(b.liveActivityTiming == .sameMorning)
+}
+
+@Test func nästaPåminnelseHopparÖverUtelämnadeTömningar() {
+    let s = ReminderSettings(morningOn: true)
+    let events = [event("2026-11-11", ["rest"]), event("2026-11-13", ["rest"])]
+    let next = ReminderTime.next(events: events, settings: s, now: stockholm("2026-11-10T19:00"), skipping: [day("2026-11-11")])
+    #expect(next == .init(pickup: day("2026-11-13"), timing: .eveningBefore, date: stockholm("2026-11-12T18:00")))
+    #expect(ReminderTime.next(events: [events[0]], settings: s, now: stockholm("2026-11-10T19:00"), skipping: [day("2026-11-11")]) == nil)
+}

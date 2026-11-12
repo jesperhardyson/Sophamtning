@@ -38,6 +38,9 @@ public final class AppModel {
     /// Mina egna utställda i `placed-out.json`, utan andras bockar. Hushållets rad visar en sådan som en väntande bock när
     /// hushållet saknar den. Läses om av `applyReminders()`.
     public private(set) var ownPlacedOut: Set<PlacedOut> = []
+    /// Tömningar där hushållets bockar tystar påminnelsen, som planeraren fick vid senaste planeringen. Tillsammans med
+    /// `ownPlacedOut` är det de tömningar som saknar påminnelser, så att texterna inte lovar en som planeraren tagit bort.
+    public private(set) var householdSilencedPickups: Set<PlacedOut> = []
     /// Tömningar som redan är påminda: utställda, visade eller med en aktivitet som syns nu. Läses om av `applyReminders()`.
     private var handledPickups: Set<PlacedOut> = []
     /// Reservnotiser som väntar framför, med sina tider. Läses om av `applyReminders()`.
@@ -666,6 +669,7 @@ public final class AppModel {
         ownPlacedOut = placedOut
         // Andras bockar räknas som utställda bara i minnet, så att Ångra eller att valet stängs av ger tillbaka påminnelsen.
         let silenced = householdSilenced(today: today)
+        householdSilencedPickups = silenced
         placedOut.formUnion(silenced)
 
         let primary = addresses.first(where: \.isPrimary)?.key
@@ -780,7 +784,9 @@ public final class AppModel {
         for notification in final.notifications where notification.title == ReminderPlanner.fallbackTitle {
             reserves[PlacedOut(key: notification.key, date: notification.pickupDate)] = notification.fireDate
         }
-        for (id, entry) in retained where reserves[entry] == nil {
+        // En kvarlämnad notis kallas reserv bara när aktiviteter är på. Annars är den en ordinarie notis som står kvar efter att
+        // tiden ändrats, och raderna ska inte kalla den reserv.
+        for (id, entry) in retained where reserves[entry] == nil && settings.liveActivityOn && systemAllows {
             if let fireDate = pendingFireDates[id], fireDate > current { reserves[entry] = fireDate }
         }
         reserveNotifications = reserves

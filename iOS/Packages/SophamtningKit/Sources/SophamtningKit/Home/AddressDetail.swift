@@ -146,14 +146,14 @@ public struct AddressDetail: Equatable, Sendable {
     /// Hushållets rad, för varje läge. `nil` utan hushåll.
     public let household: HouseholdLine?
 
-    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil, household: HouseholdState = .empty, ownPlacedOut: Set<PlacedOut> = []) -> AddressDetail {
+    public static func make(address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, sourceName: String?, now: Date, remindersOn: Bool = false, reserveAt: Date? = nil, household: HouseholdState = .empty, ownPlacedOut: Set<PlacedOut> = [], silencedPickups: Set<PlacedOut> = []) -> AddressDetail {
         let today = StockholmClock.today(now: now)
         var asPrimary = address
         asPrimary.isPrimary = true
         // Live Activity gäller bara huvudadressen, så den ger knappen Ställ ut kärlen bara där.
         var entrySettings = settings
         entrySettings.liveActivityOn = settings.liveActivityOn && address.isPrimary
-        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: entrySettings, now: now, household: household, ownPlacedOut: ownPlacedOut).primary!
+        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: entrySettings, now: now, household: household, ownPlacedOut: ownPlacedOut, silencedPickups: silencedPickups).primary!
         let response = schedule?.response
 
         let mode: Mode
@@ -214,7 +214,7 @@ public struct AddressDetail: Equatable, Sendable {
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil, sourceName: sourceName),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
-            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, now: now),
+            reminderText: nothingToRemind ?? rowText(events: response?.events ?? [], settings: settings, now: now, reserveAt: reserveAt, skipping: HomeContent.skippedDays(for: address.key, ownPlacedOut: ownPlacedOut, silencedPickups: silencedPickups)),
             liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             showsReminders: showsReminders,
@@ -322,10 +322,21 @@ public struct AddressDetail: Equatable, Sendable {
         return estimated ? "ca " + text.lowercased() : text
     }
 
+    /// Raden under reglaget: reservnotisen när den är nästa påminnelse, annars nästa påminnelse. Reserven ersätter notisen för
+    /// aktivitetens val, så den gäller när det är nästa, när den kommer före nästa eller när ingen annan finns. En tidigare
+    /// notis för det andra valet kommer annars först och är det som raden ska visa, som på hemkortet.
+    static func rowText(events: [PickupEvent], settings: ReminderSettings, now: Date, reserveAt: Date?, skipping: Set<DayDate>) -> String {
+        if let reserveAt {
+            let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping)
+            if next == nil || next?.timing == settings.liveActivityTiming || reserveAt <= next!.date { return reserveText(reserveAt) }
+        }
+        return reminderText(events: events, settings: settings, now: now, skipping: skipping)
+    }
+
     /// "Söndag kl. 18:00 inför måndagens tömning." eller "Måndag kl. 06:00, samma dag som tömningen." Det är nästa påminnelse
     /// av de påslagna valen. Finns ingen kommande tömning står texten för varje påslaget val.
-    static func reminderText(events: [PickupEvent], settings: ReminderSettings, now: Date) -> String {
-        if let next = ReminderTime.next(events: events, settings: settings, now: now) {
+    static func reminderText(events: [PickupEvent], settings: ReminderSettings, now: Date, skipping: Set<DayDate> = []) -> String {
+        if let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping) {
             let day = StockholmClock.today(now: next.date)
             return "\(when(day: day, pickup: next.pickup, time: clock(of: next.date), timing: next.timing))."
         }

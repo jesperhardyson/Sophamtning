@@ -869,3 +869,57 @@ private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time:
     #expect(model.settings.liveActivityTiming == .eveningBefore)
     #expect(model.lastStorageError != nil)
 }
+
+@Test @MainActor func uppgraderingFrånEttValByterGammalNotisMotMorgonNotisen() async throws {
+    let temp = TempDir()
+    try FileManager.default.createDirectory(at: temp.url, withIntermediateDirectories: true)
+    let store = LocalStore(directory: temp.url)
+    // Fil sparad av en äldre version, med det enda valet "timing", och en väntande notis med det gamla id:t utan ändelse.
+    try Data(#"{"timing":"sameMorning","reminderMinutes":1080,"morningMinutes":360,"liveActivityOn":false}"#.utf8)
+        .write(to: temp.url.appendingPathComponent("settings.json"))
+    let monday = DayDate("2026-11-09")!
+    let sixAM = StockholmClock.date(on: monday, minutes: 6 * 60)
+    let oldId = "\(key.fileName)-\(monday.iso)"
+    let scheduler = FakeScheduler(status: .authorized)
+    _ = await scheduler.schedule([PlannedNotification(identifier: oldId, fireDate: sixAM, title: "Ställ ut kärlen", body: "Gammal", key: key, pickupDate: monday)])
+
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse(events: ["2026-11-09"])), store: store, now: { now }, scheduler: scheduler)
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+
+    #expect(model.settings.enabledTimings == [.sameMorning])
+    // Exakt en notis för tömningen: den nya med -morgon, kl. 06:00. Den gamla är borta.
+    let forMonday = scheduler.planned.filter { $0.pickupDate == monday }
+    #expect(forMonday.map(\.identifier) == [PlannedNotification.identifier(key: key, date: monday, timing: .sameMorning)])
+    #expect(forMonday.first?.fireDate == sixAM)
+    #expect(!scheduler.planned.contains { $0.identifier == oldId })
+}
+
+private final class Clock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Date
+    init(_ value: Date) { self.value = value }
+    var date: Date { lock.withLock { value } }
+    func set(_ new: Date) { lock.withLock { value = new } }
+}
+
+@Test @MainActor func kvarlamnadNotisKallasInteReservUtanLiveActivity() async throws {
+    let temp = TempDir()
+    let sunday = DayDate("2026-11-08")!
+    let clock = Clock(StockholmClock.date(on: sunday, minutes: 12 * 60))
+    let scheduler = FakeScheduler(status: .authorized)
+    let model = AppModel(api: FixedAPI(response: try fixtureResponse(events: ["2026-11-09"])), store: LocalStore(directory: temp.url), now: { clock.date }, scheduler: scheduler)
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    #expect(scheduler.planned.map(\.fireDate) == [StockholmClock.date(on: sunday, minutes: 18 * 60)])
+
+    // Kvällstiden flyttas till 17:00 klockan 17:30: den väntande notisen 18:00 står kvar, men är ingen reserv.
+    clock.set(StockholmClock.date(on: sunday, minutes: 17 * 60 + 30))
+    #expect(model.setReminderMinutes(17 * 60, for: .eveningBefore))
+    await model.settleReminders()
+    #expect(model.reserveNotificationDate(for: model.addresses[0]) == nil)
+}
