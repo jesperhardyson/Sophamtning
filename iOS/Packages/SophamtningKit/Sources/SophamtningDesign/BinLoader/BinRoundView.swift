@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Kärlet i hemskärmens tomma läge och bredvid rubriken. Det spelar ett varv när det visas och står sedan still med
 /// stängt lock. Ett tryck spelar ett nytt varv med nästa fraktion och en lätt vibration, och en av Sopors roliga texter
-/// kommer fram i en pratbubbla som svävar uppåt och tonas bort efter cirka 2 sekunder. En bubbla åt gången, och ett
-/// tryck under ett varv gör inget. Det är dekoration: ingen slinga, så att slingan fortsatt betyder att något hämtas.
+/// kommer fram i en pratbubbla som svävar uppåt och tonas bort efter cirka 2 sekunder. Varje tryck ger en ny text, hur
+/// snabbt man än trycker, och ett tryck under ett varv låter varvet spela klart. Det är dekoration: ingen slinga, så att slingan fortsatt betyder att något hämtas.
 /// Med Reducera rörelse står kärlet still, och bubblan tonas bara in och ut på plats.
 /// Dolt för VoiceOver. Visas en bubbla tillkännages texten.
 public struct BinRoundView: View {
@@ -44,7 +44,7 @@ public struct BinRoundView: View {
     ///   - bubbleTip: Var bubblan står i förhållande till kärlet: mitt över, eller med vänsterkanten vid kärlet.
     ///   - bubblePlacement: Om spetsen står ovanför locket eller ovanför hela kärlet.
     ///   - tapTrigger: Ökar när något annat än kärlet ska räknas som ett tryck på det, till exempel rubriken bredvid.
-    ///     Samma spärr gäller, så att snabba tryck inte staplar.
+    ///     Det ger samma sak som ett tryck på kärlet.
     ///   - reduceMotion: Tvingar läget. Utan värde läses `accessibilityReduceMotion`.
     public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, bubblePlacement: BinBubbleTimeline.Placement = .overLid, tapTrigger: Int = 0, reduceMotion: Bool? = nil) {
         self.firstRound = firstRound
@@ -138,19 +138,17 @@ public struct BinRoundView: View {
         }
     }
 
-    /// Ett tryck: ett nytt varv och en bubbla, eller inget om ett varv eller en bubbla redan pågår.
+    /// Ett tryck: alltid en ny bubbla med nästa text och en vibration, hur snabbt man än trycker. Ett nytt varv bara
+    /// om kärlet står still.
     private func tapped() {
         let now = Date()
-        guard BinBubbleTimeline.acceptsTap(
-            roundElapsed: roundStart.map { now.timeIntervalSince($0) },
-            bubbleElapsed: bubbleStart.map { now.timeIntervalSince($0) },
-            reduceMotion: reduceMotion
-        ) else { return }
-        // Ett tryck före det första varvet ersätter det, så att inget varv spelas två gånger.
-        if playedFirst { round += 1 }
+        if BinBubbleTimeline.startsRound(roundElapsed: roundStart.map { now.timeIntervalSince($0) }, reduceMotion: reduceMotion) {
+            // Ett tryck före det första varvet ersätter det, så att inget varv spelas två gånger.
+            if playedFirst { round += 1 }
+            roundStart = now
+        }
         playedFirst = true
         taps += 1
-        if !reduceMotion { roundStart = now }
         var generator = SystemRandomNumberGenerator()
         bubbleText = texts.next(using: &generator)
         bubbleStart = now
