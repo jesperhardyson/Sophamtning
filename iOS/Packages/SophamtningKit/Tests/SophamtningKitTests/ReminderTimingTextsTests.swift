@@ -79,7 +79,7 @@ private func pending(start: Date) -> ExistingActivity {
     let start = at("2026-11-11", 6)
     let bothOn = ReminderSettings(eveningOn: true, morningOn: true, liveActivityTiming: .sameMorning, liveActivityOn: true)
     let content = HomeContent.make(addresses: [saved(notifications: true)], schedules: [key: schedule([event(wednesday)])], settings: bothOn, now: at("2026-11-10", 12), liveActivity: pending(start: start))
-    #expect(try #require(content.primary?.reminder).detail == "Tisdag kl. 18:00")
+    #expect(try #require(content.primary?.reminder).detail == "Notis tisdag kl. 18:00, notis och Live Activity onsdag kl. 06:00")
     let morningOnly = ReminderSettings(eveningOn: false, morningOn: true, liveActivityTiming: .sameMorning, liveActivityOn: true)
     let same = HomeContent.make(addresses: [saved(notifications: true)], schedules: [key: schedule([event(wednesday)])], settings: morningOnly, now: at("2026-11-10", 12), liveActivity: pending(start: start))
     #expect(try #require(same.primary?.reminder).detail == "Notis och Live Activity onsdag kl. 06:00")

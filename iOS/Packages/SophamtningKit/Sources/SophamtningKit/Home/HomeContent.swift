@@ -325,14 +325,10 @@ public struct HomeContent: Equatable, Sendable {
             guard liveActivity.isPending else { return "Live Activity visas nu" }
             // En tid som redan passerat lovas inte, även om aktiviteten står kvar som väntande.
             if liveActivity.start > now {
-                // Kommer en notis minst en minut före starten är det den som är nästa påminnelse. Startar notis och aktivitet
-                // vid samma tid nämns båda. Står bara aktiviteten ser det ut som att notisen är av.
-                if notifications, let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping) {
-                    let gap = liveActivity.start.timeIntervalSince(next.date)
-                    if gap >= 60 { return reminderLine(next) }
-                    if gap > -60 { return "Notis och Live Activity \(startText(liveActivity.start))" }
-                }
-                return "Live Activity \(startText(liveActivity.start))"
+                // Aktiviteten och notiserna för samma tömning nämns tillsammans. Står bara aktiviteten ser det ut som att
+                // notisen är av.
+                let notes = notifications ? notificationDates(for: liveActivity.pickupDate, settings: settings, skipping: skipping, now: now) : []
+                return upcomingText(notifications: notes, activityStart: liveActivity.start)
             }
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.
@@ -344,19 +340,47 @@ public struct HomeContent: Equatable, Sendable {
         // En reservnotis som ligger framför är den påminnelse som gäller just nu.
         if let reserveAt { return "Reservpåminnelse kl. \(AddressDetail.clock(of: reserveAt))" }
         if let missedReminder { return missedReminder }
-        if let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping) { return reminderLine(next) }
+        if let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping) {
+            return upcomingText(notifications: notificationDates(for: next.pickup, settings: settings, skipping: skipping, now: now), activityStart: nil)
+        }
         return "Påminnelser på"
+    }
+
+    /// Notistiderna som är kvar för en tömning, i tidsordning: en per påslaget val.
+    private static func notificationDates(for pickup: DayDate, settings: ReminderSettings, skipping: Set<DayDate>, now: Date) -> [Date] {
+        guard !skipping.contains(pickup) else { return [] }
+        return settings.enabledTimings
+            .map { ReminderTime.date(forPickup: pickup, timing: $0, settings: settings) }
+            .filter { $0 > now }
+            .sorted()
+    }
+
+    /// Alla påminnelser som är kvar för samma tömning, i tidsordning. Bara notiser: "Påminnelse söndag kl. 15:00 och måndag
+    /// kl. 06:00". Med en aktivitet får varje tid sitt slag: "Notis och Live Activity söndag kl. 15:00, notis måndag kl. 06:00".
+    /// En notis inom en minut från starten räknas som samma tid, också när den har blivit reserv.
+    private static func upcomingText(notifications: [Date], activityStart: Date?) -> String {
+        guard let activityStart else {
+            return "Påminnelse " + notifications.map(startText).joined(separator: " och ")
+        }
+        var moments: [(date: Date, label: String)] = []
+        var activityPlaced = false
+        for date in notifications {
+            if !activityPlaced, abs(date.timeIntervalSince(activityStart)) < 60 {
+                moments.append((activityStart, "notis och Live Activity"))
+                activityPlaced = true
+            } else {
+                moments.append((date, "notis"))
+            }
+        }
+        if !activityPlaced { moments.append((activityStart, "Live Activity")) }
+        let text = moments.sorted { $0.date < $1.date }.map { "\($0.label) \(startText($0.date))" }.joined(separator: ", ")
+        return capitalized(text)
     }
 
     /// Tömningarna för en adress som saknar påminnelser: mina egna utställda och de som hushållet har tystat. Samma mängd som
     /// planeraren får, så att texterna aldrig lovar en påminnelse som planeraren har tagit bort.
     static func skippedDays(for key: AddressKey, ownPlacedOut: Set<PlacedOut>, silencedPickups: Set<PlacedOut>) -> Set<DayDate> {
         Set(ownPlacedOut.union(silencedPickups).filter { $0.key == key }.map(\.date))
-    }
-
-    /// "Påminnelse tisdag kl. 18:00", från nästa påminnelses egen tid och dag.
-    private static func reminderLine(_ next: ReminderTime.UpcomingReminder) -> String {
-        "Påminnelse \(startText(next.date))"
     }
 
     /// "tisdag kl. 18:00", i svensk tid.
