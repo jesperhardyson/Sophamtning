@@ -836,3 +836,28 @@ private func lineFor(_ cached: CachedSchedule?, _ state: HouseholdState) -> Hous
     #expect(row.placedOutTitle == "Utställt")
     #expect(row.placedOutSubtitle == "av Kim · kl. 19:42")
 }
+
+@Test func huvudadressMedNotiserFarKnappenStallUtPaTomningsdagen() throws {
+    let on = saved("hemma", name: "Hemma", street: "Storgatan 3", locality: "Avesta", primary: true, notifications: true)
+    let primary = try #require(make([on], [on.key: schedule([event("2026-11-06", ["rest"])])]).primary)
+    #expect(primary.household?.showsButton == true)
+}
+
+@Test func huvudadressMedLiveActivityFarKnappenStallUt() throws {
+    let off = saved("hemma", name: "Hemma", street: "Storgatan 3", locality: "Avesta", primary: true)
+    let primary = try #require(make([off], [off.key: schedule([event("2026-11-07", ["rest"])])], settings: ReminderSettings(liveActivityOn: true)).primary)
+    #expect(primary.household?.showsButton == true)
+}
+
+@Test func utanPaminnelserFarHuvudadressenIngenKnapp() throws {
+    let off = saved("hemma", name: "Hemma", street: "Storgatan 3", locality: "Avesta", primary: true)
+    let primary = try #require(make([off], [off.key: schedule([event("2026-11-06", ["rest"])])]).primary)
+    #expect(primary.household == nil)
+}
+
+@Test func radUtanNotiserFarIngenKnappFastLiveActivityArPa() throws {
+    let main = saved("hemma", name: "Hemma", street: "Storgatan 3", locality: "Avesta", primary: true)
+    let other = saved("jobbet", name: "Jobbet", street: "Torget 1", locality: "Avesta", primary: false)
+    let content = make([main, other], [main.key: schedule([event("2026-11-06", ["rest"])]), other.key: schedule([event("2026-11-06", ["rest"])])], settings: ReminderSettings(liveActivityOn: true))
+    #expect(content.others.first?.household == nil)
+}

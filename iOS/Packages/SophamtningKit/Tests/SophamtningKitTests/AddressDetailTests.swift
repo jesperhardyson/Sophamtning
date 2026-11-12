@@ -581,3 +581,14 @@ private func reminderDetail(_ schedule: CachedSchedule?, notificationsOn: Bool =
 @Test func paminnelserVisasInteMedanSchematLaddas() {
     #expect(!reminderDetail(nil, notificationsOn: true).showsReminders)
 }
+
+@Test func liveActivityGerKnappenStallUtBaraForHuvudadressen() throws {
+    let cached = try schedule([event("2026-11-06", ["rest"])])
+    let settings = ReminderSettings(liveActivityOn: true)
+    let primary = AddressDetail.make(address: address, schedule: cached, settings: settings, sourceName: nil, now: noon)
+    #expect(primary.household?.showsButton == true)
+    var other = address
+    other.isPrimary = false
+    let row = AddressDetail.make(address: other, schedule: cached, settings: settings, sourceName: nil, now: noon)
+    #expect(row.household == nil)
+}

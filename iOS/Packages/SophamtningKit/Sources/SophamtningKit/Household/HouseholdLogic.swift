@@ -5,9 +5,10 @@ public enum HouseholdLogic {
     /// Hur ofta hushållets ändringar hämtas medan appen är öppen, som reserv när den tysta pushen dröjer.
     public static let liveFetchInterval: Duration = .seconds(15)
 
-    /// Sant för en delad adress när nästa tömning är i dag eller i morgon.
-    public static func showsPlaceOutButton(isShared: Bool, nextPickup: DayDate?, today: DayDate) -> Bool {
-        guard isShared, let nextPickup else { return false }
+    /// Sant när nästa tömning är i dag eller i morgon, för en delad adress eller en adress med påminnelser på. Utan knappen
+    /// går en ångrad bock från Live Activity inte att sätta igen på tömningsdagen, när aktiviteten inte startar om.
+    public static func showsPlaceOutButton(isShared: Bool, remindersOn: Bool = false, nextPickup: DayDate?, today: DayDate) -> Bool {
+        guard isShared || remindersOn, let nextPickup else { return false }
         return (0...1).contains(today.days(until: nextPickup))
     }
 

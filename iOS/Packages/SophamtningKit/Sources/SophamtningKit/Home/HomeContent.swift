@@ -269,7 +269,7 @@ public struct HomeContent: Equatable, Sendable {
             rowReminder: rowReminder,
             scheduleEnding: scheduleEnding,
             summary: summary,
-            household: HouseholdLine.make(household: household, key: address.key, nextPickup: nextPickup, today: today, ownPlacedOut: ownPlacedOut)
+            household: HouseholdLine.make(household: household, key: address.key, nextPickup: nextPickup, today: today, ownPlacedOut: ownPlacedOut, remindersOn: address.notificationsOn || (address.isPrimary && settings.liveActivityOn))
         )
     }
 

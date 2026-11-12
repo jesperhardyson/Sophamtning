@@ -3,7 +3,8 @@ import SophamtningKit
 import SwiftUI
 
 /// Raden för Utställt. För en delad adress: **Ställ ut kärlen**, eller bocken "Utställt av …" med **Ångra**, och hushållets
-/// läge när något inte fungerar. För andra adresser bara "Kärlen är utställda" med **Ångra** när nästa tömning är markerad.
+/// läge när något inte fungerar. För andra adresser "Kärlen är utställda" med **Ångra** när nästa tömning är markerad, och
+/// **Ställ ut kärlen** när påminnelserna är på.
 /// På huvudkortet står raden direkt på kortets gröna yta, utan egen ruta, och i adressvyn på en vanlig yta.
 struct HouseholdPlaceOutRow: View {
     let line: HouseholdLine
@@ -14,9 +15,9 @@ struct HouseholdPlaceOutRow: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// Raden visas när kärlen är utställda, för alla adresser, och för en delad adress också med knappen eller hushållets läge.
+    /// Raden visas när kärlen är utställda eller knappen gäller, och för en delad adress också med hushållets läge.
     static func hasContent(_ line: HouseholdLine) -> Bool {
-        line.placedOutText != nil || (line.isShared && (line.showsButton || line.statusText != nil))
+        line.placedOutText != nil || line.showsButton || (line.isShared && line.statusText != nil)
     }
 
     private var foreground: Color { onCard ? Color.Theme.onPrimary : Color.Theme.text }
