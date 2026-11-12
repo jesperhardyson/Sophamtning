@@ -446,6 +446,8 @@ public final class AppModel {
     @discardableResult
     public func setReminderMinutes(_ minutes: Int, for timing: ReminderTiming) -> Bool {
         guard ReminderSettings.isValid(minutes: minutes, for: timing) else { return false }
+        // Samma tid igen är ingen ändring: inget sparas, och en bortsvept aktivitet startar inte om.
+        guard minutes != settings.minutes(for: timing) else { return true }
         var updated = settings
         switch timing {
         case .eveningBefore: updated.reminderMinutes = minutes

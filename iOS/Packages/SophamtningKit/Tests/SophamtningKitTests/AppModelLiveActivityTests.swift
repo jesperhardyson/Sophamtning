@@ -1102,3 +1102,21 @@ private func morningFixture() throws -> Fixture {
     #expect(model.setReminderMinutes(420, for: .sameMorning))
     #expect(f.store.endedActivities().isEmpty)
 }
+
+@Test @MainActor func sammaTidIgenGlömmerInteStoppade() async throws {
+    let f = try Fixture()
+    try f.store.setSettings(ReminderSettings(eveningOn: true, morningOn: false, reminderMinutes: 1080, liveActivityTiming: .eveningBefore, liveActivityOn: true))
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    #expect(model.setReminderMinutes(1080, for: .eveningBefore))
+    #expect(!f.store.endedActivities().isEmpty)
+}
+
+@Test @MainActor func reglageGlömmerInteStoppade() async throws {
+    let f = try Fixture()
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    #expect(model.setReminder(.sameMorning, on: true))
+    #expect(model.setReminder(.eveningBefore, on: false))
+    #expect(!f.store.endedActivities().isEmpty)
+}
