@@ -46,17 +46,14 @@ import Testing
         #expect(BinBubbleTimeline.opacity(at: 1) == 1)
     }
 
-    @Test func ettTryckTasEmotBaraNarAlltArStilla() {
-        // Inget varv och ingen bubbla.
-        #expect(BinBubbleTimeline.acceptsTap(roundElapsed: nil, bubbleElapsed: nil, reduceMotion: false))
-        // Under ett varv gör trycket inget.
-        #expect(!BinBubbleTimeline.acceptsTap(roundElapsed: 0.5, bubbleElapsed: nil, reduceMotion: false))
-        // En bubbla åt gången: varvet är slut men bubblan syns fortfarande.
-        #expect(!BinBubbleTimeline.acceptsTap(roundElapsed: 1.9, bubbleElapsed: 1.9, reduceMotion: false))
-        #expect(BinBubbleTimeline.acceptsTap(roundElapsed: 2.1, bubbleElapsed: 2.1, reduceMotion: false))
-        // Med Reducera rörelse finns inget varv, bara bubblan.
-        #expect(BinBubbleTimeline.acceptsTap(roundElapsed: 0.5, bubbleElapsed: nil, reduceMotion: true))
-        #expect(!BinBubbleTimeline.acceptsTap(roundElapsed: nil, bubbleElapsed: 1, reduceMotion: true))
+    @Test func ettTryckStartarEttVarvBaraNarKarletStarStilla() {
+        // Inget varv har spelats, eller det senaste är slut.
+        #expect(BinBubbleTimeline.startsRound(roundElapsed: nil, reduceMotion: false))
+        #expect(BinBubbleTimeline.startsRound(roundElapsed: BinLoaderTimeline.roundDuration, reduceMotion: false))
+        // Under ett varv får det spela klart, så att kärlet inte hoppar. Bubblan byts ändå.
+        #expect(!BinBubbleTimeline.startsRound(roundElapsed: 0.5, reduceMotion: false))
+        // Med Reducera rörelse spelas inget varv alls.
+        #expect(!BinBubbleTimeline.startsRound(roundElapsed: nil, reduceMotion: true))
     }
 
     @Test func spetsenStarOvanforLocketEllerOvanforHelaKarlet() {

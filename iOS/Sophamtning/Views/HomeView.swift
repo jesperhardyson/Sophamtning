@@ -379,11 +379,14 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Kärlet spelar ett varv när det har kommit in, och efter introt. Ytan ovanför kärlet är till för fraktionen
             // som faller, så kärlet står ungefär där logotypen stod.
-            BinRoundView(firstRound: binFirstRound)
+            // Pratbubblorna står under kärlet och växer nedåt över rubriken. Ovanför kärlet skulle verktygsfältet dölja dem.
+            BinRoundView(firstRound: binFirstRound, bubblePlacement: .belowBin)
                 .frame(maxWidth: .infinity)
                 .padding(.top, -24)
                 .padding(.bottom, 33)
                 .cardEntrance(shown: !entrance.hidesCards, index: 0)
+                // Pratbubblorna står framför rubriken.
+                .zIndex(1)
             Text("När töms dina kärl?")
                 .font(.brand(34, relativeTo: .largeTitle))
                 .minimumScaleFactor(0.5)

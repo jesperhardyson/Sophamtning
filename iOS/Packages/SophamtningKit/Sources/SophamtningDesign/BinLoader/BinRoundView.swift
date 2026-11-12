@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Kärlet i hemskärmens tomma läge och bredvid rubriken. Det spelar ett varv när det visas och står sedan still med
 /// stängt lock. Ett tryck spelar ett nytt varv med nästa fraktion och en lätt vibration, och en av Sopors roliga texter
-/// kommer fram i en pratbubbla som svävar uppåt och tonas bort efter cirka 2 sekunder. En bubbla åt gången, och ett
-/// tryck under ett varv gör inget. Det är dekoration: ingen slinga, så att slingan fortsatt betyder att något hämtas.
+/// kommer fram i en pratbubbla som svävar uppåt och tonas bort efter cirka 2 sekunder. Varje tryck ger en ny bubbla, hur
+/// snabbt man än trycker, och de som redan syns står kvar sin tid, högst tre åt gången. Ett tryck under ett varv låter
+/// varvet spela klart. Det är dekoration: ingen slinga, så att slingan fortsatt betyder att något hämtas.
 /// Med Reducera rörelse står kärlet still, och bubblan tonas bara in och ut på plats.
 /// Dolt för VoiceOver. Visas en bubbla tillkännages texten.
 public struct BinRoundView: View {
@@ -30,9 +31,8 @@ public struct BinRoundView: View {
     @State private var roundStart: Date?
     @State private var playedFirst = false
     @State private var taps = 0
-    /// När bubblan visades. `nil` när ingen bubbla syns.
-    @State private var bubbleStart: Date?
-    @State private var bubbleText = ""
+    /// Bubblorna som syns. Varje tryck lägger till en, och var och en syns sin egen tid.
+    @State private var bubbles = BinBubbleStack()
     /// Ingen text upprepas förrän alla visats, och två tryck i rad ger aldrig samma text.
     @State private var texts = BinLoaderTexts.Queue()
 
@@ -44,7 +44,7 @@ public struct BinRoundView: View {
     ///   - bubbleTip: Var bubblan står i förhållande till kärlet: mitt över, eller med vänsterkanten vid kärlet.
     ///   - bubblePlacement: Om spetsen står ovanför locket eller ovanför hela kärlet.
     ///   - tapTrigger: Ökar när något annat än kärlet ska räknas som ett tryck på det, till exempel rubriken bredvid.
-    ///     Samma spärr gäller, så att snabba tryck inte staplar.
+    ///     Det ger samma sak som ett tryck på kärlet.
     ///   - reduceMotion: Tvingar läget. Utan värde läses `accessibilityReduceMotion`.
     public init(firstRound: Date?, width: CGFloat = 135, maxWidth: CGFloat = BinRoundView.maxWidth, bubbleTip: HorizontalAlignment = .center, bubblePlacement: BinBubbleTimeline.Placement = .overLid, tapTrigger: Int = 0, reduceMotion: Bool? = nil) {
         self.firstRound = firstRound
@@ -86,14 +86,14 @@ public struct BinRoundView: View {
                 }
                 self.roundStart = nil
             }
-            .task(id: bubbleStart) {
-                // Bubblan har tonats bort.
-                guard let bubbleStart else { return }
-                let left = BinBubbleTimeline.duration - Date().timeIntervalSince(bubbleStart)
+            .task(id: bubbles.nextExpiry) {
+                // Den äldsta bubblan har tonats bort. Nästa får en ny väntan, eftersom `nextExpiry` då ändras.
+                guard let expiry = bubbles.nextExpiry else { return }
+                let left = expiry.timeIntervalSinceNow
                 if left > 0 {
                     guard (try? await Task.sleep(for: .seconds(left))) != nil else { return }
                 }
-                self.bubbleStart = nil
+                withAnimation(stackAnimation) { bubbles.removeExpired(at: Date()) }
             }
             .accessibilityHidden(true)
     }
@@ -112,11 +112,16 @@ public struct BinRoundView: View {
         }
     }
 
-    /// Bubblan står med spetsen ovanför locket, eller ovanför hela kärlet, och svävar uppåt därifrån. Underkanten står
-    /// fast, så att en bubbla med flera rader växer uppåt och aldrig täcker kärlet.
+    /// Hur bubblorna flyttar sig när en ny kommer eller en försvinner. Med Reducera rörelse byter de plats direkt.
+    private var stackAnimation: Animation? { reduceMotion ? nil : .snappy(duration: 0.25) }
+
+    /// Bubblorna står med spetsen ovanför locket, eller ovanför hela kärlet, och svävar uppåt därifrån. Underkanten står
+    /// fast, så att en bubbla med flera rader växer uppåt och aldrig täcker kärlet. Flera bubblor staplas: den nyaste
+    /// står närmast kärlet och skjuter de äldre utåt. Bara den nyaste har en spets, men alla har plats för den, så att
+    /// stapeln inte hoppar när en ny kommer.
     @ViewBuilder
     private var bubble: some View {
-        if let bubbleStart {
+        if !bubbles.bubbles.isEmpty {
             let tipY = BinBubbleTimeline.tipY(binWidth: width, placement: bubblePlacement)
             // En linje utan höjd i kärlets överkant. Bubblans underkant står på linjen och flyttas sedan till spetsens
             // plats, så att bubblan växer uppåt oavsett hur många rader den har.
@@ -125,37 +130,46 @@ public struct BinRoundView: View {
             Color.clear
                 .frame(height: 0)
                 .overlay(alignment: Alignment(horizontal: bubbleTip, vertical: below ? .top : .bottom)) {
-                    TimelineView(.animation) { context in
-                        let elapsed = context.date.timeIntervalSince(bubbleStart)
-                        BinSpeechBubble(text: bubbleText, tip: bubbleTip, pointsUp: below)
-                            .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: below ? 0 : 1))
-                            .opacity(BinBubbleTimeline.opacity(at: elapsed))
-                            .offset(y: (below ? 1 : -1) * BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
+                    // Den nyaste närmast kärlet: överst när bubblorna står under kärlet, annars nederst.
+                    let stack = below ? Array(bubbles.bubbles.reversed()) : bubbles.bubbles
+                    let newest = bubbles.bubbles.last?.id
+                    VStack(alignment: bubbleTip, spacing: 4) {
+                        ForEach(stack) { item in
+                            TimelineView(.animation) { context in
+                                let elapsed = context.date.timeIntervalSince(item.start)
+                                BinSpeechBubble(text: item.text, tip: bubbleTip, pointsUp: below, showsTip: item.id == newest)
+                                    .scaleEffect(BinBubbleTimeline.scale(at: elapsed, reduceMotion: reduceMotion), anchor: UnitPoint(x: bubbleTip == .leading ? 0 : 0.5, y: below ? 0 : 1))
+                                    .opacity(BinBubbleTimeline.opacity(at: elapsed))
+                                    .offset(y: (below ? 1 : -1) * BinBubbleTimeline.rise(at: elapsed, reduceMotion: reduceMotion))
+                            }
+                            // Bubblan tonas in av sin egen tidslinje. En som får lämna plats i förtid tonas bort.
+                            .transition(.asymmetric(insertion: .identity, removal: .opacity))
+                        }
                     }
+                    // Linjen har ingen höjd. Utan det här får varje bubbla höjden 0, och de hamnar ovanpå varandra.
+                    .fixedSize()
                 }
                 .offset(y: tipY)
                 .allowsHitTesting(false)
         }
     }
 
-    /// Ett tryck: ett nytt varv och en bubbla, eller inget om ett varv eller en bubbla redan pågår.
+    /// Ett tryck: alltid en ny bubbla med nästa text och en vibration, hur snabbt man än trycker. Bubblan läggs till
+    /// bland dem som redan syns. Ett nytt varv bara om kärlet står still.
     private func tapped() {
         let now = Date()
-        guard BinBubbleTimeline.acceptsTap(
-            roundElapsed: roundStart.map { now.timeIntervalSince($0) },
-            bubbleElapsed: bubbleStart.map { now.timeIntervalSince($0) },
-            reduceMotion: reduceMotion
-        ) else { return }
-        // Ett tryck före det första varvet ersätter det, så att inget varv spelas två gånger.
-        if playedFirst { round += 1 }
+        if BinBubbleTimeline.startsRound(roundElapsed: roundStart.map { now.timeIntervalSince($0) }, reduceMotion: reduceMotion) {
+            // Ett tryck före det första varvet ersätter det, så att inget varv spelas två gånger.
+            if playedFirst { round += 1 }
+            roundStart = now
+        }
         playedFirst = true
         taps += 1
-        if !reduceMotion { roundStart = now }
         var generator = SystemRandomNumberGenerator()
-        bubbleText = texts.next(using: &generator)
-        bubbleStart = now
+        let text = texts.next(using: &generator)
+        withAnimation(stackAnimation) { bubbles.add(text, at: now) }
         // Kärlet och bubblan är dolda för VoiceOver, så texten tillkännages i stället, med låg prioritet.
-        var announcement = AttributedString(bubbleText)
+        var announcement = AttributedString(text)
         announcement.accessibilitySpeechAnnouncementPriority = .low
         AccessibilityNotification.Announcement(announcement).post()
     }

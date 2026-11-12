@@ -47,7 +47,8 @@ public enum BinBubbleTimeline {
         case overLid
         /// Spetsen ovanför kärlets hela ram. För det lilla kärlet bredvid rubriken, där texten når högre än locket.
         case aboveBin
-        /// Spetsen under kärlets ram, och bubblan växer nedåt. För kärlet i rubriken, där fältet ovanför annars döljer bubblan.
+        /// Spetsen under kärlets ram, och bubblan växer nedåt. För kärlet i rubriken och i tomt läge, där fältet ovanför
+        /// annars döljer bubblan.
         case belowBin
 
         /// Sant när bubblan står under kärlet och spetsen pekar uppåt.
@@ -68,14 +69,12 @@ public enum BinBubbleTimeline {
         }
     }
 
-    /// Om ett tryck på kärlet tas emot. Under ett varv gör trycket inget, och det finns bara en bubbla åt gången.
-    /// Med Reducera rörelse spelas inget varv, så bara bubblan räknas.
-    /// - Parameters:
-    ///   - roundElapsed: Sekunder sedan det senaste varvet startade, eller `nil` om inget har spelats.
-    ///   - bubbleElapsed: Sekunder sedan den senaste bubblan visades, eller `nil`.
-    public static func acceptsTap(roundElapsed: TimeInterval?, bubbleElapsed: TimeInterval?, reduceMotion: Bool) -> Bool {
-        if let roundElapsed, BinLoaderTimeline.isPlayingRound(elapsed: roundElapsed, reduceMotion: reduceMotion) { return false }
-        if let bubbleElapsed, isShowing(elapsed: bubbleElapsed) { return false }
-        return true
+    /// Om ett tryck på kärlet startar ett nytt varv. Varje tryck ger en ny bubbla, men ett pågående varv får spela
+    /// klart, så att kärlet inte hoppar mitt i rörelsen. Med Reducera rörelse spelas inget varv.
+    /// - Parameter roundElapsed: Sekunder sedan det senaste varvet startade, eller `nil` om inget har spelats.
+    public static func startsRound(roundElapsed: TimeInterval?, reduceMotion: Bool) -> Bool {
+        guard !reduceMotion else { return false }
+        guard let roundElapsed else { return true }
+        return !BinLoaderTimeline.isPlayingRound(elapsed: roundElapsed, reduceMotion: reduceMotion)
     }
 }
