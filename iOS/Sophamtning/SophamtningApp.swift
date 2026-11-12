@@ -22,6 +22,8 @@ struct SophamtningApp: App {
         NavigationBarStyle.apply()
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         NotificationPresenter.registerCategories()
+        // Adresserna i Siris fraser ("När töms soporna vid Stugan") följer de sparade adresserna.
+        SophamtningShortcuts.updateAppShortcutParameters()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         let (model, cloudHousehold) = Self.makeModel(version: version, build: build)

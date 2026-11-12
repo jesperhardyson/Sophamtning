@@ -162,6 +162,14 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 - [ ] **45. Kalenderbladet på morgonen.** Starta appen från början på morgonen efter en tömning: kalenderbladet vänds från dagens datum till nästa tömningsdag (se punkt 5). Hämtas ett nytt schema medan appen är öppen och nästa tömning byter datum, vänds bladet även då.
 - [ ] **46. Morgonen i appen.** Hemkortet visar inte längre **Live Activity visas nu** eller en gammal reservpåminnelse. Texten **Reservpåminnelse** visas bara när en reservnotis ligger framför.
 
+## Siri
+
+- [ ] **S1. Fråga Siri.** Med Siri på svenska, säg "När töms soporna i Sophämtning". Siri svarar med huvudadressens namn, kärlen och datum, till exempel **Hemma: Matavfall och Pappersförpackningar töms onsdag 25 november, om 13 dagar.**, och visar kortet med kalenderbladet och kärlen. Ingen fråga om adress när bara en är sparad. Gör samma sak med flygplansläge på: svaret är detsamma.
+- [ ] **S2. Fråga om en annan adress.** Med två sparade adresser, säg "När töms soporna vid Stugan i Sophämtning". Svaret gäller Stugan.
+- [ ] **S3. Ställ ut med Siri.** Dagen före en tömning, med låst telefon, säg "Ställ ut kärlen i Sophämtning". Siri säger **Klart. Kärlen för Hemma är utställda.** Öppna appen: kortet visar Utställt, och notisen och Live Activityn för tömningen är borta. I ett delat hushåll syns bocken hos den andra. Säg det igen: **Kärlen för Hemma är redan utställda.**
+- [ ] **S4. För tidigt.** Mer än en dag före tömningen, säg "Ställ ut kärlen i Sophämtning". Siri säger när nästa tömning är och att kärlen kan markeras dagen före och samma dag. Inget markeras.
+- [ ] **S5. Genvägar och Spotlight.** Öppna Genvägar: **När töms soporna** och **Ställ ut kärlen** finns under Sophämtning utan att något lagts till. Sök "soporna" i Spotlight: genvägen syns och svarar.
+
 ## Hushåll
 
 Kräver ett bygge med iCloud-behörigheten och containern `iCloud.se.hardyson.sophamtning`. Punkterna har nummer H1 och uppåt, så att de övriga hänvisningarna i listan inte ändras. CloudKit körs inte i UI-testerna, så allt nedan är ostött på riktig iCloud. Schemat skapas i Development när posterna skrivs första gången, och flyttas till Production före TestFlight (se `docs/specs/2026-11-08-release.md`).

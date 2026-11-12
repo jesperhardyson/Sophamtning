@@ -34,6 +34,7 @@
 		6309A2EBEB0B6F32C74E2AF3 /* BackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */; };
 		6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */; };
 		6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */; };
+		6F697F63EA7791EE046A7B30 /* AddressEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */; };
 		70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9AF17AB2CEEBC9F01CBDDA /* InAppBrowser.swift */; };
 		74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2646AA909312B4395C8FC349 /* ScheduleViews.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
@@ -47,6 +48,7 @@
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B6E7E523807050F2DA357FBD /* CloudKitHouseholdSync+Sharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66D004D8D9DDB5EBF3F0DBF /* CloudKitHouseholdSync+Sharing.swift */; };
+		C8BE2D70D0EEE336EEB56A9F /* SiriIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85131DFABD9EB4FB83515CD2 /* SiriIntents.swift */; };
 		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
 		D0253C8AD586F6F9BF6A4C8F /* LargestTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D9A30BF0E402DC46212E29 /* LargestTextTests.swift */; };
 		D7CED481ACFED9008E352189 /* uitest-omraden.json in Resources */ = {isa = PBXBuildFile; fileRef = 34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */; };
@@ -126,6 +128,7 @@
 		7F307C543EEA02E99659E697 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		83A75D016861C31D1FFBE57A /* Sophamtning.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sophamtning.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83F19D1437073960567F4C69 /* uitest-adress-avesta.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-adress-avesta.json"; sourceTree = "<group>"; };
+		85131DFABD9EB4FB83515CD2 /* SiriIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriIntents.swift; sourceTree = "<group>"; };
 		863E8C3A0BF6B6FE75B20518 /* AreaConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaConfirmSheet.swift; sourceTree = "<group>"; };
 		8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartIntroView.swift; sourceTree = "<group>"; };
 		8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressQuickActions.swift; sourceTree = "<group>"; };
@@ -154,6 +157,7 @@
 		EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F6E97966D4E1386A76326E42 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerView.swift; sourceTree = "<group>"; };
+		FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressEntity.swift; sourceTree = "<group>"; };
 		FC4BE44B59AE1A33494CA69B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -246,6 +250,7 @@
 				CB7E7785488A9104B0831A45 /* Sophamtning.entitlements */,
 				431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */,
 				6CF027E09E6A4181B592410D /* Household */,
+				CA484A81AEB995831005F5F2 /* Siri */,
 				39CFD63106C71D7CE9FB8AC4 /* System */,
 				B2D50DC758A07C87022C692F /* UITest */,
 				299616F25BD717D16E75810D /* UITestData */,
@@ -330,6 +335,15 @@
 				8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		CA484A81AEB995831005F5F2 /* Siri */ = {
+			isa = PBXGroup;
+			children = (
+				FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */,
+				85131DFABD9EB4FB83515CD2 /* SiriIntents.swift */,
+			);
+			path = Siri;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -479,6 +493,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6F697F63EA7791EE046A7B30 /* AddressEntity.swift in Sources */,
 				76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */,
 				E52B35185576088B07E7F7AA /* AddressView.swift in Sources */,
 				D7EED854CA3E982F42505183 /* AreaConfirmSheet.swift in Sources */,
@@ -508,6 +523,7 @@
 				74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */,
 				EF8D93DDD3BAF100D3E77AAF /* SearchView.swift in Sources */,
 				350115EAF00D4B55E3B2DF09 /* SettingsView.swift in Sources */,
+				C8BE2D70D0EEE336EEB56A9F /* SiriIntents.swift in Sources */,
 				F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */,
 				9CF16D5EFB70314F259BF636 /* SourceCard.swift in Sources */,
 				0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */,
