@@ -9,11 +9,11 @@
 /* Begin PBXBuildFile section */
 		0522D43D6CEDC31287AC9FCA /* AreaFinderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49713674AF12521818193251 /* AreaFinderSheet.swift */; };
 		0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */; };
+		0AC66864F53490712176B9BA /* AddressEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */; };
 		12270CE31849ADF3AF19DC9F /* uitest-sok.json in Resources */ = {isa = PBXBuildFile; fileRef = 69F7D16F04135196630E9D02 /* uitest-sok.json */; };
 		16E94D6EB51F6A40327DCC49 /* CloudKitHouseholdSync+Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B08DC8B3A8F3843B4340103 /* CloudKitHouseholdSync+Storage.swift */; };
 		1B2DD25F69CF68CA48C96F60 /* HouseholdPlaceOutRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D39C512D0EAFE6728D4A9C2 /* HouseholdPlaceOutRow.swift */; };
 		1FDE7A63431C123F8AAABD0A /* ChangelogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265C8FDFDD3935B303D2B582 /* ChangelogSheet.swift */; };
-		20DDC5C5EA6C291E2AC6B1B4 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 49A99ECEACF459EE78F828A0 /* CHANGELOG.md */; };
 		22986F3CDF217739154F8363 /* HouseholdRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6733ABFC375276FA8FB421 /* HouseholdRecords.swift */; };
 		2635872BDFC7A782BF6F0414 /* HouseholdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84FE27AF7781C32C7F5967A /* HouseholdTests.swift */; };
 		2F9E50FF90E1F2454F9BFF1E /* HouseholdSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672E8B9450E36C4877F1B96E /* HouseholdSheet.swift */; };
@@ -25,9 +25,11 @@
 		38E9E5062ABB95267BEE75CA /* ReminderToggleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */; };
 		3FB48805DDC512F2A9B27890 /* NextPickupWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8AF412C35614825019257CF /* NextPickupWidget.swift */; };
 		40CA8A61C89A6CF1A6D268C5 /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 456CA478F3DAA6359F968AE6 /* LiveActivityScheduler.swift */; };
+		515981D7FBB0A82CF5186E32 /* PlaceOutControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54171D0B01BEFC1BAB0F783F /* PlaceOutControl.swift */; };
 		52A088583F18130CC2DA4C33 /* uitest-kallor.json in Resources */ = {isa = PBXBuildFile; fileRef = 57C37502C561147857F00418 /* uitest-kallor.json */; };
 		571BE1C6E47E58D38F1F494D /* HouseholdShareAcceptance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0D4BB96881209C2ACA88F8 /* HouseholdShareAcceptance.swift */; };
 		57E68D47DC84227704A88456 /* AccessibilityAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140BBB80224770A99801765F /* AccessibilityAuditTests.swift */; };
+		584089C0E0E3A862ED1D27C1 /* PlaceOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A81C18EE5398F719CEC9B2 /* PlaceOutIntent.swift */; };
 		5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9662238FFEB7754E74086AF /* PrimaryCard.swift */; };
 		5BC5A2016F8EB7A3EFE2BB8E /* CloudKitHouseholdSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B140E1079F041786369A7F2B /* CloudKitHouseholdSync.swift */; };
 		5C1BFCD9B4E55AB06D91F058 /* uitest-adress-tom.json in Resources */ = {isa = PBXBuildFile; fileRef = 38345EA7C2F5EBA31487F01D /* uitest-adress-tom.json */; };
@@ -41,15 +43,18 @@
 		74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2646AA909312B4395C8FC349 /* ScheduleViews.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
 		76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */; };
+		78D513CB16D19AD771582847 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 42858D5F7A3FA95398AC0C85 /* CHANGELOG.md */; };
 		90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F307C543EEA02E99659E697 /* NotificationPresenter.swift */; };
 		920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83C77BCFF8F5F3C97D1E11A /* UITestAPI.swift */; };
 		9392F46D1606F5A50029A130 /* MarkPlacedOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */; };
 		983061495ACBF138AB793997 /* CloudKitHouseholdSync+Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554E93E40F1B0AA35A1DE35E /* CloudKitHouseholdSync+Engine.swift */; };
 		9CF16D5EFB70314F259BF636 /* SourceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E3AF68D874F45D17C1DE93 /* SourceCard.swift */; };
 		A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */; };
+		AA0E47DA8D5C9477DE2D71F3 /* PlaceOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A81C18EE5398F719CEC9B2 /* PlaceOutIntent.swift */; };
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B6E7E523807050F2DA357FBD /* CloudKitHouseholdSync+Sharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66D004D8D9DDB5EBF3F0DBF /* CloudKitHouseholdSync+Sharing.swift */; };
+		C68E547DE6E4F289AE1BBB8C /* LockScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9FBA4BACF91A649CA75104 /* LockScreenWidget.swift */; };
 		C8BE2D70D0EEE336EEB56A9F /* SiriIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85131DFABD9EB4FB83515CD2 /* SiriIntents.swift */; };
 		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
 		D0253C8AD586F6F9BF6A4C8F /* LargestTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D9A30BF0E402DC46212E29 /* LargestTextTests.swift */; };
@@ -113,13 +118,14 @@
 		398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreFlowTests.swift; sourceTree = "<group>"; };
 		3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkPlacedOutIntent.swift; sourceTree = "<group>"; };
 		3F0D4BB96881209C2ACA88F8 /* HouseholdShareAcceptance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdShareAcceptance.swift; sourceTree = "<group>"; };
+		42858D5F7A3FA95398AC0C85 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
 		456CA478F3DAA6359F968AE6 /* LiveActivityScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityScheduler.swift; sourceTree = "<group>"; };
 		49713674AF12521818193251 /* AreaFinderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaFinderSheet.swift; sourceTree = "<group>"; };
-		49A99ECEACF459EE78F828A0 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
 		4D5502E2E1A53F977DC24C47 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressView.swift; sourceTree = "<group>"; };
+		54171D0B01BEFC1BAB0F783F /* PlaceOutControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceOutControl.swift; sourceTree = "<group>"; };
 		554E93E40F1B0AA35A1DE35E /* CloudKitHouseholdSync+Engine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKitHouseholdSync+Engine.swift"; sourceTree = "<group>"; };
 		57C37502C561147857F00418 /* uitest-kallor.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-kallor.json"; sourceTree = "<group>"; };
 		5B08DC8B3A8F3843B4340103 /* CloudKitHouseholdSync+Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKitHouseholdSync+Storage.swift"; sourceTree = "<group>"; };
@@ -141,6 +147,7 @@
 		A8AF412C35614825019257CF /* NextPickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPickupWidget.swift; sourceTree = "<group>"; };
 		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
 		AAFA1149D9DD5A0692994A23 /* FlowComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowComponents.swift; sourceTree = "<group>"; };
+		AD9FBA4BACF91A649CA75104 /* LockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenWidget.swift; sourceTree = "<group>"; };
 		B140E1079F041786369A7F2B /* CloudKitHouseholdSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitHouseholdSync.swift; sourceTree = "<group>"; };
 		B66D004D8D9DDB5EBF3F0DBF /* CloudKitHouseholdSync+Sharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKitHouseholdSync+Sharing.swift"; sourceTree = "<group>"; };
 		B7E3AF68D874F45D17C1DE93 /* SourceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceCard.swift; sourceTree = "<group>"; };
@@ -159,6 +166,7 @@
 		E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KommunCheckView.swift; sourceTree = "<group>"; };
 		E84FE27AF7781C32C7F5967A /* HouseholdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdTests.swift; sourceTree = "<group>"; };
 		EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F1A81C18EE5398F719CEC9B2 /* PlaceOutIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceOutIntent.swift; sourceTree = "<group>"; };
 		F6E97966D4E1386A76326E42 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerView.swift; sourceTree = "<group>"; };
 		FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressEntity.swift; sourceTree = "<group>"; };
@@ -200,15 +208,6 @@
 			path = UITestData;
 			sourceTree = "<group>";
 		};
-		2C36B855F73E81759D160558 /* Sophamtning-nyheter */ = {
-			isa = PBXGroup;
-			children = (
-				49A99ECEACF459EE78F828A0 /* CHANGELOG.md */,
-			);
-			name = "Sophamtning-nyheter";
-			path = ..;
-			sourceTree = "<group>";
-		};
 		39CFD63106C71D7CE9FB8AC4 /* System */ = {
 			isa = PBXGroup;
 			children = (
@@ -227,7 +226,7 @@
 				6B7534172D11547D4E2C9651 /* Config */,
 				7A0FE1F3ACCC9DCB17052506 /* Packages */,
 				74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */,
-				2C36B855F73E81759D160558 /* Sophamtning-nyheter */,
+				F18E1E6A07B5E25FDAD22FB7 /* Sophamtning-lasskarm */,
 				A56B39B834D616C72AA4C4A5 /* SophamtningUITests */,
 				8695B78B42B387C7502982F5 /* SophamtningWidgets */,
 				9EA4635974972027A134D901 /* Products */,
@@ -285,9 +284,11 @@
 			isa = PBXGroup;
 			children = (
 				FC4BE44B59AE1A33494CA69B /* Info.plist */,
+				AD9FBA4BACF91A649CA75104 /* LockScreenWidget.swift */,
 				3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */,
 				A8AF412C35614825019257CF /* NextPickupWidget.swift */,
 				0C8419AD422B35F3FFBD5521 /* PickupLiveActivity.swift */,
+				54171D0B01BEFC1BAB0F783F /* PlaceOutControl.swift */,
 				19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */,
 				B9C662505C352D421011AC2A /* SophamtningWidgets.entitlements */,
 			);
@@ -356,9 +357,19 @@
 			isa = PBXGroup;
 			children = (
 				FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */,
+				F1A81C18EE5398F719CEC9B2 /* PlaceOutIntent.swift */,
 				85131DFABD9EB4FB83515CD2 /* SiriIntents.swift */,
 			);
 			path = Siri;
+			sourceTree = "<group>";
+		};
+		F18E1E6A07B5E25FDAD22FB7 /* Sophamtning-lasskarm */ = {
+			isa = PBXGroup;
+			children = (
+				42858D5F7A3FA95398AC0C85 /* CHANGELOG.md */,
+			);
+			name = "Sophamtning-lasskarm";
+			path = ..;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -479,7 +490,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */,
-				20DDC5C5EA6C291E2AC6B1B4 /* CHANGELOG.md in Resources */,
+				78D513CB16D19AD771582847 /* CHANGELOG.md in Resources */,
 				6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */,
 				E3E832556BDB2AF4EA1BFBF4 /* uitest-adress-avesta.json in Resources */,
 				5C1BFCD9B4E55AB06D91F058 /* uitest-adress-tom.json in Resources */,
@@ -535,6 +546,7 @@
 				36AF968C4B69A20A0BB8D53B /* NavigationBarStyle.swift in Sources */,
 				90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */,
 				F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */,
+				AA0E47DA8D5C9477DE2D71F3 /* PlaceOutIntent.swift in Sources */,
 				5A1560B6703F7E69705CAFD7 /* PrimaryCard.swift in Sources */,
 				38E9E5062ABB95267BEE75CA /* ReminderToggleRow.swift in Sources */,
 				74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */,
@@ -552,9 +564,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0AC66864F53490712176B9BA /* AddressEntity.swift in Sources */,
+				C68E547DE6E4F289AE1BBB8C /* LockScreenWidget.swift in Sources */,
 				9392F46D1606F5A50029A130 /* MarkPlacedOutIntent.swift in Sources */,
 				3FB48805DDC512F2A9B27890 /* NextPickupWidget.swift in Sources */,
 				38E701A1BF92551CAC2D2E42 /* PickupLiveActivity.swift in Sources */,
+				515981D7FBB0A82CF5186E32 /* PlaceOutControl.swift in Sources */,
+				584089C0E0E3A862ED1D27C1 /* PlaceOutIntent.swift in Sources */,
 				D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

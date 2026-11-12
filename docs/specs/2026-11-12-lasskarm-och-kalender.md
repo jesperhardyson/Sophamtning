@@ -1,6 +1,6 @@
 # Låsskärmen, Ställ ut i widgeten, Kontrollcenter och Kalender
 
-Status: utkast, väntar på Jespers godkännande.
+Status: godkänd av Jesper 2026-11-12.
 
 ## Mål
 

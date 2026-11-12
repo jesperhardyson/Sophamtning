@@ -13,6 +13,8 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         case email
         /// Källans kontaktsida, i appens webbvy.
         case contactPage
+        /// Adressens schema i Kalender (`webcal://`). iOS frågar om prenumeration.
+        case calendar
     }
 
     public let kind: Kind
@@ -30,6 +32,7 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         case .phone: "phone"
         case .email: "envelope"
         case .contactPage: "link"
+        case .calendar: "calendar.badge.plus"
         }
     }
 
@@ -43,7 +46,7 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
     public var webLink: WebLink? {
         switch kind {
         case .website, .kommunInfo, .contactPage: WebLink(url: url)
-        case .phone, .email: nil
+        case .phone, .email, .calendar: nil
         }
     }
 
@@ -52,13 +55,17 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         switch kind {
         case .phone: "Ring \(title)"
         case .email: "Mejla \(title)"
-        case .website, .kommunInfo, .contactPage: title
+        case .website, .kommunInfo, .contactPage, .calendar: title
         }
     }
 
     /// Webbplats, kommunens information och kontakten, i den ordningen. `kommunInfo` saknas på Datakällor.
-    public static func links(for source: Source?, kommunInfo: URL?) -> [SourceLink] {
+    /// Kalendern står först, när adressen har en `links.ics`. Den saknas på Datakällor.
+    public static func links(for source: Source?, kommunInfo: URL?, calendar: URL? = nil) -> [SourceLink] {
         var links: [SourceLink] = []
+        if let calendar {
+            links.append(SourceLink(kind: .calendar, title: "Lägg till i Kalender", url: calendar))
+        }
         if let url = source?.url, WebLink(url: url) != nil {
             links.append(SourceLink(kind: .website, title: "Webbplats", url: url))
         }
