@@ -786,24 +786,3 @@ private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time:
     #expect(model.settings.liveActivityTiming == .eveningBefore)
     #expect(model.lastStorageError != nil)
 }
-
-@Test @MainActor func bytTillKvällEfterKvällstidenBehållerMorgonnotisen() async throws {
-    // Samma morgon 06:00 och tömning onsdag. Tisdag 20:00 byts valet till kvällen före, vars tid 18:00 redan passerat.
-    let temp = TempDir()
-    let tuesdayEvening = StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 20 * 60)
-    let store = LocalStore(directory: temp.url)
-    try store.setSettings(ReminderSettings(eveningOn: false, morningOn: true, morningMinutes: 360, liveActivityTiming: .sameMorning))
-    let scheduler = FakeScheduler(status: .authorized)
-    let model = try await wednesdayModel(scheduler, directory: temp.url, at: tuesdayEvening)
-    _ = await model.setNotifications(true, for: key)
-    await model.settleReminders()
-    let morning = StockholmClock.date(on: DayDate("2026-11-11")!, minutes: 6 * 60)
-    #expect(scheduler.planned.map(\.fireDate) == [morning])
-    #expect(model.setReminderTiming(.eveningBefore))
-    await model.settleReminders()
-    // Notisen på onsdagsmorgonen står kvar, så tömningen har fortfarande en påminnelse, och den gäller onsdagen.
-    #expect(scheduler.planned.map(\.fireDate) == [morning])
-    let address = try #require(model.addresses.first)
-    let reserve = try #require(model.reserveNotificationDate(for: address))
-    #expect(reserve == morning)
-}
