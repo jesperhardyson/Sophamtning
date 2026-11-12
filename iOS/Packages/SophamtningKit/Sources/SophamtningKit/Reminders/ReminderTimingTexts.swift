@@ -2,10 +2,10 @@ import Foundation
 
 /// Texterna som följer valet mellan kvällen före och samma morgon.
 extension ReminderTiming {
-    /// "kvällen före" eller "samma morgon", inne i en mening.
+    /// "dagen före" eller "samma morgon", inne i en mening. Inte "kvällen före", eftersom tiderna börjar 15:00.
     var phrase: String {
         switch self {
-        case .eveningBefore: "kvällen före"
+        case .eveningBefore: "dagen före"
         case .sameMorning: "samma morgon"
         }
     }
