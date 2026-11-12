@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0](https://github.com/jesperhardyson/Sophamtning/compare/v1.1.0...v1.2.0) (2026-11-12)
+
+
+### Nytt
+
+* Pratbubblorna tar emot varje tryck och staplas ([#67](https://github.com/jesperhardyson/Sophamtning/issues/67)) ([59b0e67](https://github.com/jesperhardyson/Sophamtning/commit/59b0e67e8c9db4ac985c145d8d9a61fd670d1bcc))
+* Siri svarar när soporna töms och kan ställa ut kärlen ([#71](https://github.com/jesperhardyson/Sophamtning/issues/71)) ([8a7d6e4](https://github.com/jesperhardyson/Sophamtning/commit/8a7d6e4e297fd0a5545359717d8ffcbaebb08b09))
+* Två påminnelser, kvällen före och samma morgon ([#68](https://github.com/jesperhardyson/Sophamtning/issues/68)) ([6c9d25f](https://github.com/jesperhardyson/Sophamtning/commit/6c9d25ff786d70e733e53e4ad996d5fb5b454236))
+* Version i inställningarna öppnar Nyheter ([#72](https://github.com/jesperhardyson/Sophamtning/issues/72)) ([3a0a883](https://github.com/jesperhardyson/Sophamtning/commit/3a0a883f14bf62249d9b6694d608ed747995e872))
+
+
+### Rättat
+
+* Den mellanstora widgeten visar bara nästa tömnings kärl ([#70](https://github.com/jesperhardyson/Sophamtning/issues/70)) ([d01845e](https://github.com/jesperhardyson/Sophamtning/commit/d01845e3f0d144ff45914381d52515841d6a7e23))
+* Fältet överst är genomskinligt tills innehållet scrollar under ([#69](https://github.com/jesperhardyson/Sophamtning/issues/69)) ([04f2d09](https://github.com/jesperhardyson/Sophamtning/commit/04f2d09d9be8daad4e0900f284cc8dc1b468f7c3))
+* Kärlen går att ställa ut igen efter Ångra ([#65](https://github.com/jesperhardyson/Sophamtning/issues/65)) ([4501c21](https://github.com/jesperhardyson/Sophamtning/commit/4501c21035ad3ceb2a28ba2a99b24f9be59d86ba))
+
 ## [1.1.0](https://github.com/jesperhardyson/Sophamtning/compare/v1.0.2...v1.1.0) (2026-11-10)
 
 
