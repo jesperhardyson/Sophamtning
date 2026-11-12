@@ -651,3 +651,86 @@ private func homeNotification(_ plan: ReminderPlan, on date: String) -> PlannedN
     #expect(ReminderTime.pickupDay(forReminderAt: stockholm("2026-11-08T18:45")) == day("2026-11-09"))
     #expect(ReminderTime.pickupDay(forReminderAt: stockholm("2026-11-08T23:45")) == day("2026-11-09"))
 }
+
+// MARK: - Två påminnelser
+
+private let wed = day("2026-11-11")
+private let wedId = PlacedOut(key: homeKey, date: wed)
+
+private func twoInput(_ settings: ReminderSettings, now: Date, events: [PickupEvent] = [event("2026-11-11", ["rest"])], placedOut: Set<PlacedOut> = [], existing: Set<PlacedOut> = [], shown: Set<PlacedOut> = [], starts: [PlacedOut: Date] = [:]) -> PlannerInput {
+    PlannerInput(
+        addresses: [PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: true), schedule: schedule(homeKey, events: events))],
+        settings: settings, placedOut: placedOut, now: now, liveActivitiesAllowed: true, existingActivities: existing, shownActivities: shown, activityStarts: starts
+    )
+}
+
+private let eveningId = PlannedNotification.identifier(key: homeKey, date: wed, timing: .eveningBefore)
+private let morningId = PlannedNotification.identifier(key: homeKey, date: wed, timing: .sameMorning)
+
+@Test func bådaValenGerTvåNotiser() {
+    let p = ReminderPlanner.plan(twoInput(ReminderSettings(morningOn: true), now: stockholm("2026-11-10T12:00")))
+    #expect(p.notifications.map(\.fireDate) == [stockholm("2026-11-10T18:00"), stockholm("2026-11-11T06:00")])
+    #expect(p.notifications.map(\.identifier) == [eveningId, morningId])
+    #expect(eveningId != morningId)
+}
+
+@Test func kvällenPasseradMorgonenKvar() {
+    let p = ReminderPlanner.plan(twoInput(ReminderSettings(morningOn: true), now: stockholm("2026-11-10T19:00")))
+    #expect(p.notifications.map(\.identifier) == [morningId])
+}
+
+@Test func bockMellanKvällOchMorgon() {
+    let now = stockholm("2026-11-10T19:00")
+    let withMark = ReminderPlanner.plan(twoInput(ReminderSettings(morningOn: true), now: now, placedOut: [wedId]))
+    #expect(withMark.notifications.isEmpty)
+    let without = ReminderPlanner.plan(twoInput(ReminderSettings(morningOn: true), now: now))
+    #expect(without.notifications.map(\.identifier) == [morningId])
+}
+
+@Test func reservenGällerAktivitetensVal() {
+    let settings = ReminderSettings(morningOn: true, liveActivityTiming: .eveningBefore, liveActivityOn: true)
+    let now = stockholm("2026-11-10T12:00")
+    let starts = [wedId: stockholm("2026-11-10T18:00")]
+    let p = ReminderPlanner.plan(twoInput(settings, now: now, existing: [wedId], starts: starts))
+    let evening = p.notifications.first { $0.identifier == eveningId }
+    let morning = p.notifications.first { $0.identifier == morningId }
+    #expect(evening?.fireDate == stockholm("2026-11-10T18:45"))
+    #expect(evening?.title == ReminderPlanner.fallbackTitle)
+    #expect(morning?.fireDate == stockholm("2026-11-11T06:00"))
+    #expect(morning?.title == ReminderPlanner.ordinaryTitle)
+
+    let shown = ReminderPlanner.plan(twoInput(settings, now: now, existing: [wedId], shown: [wedId], starts: starts))
+    #expect(shown.notifications.map(\.identifier) == [morningId])
+}
+
+@Test func ingenReservUtanAktivitetensVal() {
+    let settings = ReminderSettings(eveningOn: true, morningOn: false, liveActivityTiming: .sameMorning, liveActivityOn: true)
+    let starts = [wedId: stockholm("2026-11-11T06:00")]
+    let p = ReminderPlanner.plan(twoInput(settings, now: stockholm("2026-11-10T12:00"), existing: [wedId], starts: starts))
+    #expect(p.notifications.count == 1)
+    #expect(p.notifications.first?.fireDate == stockholm("2026-11-10T18:00"))
+    #expect(p.notifications.first?.title == ReminderPlanner.ordinaryTitle)
+    #expect(!p.notifications.contains { $0.fireDate == stockholm("2026-11-11T06:45") })
+}
+
+@Test func aktivitetenFöljerSittVal() throws {
+    let settings = ReminderSettings(eveningOn: true, morningOn: false, liveActivityTiming: .sameMorning, liveActivityOn: true)
+    let p = ReminderPlanner.plan(twoInput(settings, now: stockholm("2026-11-10T12:00")))
+    let activity = try #require(p.liveActivity)
+    #expect(activity.pickupDate == wed)
+    #expect(activity.start == stockholm("2026-11-11T06:00"))
+}
+
+@Test func taketRäknarVarjeNotis() {
+    let events = (0..<40).map { event(wed.adding(days: $0 * 2).iso, ["rest"]) }
+    let p = ReminderPlanner.plan(twoInput(ReminderSettings(morningOn: true), now: stockholm("2026-11-10T12:00"), events: events))
+    #expect(p.notifications.count == 60)
+    #expect(p.notifications.map(\.fireDate) == p.notifications.map(\.fireDate).sorted())
+    #expect(p.notifications.first?.fireDate == stockholm("2026-11-10T18:00"))
+    #expect(p.notifications.last?.pickupDate == wed.adding(days: 29 * 2))
+}
+
+@Test func retainablePerVal() {
+    let r = ReminderPlanner.retainable(twoInput(ReminderSettings(morningOn: true), now: stockholm("2026-11-10T19:00")))
+    #expect(Set(r.keys) == [eveningId])
+}

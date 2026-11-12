@@ -217,24 +217,27 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) { continue }
-                var fireDate = ReminderTime.date(forPickup: pickup.date, timing: input.settings.liveActivityTiming, settings: input.settings)
-                var title = ordinaryTitle
-                // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse
-                // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
-                if activitiesActive, input.existingActivities.contains(id) {
-                    if input.shownActivities.contains(id) { continue }
-                    fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate)
-                    title = fallbackTitle
+                for timing in input.settings.enabledTimings {
+                    var fireDate = ReminderTime.date(forPickup: pickup.date, timing: timing, settings: input.settings)
+                    var title = ordinaryTitle
+                    // Reserven gäller bara notisen för aktivitetens val. Aktiviteten aviserar själv, men bara om den faktiskt finns
+                    // hos systemet. Syntes den redan behövs ingen påminnelse till. Annars ersätts notisen av en reserv efter starten,
+                    // med samma identifierare, så att den aldrig blir dubbel. Det andra valets notis påverkas inte.
+                    if activitiesActive, timing == input.settings.liveActivityTiming, input.existingActivities.contains(id) {
+                        if input.shownActivities.contains(id) { continue }
+                        fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate)
+                        title = fallbackTitle
+                    }
+                    guard fireDate > input.now else { continue }
+                    notifications.append(PlannedNotification(
+                        identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date, timing: timing),
+                        fireDate: fireDate,
+                        title: title,
+                        body: body(addressName: entry.address.displayName, pickup: pickup, response: response),
+                        key: entry.address.key,
+                        pickupDate: pickup.date
+                    ))
                 }
-                guard fireDate > input.now else { continue }
-                notifications.append(PlannedNotification(
-                    identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date, timing: input.settings.liveActivityTiming),
-                    fireDate: fireDate,
-                    title: title,
-                    body: body(addressName: entry.address.displayName, pickup: pickup, response: response),
-                    key: entry.address.key,
-                    pickupDate: pickup.date
-                ))
             }
         }
         notifications.sort { ($0.fireDate, $0.identifier) < ($1.fireDate, $1.identifier) }
@@ -254,8 +257,10 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
-                let ordinary = ReminderTime.date(forPickup: pickup.date, timing: input.settings.liveActivityTiming, settings: input.settings)
-                if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date, timing: input.settings.liveActivityTiming)] = id }
+                for timing in input.settings.enabledTimings {
+                    let ordinary = ReminderTime.date(forPickup: pickup.date, timing: timing, settings: input.settings)
+                    if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date, timing: timing)] = id }
+                }
             }
         }
         return result
@@ -277,7 +282,7 @@ public enum ReminderPlanner {
             return eligible && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
         }) else { return nil }
 
-        let start = ReminderTime.date(forPickup: next.date, timing: input.settings.liveActivityTiming, settings: input.settings)
+        let start = ReminderTime.date(forPickup: next.date, timing: timing, settings: input.settings)
         // Passerad start ger direktstart, men bara när påminnelsedagen är i dag.
         let remindedToday = ReminderTime.reminderDay(forPickup: next.date, timing: timing) == today
         return PlannedLiveActivity(
