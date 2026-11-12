@@ -321,7 +321,8 @@ public struct HomeContent: Equatable, Sendable {
     /// passerat räknas den från nästa hämtning efter den. Finns ingen sådan visas en neutral text.
     /// Texten ska vara sann: en tid för Live Activity lovas bara när en aktivitet finns hos systemet.
     private static func reminderText(notifications: Bool, settings: ReminderSettings, events: [PickupEvent], skipping: Set<DayDate>, today: DayDate, now: Date, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> String {
-        if settings.liveActivityOn, let liveActivity {
+        // En aktivitet för en utställd eller tystad tömning tas bort av planeringen, så den lovas inte.
+        if settings.liveActivityOn, let liveActivity, !skipping.contains(liveActivity.pickupDate) {
             guard liveActivity.isPending else { return "Live Activity visas nu" }
             // En tid som redan passerat lovas inte, även om aktiviteten står kvar som väntande.
             if liveActivity.start > now {

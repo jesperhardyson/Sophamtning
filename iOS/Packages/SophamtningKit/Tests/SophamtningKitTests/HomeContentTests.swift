@@ -919,3 +919,17 @@ private func footLine(placedOut: Set<PlacedOut> = [], silenced: Set<PlacedOut> =
     // En bock för en annan adress påverkar inte.
     #expect(try footLine(silenced: [PlacedOut(key: cabin.key, date: monday)]) == "Påminnelse måndag kl. 06:00")
 }
+
+@Test func fotenEfterUtställtMedVäntandeAktivitet() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [home.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-16", ["rest"])])]
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 900)
+    let both = ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 900, morningMinutes: 360, liveActivityOn: true)
+    let mark = PlacedOut(key: home.key, date: DayDate("2026-11-09")!)
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: both, now: now, liveActivity: activity(pending: true, start: start), ownPlacedOut: [mark])
+    let line = try #require(content.primary?.reminder).line
+    // Den utställda tömningens påminnelser och aktivitet lovas inte. Foten går vidare till nästa tömning.
+    // Nästa tömning är den 16:e: söndag den 15:e kl. 15:00 och måndag den 16:e kl. 06:00.
+    #expect(line == "Påminnelse söndag kl. 15:00 och måndag kl. 06:00")
+}

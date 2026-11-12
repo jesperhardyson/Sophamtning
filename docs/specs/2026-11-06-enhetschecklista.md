@@ -153,6 +153,7 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 
 - [ ] **42. Flera adresser.** Slå på notis för tre adresser med olika datum. Varje adress får sin notis vid rätt kväll och inga dubbletter. Högst 60 notiser är schemalagda samtidigt, de närmaste först. Notisen för en adress som tagits bort kommer inte.
 - [ ] **78. Kväll och morgon.** Slå på båda valen och notis för en adress med tömning i morgon. En notis kommer på kvällen och en på morgonen, med samma text. Ställ ut kärlen efter kvällens notis: morgonens notis kommer inte. Tryck **Ångra** före morgonens tid: den kommer igen.
+- [ ] **79. Utställt i notisen.** Slå på båda valen och notis för en adress med tömning i morgon. När kvällens notis kommer, håll in den och tryck **Utställt** utan att öppna appen. Morgonens notis kommer inte. Öppna appen: adressen visar **Kärlen är utställda** med **Ångra**. I ett delat hushåll syns bocken hos den andra.
 
 ### Morgonen efter
 
