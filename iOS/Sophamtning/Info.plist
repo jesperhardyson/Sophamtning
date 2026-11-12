@@ -17,7 +17,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Sophämtning</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,6 +26,21 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CKSharingSupported</key>
 	<true/>
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Sopor</string>
+		</dict>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Soporna</string>
+		</dict>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Soptunnan</string>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSSupportsLiveActivities</key>

@@ -169,6 +169,7 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 - [ ] **S3. Ställ ut med Siri.** Dagen före en tömning, med låst telefon, säg "Ställ ut kärlen i Sophämtning". Siri säger **Klart. Kärlen för Hemma är utställda.** Öppna appen: kortet visar Utställt, och notisen och Live Activityn för tömningen är borta. I ett delat hushåll syns bocken hos den andra. Säg det igen: **Kärlen för Hemma är redan utställda.**
 - [ ] **S4. För tidigt.** Mer än en dag före tömningen, säg "Ställ ut kärlen i Sophämtning". Siri säger när nästa tömning är och att kärlen kan markeras dagen före och samma dag. Inget markeras.
 - [ ] **S5. Genvägar och Spotlight.** Öppna Genvägar: **När töms soporna** och **Ställ ut kärlen** finns under Sophämtning utan att något lagts till. Sök "soporna" i Spotlight: genvägen syns och svarar.
+- [ ] **S6. Andra namn och egen fras.** Säg "När töms soporna i Sopor": Siri svarar som i S1. Öppna Inställningar > Siri i appen och tryck **Sophämtning-genvägar**. Lägg till **När töms soporna** och döp den till "När töms soporna". Säg "När töms soporna" utan appens namn: Siri svarar.
 
 ## Hushåll
 

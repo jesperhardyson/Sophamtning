@@ -195,3 +195,8 @@ public struct SiriData: Sendable {
         SiriAnswers.placeOut(selected, schedule: schedule, placedOut: placedOut, now: now)
     }
 }
+
+/// Texterna om Siri i inställningarna.
+public enum SiriTexts {
+    public static let ownPhrase = "Vill du bara säga ”När töms soporna”? Öppna genvägarna nedan, lägg till genvägen och ge den det namn du vill säga. Appens namn kan också vara Sopor eller Soporna, till exempel ”När töms soporna i Sopor”."
+}
