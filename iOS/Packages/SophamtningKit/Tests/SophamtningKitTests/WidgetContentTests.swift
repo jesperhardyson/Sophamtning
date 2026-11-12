@@ -464,11 +464,14 @@ private func lock(_ events: [PickupEvent], placedOut: Bool = false) -> LockScree
     #expect(CalendarLink.webcal(URL(string: "https://sopor.hardyson.se/api/v1/adress/x/y.ics")) == URL(string: "webcal://sopor.hardyson.se/api/v1/adress/x/y.ics"))
     #expect(CalendarLink.webcal(nil) == nil)
     #expect(CalendarLink.webcal(URL(string: "mailto:a@b.se")) == nil)
-    let links = SourceLink.links(for: nil, kommunInfo: URL(string: "https://example.com/a"), calendar: URL(string: "webcal://example.com/a.ics"))
-    #expect(links.first?.kind == .calendar)
-    #expect(links.first?.title == "Lägg till i Kalender")
-    #expect(links.first?.webLink == nil)
-    #expect(SourceLink.links(for: nil, kommunInfo: nil).allSatisfy { $0.kind != .calendar })
+    let link = SourceLink.calendar(URL(string: "webcal://example.com/a.ics")!)
+    #expect(link.kind == .calendar)
+    #expect(link.title == "Lägg till i Kalender")
+    #expect(link.icon == "calendar.badge.plus")
+    #expect(link.webLink == nil)
+    #expect(CalendarLink.section == "Kalender")
+    // Kalendern har ett eget kort och står aldrig bland källans länkar.
+    #expect(SourceLink.links(for: nil, kommunInfo: URL(string: "https://example.com/a")).allSatisfy { $0.kind != .calendar })
 }
 
 @Test func kontrollensVärde() {

@@ -115,6 +115,7 @@ struct AddressView: View {
                     reminders(detail)
                 }
                 household(detail)
+                calendar(detail)
                 footer(detail)
             }
             .animation(Motion.transition(reduceMotion: reduceMotion), value: detail.mode)
@@ -383,6 +384,26 @@ struct AddressView: View {
             sharePending = nil
             shareFailed = !ok
             if ok, on { sharePulse += 1 }
+        }
+    }
+
+    // MARK: Kalender
+
+    /// Eget kort för att prenumerera på schemat i Kalender. Visas bara när svaret har en `links.ics`.
+    @ViewBuilder
+    private func calendar(_ detail: AddressDetail) -> some View {
+        if let url = detail.calendarLink {
+            sectionTitle(CalendarLink.section)
+            SourceLinkButton(link: .calendar(url), webLink: $link)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+            Text(CalendarLink.footer)
+                .font(.ui(13, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Color.Theme.text2)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
         }
     }
 

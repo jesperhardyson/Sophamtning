@@ -56,6 +56,12 @@ public struct LockScreenContent: Equatable, Sendable {
 /// Länken som lägger in adressens schema i Kalender: `links.ics` med schemat `webcal://`, så att iOS frågar om
 /// prenumeration. Bara `https://`-länkar görs om.
 public enum CalendarLink {
+    /// Rubriken över kortet i adressvyn.
+    public static let section = "Kalender"
+    public static let title = "Lägg till i Kalender"
+    /// Texten under raden.
+    public static let footer = "Tömningarna läggs in som en egen kalender, som uppdateras av sig själv."
+
     public static func webcal(_ url: URL?) -> URL? {
         guard let url, url.scheme == "https", var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         parts.scheme = "webcal"

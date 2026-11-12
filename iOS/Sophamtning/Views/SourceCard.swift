@@ -15,7 +15,7 @@ struct SourceCard: View {
     /// hämtas första gången.
     init(source: String, sources: [Source]?, detail: AddressDetail, webLink: Binding<WebLink?>) {
         name = sourceName(source, in: sources)
-        links = SourceLink.links(for: sources?.first { candidate in candidate.id == source }, kommunInfo: detail.webLink, calendar: detail.calendarLink)
+        links = SourceLink.links(for: sources?.first { candidate in candidate.id == source }, kommunInfo: detail.webLink)
         fetched = detail.mode == .loading ? nil : detail.fetchedText
         _webLink = webLink
     }

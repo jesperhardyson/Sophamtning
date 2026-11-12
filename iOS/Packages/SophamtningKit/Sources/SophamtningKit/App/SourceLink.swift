@@ -1,6 +1,6 @@
 import Foundation
 
-/// En länk i kortet "Ansvarar för hämtningen" och på sidan Datakällor. Bara det som har ett giltigt värde visas.
+/// En länk i kortet "Ansvarar för hämtningen", i kortet Kalender och på sidan Datakällor. Bara det som har ett giltigt värde visas.
 public struct SourceLink: Hashable, Sendable, Identifiable {
     public enum Kind: Hashable, Sendable {
         /// Källans webbplats, i appens webbvy.
@@ -59,13 +59,14 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         }
     }
 
+    /// Raden i adressvyns eget kort Kalender, med `webcal://`-adressen från `CalendarLink.webcal`.
+    public static func calendar(_ url: URL) -> SourceLink {
+        SourceLink(kind: .calendar, title: CalendarLink.title, url: url)
+    }
+
     /// Webbplats, kommunens information och kontakten, i den ordningen. `kommunInfo` saknas på Datakällor.
-    /// Kalendern står först, när adressen har en `links.ics`. Den saknas på Datakällor.
-    public static func links(for source: Source?, kommunInfo: URL?, calendar: URL? = nil) -> [SourceLink] {
+    public static func links(for source: Source?, kommunInfo: URL?) -> [SourceLink] {
         var links: [SourceLink] = []
-        if let calendar {
-            links.append(SourceLink(kind: .calendar, title: "Lägg till i Kalender", url: calendar))
-        }
         if let url = source?.url, WebLink(url: url) != nil {
             links.append(SourceLink(kind: .website, title: "Webbplats", url: url))
         }
