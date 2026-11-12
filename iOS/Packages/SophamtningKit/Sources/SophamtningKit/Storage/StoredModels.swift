@@ -122,7 +122,8 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
             morningOn = morning ?? false
         }
         if !eveningOn && !morningOn { eveningOn = true }
-        liveActivityTiming = try container.decodeIfPresent(ReminderTiming.self, forKey: .liveActivityTiming) ?? old
+        // Läses som text, så att ett okänt val, till exempel från en senare version, inte gör hela filen oläslig.
+        liveActivityTiming = (try container.decodeIfPresent(String.self, forKey: .liveActivityTiming)).flatMap(ReminderTiming.init(rawValue:)) ?? old
     }
 
     public func encode(to encoder: Encoder) throws {
