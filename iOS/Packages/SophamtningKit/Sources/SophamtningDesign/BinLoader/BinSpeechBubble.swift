@@ -8,11 +8,14 @@ public struct BinSpeechBubble: View {
     let tip: HorizontalAlignment
     /// Sant när bubblan står under kärlet: spetsen sitter överst och pekar uppåt.
     let pointsUp: Bool
+    /// Falskt för de äldre bubblorna i en stapel. Spetsen tar ändå sin plats, så att bubblan inte hoppar.
+    let showsTip: Bool
 
-    public init(text: String, tip: HorizontalAlignment = .center, pointsUp: Bool = false) {
+    public init(text: String, tip: HorizontalAlignment = .center, pointsUp: Bool = false, showsTip: Bool = true) {
         self.text = text
         self.tip = tip
         self.pointsUp = pointsUp
+        self.showsTip = showsTip
     }
 
     /// Smal nog att stå ovanför kärlet. Med större text bryts den på fler rader i samma bredd.
@@ -20,7 +23,7 @@ public struct BinSpeechBubble: View {
 
     public var body: some View {
         VStack(alignment: tip, spacing: -1) {
-            if pointsUp { tipShape }
+            if pointsUp { tipShape.opacity(showsTip ? 1 : 0) }
             Text(text)
                 .font(.ui(15, weight: .bold, relativeTo: .subheadline))
                 .foregroundStyle(Color.Theme.text)
@@ -33,7 +36,7 @@ public struct BinSpeechBubble: View {
                 .frame(maxWidth: maxWidth, alignment: Alignment(horizontal: tip, vertical: .center))
                 // Spetsen ritas ovanpå bubblans kant, så att kanten inte syns där de möts.
                 .zIndex(0)
-            if !pointsUp { tipShape }
+            if !pointsUp { tipShape.opacity(showsTip ? 1 : 0) }
         }
         .fixedSize()
         // Bubblan är kort och tillfällig, så den växer högst till den största vanliga textstorleken och täcker inte
