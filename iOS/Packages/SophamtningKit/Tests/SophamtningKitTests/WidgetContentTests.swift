@@ -357,3 +357,24 @@ private func mark(_ iso: String, key: AddressKey = home.key) -> HouseholdMark {
     try store.setHouseholdState(household(marks: [mark("2026-11-07")], role: .none))
     #expect(!WidgetData.read(from: store).placedOut(at: now))
 }
+
+private func fractionPickup(_ id: String, _ iso: String) -> FractionPickup {
+    FractionPickup(fraction: id, date: DayDate(iso)!, estimated: false, warning: nil, daysUntil: 0)
+}
+
+@Test func mellanstoraVisarBaraNästaTömning() {
+    // Hemma: mat och papper den 25:e, plast den 9 dec och rest den 23 dec. Bara kärlen den 25:e visas, utan "+2 till".
+    let fractions = [fractionPickup("mat", "2026-11-25"), fractionPickup("papper", "2026-11-25"), fractionPickup("plast", "2026-12-09"), fractionPickup("rest", "2026-12-23")]
+    let result = WidgetContent.mediumRows(fractions, maxRows: 3)
+    #expect(result.rows.map(\.fraction) == ["mat", "papper"])
+    #expect(result.hidden == 0)
+}
+
+@Test func mellanstoraDöljerBaraSammaDagsKärl() {
+    // Fyra kärl samma dag och plats för tre rader: två rader och "+2 till", som alla gäller samma tömning.
+    let fractions = [fractionPickup("mat", "2026-11-25"), fractionPickup("papper", "2026-11-25"), fractionPickup("plast", "2026-11-25"), fractionPickup("rest", "2026-11-25"), fractionPickup("glas", "2026-12-09")]
+    let result = WidgetContent.mediumRows(fractions, maxRows: 3)
+    #expect(result.rows.map(\.fraction) == ["mat", "papper"])
+    #expect(result.hidden == 2)
+    #expect(WidgetContent.mediumRows([], maxRows: 3).rows.isEmpty)
+}

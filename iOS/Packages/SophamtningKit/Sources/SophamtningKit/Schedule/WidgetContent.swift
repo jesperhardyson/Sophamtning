@@ -57,7 +57,16 @@ public enum WidgetContent: Equatable, Sendable {
         return ScheduleEnding.make(schedule?.response?.schedule, today: StockholmClock.today(now: now))
     }
 
-    /// Datumet för en fraktions rad i den mellanstora widgeten: "mån 9 nov", eller "ca tors 12 nov" när det är uppskattat.
+    /// Raderna i den mellanstora widgeten: bara kärlen som töms det datum som står på kalenderbladet, som i den lilla. Får de
+    /// inte plats blir sista raden "+N till", så `hidden` gäller alltid samma tömning och aldrig ett senare datum.
+    public static func mediumRows(_ fractions: [FractionPickup], maxRows: Int) -> (rows: [FractionPickup], hidden: Int) {
+        guard let first = fractions.first else { return ([], 0) }
+        let sameDay = fractions.filter { $0.date == first.date }
+        let rows = sameDay.count > maxRows ? Array(sameDay.prefix(maxRows - 1)) : sameDay
+        return (rows, sameDay.count - rows.count)
+    }
+
+    /// Datumet för ett senare kärl i widgetens VoiceOver: "mån 9 nov", eller "ca tors 12 nov" när det är uppskattat.
     public static func rowDate(_ pickup: FractionPickup) -> String {
         SwedishFormat.estimated(SwedishFormat.shortDate(pickup.date).lowercased(), pickup.estimated)
     }
