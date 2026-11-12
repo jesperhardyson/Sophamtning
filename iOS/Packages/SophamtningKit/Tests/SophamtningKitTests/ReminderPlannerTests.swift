@@ -381,13 +381,13 @@ private func mondayNotification(_ p: ReminderPlan) -> PlannedNotification? {
     let p = plan(notifications: true, live: true, now: now, existing: [])
     #expect(mondayNotification(p) == nil)
     let input = plannerInput(notifications: true, now: now)
-    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"))
+    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"), timing: .eveningBefore)
     #expect(ReminderPlanner.retainable(input)[id] == PlacedOut(key: homeKey, date: day("2026-11-09")))
 }
 
 @Test func retainableUtelamnarUtstalldVisadOchAvstangdaNotiser() {
     let now = stockholm("2026-11-08T18:10")
-    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"))
+    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"), timing: .eveningBefore)
     #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: now, placedOut: homeMonday))[id] == nil)
     #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: now, shown: homeMonday))[id] == nil)
     // Användaren har stängt av notiserna: inget behålls.
@@ -604,7 +604,7 @@ private func homeNotification(_ plan: ReminderPlan, on date: String) -> PlannedN
 }
 
 @Test func morgonRetainable() {
-    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"))
+    let id = PlannedNotification.identifier(key: homeKey, date: day("2026-11-09"), timing: .sameMorning)
     #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: stockholm("2026-11-09T06:30"), timing: .sameMorning))[id] == PlacedOut(key: homeKey, date: day("2026-11-09")))
     #expect(ReminderPlanner.retainable(plannerInput(notifications: true, now: stockholm("2026-11-09T05:30"), timing: .sameMorning))[id] == nil)
 }

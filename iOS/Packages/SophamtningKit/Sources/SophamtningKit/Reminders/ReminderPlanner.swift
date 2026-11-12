@@ -39,7 +39,7 @@ public struct PlannerInput: Sendable {
 }
 
 public struct PlannedNotification: Equatable, Sendable {
-    /// `"<key.fileName>-<iso-datum>"`.
+    /// `"<key.fileName>-<iso-datum>"` för kvällen före och `"<key.fileName>-<iso-datum>-morgon"` för samma morgon.
     public let identifier: String
     public let fireDate: Date
     public let title: String
@@ -47,9 +47,12 @@ public struct PlannedNotification: Equatable, Sendable {
     public let key: AddressKey
     public let pickupDate: DayDate
 
-    /// Identifieraren för adressens notis ett visst datum. Reservnotisen har samma, så att den ersätter den vanliga.
-    public static func identifier(key: AddressKey, date: DayDate) -> String {
-        "\(key.fileName)-\(date.iso)"
+    /// Identifieraren för adressens notis ett visst datum och val. Reservnotisen har samma som den vanliga för valet, så att den ersätter den.
+    public static func identifier(key: AddressKey, date: DayDate, timing: ReminderTiming) -> String {
+        switch timing {
+        case .eveningBefore: "\(key.fileName)-\(date.iso)"
+        case .sameMorning: "\(key.fileName)-\(date.iso)-morgon"
+        }
     }
 
     public init(identifier: String, fireDate: Date, title: String, body: String, key: AddressKey, pickupDate: DayDate) {
@@ -225,7 +228,7 @@ public enum ReminderPlanner {
                 }
                 guard fireDate > input.now else { continue }
                 notifications.append(PlannedNotification(
-                    identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date),
+                    identifier: PlannedNotification.identifier(key: entry.address.key, date: pickup.date, timing: input.settings.liveActivityTiming),
                     fireDate: fireDate,
                     title: title,
                     body: body(addressName: entry.address.displayName, pickup: pickup, response: response),
@@ -252,7 +255,7 @@ public enum ReminderPlanner {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
                 let ordinary = ReminderTime.date(forPickup: pickup.date, timing: input.settings.liveActivityTiming, settings: input.settings)
-                if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date)] = id }
+                if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date, timing: input.settings.liveActivityTiming)] = id }
             }
         }
         return result

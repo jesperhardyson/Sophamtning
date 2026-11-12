@@ -5,15 +5,17 @@ public enum NotificationDiff {
     /// Ett enda ögonblick räknas som samma tid. Utlösarens klockslag har bara minuters noggrannhet.
     static let fireDateTolerance: TimeInterval = 1
 
-    /// Identifierare som planeraren skapar: `<key.fileName>-<iso-datum>`, alltså 64 hexadecimala tecken, ett streck och `åååå-mm-dd`.
+    /// Identifierare som planeraren skapar: `<key.fileName>-<iso-datum>` för kvällen före och `<key.fileName>-<iso-datum>-morgon` för samma morgon, alltså
+    /// 64 hexadecimala tecken, ett streck och `åååå-mm-dd`, eventuellt följt av `-morgon`.
     /// Schemaläggaren rör bara väntande notiser med sådana identifierare, aldrig andra.
     public static func isOwn(identifier: String) -> Bool {
         let parts = identifier.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
         guard parts.count == 2, parts[0].count == 64,
-              parts[0].allSatisfy({ $0.isASCII && ($0.isNumber || ("a"..."f").contains($0)) }),
-              DayDate(String(parts[1])) != nil
+              parts[0].allSatisfy({ $0.isASCII && ($0.isNumber || ("a"..."f").contains($0)) })
         else { return false }
-        return true
+        let rest = String(parts[1])
+        let datePart = rest.hasSuffix("-morgon") ? String(rest.dropLast("-morgon".count)) : rest
+        return DayDate(datePart) != nil
     }
 
     /// `pendingBodies` är valfri: med den ersätts även en notis vars text ändrats (till exempel ett nytt namn).
