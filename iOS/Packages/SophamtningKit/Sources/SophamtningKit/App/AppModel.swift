@@ -427,11 +427,12 @@ public final class AppModel {
 
     /// Tiden för det valda: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
     /// lagringsfel, är allt kvar som förut. Den andra tiden rörs inte, så ett byte tillbaka ger den förra tiden.
+    // Brygga: ersätts i Uppgift 5.
     @discardableResult
     public func setReminderMinutes(_ minutes: Int) -> Bool {
-        guard ReminderSettings.isValid(minutes: minutes, for: settings.timing) else { return false }
+        guard ReminderSettings.isValid(minutes: minutes, for: settings.liveActivityTiming) else { return false }
         var updated = settings
-        switch settings.timing {
+        switch settings.liveActivityTiming {
         case .eveningBefore: updated.reminderMinutes = minutes
         case .sameMorning: updated.morningMinutes = minutes
         }
@@ -443,11 +444,14 @@ public final class AppModel {
 
     /// Kvällen före eller samma morgon. Gäller notiser och Live Activity för alla adresser, men slår inte på något. Vid
     /// lagringsfel är allt kvar som förut.
+    // Brygga: ersätts i Uppgift 5.
     @discardableResult
     public func setReminderTiming(_ timing: ReminderTiming) -> Bool {
-        guard timing != settings.timing else { return true }
         var updated = settings
-        updated.timing = timing
+        updated.eveningOn = timing == .eveningBefore
+        updated.morningOn = timing == .sameMorning
+        updated.liveActivityTiming = timing
+        guard updated != settings else { return true }
         guard saveSettings(updated) else { return false }
         forgetStoppedActivities()
         applyReminders()
@@ -501,7 +505,7 @@ public final class AppModel {
     /// aktiviteten väntar eller en reservnotis ligger framför.
     public func missedReminderApplies(to address: SavedAddress) -> Bool {
         // Tömningen som dagens påminnelse gäller: i morgon med kvällen före, i dag med samma morgon.
-        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.timing)
+        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.liveActivityTiming)
         let pickup = PlacedOut(key: address.key, date: day)
         return remindersOn(for: address)
             && !handledPickups.contains(pickup)

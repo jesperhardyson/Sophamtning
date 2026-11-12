@@ -315,7 +315,7 @@ struct AddressView: View {
         }
         VStack(spacing: 0) {
             ReminderToggleRow(
-                title: HomeContent.reminderTitle(timing: model.settings.timing),
+                title: HomeContent.reminderTitle(timing: model.settings.liveActivityTiming),
                 text: detail.reminderText,
                 symbol: "bell.badge",
                 pulse: notificationPulse,

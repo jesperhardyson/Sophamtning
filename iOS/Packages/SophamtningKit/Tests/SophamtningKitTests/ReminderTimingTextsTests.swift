@@ -5,7 +5,7 @@ import Foundation
 private let key = AddressKey(source: "kallor", id: "hem")
 private let wednesday = DayDate("2026-11-11")!
 private let nextWednesday = DayDate("2026-11-18")!
-private let morning = ReminderSettings(timing: .sameMorning, morningMinutes: 360)
+private let morning = ReminderSettings(eveningOn: false, morningOn: true, morningMinutes: 360, liveActivityTiming: .sameMorning)
 
 private func at(_ day: String, _ hour: Int) -> Date {
     StockholmClock.date(on: DayDate(day)!, minutes: hour * 60)

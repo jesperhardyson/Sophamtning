@@ -24,8 +24,34 @@ public enum ReminderTime {
     /// Klockslag före vilket en påminnelse gäller samma dags tömning: 12:00.
     static let sameDayLatestMinutes = 12 * 60
 
-    /// Påminnelsens tid för en tömning, med det valda och dess tid.
-    public static func date(forPickup pickup: DayDate, settings: ReminderSettings) -> Date {
-        StockholmClock.date(on: reminderDay(forPickup: pickup, timing: settings.timing), minutes: settings.activeMinutes)
+    /// Påminnelsens tid för en tömning, för ett visst val och dess tid.
+    public static func date(forPickup pickup: DayDate, timing: ReminderTiming, settings: ReminderSettings) -> Date {
+        StockholmClock.date(on: reminderDay(forPickup: pickup, timing: timing), minutes: settings.minutes(for: timing))
+    }
+
+    /// En kommande påminnelse: tömningen, valet och tidpunkten.
+    public struct UpcomingReminder: Equatable, Sendable {
+        public let pickup: DayDate
+        public let timing: ReminderTiming
+        public let date: Date
+
+        public init(pickup: DayDate, timing: ReminderTiming, date: Date) {
+            self.pickup = pickup
+            self.timing = timing
+            self.date = date
+        }
+    }
+
+    /// Den tidigaste påminnelsen efter `now`, över kommande tömningar med fraktioner och alla påslagna val.
+    public static func next(events: [PickupEvent], settings: ReminderSettings, now: Date) -> UpcomingReminder? {
+        var best: UpcomingReminder?
+        for event in events where !event.fractions.isEmpty {
+            for timing in settings.enabledTimings {
+                let date = date(forPickup: event.date, timing: timing, settings: settings)
+                guard date > now, best == nil || date < best!.date else { continue }
+                best = UpcomingReminder(pickup: event.date, timing: timing, date: date)
+            }
+        }
+        return best
     }
 }

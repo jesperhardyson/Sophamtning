@@ -299,19 +299,19 @@ public struct AddressDetail: Equatable, Sendable {
     }
 
     public static func liveActivityText(settings: ReminderSettings) -> String {
-        let time = SwedishFormat.clock(minutes: settings.activeMinutes)
-        return "Visas på låsskärmen från kl. \(time) \(settings.timing.phrase)."
+        let time = SwedishFormat.clock(minutes: settings.minutes(for: settings.liveActivityTiming))
+        return "Visas på låsskärmen från kl. \(time) \(settings.liveActivityTiming.phrase)."
     }
 
     /// Påminnelsetiden i dag har redan passerat för tömningen den gäller, i morgon med kvällen före och i dag med samma
     /// morgon. Till exempel efter att tiden ändrats eller notisen slagits på sent.
     public static func missedReminder(events: [PickupEvent], settings: ReminderSettings, now: Date) -> String? {
         let today = StockholmClock.today(now: now)
-        let pickup = ReminderTime.pickupDay(remindedOn: today, timing: settings.timing)
+        let pickup = ReminderTime.pickupDay(remindedOn: today, timing: settings.liveActivityTiming)
         guard events.contains(where: { $0.date == pickup && !$0.fractions.isEmpty }),
-              ReminderTime.date(forPickup: pickup, settings: settings) <= now
+              ReminderTime.date(forPickup: pickup, timing: settings.liveActivityTiming, settings: settings) <= now
         else { return nil }
-        return settings.timing.missedText
+        return settings.liveActivityTiming.missedText
     }
 
     /// "Mån 9 nov", eller "ca tors 12 nov" när datumet är beräknat.
@@ -323,13 +323,13 @@ public struct AddressDetail: Equatable, Sendable {
     /// "Söndag kl. 18:00 inför måndagens tömning." eller "Måndag kl. 06:00, samma dag som tömningen." Har tiden för nästa
     /// hämtning passerat räknas nästa hämtning efter den.
     static func reminderText(events: [PickupEvent], settings: ReminderSettings, today: DayDate, now: Date) -> String {
-        let time = SwedishFormat.clock(minutes: settings.activeMinutes)
+        let time = SwedishFormat.clock(minutes: settings.minutes(for: settings.liveActivityTiming))
         for event in ScheduleLogic.upcoming(events, today: today) where !event.fractions.isEmpty {
-            guard ReminderTime.date(forPickup: event.date, settings: settings) > now else { continue }
-            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.timing)
-            return "\(when(day: day, pickup: event.date, time: time, timing: settings.timing))."
+            guard ReminderTime.date(forPickup: event.date, timing: settings.liveActivityTiming, settings: settings) > now else { continue }
+            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.liveActivityTiming)
+            return "\(when(day: day, pickup: event.date, time: time, timing: settings.liveActivityTiming))."
         }
-        switch settings.timing {
+        switch settings.liveActivityTiming {
         case .eveningBefore: return "Kvällen före varje tömning kl. \(time)."
         case .sameMorning: return "Samma morgon som varje tömning kl. \(time)."
         }

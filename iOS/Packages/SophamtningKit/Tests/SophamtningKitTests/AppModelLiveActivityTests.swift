@@ -1048,7 +1048,7 @@ private let mondayMorning = StockholmClock.date(on: monday, minutes: 7 * 60)
 /// Samma morgon med påminnelsen 06:00.
 private func morningFixture() throws -> Fixture {
     let f = try Fixture(now: mondayMorning)
-    try f.store.setSettings(ReminderSettings(timing: .sameMorning, reminderMinutes: 1080, morningMinutes: 6 * 60, liveActivityOn: true))
+    try f.store.setSettings(ReminderSettings(eveningOn: false, morningOn: true, reminderMinutes: 1080, morningMinutes: 6 * 60, liveActivityTiming: .sameMorning, liveActivityOn: true))
     return f
 }
 

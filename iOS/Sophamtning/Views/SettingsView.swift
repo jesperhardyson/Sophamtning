@@ -92,7 +92,7 @@ struct SettingsView: View {
             heading("Påminnelser")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.time) {
-                    SettingsRow(title: "Påminnelse", value: model.settings.timing.settingsValue(minutes: model.settings.activeMinutes))
+                    SettingsRow(title: "Påminnelse", value: model.settings.settingsValue)
                 }
                 if let primary = model.addresses.first(where: \.isPrimary) {
                     ResultDivider()
@@ -111,7 +111,7 @@ struct SettingsView: View {
                 MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
                     .padding(.top, 12)
             }
-            Text(model.settings.timing.settingsFooter)
+            Text(model.settings.liveActivityTiming.settingsFooter)
                 .font(.ui(16, weight: .semibold, relativeTo: .footnote))
                 .foregroundStyle(Color.Theme.text2)
                 .padding(.top, 16)
@@ -294,7 +294,7 @@ private struct ReminderTimeView: View {
                     ResultList {
                         ForEach(Array(ReminderTiming.allCases.enumerated()), id: \.element) { index, timing in
                             if index > 0 { ResultDivider() }
-                            ChoiceRow(title: timing.title, selected: timing == model.settings.timing) {
+                            ChoiceRow(title: timing.title, selected: timing == model.settings.liveActivityTiming) {
                                 model.clearStorageError()
                                 model.setReminderTiming(timing)
                             }
@@ -302,15 +302,15 @@ private struct ReminderTimeView: View {
                     }
                     section("Tid")
                     ResultList {
-                        ForEach(Array(model.settings.timing.times.enumerated()), id: \.element) { index, minutes in
+                        ForEach(Array(model.settings.liveActivityTiming.times.enumerated()), id: \.element) { index, minutes in
                             if index > 0 { ResultDivider() }
-                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.activeMinutes) {
+                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.minutes(for: model.settings.liveActivityTiming)) {
                                 model.clearStorageError()
                                 model.setReminderMinutes(minutes)
                             }
                         }
                     }
-                    Text(model.settings.timing.settingsFooter)
+                    Text(model.settings.liveActivityTiming.settingsFooter)
                         .font(.ui(16, weight: .semibold, relativeTo: .footnote))
                         .foregroundStyle(Color.Theme.text2)
                         .frame(maxWidth: .infinity, alignment: .leading)

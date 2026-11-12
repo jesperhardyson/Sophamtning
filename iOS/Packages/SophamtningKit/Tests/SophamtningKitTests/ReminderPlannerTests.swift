@@ -86,7 +86,7 @@ private func plan(
             PlannerAddress(address: home, schedule: schedule(homeKey, events: events)),
             PlannerAddress(address: other, schedule: schedule(otherKey, events: otherEvents)),
         ],
-        settings: ReminderSettings(timing: timing, reminderMinutes: reminderMinutes, morningMinutes: morningMinutes, liveActivityOn: live),
+        settings: ReminderSettings(eveningOn: timing == .eveningBefore, morningOn: timing == .sameMorning, reminderMinutes: reminderMinutes, morningMinutes: morningMinutes, liveActivityTiming: timing, liveActivityOn: live),
         placedOut: placedOut,
         now: now,
         liveActivitiesAllowed: allowed,
@@ -99,7 +99,7 @@ private func plan(
 private func plannerInput(notifications: Bool, now: Date, placedOut: Set<PlacedOut> = [], shown: Set<PlacedOut> = [], timing: ReminderTiming = .eveningBefore) -> PlannerInput {
     PlannerInput(
         addresses: [PlannerAddress(address: address(homeKey, name: "Hemma", primary: true, notifications: notifications), schedule: schedule(homeKey, events: standardEvents))],
-        settings: ReminderSettings(timing: timing, liveActivityOn: true), placedOut: placedOut, now: now, liveActivitiesAllowed: true, existingActivities: [], shownActivities: shown
+        settings: ReminderSettings(eveningOn: timing == .eveningBefore, morningOn: timing == .sameMorning, liveActivityTiming: timing, liveActivityOn: true), placedOut: placedOut, now: now, liveActivitiesAllowed: true, existingActivities: [], shownActivities: shown
     )
 }
 

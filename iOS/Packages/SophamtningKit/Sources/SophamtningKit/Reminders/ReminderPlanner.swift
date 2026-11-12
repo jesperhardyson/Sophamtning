@@ -214,7 +214,7 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) { continue }
-                var fireDate = ReminderTime.date(forPickup: pickup.date, settings: input.settings)
+                var fireDate = ReminderTime.date(forPickup: pickup.date, timing: input.settings.liveActivityTiming, settings: input.settings)
                 var title = ordinaryTitle
                 // Aktiviteten aviserar själv, men bara om den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse
                 // till. Annars ersätts notisen av en reserv efter starten, med samma identifierare, så att den aldrig blir dubbel.
@@ -251,7 +251,7 @@ public enum ReminderPlanner {
             for pickup in pickups(in: response, today: today) {
                 let id = PlacedOut(key: entry.address.key, date: pickup.date)
                 if input.placedOut.contains(id) || input.shownActivities.contains(id) { continue }
-                let ordinary = ReminderTime.date(forPickup: pickup.date, settings: input.settings)
+                let ordinary = ReminderTime.date(forPickup: pickup.date, timing: input.settings.liveActivityTiming, settings: input.settings)
                 if ordinary <= input.now { result[PlannedNotification.identifier(key: id.key, date: id.date)] = id }
             }
         }
@@ -265,7 +265,7 @@ public enum ReminderPlanner {
         else { return nil }
 
         let key = primary.address.key
-        let timing = input.settings.timing
+        let timing = input.settings.liveActivityTiming
         // Kvällen före gäller första tömning efter i dag, så på tömningsdagen gäller nästa. Samma morgon gäller också dagens
         // tömning fram till 12:00.
         let morningOpen = input.now < StockholmClock.date(on: today, minutes: morningActivityCutoffMinutes)
@@ -274,7 +274,7 @@ public enum ReminderPlanner {
             return eligible && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
         }) else { return nil }
 
-        let start = ReminderTime.date(forPickup: next.date, settings: input.settings)
+        let start = ReminderTime.date(forPickup: next.date, timing: input.settings.liveActivityTiming, settings: input.settings)
         // Passerad start ger direktstart, men bara när påminnelsedagen är i dag.
         let remindedToday = ReminderTime.reminderDay(forPickup: next.date, timing: timing) == today
         return PlannedLiveActivity(

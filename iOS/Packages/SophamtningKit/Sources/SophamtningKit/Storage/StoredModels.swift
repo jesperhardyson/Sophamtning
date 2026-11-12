@@ -47,7 +47,7 @@ public struct SavedAddress: Hashable, Codable, Sendable {
     }
 }
 
-/// När påminnelsen kommer: kvällen före tömningen eller samma morgon. Aldrig båda.
+/// Ett av valen för när en påminnelse kommer: kvällen före tömningen eller samma morgon.
 public enum ReminderTiming: String, Codable, Sendable, CaseIterable {
     case eveningBefore, sameMorning
 
@@ -72,38 +72,68 @@ public enum ReminderTiming: String, Codable, Sendable, CaseIterable {
 }
 
 public struct ReminderSettings: Hashable, Codable, Sendable {
-    public var timing: ReminderTiming
+    /// Påminnelse kvällen före tömningen. På från början.
+    public var eveningOn: Bool
+    /// Påminnelse samma morgon som tömningen. Av från början. Minst ett av valen är alltid på.
+    public var morningOn: Bool
     /// Kvällstiden, i minuter efter midnatt i Europe/Stockholm. 1080 är 18:00.
     public var reminderMinutes: Int
-    /// Morgontiden, i minuter efter midnatt i Europe/Stockholm. 360 är 06:00. Båda sparas, så ett byte tillbaka behåller tiden.
+    /// Morgontiden, i minuter efter midnatt i Europe/Stockholm. 360 är 06:00. Båda sparas, så en avstängd tid finns kvar.
     public var morningMinutes: Int
+    /// Vilket val Live Activity följer. Tiden för valet gäller också när notiserna för det är av.
+    public var liveActivityTiming: ReminderTiming
     public var liveActivityOn: Bool
     /// Förslaget om påminnelse efter första adressen har visats och besvarats, eller en påminnelse har slagits på.
     public var reminderOfferShown: Bool
 
-    public init(timing: ReminderTiming = .eveningBefore, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
-        self.timing = timing
+    public init(eveningOn: Bool = true, morningOn: Bool = false, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityTiming: ReminderTiming = .eveningBefore, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
+        self.eveningOn = eveningOn
+        self.morningOn = morningOn
         self.reminderMinutes = reminderMinutes
         self.morningMinutes = morningMinutes
+        self.liveActivityTiming = liveActivityTiming
         self.liveActivityOn = liveActivityOn
         self.reminderOfferShown = reminderOfferShown
     }
 
     private enum CodingKeys: String, CodingKey {
-        case timing, reminderMinutes, morningMinutes, liveActivityOn, reminderOfferShown
+        case eveningOn, morningOn, reminderMinutes, morningMinutes, liveActivityTiming, liveActivityOn, reminderOfferShown
+        /// Det gamla enda valet. Läses men skrivs aldrig.
+        case timing
     }
 
-    /// Inställningar sparade före `reminderOfferShown` läses som att förslaget inte har visats. Sparade före valet av tid
-    /// läses de som kvällen före, med morgontiden 06:00. Ett okänt val, till exempel från en senare version, läses som
-    /// kvällen före, så att inställningarna inte blir oläsliga.
+    /// Inställningar sparade före `reminderOfferShown` läses som att förslaget inte har visats. Sparade med det gamla enda valet
+    /// (`timing`) läses valet som det enda påslagna och som Live Activity-val. Saknas det, eller är det okänt, till exempel från en
+    /// senare version, läses det som kvällen före, så att inställningarna inte blir oläsliga. Är båda valen av blir kvällen på.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         reminderMinutes = try container.decode(Int.self, forKey: .reminderMinutes)
         liveActivityOn = try container.decode(Bool.self, forKey: .liveActivityOn)
         reminderOfferShown = try container.decodeIfPresent(Bool.self, forKey: .reminderOfferShown) ?? false
-        let rawTiming = try container.decodeIfPresent(String.self, forKey: .timing)
-        timing = rawTiming.flatMap(ReminderTiming.init(rawValue:)) ?? .eveningBefore
         morningMinutes = try container.decodeIfPresent(Int.self, forKey: .morningMinutes) ?? ReminderTiming.sameMorning.defaultMinutes
+        let old = (try container.decodeIfPresent(String.self, forKey: .timing)).flatMap(ReminderTiming.init(rawValue:)) ?? .eveningBefore
+        let evening = try container.decodeIfPresent(Bool.self, forKey: .eveningOn)
+        let morning = try container.decodeIfPresent(Bool.self, forKey: .morningOn)
+        if evening == nil && morning == nil {
+            eveningOn = old == .eveningBefore
+            morningOn = old == .sameMorning
+        } else {
+            eveningOn = evening ?? false
+            morningOn = morning ?? false
+        }
+        if !eveningOn && !morningOn { eveningOn = true }
+        liveActivityTiming = try container.decodeIfPresent(ReminderTiming.self, forKey: .liveActivityTiming) ?? old
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(eveningOn, forKey: .eveningOn)
+        try container.encode(morningOn, forKey: .morningOn)
+        try container.encode(reminderMinutes, forKey: .reminderMinutes)
+        try container.encode(morningMinutes, forKey: .morningMinutes)
+        try container.encode(liveActivityTiming, forKey: .liveActivityTiming)
+        try container.encode(liveActivityOn, forKey: .liveActivityOn)
+        try container.encode(reminderOfferShown, forKey: .reminderOfferShown)
     }
 
     /// Giltigt är det valdas tider i steg om 15 minuter.
@@ -111,10 +141,31 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         timing.range.contains(minutes) && minutes % 15 == 0
     }
 
-    /// Tiden för det valda. En ogiltig sparad tid ger förvalet, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
-    public var activeMinutes: Int {
+    /// Den sparade tiden för valet. En ogiltig sparad tid ger förvalet, så att en påminnelse aldrig hamnar på ett orimligt klockslag.
+    public func minutes(for timing: ReminderTiming) -> Int {
         let minutes = timing == .eveningBefore ? reminderMinutes : morningMinutes
         return Self.isValid(minutes: minutes, for: timing) ? minutes : timing.defaultMinutes
+    }
+
+    public func isEnabled(_ timing: ReminderTiming) -> Bool {
+        timing == .eveningBefore ? eveningOn : morningOn
+    }
+
+    /// Påslagna val i ordningen kväll, morgon. Aldrig tom: är båda av räknas kvällen.
+    public var enabledTimings: [ReminderTiming] {
+        let timings = ReminderTiming.allCases.filter(isEnabled)
+        return timings.isEmpty ? [.eveningBefore] : timings
+    }
+
+    /// Värdet på raden Påminnelse i inställningarna.
+    public var settingsValue: String {
+        let timings = enabledTimings
+        if timings.count == 2 {
+            return "\(SwedishFormat.clock(minutes: minutes(for: .eveningBefore))) och \(SwedishFormat.clock(minutes: minutes(for: .sameMorning)))"
+        }
+        let timing = timings[0]
+        let label = timing == .eveningBefore ? "Kvällen före" : "Samma morgon"
+        return "\(label), \(SwedishFormat.clock(minutes: minutes(for: timing)))"
     }
 }
 

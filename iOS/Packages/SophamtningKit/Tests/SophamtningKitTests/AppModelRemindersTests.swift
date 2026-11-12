@@ -710,7 +710,7 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     // Lördag 7 nov 07:00 med samma morgon 06:00, och schemat har tömning lördag 7 nov.
     let morning = StockholmClock.date(on: DayDate("2026-11-07")!, minutes: 7 * 60)
     let store = LocalStore(directory: temp.url)
-    try store.setSettings(ReminderSettings(timing: .sameMorning, morningMinutes: 360))
+    try store.setSettings(ReminderSettings(eveningOn: false, morningOn: true, morningMinutes: 360, liveActivityTiming: .sameMorning))
     let scheduler = FakeScheduler(status: .authorized)
     let api = FixedAPI(response: try fixtureResponse(events: ["2026-11-07"]))
     let model = AppModel(api: api, store: store, now: { morning }, scheduler: scheduler)
@@ -743,7 +743,7 @@ private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time:
     #expect(model.setReminderTiming(.sameMorning))
     await model.settleReminders()
     #expect(scheduler.planned.map(\.fireDate) == [StockholmClock.date(on: DayDate("2026-11-11")!, minutes: 6 * 60)])
-    #expect(LocalStore(directory: temp.url).settings().timing == .sameMorning)
+    #expect(LocalStore(directory: temp.url).settings().liveActivityTiming == .sameMorning)
 }
 
 @Test @MainActor func bytTillbakaGerFörraTiden() async throws {
@@ -751,10 +751,10 @@ private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time:
     let model = try await wednesdayModel(FakeScheduler(status: .authorized), directory: temp.url)
     #expect(model.setReminderMinutes(20 * 60))
     #expect(model.setReminderTiming(.sameMorning))
-    #expect(model.settings.activeMinutes == 360)
+    #expect(model.settings.minutes(for: model.settings.liveActivityTiming) == 360)
     #expect(model.setReminderMinutes(7 * 60))
     #expect(model.setReminderTiming(.eveningBefore))
-    #expect(model.settings.activeMinutes == 20 * 60)
+    #expect(model.settings.minutes(for: model.settings.liveActivityTiming) == 20 * 60)
     #expect(model.settings.morningMinutes == 7 * 60)
 }
 
@@ -783,7 +783,7 @@ private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time:
     try Data().write(to: blocked.url)
     let model = AppModel(api: FixedAPI(response: try fixtureResponse()), store: LocalStore(directory: blocked.url), now: { now }, scheduler: FakeScheduler(status: .authorized))
     #expect(!model.setReminderTiming(.sameMorning))
-    #expect(model.settings.timing == .eveningBefore)
+    #expect(model.settings.liveActivityTiming == .eveningBefore)
     #expect(model.lastStorageError != nil)
 }
 
@@ -792,7 +792,7 @@ private func wednesdayModel(_ scheduler: FakeScheduler, directory: URL, at time:
     let temp = TempDir()
     let tuesdayEvening = StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 20 * 60)
     let store = LocalStore(directory: temp.url)
-    try store.setSettings(ReminderSettings(timing: .sameMorning, morningMinutes: 360))
+    try store.setSettings(ReminderSettings(eveningOn: false, morningOn: true, morningMinutes: 360, liveActivityTiming: .sameMorning))
     let scheduler = FakeScheduler(status: .authorized)
     let model = try await wednesdayModel(scheduler, directory: temp.url, at: tuesdayEvening)
     _ = await model.setNotifications(true, for: key)

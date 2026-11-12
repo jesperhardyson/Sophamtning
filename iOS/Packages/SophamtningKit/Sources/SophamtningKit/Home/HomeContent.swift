@@ -242,7 +242,7 @@ public struct HomeContent: Equatable, Sendable {
             let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
             let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
             if !asRow {
-                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn, timing: settings.timing)
+                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn, timing: settings.liveActivityTiming)
             } else if address.notificationsOn {
                 if remindersDenied {
                     rowReminder = .denied
@@ -334,7 +334,7 @@ public struct HomeContent: Equatable, Sendable {
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.
         if settings.liveActivityOn, let liveActivityError { return liveActivityError }
-        guard notifications || settings.liveActivityOn else { return settings.timing.toggleTitle }
+        guard notifications || settings.liveActivityOn else { return settings.liveActivityTiming.toggleTitle }
         guard notifications else {
             return liveActivitiesEnabled ? "Ingen Live Activity planerad" : "Live Activities är avstängda"
         }
@@ -342,9 +342,9 @@ public struct HomeContent: Equatable, Sendable {
         if let reserveAt { return "Reservpåminnelse kl. \(AddressDetail.clock(of: reserveAt))" }
         if let missedReminder { return missedReminder }
         for event in ScheduleLogic.upcoming(events, today: today) {
-            guard ReminderTime.date(forPickup: event.date, settings: settings) > now else { continue }
-            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.timing)
-            return "Påminnelse \(SwedishFormat.weekdayName(day)) kl. \(SwedishFormat.clock(minutes: settings.activeMinutes))"
+            guard ReminderTime.date(forPickup: event.date, timing: settings.liveActivityTiming, settings: settings) > now else { continue }
+            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.liveActivityTiming)
+            return "Påminnelse \(SwedishFormat.weekdayName(day)) kl. \(SwedishFormat.clock(minutes: settings.minutes(for: settings.liveActivityTiming)))"
         }
         return "Påminnelser på"
     }
