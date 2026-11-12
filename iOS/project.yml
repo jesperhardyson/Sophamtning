@@ -51,6 +51,14 @@ targets:
       path: Sophamtning/Info.plist
       properties:
         CFBundleDisplayName: Sophämtning
+        # Namnet med "ä" också i systemets texter, till exempel knappen "Sophämtning-genvägar".
+        CFBundleName: Sophämtning
+        # Fler namn som Siri känner igen i fraserna, till exempel "När töms soporna i Sopor" (docs/specs/2026-11-12-siri.md).
+        INAlternativeAppNames:
+          - INAlternativeAppName: Sopor
+          - INAlternativeAppName: Soporna
+          - INAlternativeAppName: Soptunnan
+        # iOS tillåter högst tre namn.
         # Versionen kommer från Version.xcconfig.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
