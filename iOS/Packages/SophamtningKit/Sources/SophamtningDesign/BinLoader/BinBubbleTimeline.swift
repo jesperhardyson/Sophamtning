@@ -47,7 +47,8 @@ public enum BinBubbleTimeline {
         case overLid
         /// Spetsen ovanför kärlets hela ram. För det lilla kärlet bredvid rubriken, där texten når högre än locket.
         case aboveBin
-        /// Spetsen under kärlets ram, och bubblan växer nedåt. För kärlet i rubriken, där fältet ovanför annars döljer bubblan.
+        /// Spetsen under kärlets ram, och bubblan växer nedåt. För kärlet i rubriken och i tomt läge, där fältet ovanför
+        /// annars döljer bubblan.
         case belowBin
 
         /// Sant när bubblan står under kärlet och spetsen pekar uppåt.
