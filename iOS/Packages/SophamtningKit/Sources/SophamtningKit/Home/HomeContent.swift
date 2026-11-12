@@ -3,10 +3,10 @@ import Foundation
 /// Hemskärmens innehåll, räknat från sparade adresser och scheman och given tid.
 /// Allt räknas lokalt: dagar, datum och påminnelsetext kommer aldrig från sparade `next`-fält.
 public struct HomeContent: Equatable, Sendable {
-    /// Valets namn på huvudkortet, i adressvyn och i snabbmenyn: "Påminn mig kvällen före" eller "Påminn mig samma morgon".
-    public static func reminderTitle(timing: ReminderTiming) -> String { timing.toggleTitle }
-    /// VoiceOvers åtgärd för samma val, på huvudkortet och raderna.
-    public static func reminderActionTitle(isOn: Bool, timing: ReminderTiming) -> String { timing.actionTitle(isOn: isOn) }
+    /// Reglagets namn på huvudkortet, i adressvyn och i snabbmenyn.
+    public static func reminderTitle() -> String { "Påminn mig" }
+    /// VoiceOvers åtgärd för samma reglage, på huvudkortet och raderna.
+    public static func reminderActionTitle(isOn: Bool) -> String { isOn ? "Stäng av påminnelse" : "Slå på påminnelse" }
 
     public struct FractionItem: Equatable, Sendable, Identifiable {
         public let id: String
@@ -87,15 +87,15 @@ public struct HomeContent: Equatable, Sendable {
 
         /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
         /// "Söndag kl. 18:00" under den.
-        init(text: String, isOn: Bool, isDenied: Bool, isWanted: Bool, timing: ReminderTiming) {
+        init(text: String, isOn: Bool, isDenied: Bool, isWanted: Bool) {
             self.isOn = isOn
             self.isDenied = isDenied
             // Inbjudan betyder att varken notis eller Live Activity är på.
-            line = text == timing.toggleTitle ? nil : text
+            line = text == HomeContent.reminderTitle() ? nil : text
             showsDeniedNotice = isDenied && isWanted
-            title = isDenied ? RowReminder.denied.text : timing.toggleTitle
+            title = isDenied ? RowReminder.denied.text : HomeContent.reminderTitle()
             // Inbjudan är redan rubriken, och "Påminnelser på" säger bara det reglaget redan visar.
-            if text == timing.toggleTitle || text == "Påminnelser på" {
+            if text == HomeContent.reminderTitle() || text == "Påminnelser på" {
                 detail = nil
             } else if text.hasPrefix("Påminnelse ") {
                 let rest = text.dropFirst("Påminnelse ".count)
@@ -242,7 +242,7 @@ public struct HomeContent: Equatable, Sendable {
             let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
             let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
             if !asRow {
-                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn, timing: settings.liveActivityTiming)
+                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn)
             } else if address.notificationsOn {
                 if remindersDenied {
                     rowReminder = .denied
@@ -324,29 +324,37 @@ public struct HomeContent: Equatable, Sendable {
             guard liveActivity.isPending else { return "Live Activity visas nu" }
             // En tid som redan passerat lovas inte, även om aktiviteten står kvar som väntande.
             if liveActivity.start > now {
-                let day = StockholmClock.today(now: liveActivity.start)
-                let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: liveActivity.start)
-                let time = SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
-                // Notis och Live Activity startar vid samma tid. Står bara aktiviteten ser det ut som att notisen är av.
-                let what = notifications ? "Notis och Live Activity" : "Live Activity"
-                return "\(what) \(SwedishFormat.weekdayName(day)) kl. \(time)"
+                // Kommer en notis minst en minut före starten är det den som är nästa påminnelse. Startar notis och aktivitet
+                // vid samma tid nämns båda. Står bara aktiviteten ser det ut som att notisen är av.
+                if notifications, let next = ReminderTime.next(events: events, settings: settings, now: now) {
+                    let gap = liveActivity.start.timeIntervalSince(next.date)
+                    if gap >= 60 { return reminderLine(next) }
+                    if gap > -60 { return "Notis och Live Activity \(startText(liveActivity.start))" }
+                }
+                return "Live Activity \(startText(liveActivity.start))"
             }
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.
         if settings.liveActivityOn, let liveActivityError { return liveActivityError }
-        guard notifications || settings.liveActivityOn else { return settings.liveActivityTiming.toggleTitle }
+        guard notifications || settings.liveActivityOn else { return reminderTitle() }
         guard notifications else {
             return liveActivitiesEnabled ? "Ingen Live Activity planerad" : "Live Activities är avstängda"
         }
         // En reservnotis som ligger framför är den påminnelse som gäller just nu.
         if let reserveAt { return "Reservpåminnelse kl. \(AddressDetail.clock(of: reserveAt))" }
         if let missedReminder { return missedReminder }
-        for event in ScheduleLogic.upcoming(events, today: today) {
-            guard ReminderTime.date(forPickup: event.date, timing: settings.liveActivityTiming, settings: settings) > now else { continue }
-            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.liveActivityTiming)
-            return "Påminnelse \(SwedishFormat.weekdayName(day)) kl. \(SwedishFormat.clock(minutes: settings.minutes(for: settings.liveActivityTiming)))"
-        }
+        if let next = ReminderTime.next(events: events, settings: settings, now: now) { return reminderLine(next) }
         return "Påminnelser på"
+    }
+
+    /// "Påminnelse tisdag kl. 18:00", från nästa påminnelses egen tid och dag.
+    private static func reminderLine(_ next: ReminderTime.UpcomingReminder) -> String {
+        "Påminnelse \(startText(next.date))"
+    }
+
+    /// "tisdag kl. 18:00", i svensk tid.
+    private static func startText(_ date: Date) -> String {
+        "\(SwedishFormat.weekdayName(StockholmClock.today(now: date))) kl. \(AddressDetail.clock(of: date))"
     }
 
     private static func capitalized(_ text: String) -> String {

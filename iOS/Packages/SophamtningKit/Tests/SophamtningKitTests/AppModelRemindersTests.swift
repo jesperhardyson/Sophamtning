@@ -722,6 +722,22 @@ private func makeModel(_ scheduler: FakeScheduler, directory: URL) async throws 
     #expect(!scheduler.planned.contains { $0.pickupDate == DayDate("2026-11-07")! })
 }
 
+@Test @MainActor func missedGällerSenasteValet() async throws {
+    let temp = TempDir()
+    // Tisdag 10 nov 19:00 med båda valen på, och schemat har tömning onsdag 11 nov. Kvällens 18:00 har passerat, men morgonen är senast.
+    let evening = StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 19 * 60)
+    let store = LocalStore(directory: temp.url)
+    try store.setSettings(ReminderSettings(eveningOn: true, morningOn: true))
+    let scheduler = FakeScheduler(status: .authorized)
+    let api = FixedAPI(response: try fixtureResponse(events: ["2026-11-11"]))
+    let model = AppModel(api: api, store: store, now: { evening }, scheduler: scheduler)
+    model.add(hit())
+    await model.refreshAll(manual: false)
+    _ = await model.setNotifications(true, for: key)
+    await model.settleReminders()
+    #expect(model.missedReminderText == nil)
+}
+
 // MARK: - Kvällen före eller samma morgon
 
 @MainActor

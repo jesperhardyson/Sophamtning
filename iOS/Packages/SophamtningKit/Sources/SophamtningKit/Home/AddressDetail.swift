@@ -134,7 +134,7 @@ public struct AddressDetail: Equatable, Sendable {
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
     public let webLink: URL?
-    /// Raden under "Påminn mig kvällen före" eller "Påminn mig samma morgon".
+    /// Raden under reglaget "Påminn mig".
     public let reminderText: String
     public let liveActivityText: String
     public let isPrimary: Bool
@@ -214,7 +214,7 @@ public struct AddressDetail: Equatable, Sendable {
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil, sourceName: sourceName),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
-            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, today: today, now: now),
+            reminderText: nothingToRemind ?? reserveAt.map { reserveText($0) } ?? reminderText(events: response?.events ?? [], settings: settings, now: now),
             liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,
             showsReminders: showsReminders,
@@ -307,11 +307,13 @@ public struct AddressDetail: Equatable, Sendable {
     /// morgon. Till exempel efter att tiden ändrats eller notisen slagits på sent.
     public static func missedReminder(events: [PickupEvent], settings: ReminderSettings, now: Date) -> String? {
         let today = StockholmClock.today(now: now)
-        let pickup = ReminderTime.pickupDay(remindedOn: today, timing: settings.liveActivityTiming)
+        // Det senast påslagna valet avgör: kvällens tid kan ha passerat utan att något är missat, när morgonen kommer.
+        let timing = settings.latestTiming
+        let pickup = ReminderTime.pickupDay(remindedOn: today, timing: timing)
         guard events.contains(where: { $0.date == pickup && !$0.fractions.isEmpty }),
-              ReminderTime.date(forPickup: pickup, timing: settings.liveActivityTiming, settings: settings) <= now
+              ReminderTime.date(forPickup: pickup, timing: timing, settings: settings) <= now
         else { return nil }
-        return settings.liveActivityTiming.missedText
+        return timing.missedText
     }
 
     /// "Mån 9 nov", eller "ca tors 12 nov" när datumet är beräknat.
@@ -320,19 +322,20 @@ public struct AddressDetail: Equatable, Sendable {
         return estimated ? "ca " + text.lowercased() : text
     }
 
-    /// "Söndag kl. 18:00 inför måndagens tömning." eller "Måndag kl. 06:00, samma dag som tömningen." Har tiden för nästa
-    /// hämtning passerat räknas nästa hämtning efter den.
-    static func reminderText(events: [PickupEvent], settings: ReminderSettings, today: DayDate, now: Date) -> String {
-        let time = SwedishFormat.clock(minutes: settings.minutes(for: settings.liveActivityTiming))
-        for event in ScheduleLogic.upcoming(events, today: today) where !event.fractions.isEmpty {
-            guard ReminderTime.date(forPickup: event.date, timing: settings.liveActivityTiming, settings: settings) > now else { continue }
-            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.liveActivityTiming)
-            return "\(when(day: day, pickup: event.date, time: time, timing: settings.liveActivityTiming))."
+    /// "Söndag kl. 18:00 inför måndagens tömning." eller "Måndag kl. 06:00, samma dag som tömningen." Det är nästa påminnelse
+    /// av de påslagna valen. Finns ingen kommande tömning står texten för varje påslaget val.
+    static func reminderText(events: [PickupEvent], settings: ReminderSettings, now: Date) -> String {
+        if let next = ReminderTime.next(events: events, settings: settings, now: now) {
+            let day = StockholmClock.today(now: next.date)
+            return "\(when(day: day, pickup: next.pickup, time: clock(of: next.date), timing: next.timing))."
         }
-        switch settings.liveActivityTiming {
-        case .eveningBefore: return "Kvällen före varje tömning kl. \(time)."
-        case .sameMorning: return "Samma morgon som varje tömning kl. \(time)."
-        }
+        return settings.enabledTimings.map { timing in
+            let time = SwedishFormat.clock(minutes: settings.minutes(for: timing))
+            switch timing {
+            case .eveningBefore: return "Kvällen före varje tömning kl. \(time)."
+            case .sameMorning: return "Samma morgon som varje tömning kl. \(time)."
+            }
+        }.joined(separator: " ")
     }
 
     /// "Hämtat i dag 09:12 från Avesta Vatten och Avfall.", i rutan när ett sparat schema visas efter ett fel.

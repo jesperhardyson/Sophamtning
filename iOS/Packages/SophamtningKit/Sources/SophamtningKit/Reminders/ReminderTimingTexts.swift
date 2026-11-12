@@ -18,17 +18,19 @@ extension ReminderTiming {
         }
     }
 
-    /// Reglagets namn på huvudkortet, i adressvyn och i snabbmenyn.
-    public var toggleTitle: String { "Påminn mig \(phrase)" }
-
-    /// VoiceOvers åtgärd för samma reglage.
-    public func actionTitle(isOn: Bool) -> String {
-        "\(isOn ? "Stäng av" : "Slå på") påminnelse \(phrase)"
-    }
-
     /// Värdet på raden Påminnelse i inställningarna: "Kvällen före, 18:00".
     public func settingsValue(minutes: Int) -> String {
         "\(title), \(SwedishFormat.clock(minutes: minutes))"
+    }
+
+    /// Texten under delen för valet i inställningarna.
+    public var sectionFooter: String {
+        switch self {
+        case .eveningBefore:
+            "Dagen före tömningen, mellan 15:00 och 23:00."
+        case .sameMorning:
+            "Samma dag som tömningen, mellan 05:00 och 09:00. Minst en påminnelse är på. Notiser slår du på och av per adress."
+        }
     }
 
     /// Texten under listan med tider.

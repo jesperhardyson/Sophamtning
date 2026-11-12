@@ -157,6 +157,9 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         return timings.isEmpty ? [.eveningBefore] : timings
     }
 
+    /// Det sista påslagna valet under dygnet: morgonen när den är på, annars kvällen.
+    public var latestTiming: ReminderTiming { enabledTimings.last! }
+
     /// Värdet på raden Påminnelse i inställningarna.
     public var settingsValue: String {
         let timings = enabledTimings

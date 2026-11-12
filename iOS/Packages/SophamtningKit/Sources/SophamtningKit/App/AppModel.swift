@@ -504,8 +504,8 @@ public final class AppModel {
     /// "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen i morgon redan är påmind,
     /// aktiviteten väntar eller en reservnotis ligger framför.
     public func missedReminderApplies(to address: SavedAddress) -> Bool {
-        // Tömningen som dagens påminnelse gäller: i morgon med kvällen före, i dag med samma morgon.
-        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.liveActivityTiming)
+        // Tömningen som dagens sista påminnelse gäller: i morgon med bara kvällen före, i dag när samma morgon är på.
+        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.latestTiming)
         let pickup = PlacedOut(key: address.key, date: day)
         return remindersOn(for: address)
             && !handledPickups.contains(pickup)
