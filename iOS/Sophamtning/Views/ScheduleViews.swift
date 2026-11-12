@@ -276,7 +276,7 @@ struct FullScheduleView: View {
                 .padding(.bottom, 32)
             }
             .refreshable { await model.refreshAll(manual: true) }
-            .scrollEdgeEffectStyle(.hard, for: .top)
+            .hardTopEdgeWhenScrolled()
         }
         .navigationTitle("Hela schemat")
         .navigationBarTitleDisplayMode(.large)
