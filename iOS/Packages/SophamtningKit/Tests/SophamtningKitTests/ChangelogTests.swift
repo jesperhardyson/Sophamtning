@@ -31,7 +31,7 @@ private let sample = """
 """
 
 @Test func versionerNyastFörst() {
-    let versions = Changelog.parse(sample)
+    let versions = Changelog.parse(sample, hiding: [])
     #expect(versions.map(\.version) == ["1.1.0", "1.0.0"])
     #expect(versions[0].title == "1.1.0 · 10 november 2026")
     #expect(versions[1].title == "1.0.0 · 8 november 2026")
@@ -44,9 +44,16 @@ private let sample = """
     #expect(first.sections[1].items == ["Pilen står till höger"])
 }
 
+@Test func förstaVersionenVisasInte() {
+    // 1.0.0 innehåller bara "Milstolpe 4, redo för App Store", som är till för utvecklarna.
+    let versions = Changelog.parse(sample, hiding: ["1.0.0"])
+    #expect(versions.map(\.version) == ["1.1.0"])
+    #expect(Changelog.hiddenVersions == ["1.0.0"])
+}
+
 @Test func tekniskaDelarVisasInte() {
     // Delar som inte är Nytt, Rättat eller Snabbare visas inte, till exempel listan över brytande ändringar.
-    let old = Changelog.parse(sample)[1]
+    let old = Changelog.parse(sample, hiding: [])[1]
     #expect(old.sections.map(\.title) == ["Nytt"])
     #expect(old.sections[0].items == ["Milstolpe 4, redo för App Store"])
 }

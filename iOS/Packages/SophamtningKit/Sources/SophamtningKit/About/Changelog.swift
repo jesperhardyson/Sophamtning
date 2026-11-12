@@ -20,8 +20,12 @@ public enum Changelog {
     /// Delarna som visas, i Release Please-konfigurationens namn. Övriga, som brytande ändringar, är för utvecklare.
     static let shownSections: Set<String> = ["Nytt", "Rättat", "Snabbare"]
 
-    /// Versionerna i filens ordning, som är nyast först. Versioner utan någon visad rad hoppas över.
-    public static func parse(_ markdown: String) -> [Version] {
+    /// Versioner som inte visas. `CHANGELOG.md` skrivs av Release Please och ändras aldrig för hand, så det som inte är för
+    /// användarna döljs här. 1.0.0 innehåller bara "Milstolpe 4, redo för App Store".
+    public static let hiddenVersions: Set<String> = ["1.0.0"]
+
+    /// Versionerna i filens ordning, som är nyast först. Versioner utan någon visad rad, och de i `hiding`, hoppas över.
+    public static func parse(_ markdown: String, hiding: Set<String> = hiddenVersions) -> [Version] {
         var versions: [Version] = []
         var current: (version: String, title: String)?
         var sections: [Section] = []
@@ -35,7 +39,7 @@ public enum Changelog {
         }
         func closeVersion() {
             closeSection()
-            if let open = current, !sections.isEmpty {
+            if let open = current, !sections.isEmpty, !hiding.contains(open.version) {
                 versions.append(Version(version: open.version, title: open.title, sections: sections))
             }
             current = nil
