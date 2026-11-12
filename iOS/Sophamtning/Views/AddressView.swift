@@ -124,8 +124,9 @@ struct AddressView: View {
             .padding(.bottom, 32)
         }
         .refreshable { await model.refreshAll(manual: true) }
-        // En tydlig kant under fältet, så att rubriken inte står ovanpå texten som scrollar under.
-        .scrollEdgeEffectStyle(.hard, for: .top)
+        // En tydlig kant under fältet när texten scrollar in under det, så att rubriken inte står ovanpå den. Överst är fältet
+        // genomskinligt.
+        .hardTopEdgeWhenScrolled()
     }
 
     /// Adressen och platsen under den stora rubriken i fältet.
