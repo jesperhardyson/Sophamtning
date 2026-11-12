@@ -9,8 +9,8 @@ public enum PlacedOutAction {
     /// kan tryckas, och är `nil` i widgetmålet.
     nonisolated(unsafe) public static var sendToHousehold: (@Sendable () async -> Void)?
 
-    /// Sparar valet, avslutar aktiviteten och tar sedan bort tömningens väntande notis (reserven), via `cancelReminder` med notisens
-    /// identifierare. Inget fel kastas utanför: ett skrivfel hindrar varken avslutningen eller borttagningen, och ett fel vid
+    /// Sparar valet, avslutar aktiviteten och tar sedan bort tömningens väntande notiser, både kvällens och morgonens, via `cancelReminder` med varje
+    /// notis identifierare. Inget fel kastas utanför: ett skrivfel hindrar varken avslutningen eller borttagningen, och ett fel vid
     /// borttagningen ger i värsta fall en extra påminnelse, eftersom nästa planering rättar det. Svarar med om valet sparades.
     @discardableResult
     public static func perform(
@@ -22,7 +22,9 @@ public enum PlacedOutAction {
     ) async -> Bool {
         let saved = (try? store.markPlacedOut(entry, today: today)) != nil
         await end()
-        try? await cancelReminder(PlannedNotification.identifier(key: entry.key, date: entry.date))
+        for timing in ReminderTiming.allCases {
+            try? await cancelReminder(PlannedNotification.identifier(key: entry.key, date: entry.date, timing: timing))
+        }
         return saved
     }
 }

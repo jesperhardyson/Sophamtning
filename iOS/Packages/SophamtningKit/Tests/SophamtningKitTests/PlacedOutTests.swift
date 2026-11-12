@@ -125,8 +125,7 @@ private actor FakeCenter {
     #expect(await ended.value)
     #expect(store.placedOut() == [entry(1)])
     // Adressens och datumets notis, med samma identifierare som planeraren ger.
-    #expect(await center.cancelled == ["\(key.fileName)-\(entry(1).date.iso)"])
-    #expect(await center.cancelled == [PlannedNotification.identifier(key: key, date: entry(1).date)])
+    #expect(await center.cancelled == ["\(key.fileName)-\(entry(1).date.iso)", "\(key.fileName)-\(entry(1).date.iso)-morgon"])
 }
 
 @Test func utstalltAvslutarAktivitetenAvenVidSkrivfel() async throws {
@@ -141,7 +140,7 @@ private actor FakeCenter {
     #expect(!saved)
     #expect(await ended.value)
     // Notisen tas bort ändå: användaren har sagt att det är utställt.
-    #expect(await center.cancelled.count == 1)
+    #expect(await center.cancelled.count == 2)
 }
 
 @Test func utstalltAvslutarAktivitetenAvenNarNotisenInteGarAttTaBort() async throws {
@@ -154,7 +153,8 @@ private actor FakeCenter {
     #expect(saved)
     #expect(await ended.value)
     #expect(store.placedOut() == [entry(1)])
-    #expect(await center.cancelled.count == 1)
+    // Båda försöks även när det första misslyckas.
+    #expect(await center.cancelled.count == 2)
 }
 
 @Test func visadeSparasRensasOchTomsPaBegaran() throws {
@@ -174,4 +174,16 @@ private actor FakeCenter {
 private actor EndedFlag {
     var value = false
     func set() { value = true }
+}
+
+@Test func utställtTarBortBåda() async throws {
+    let temp = TempDir()
+    let center = FakeCenter()
+    await PlacedOutAction.perform(store: LocalStore(directory: temp.url), entry: entry(1), today: today, end: {}, cancelReminder: { try await center.cancel($0) })
+    let date = entry(1).date
+    #expect(Set(await center.cancelled) == [
+        PlannedNotification.identifier(key: key, date: date, timing: .eveningBefore),
+        PlannedNotification.identifier(key: key, date: date, timing: .sameMorning),
+    ])
+    #expect(await center.cancelled.count == 2)
 }

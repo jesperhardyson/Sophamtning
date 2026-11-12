@@ -1035,7 +1035,9 @@ private func kimHasPlacedOut(_ store: LocalStore, silence: Bool) throws {
     await apply(model)
     let evening = try #require(f.activities.activities.first)
     #expect(evening.start == sundayAt(18 * 60))
-    #expect(model.setReminderTiming(.sameMorning))
+    #expect(model.setReminder(.sameMorning, on: true))
+    #expect(model.setReminder(.eveningBefore, on: false))
+    #expect(model.setLiveActivityTiming(.sameMorning))
     await model.settleReminders()
     #expect(!f.activities.ids.contains(evening.id))
     #expect(f.activities.activities.map(\.start) == [StockholmClock.date(on: monday, minutes: 6 * 60)])
@@ -1048,7 +1050,7 @@ private let mondayMorning = StockholmClock.date(on: monday, minutes: 7 * 60)
 /// Samma morgon med påminnelsen 06:00.
 private func morningFixture() throws -> Fixture {
     let f = try Fixture(now: mondayMorning)
-    try f.store.setSettings(ReminderSettings(timing: .sameMorning, reminderMinutes: 1080, morningMinutes: 6 * 60, liveActivityOn: true))
+    try f.store.setSettings(ReminderSettings(eveningOn: false, morningOn: true, reminderMinutes: 1080, morningMinutes: 6 * 60, liveActivityTiming: .sameMorning, liveActivityOn: true))
     return f
 }
 
@@ -1079,4 +1081,65 @@ private func morningFixture() throws -> Fixture {
     #expect(f.activities.endedWithPlacedOut == [id])
     #expect(!f.activities.ids.contains(id))
     #expect(f.notifications.notification("2026-11-09") == nil)
+}
+
+@Test @MainActor func bytAvAktivitetensValGlömmerStoppade() async throws {
+    let f = try Fixture()
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    #expect(!f.store.endedActivities().isEmpty)
+    #expect(model.setLiveActivityTiming(.sameMorning))
+    #expect(f.store.endedActivities().isEmpty)
+}
+
+@Test @MainActor func notisensTidGlömmerInteStoppade() async throws {
+    // Aktiviteten har en egen tid, så en ändrad notistid är inget nytt val för den, inte ens för samma val.
+    let f = try Fixture()
+    try f.store.setSettings(ReminderSettings(eveningOn: true, morningOn: true, liveActivityTiming: .sameMorning, liveActivityOn: true))
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    #expect(model.setReminderMinutes(1140, for: .eveningBefore))
+    #expect(model.setReminderMinutes(420, for: .sameMorning))
+    #expect(!f.store.endedActivities().isEmpty)
+    #expect(model.settings.liveActivityStartMinutes == 360)
+}
+
+@Test @MainActor func aktivitetensTidGlömmerStoppade() async throws {
+    let f = try Fixture()
+    try f.store.setSettings(ReminderSettings(liveActivityOn: true))
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    // 07:00 går inte kvällen före, och inget ändras.
+    #expect(!model.setLiveActivityMinutes(420))
+    #expect(!f.store.endedActivities().isEmpty)
+    #expect(model.setLiveActivityMinutes(1260))
+    #expect(model.settings.liveActivityMinutes == 1260)
+    #expect(model.settings.reminderMinutes == 1080)
+    #expect(f.store.endedActivities().isEmpty)
+}
+
+@Test @MainActor func bytAvValFårNotisensTid() async throws {
+    let f = try Fixture()
+    try f.store.setSettings(ReminderSettings(morningMinutes: 420, liveActivityMinutes: 1260, liveActivityOn: true))
+    let model = f.model()
+    #expect(model.setLiveActivityTiming(.sameMorning))
+    #expect(model.settings.liveActivityStartMinutes == 420)
+}
+
+@Test @MainActor func sammaTidIgenGlömmerInteStoppade() async throws {
+    let f = try Fixture()
+    try f.store.setSettings(ReminderSettings(eveningOn: true, morningOn: false, reminderMinutes: 1080, liveActivityTiming: .eveningBefore, liveActivityOn: true))
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    #expect(model.setLiveActivityMinutes(1080))
+    #expect(!f.store.endedActivities().isEmpty)
+}
+
+@Test @MainActor func reglageGlömmerInteStoppade() async throws {
+    let f = try Fixture()
+    try f.store.markEnded([PlacedOut(key: homeKey, date: monday)], today: DayDate("2026-11-08")!)
+    let model = f.model()
+    #expect(model.setReminder(.sameMorning, on: true))
+    #expect(model.setReminder(.eveningBefore, on: false))
+    #expect(!f.store.endedActivities().isEmpty)
 }

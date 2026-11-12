@@ -76,7 +76,8 @@ struct AddressView: View {
             remindersOn: model.missedReminderApplies(to: address),
             reserveAt: model.reserveNotificationDate(for: address),
             household: model.household,
-            ownPlacedOut: model.ownPlacedOut
+            ownPlacedOut: model.ownPlacedOut,
+            silencedPickups: model.householdSilencedPickups
         )
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -315,7 +316,7 @@ struct AddressView: View {
         }
         VStack(spacing: 0) {
             ReminderToggleRow(
-                title: HomeContent.reminderTitle(timing: model.settings.timing),
+                title: HomeContent.reminderTitle(),
                 text: detail.reminderText,
                 symbol: "bell.badge",
                 pulse: notificationPulse,

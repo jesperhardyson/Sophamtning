@@ -38,6 +38,9 @@ public final class AppModel {
     /// Mina egna utställda i `placed-out.json`, utan andras bockar. Hushållets rad visar en sådan som en väntande bock när
     /// hushållet saknar den. Läses om av `applyReminders()`.
     public private(set) var ownPlacedOut: Set<PlacedOut> = []
+    /// Tömningar där hushållets bockar tystar påminnelsen, som planeraren fick vid senaste planeringen. Tillsammans med
+    /// `ownPlacedOut` är det de tömningar som saknar påminnelser, så att texterna inte lovar en som planeraren tagit bort.
+    public private(set) var householdSilencedPickups: Set<PlacedOut> = []
     /// Tömningar som redan är påminda: utställda, visade eller med en aktivitet som syns nu. Läses om av `applyReminders()`.
     private var handledPickups: Set<PlacedOut> = []
     /// Reservnotiser som väntar framför, med sina tider. Läses om av `applyReminders()`.
@@ -425,29 +428,62 @@ public final class AppModel {
         applyReminders()
     }
 
-    /// Tiden för det valda: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
-    /// lagringsfel, är allt kvar som förut. Den andra tiden rörs inte, så ett byte tillbaka ger den förra tiden.
+    /// Slår kvällen före eller samma morgon på eller av. Minst ett val är alltid på, så det sista går inte att stänga av. Då, eller
+    /// vid lagringsfel, är allt kvar som förut. En aktivitet som stoppats glöms inte: Live Activity följer sitt eget val.
     @discardableResult
-    public func setReminderMinutes(_ minutes: Int) -> Bool {
-        guard ReminderSettings.isValid(minutes: minutes, for: settings.timing) else { return false }
+    public func setReminder(_ timing: ReminderTiming, on: Bool) -> Bool {
         var updated = settings
-        switch settings.timing {
+        switch timing {
+        case .eveningBefore: updated.eveningOn = on
+        case .sameMorning: updated.morningOn = on
+        }
+        guard updated.eveningOn || updated.morningOn else { return false }
+        guard updated != settings else { return true }
+        guard saveSettings(updated) else { return false }
+        applyReminders()
+        return true
+    }
+
+    /// Tiden för ett val: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
+    /// lagringsfel, är allt kvar som förut. Live Activity har en egen tid, så notisens tid rör inte aktiviteten.
+    @discardableResult
+    public func setReminderMinutes(_ minutes: Int, for timing: ReminderTiming) -> Bool {
+        guard ReminderSettings.isValid(minutes: minutes, for: timing) else { return false }
+        // Samma tid igen är ingen ändring: inget sparas, och en bortsvept aktivitet startar inte om.
+        guard minutes != settings.minutes(for: timing) else { return true }
+        var updated = settings
+        switch timing {
         case .eveningBefore: updated.reminderMinutes = minutes
         case .sameMorning: updated.morningMinutes = minutes
         }
+        guard saveSettings(updated) else { return false }
+        applyReminders()
+        return true
+    }
+
+    /// När Live Activity visas, kvällen före eller samma morgon, oberoende av vilka notiser som är på. Aktiviteten får tiden som
+    /// notisen för det nya valet har, och tiden kan sedan ändras. Vid lagringsfel är allt kvar som förut.
+    @discardableResult
+    public func setLiveActivityTiming(_ timing: ReminderTiming) -> Bool {
+        guard timing != settings.liveActivityTiming else { return true }
+        var updated = settings
+        updated.liveActivityTiming = timing
+        updated.liveActivityMinutes = settings.minutes(for: timing)
         guard saveSettings(updated) else { return false }
         forgetStoppedActivities()
         applyReminders()
         return true
     }
 
-    /// Kvällen före eller samma morgon. Gäller notiser och Live Activity för alla adresser, men slår inte på något. Vid
-    /// lagringsfel är allt kvar som förut.
+    /// Live Activityns egen tid, för dess val: 15:00 till 23:00 dagen före eller 05:00 till 09:00 samma morgon, i steg om 15
+    /// minuter. En ändrad tid är ett nytt val, så en bortsvept aktivitet får starta igen. Samma tid igen ändrar ingenting. En
+    /// ogiltig tid, eller ett lagringsfel, lämnar allt som förut.
     @discardableResult
-    public func setReminderTiming(_ timing: ReminderTiming) -> Bool {
-        guard timing != settings.timing else { return true }
+    public func setLiveActivityMinutes(_ minutes: Int) -> Bool {
+        guard ReminderSettings.isValid(minutes: minutes, for: settings.liveActivityTiming) else { return false }
+        guard minutes != settings.liveActivityStartMinutes else { return true }
         var updated = settings
-        updated.timing = timing
+        updated.liveActivityMinutes = minutes
         guard saveSettings(updated) else { return false }
         forgetStoppedActivities()
         applyReminders()
@@ -500,8 +536,8 @@ public final class AppModel {
     /// "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen i morgon redan är påmind,
     /// aktiviteten väntar eller en reservnotis ligger framför.
     public func missedReminderApplies(to address: SavedAddress) -> Bool {
-        // Tömningen som dagens påminnelse gäller: i morgon med kvällen före, i dag med samma morgon.
-        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.timing)
+        // Tömningen som dagens sista påminnelse gäller: i morgon med bara kvällen före, i dag när samma morgon är på.
+        let day = ReminderTime.pickupDay(remindedOn: StockholmClock.today(now: now()), timing: settings.latestTiming)
         let pickup = PlacedOut(key: address.key, date: day)
         return remindersOn(for: address)
             && !handledPickups.contains(pickup)
@@ -648,6 +684,7 @@ public final class AppModel {
         ownPlacedOut = placedOut
         // Andras bockar räknas som utställda bara i minnet, så att Ångra eller att valet stängs av ger tillbaka påminnelsen.
         let silenced = householdSilenced(today: today)
+        householdSilencedPickups = silenced
         placedOut.formUnion(silenced)
 
         let primary = addresses.first(where: \.isPrimary)?.key
@@ -762,7 +799,9 @@ public final class AppModel {
         for notification in final.notifications where notification.title == ReminderPlanner.fallbackTitle {
             reserves[PlacedOut(key: notification.key, date: notification.pickupDate)] = notification.fireDate
         }
-        for (id, entry) in retained where reserves[entry] == nil {
+        // En kvarlämnad notis kallas reserv bara när aktiviteter är på. Annars är den en ordinarie notis som står kvar efter att
+        // tiden ändrats, och raderna ska inte kalla den reserv.
+        for (id, entry) in retained where reserves[entry] == nil && settings.liveActivityOn && systemAllows {
             if let fireDate = pendingFireDates[id], fireDate > current { reserves[entry] = fireDate }
         }
         reserveNotifications = reserves

@@ -89,3 +89,30 @@ private func planned(_ id: String, at seconds: TimeInterval, body: String = "Tex
     #expect(result.add.map(\.identifier) == ["a"])
     #expect(result.removeIds == ["a"])
 }
+
+private let hex64 = String(repeating: "ab12", count: 16)
+
+@Test func morgonensIdentifierare() {
+    let date = DayDate("2026-11-11")!
+    let morning = PlannedNotification.identifier(key: key, date: date, timing: .sameMorning)
+    #expect(morning.hasSuffix("-2026-11-11-morgon"))
+    #expect(PlannedNotification.identifier(key: key, date: date, timing: .eveningBefore) == "\(key.fileName)-2026-11-11")
+}
+
+@Test func egnaIdentifierare() {
+    #expect(NotificationDiff.isOwn(identifier: "\(hex64)-2026-11-11"))
+    #expect(NotificationDiff.isOwn(identifier: "\(hex64)-2026-11-11-morgon"))
+    #expect(!NotificationDiff.isOwn(identifier: "\(hex64)-2026-11-11-kvall"))
+    #expect(!NotificationDiff.isOwn(identifier: "\(hex64)-2026-11-11-"))
+    #expect(!NotificationDiff.isOwn(identifier: "\(hex64)-morgon"))
+}
+
+@Test func gammalMorgonnotisErsätts() {
+    // En morgonnotis som schemalagts före ändringen hade kvällens identifierare. Nu har morgonen sin egen.
+    let old = "\(hex64)-2026-11-11"
+    let new = "\(hex64)-2026-11-11-morgon"
+    let fire = Date(timeIntervalSince1970: 100)
+    let result = NotificationDiff.diff(desired: [planned(new, at: 100)], pendingIds: [old], pendingFireDates: [old: fire])
+    #expect(result.add.map(\.identifier) == [new])
+    #expect(result.removeIds == [old])
+}

@@ -83,7 +83,7 @@ final class CoreFlowTests: XCTestCase {
         XCTAssertTrue(homeCard.waitForExistence(timeout: 5))
         homeCard.tap()
 
-        let notification = app.switches.matching(NSPredicate(format: "label CONTAINS %@", "Påminn mig kvällen före")).firstMatch
+        let notification = app.switches.matching(NSPredicate(format: "label CONTAINS %@", "Påminn mig")).firstMatch
         XCTAssertTrue(notification.waitForExistence(timeout: 5))
         XCTAssertEqual(notification.value as? String, "0", "Notis ska vara avstängd från början")
 

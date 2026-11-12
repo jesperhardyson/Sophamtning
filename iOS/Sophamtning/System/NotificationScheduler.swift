@@ -28,7 +28,8 @@ struct NotificationScheduler: NotificationScheduling {
                 PendingNotification(
                     identifier: request.identifier,
                     fireDate: (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate(),
-                    body: request.content.body
+                    // En notis från en tidigare version saknar knappen Utställt. Den räknas som ändrad och ersätts vid nästa planering.
+                    body: request.content.categoryIdentifier == PlacedOutNotification.categoryIdentifier ? request.content.body : ""
                 )
             }
     }
@@ -40,6 +41,9 @@ struct NotificationScheduler: NotificationScheduling {
             content.title = notification.title
             content.body = notification.body
             content.sound = .default
+            // Knappen Utställt, och tömningen den gäller.
+            content.categoryIdentifier = PlacedOutNotification.categoryIdentifier
+            content.userInfo = PlacedOutNotification.userInfo(key: notification.key, date: notification.pickupDate)
             let request = UNNotificationRequest(identifier: notification.identifier, content: content, trigger: Self.trigger(for: notification.fireDate))
             // Ett misslyckat tillägg rapporteras, så att appen visar det och försöker igen vid nästa körning.
             do { try await center.add(request) } catch { failed.append(notification.identifier) }

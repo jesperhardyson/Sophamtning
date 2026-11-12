@@ -139,16 +139,18 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
 @Test func tiderVisasMedValdTid() {
     let result = AddressDetail.make(address: address, schedule: nil, settings: ReminderSettings(reminderMinutes: 20 * 60 + 15), sourceName: nil, now: noon)
     #expect(result.reminderText == "Kvällen före varje tömning kl. 20:15.")
-    #expect(result.liveActivityText == "Visas på låsskärmen från kl. 20:15 kvällen före.")
+    #expect(result.liveActivityText == "Visas på låsskärmen kl. 20:15 dagen före till 08:15.")
 }
 
 @Test func liveActivityTextenArEnMening() {
-    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 1080)) == "Visas på låsskärmen från kl. 18:00 kvällen före.")
+    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 1080)) == "Visas på låsskärmen kl. 18:00 dagen före till 06:00.")
+    // 15:00 är inte kväll, så texten säger dagen före.
+    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 900)) == "Visas på låsskärmen kl. 15:00 dagen före till 03:00.")
     #expect(AddressDetail.liveActivityDetails() == [
         "Starten aviseras med ljud.",
         "Den försvinner senast efter 12 timmar.",
         "Öppna appen ibland, så att nästa tömning kommer med.",
-        "Med notiser på får du en reserv om du inte bekräftar.",
+        "Med notis vid samma tid får du en reserv om du inte bekräftar.",
     ])
 }
 
@@ -591,4 +593,43 @@ private func reminderDetail(_ schedule: CachedSchedule?, notificationsOn: Bool =
     other.isPrimary = false
     let row = AddressDetail.make(address: other, schedule: cached, settings: settings, sourceName: nil, now: noon)
     #expect(row.household == nil)
+}
+
+// MARK: Nästa påminnelse när reserven finns
+
+private let sunday = DayDate("2026-11-08")!
+private func sundayAt(_ hour: Int) -> Date { StockholmClock.date(on: sunday, minutes: hour * 60) }
+private let bothOnMorningActivity = ReminderSettings(morningOn: true, liveActivityTiming: .sameMorning, liveActivityOn: true)
+
+private func reminderRow(now: Date, reserveAt: Date? = nil, settings: ReminderSettings = bothOnMorningActivity, placedOut: Set<PlacedOut> = [], silenced: Set<PlacedOut> = []) throws -> String {
+    var withNotifications = address
+    withNotifications.notificationsOn = true
+    let cached = try schedule([event("2026-11-09", ["rest"]), event("2026-11-11", ["rest"])])
+    return AddressDetail.make(address: withNotifications, schedule: cached, settings: settings, sourceName: nil, now: now, reserveAt: reserveAt, ownPlacedOut: placedOut, silencedPickups: silenced).reminderText
+}
+
+@Test func reservenGoromInteEnTidigareKvallsnotis() throws {
+    // Morgonnotisen blir reserv 06:45, men kvällens notis 18:00 kommer före och är nästa.
+    let reserve = StockholmClock.date(on: DayDate("2026-11-09")!, minutes: 6 * 60 + 45)
+    let text = try reminderRow(now: sundayAt(15), reserveAt: reserve)
+    #expect(text == "Söndag kl. 18:00 inför måndagens tömning.")
+}
+
+@Test func reservenVisasNarDenArNastaPaminnelse() throws {
+    let reserve = StockholmClock.date(on: DayDate("2026-11-09")!, minutes: 6 * 60 + 45)
+    // Kvällens tid har passerat: nästa är morgonen, aktivitetens val, och den ersätts av reserven.
+    #expect(try reminderRow(now: sundayAt(19), reserveAt: reserve) == "Måndag kl. 06:45, samma dag som tömningen, om aktiviteten inte syns.")
+    // Nästa är först tisdag kväll, och reserven kommer före: den gäller.
+    let late = StockholmClock.date(on: DayDate("2026-11-09")!, minutes: 6 * 60 + 20)
+    #expect(try reminderRow(now: late, reserveAt: reserve) == "Måndag kl. 06:45, samma dag som tömningen, om aktiviteten inte syns.")
+}
+
+@Test func morgonpaminnelsenLovasInteIAdressvynNarUtstalld() throws {
+    let mark = PlacedOut(key: address.key, date: DayDate("2026-11-09")!)
+    #expect(try reminderRow(now: sundayAt(19), settings: ReminderSettings(morningOn: true), placedOut: [mark]) == "Tisdag kl. 18:00 inför onsdagens tömning.")
+}
+
+@Test func hushallsbockenTystarMorgonpaminnelsenIAdressvyn() throws {
+    let mark = PlacedOut(key: address.key, date: DayDate("2026-11-09")!)
+    #expect(try reminderRow(now: sundayAt(19), settings: ReminderSettings(morningOn: true), silenced: [mark]) == "Tisdag kl. 18:00 inför onsdagens tömning.")
 }

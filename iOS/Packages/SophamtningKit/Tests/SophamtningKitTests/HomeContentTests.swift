@@ -220,8 +220,39 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
     let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 1050)
     // Tiden kommer från aktiviteten, som kan ha lagts in före en ändring av inställningen.
     let content = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(reminderMinutes: 1200, liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
-    // Notis och Live Activity startar vid samma tid, så båda nämns.
-    #expect(try #require(content.primary).reminder?.detail == "Notis och Live Activity söndag kl. 17:30")
+    // Notisen kommer 20:00, efter starten, så den nämns inte. Står den på samma minut som starten nämns båda.
+    // Notisen kommer efter starten och nämns efter aktiviteten.
+    #expect(try #require(content.primary).reminder?.detail == "Live Activity söndag kl. 17:30, notis söndag kl. 20:00")
+    let same = HomeContent.make(addresses: [on], schedules: schedules, settings: ReminderSettings(reminderMinutes: 1050, liveActivityOn: true), now: now, liveActivity: activity(pending: true, start: start))
+    #expect(try #require(same.primary).reminder?.detail == "Notis och Live Activity söndag kl. 17:30")
+}
+
+@Test func fotenVisarBådaNotistiderna() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [home.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-16", ["rest"])])]
+    let both = ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 900, morningMinutes: 360)
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: both, now: now)
+    #expect(try #require(content.primary?.reminder).line == "Påminnelse söndag kl. 15:00 och måndag kl. 06:00")
+    // När kvällens tid har passerat återstår bara morgonens för samma tömning.
+    let sundayEvening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 16 * 60)
+    let later = HomeContent.make(addresses: [on], schedules: schedules, settings: both, now: sundayEvening)
+    #expect(try #require(later.primary?.reminder).line == "Påminnelse måndag kl. 06:00")
+}
+
+@Test func fotenVisarBådaTidernaMedLiveActivity() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [home.key: schedule([event("2026-11-09", ["rest"])])]
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 900)
+    let both = ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 900, morningMinutes: 360, liveActivityOn: true)
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: both, now: now, liveActivity: activity(pending: true, start: start))
+    #expect(try #require(content.primary).reminder?.detail == "Notis och Live Activity söndag kl. 15:00, notis måndag kl. 06:00")
+    // Aktiviteten på morgonen och notis bara på kvällen: båda nämns, var för sig.
+    let morningStart = StockholmClock.date(on: DayDate("2026-11-09")!, minutes: 360)
+    let eveningOnly = ReminderSettings(reminderMinutes: 900, liveActivityTiming: .sameMorning, liveActivityOn: true)
+    let split = HomeContent.make(addresses: [on], schedules: schedules, settings: eveningOnly, now: now, liveActivity: activity(pending: true, start: morningStart))
+    #expect(try #require(split.primary).reminder?.detail == "Notis söndag kl. 15:00, Live Activity måndag kl. 06:00")
 }
 
 @Test func baraLiveActivityNamnerBaraLiveActivity() throws {
@@ -263,8 +294,8 @@ private func activity(pending: Bool, start: Date) -> ExistingActivity {
 }
 
 @Test func voiceOverAtgardenForPaminnelsenHarSammaNamnSomValet() {
-    #expect(HomeContent.reminderActionTitle(isOn: false, timing: .eveningBefore) == "Slå på påminnelse kvällen före")
-    #expect(HomeContent.reminderActionTitle(isOn: true, timing: .eveningBefore) == "Stäng av påminnelse kvällen före")
+    #expect(HomeContent.reminderActionTitle(isOn: false) == "Slå på påminnelse")
+    #expect(HomeContent.reminderActionTitle(isOn: true) == "Stäng av påminnelse")
 }
 
 @Test func saknatSchemaVisasInteSomAttAdressenSaknas() throws {
@@ -554,7 +585,7 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
 @Test func reglagetArAvUtanPaminnelse() throws {
     let content = make([home], [home.key: schedule([event("2026-11-09", ["rest"])])])
     let reminder = try #require(content.primary?.reminder)
-    #expect(reminder == HomeContent.PrimaryReminder(isOn: false, isDenied: false, title: "Påminn mig kvällen före", detail: nil))
+    #expect(reminder == HomeContent.PrimaryReminder(isOn: false, isDenied: false, title: "Påminn mig", detail: nil))
 }
 
 @Test func reglagetArPaMedTidenForPaminnelsenUnder() throws {
@@ -564,7 +595,7 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     let reminder = try #require(content.primary?.reminder)
     #expect(reminder.isOn)
     #expect(!reminder.isDenied)
-    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.title == "Påminn mig")
     #expect(reminder.detail == "Söndag kl. 18:00")
 }
 
@@ -586,7 +617,7 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     let reminder = try #require(content.primary?.reminder)
     #expect(!reminder.isOn)
     #expect(!reminder.isDenied)
-    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.title == "Påminn mig")
 }
 
 @Test func liveActivityVisasIUndertexten() throws {
@@ -620,7 +651,7 @@ private let tuesdayPickup = [event("2026-11-11", ["rest"])]
     on.notificationsOn = true
     let reminder = try #require(make([on], [on.key: schedule([event("2026-11-06", ["rest"])])]).primary?.reminder)
     #expect(reminder.isOn)
-    #expect(reminder.title == "Påminn mig kvällen före")
+    #expect(reminder.title == "Påminn mig")
     #expect(reminder.detail == nil)
 }
 
@@ -860,4 +891,66 @@ private func lineFor(_ cached: CachedSchedule?, _ state: HouseholdState) -> Hous
     let other = saved("jobbet", name: "Jobbet", street: "Torget 1", locality: "Avesta", primary: false)
     let content = make([main, other], [main.key: schedule([event("2026-11-06", ["rest"])]), other.key: schedule([event("2026-11-06", ["rest"])])], settings: ReminderSettings(liveActivityOn: true))
     #expect(content.others.first?.household == nil)
+}
+
+// MARK: Utställda tömningar hoppas över i påminnelsetexten
+
+private let sundayEvening = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 19 * 60)
+
+private func footLine(placedOut: Set<PlacedOut> = [], silenced: Set<PlacedOut> = []) throws -> String? {
+    var on = home
+    on.notificationsOn = true
+    let events = [event("2026-11-09", ["rest"]), event("2026-11-11", ["rest"])]
+    let content = HomeContent.make(addresses: [on], schedules: [on.key: schedule(events)], settings: ReminderSettings(morningOn: true), now: sundayEvening, ownPlacedOut: placedOut, silencedPickups: silenced)
+    return try #require(content.primary?.reminder).line
+}
+
+@Test func morgonpaminnelsenLovasInteNarTomningenArUtstalld() throws {
+    // Kvällens tid har passerat. Utan bock är morgonen nästa.
+    #expect(try footLine() == "Påminnelse måndag kl. 06:00")
+    // Utställt tar bort morgonens notis, så raden går vidare till nästa tömning och dess båda tider.
+    let mark = PlacedOut(key: home.key, date: monday)
+    #expect(try footLine(placedOut: [mark]) == "Påminnelse tisdag kl. 18:00 och onsdag kl. 06:00")
+}
+
+@Test func hushallsbockenTystarMorgonpaminnelsenIFoten() throws {
+    let mark = PlacedOut(key: home.key, date: monday)
+    #expect(try footLine(silenced: [mark]) == "Påminnelse tisdag kl. 18:00 och onsdag kl. 06:00")
+    // En bock för en annan adress påverkar inte.
+    #expect(try footLine(silenced: [PlacedOut(key: cabin.key, date: monday)]) == "Påminnelse måndag kl. 06:00")
+}
+
+@Test func fotenEfterUtställtMedVäntandeAktivitet() throws {
+    var on = home
+    on.notificationsOn = true
+    let schedules = [home.key: schedule([event("2026-11-09", ["rest"]), event("2026-11-16", ["rest"])])]
+    let start = StockholmClock.date(on: DayDate("2026-11-08")!, minutes: 900)
+    let both = ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 900, morningMinutes: 360, liveActivityOn: true)
+    let mark = PlacedOut(key: home.key, date: DayDate("2026-11-09")!)
+    let content = HomeContent.make(addresses: [on], schedules: schedules, settings: both, now: now, liveActivity: activity(pending: true, start: start), ownPlacedOut: [mark])
+    let line = try #require(content.primary?.reminder).line
+    // Den utställda tömningens påminnelser och aktivitet lovas inte. Foten går vidare till nästa tömning.
+    // Nästa tömning är den 16:e, mer än en vecka bort, så datumen står med.
+    #expect(line == "Påminnelse söndag 15 nov kl. 15:00 och måndag 16 nov kl. 06:00")
+}
+
+@Test func fotenVisarDatumFrånEnVeckaBort() throws {
+    var on = home
+    on.notificationsOn = true
+    // I dag är fredag 6 november. Torsdag 12 november är sex dagar bort, och veckodagen räcker.
+    let near = HomeContent.make(addresses: [on], schedules: [home.key: schedule([event("2026-11-13", ["rest"])])], settings: ReminderSettings(reminderMinutes: 900), now: now)
+    #expect(try #require(near.primary?.reminder).line == "Påminnelse torsdag kl. 15:00")
+    // Fredag 13 november är en vecka bort, och då står datumet med.
+    let far = HomeContent.make(addresses: [on], schedules: [home.key: schedule([event("2026-11-14", ["rest"])])], settings: ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 900), now: now)
+    #expect(try #require(far.primary?.reminder).line == "Påminnelse fredag 13 nov kl. 15:00 och lördag 14 nov kl. 06:00")
+}
+
+@Test func fotenVisarDatumMedLiveActivity() throws {
+    var on = home
+    on.notificationsOn = true
+    let start = StockholmClock.date(on: DayDate("2026-11-24")!, minutes: 900)
+    let la = ExistingActivity(id: "a", key: home.key, pickupDate: DayDate("2026-11-25")!, content: PickupActivityContent(addressName: "Hemma", dateText: "", shortDateText: "", fractions: [], estimated: false, warning: nil), isPending: true, start: start)
+    let both = ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 900, morningMinutes: 360, liveActivityOn: true)
+    let content = HomeContent.make(addresses: [on], schedules: [home.key: schedule([event("2026-11-25", ["rest"])])], settings: both, now: now, liveActivity: la)
+    #expect(try #require(content.primary?.reminder).detail == "Notis och Live Activity tisdag 24 nov kl. 15:00, notis onsdag 25 nov kl. 06:00")
 }

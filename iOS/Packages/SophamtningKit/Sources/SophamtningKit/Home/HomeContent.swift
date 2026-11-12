@@ -3,10 +3,10 @@ import Foundation
 /// Hemskärmens innehåll, räknat från sparade adresser och scheman och given tid.
 /// Allt räknas lokalt: dagar, datum och påminnelsetext kommer aldrig från sparade `next`-fält.
 public struct HomeContent: Equatable, Sendable {
-    /// Valets namn på huvudkortet, i adressvyn och i snabbmenyn: "Påminn mig kvällen före" eller "Påminn mig samma morgon".
-    public static func reminderTitle(timing: ReminderTiming) -> String { timing.toggleTitle }
-    /// VoiceOvers åtgärd för samma val, på huvudkortet och raderna.
-    public static func reminderActionTitle(isOn: Bool, timing: ReminderTiming) -> String { timing.actionTitle(isOn: isOn) }
+    /// Reglagets namn på huvudkortet, i adressvyn och i snabbmenyn.
+    public static func reminderTitle() -> String { "Påminn mig" }
+    /// VoiceOvers åtgärd för samma reglage, på huvudkortet och raderna.
+    public static func reminderActionTitle(isOn: Bool) -> String { isOn ? "Stäng av påminnelse" : "Slå på påminnelse" }
 
     public struct FractionItem: Equatable, Sendable, Identifiable {
         public let id: String
@@ -64,7 +64,7 @@ public struct HomeContent: Equatable, Sendable {
         public let isOn: Bool
         /// iOS har nekat notiser. Reglaget är av, och en knapp öppnar Inställningar.
         public let isDenied: Bool
-        /// "Påminn mig kvällen före" eller "Påminn mig samma morgon", eller "Notiser är avstängda i iOS".
+        /// "Påminn mig", eller "Notiser är avstängda i iOS".
         public let title: String
         /// Raden under: när påminnelsen kommer ("Söndag kl. 18:00"), eller en väntande Live Activity ("Live Activity söndag
         /// kl. 17:30", och "Notis och Live Activity söndag kl. 17:30" när notisen också är på).
@@ -87,15 +87,15 @@ public struct HomeContent: Equatable, Sendable {
 
         /// Byggs av huvudkortets text för påminnelsen. Inbjudan blir rubriken, och "Påminnelse söndag kl. 18:00" blir
         /// "Söndag kl. 18:00" under den.
-        init(text: String, isOn: Bool, isDenied: Bool, isWanted: Bool, timing: ReminderTiming) {
+        init(text: String, isOn: Bool, isDenied: Bool, isWanted: Bool) {
             self.isOn = isOn
             self.isDenied = isDenied
             // Inbjudan betyder att varken notis eller Live Activity är på.
-            line = text == timing.toggleTitle ? nil : text
+            line = text == HomeContent.reminderTitle() ? nil : text
             showsDeniedNotice = isDenied && isWanted
-            title = isDenied ? RowReminder.denied.text : timing.toggleTitle
+            title = isDenied ? RowReminder.denied.text : HomeContent.reminderTitle()
             // Inbjudan är redan rubriken, och "Påminnelser på" säger bara det reglaget redan visar.
-            if text == timing.toggleTitle || text == "Påminnelser på" {
+            if text == HomeContent.reminderTitle() || text == "Påminnelser på" {
                 detail = nil
             } else if text.hasPrefix("Påminnelse ") {
                 let rest = text.dropFirst("Påminnelse ".count)
@@ -198,11 +198,11 @@ public struct HomeContent: Equatable, Sendable {
 
     /// `remindersAllowed` är sant när iOS tillåter notiser, `remindersDenied` när iOS har nekat dem. Är frågan inte ställd än
     /// är båda falska, och raderna visar då det planerade läget.
-    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, remindersDenied: Bool = false, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil, reserveAt: Date? = nil, household: HouseholdState = .empty, ownPlacedOut: Set<PlacedOut> = []) -> HomeContent {
+    public static func make(addresses: [SavedAddress], schedules: [AddressKey: CachedSchedule], settings: ReminderSettings, now: Date, remindersAllowed: Bool = true, remindersDenied: Bool = false, liveActivity: ExistingActivity? = nil, liveActivitiesEnabled: Bool = true, liveActivityError: String? = nil, missedReminder: String? = nil, reserveAt: Date? = nil, household: HouseholdState = .empty, ownPlacedOut: Set<PlacedOut> = [], silencedPickups: Set<PlacedOut> = []) -> HomeContent {
         let today = StockholmClock.today(now: now)
         let primaryAddress = addresses.first(where: \.isPrimary) ?? addresses.first
         let primary = primaryAddress.map { address in
-            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, asRow: false, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt, household: household, ownPlacedOut: ownPlacedOut)
+            entry(address, schedule: schedules[address.key], settings: settings, today: today, now: now, asRow: false, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt, household: household, ownPlacedOut: ownPlacedOut, silencedPickups: silencedPickups)
         }
         let others = addresses
             .filter { $0.key != primaryAddress?.key }
@@ -215,12 +215,12 @@ public struct HomeContent: Equatable, Sendable {
                 let missed = address.notificationsOn && remindersAllowed
                     ? AddressDetail.missedReminder(events: schedule?.response?.events ?? [], settings: settings, now: now)
                     : nil
-                return entry(address, schedule: schedule, settings: notificationsOnly, today: today, now: now, asRow: true, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: missed, reserveAt: nil, household: household, ownPlacedOut: ownPlacedOut)
+                return entry(address, schedule: schedule, settings: notificationsOnly, today: today, now: now, asRow: true, remindersAllowed: remindersAllowed, remindersDenied: remindersDenied, liveActivity: nil, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: nil, missedReminder: missed, reserveAt: nil, household: household, ownPlacedOut: ownPlacedOut, silencedPickups: silencedPickups)
             }
         return HomeContent(primary: primary, others: others)
     }
 
-    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?, household: HouseholdState, ownPlacedOut: Set<PlacedOut>) -> Entry {
+    private static func entry(_ address: SavedAddress, schedule: CachedSchedule?, settings: ReminderSettings, today: DayDate, now: Date, asRow: Bool, remindersAllowed: Bool, remindersDenied: Bool, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?, household: HouseholdState, ownPlacedOut: Set<PlacedOut>, silencedPickups: Set<PlacedOut>) -> Entry {
         let status = status(of: schedule, today: today)
         let refreshFailed = schedule?.response != nil && schedule?.lastError != nil
         var rowReminder: RowReminder?
@@ -240,9 +240,10 @@ public struct HomeContent: Equatable, Sendable {
             )
             // Raden visar det planerade läget även när iOS inte har frågat än. Bara nekade notiser ger det nekade läget.
             let notifications = address.notificationsOn && (asRow ? !remindersDenied : remindersAllowed)
-            let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
+            let skipping = skippedDays(for: address.key, ownPlacedOut: ownPlacedOut, silencedPickups: silencedPickups)
+            let text = { reminderText(notifications: notifications, settings: settings, events: schedule?.response?.events ?? [], skipping: skipping, today: today, now: now, liveActivity: liveActivity, liveActivitiesEnabled: liveActivitiesEnabled, liveActivityError: liveActivityError, missedReminder: missedReminder, reserveAt: reserveAt) }
             if !asRow {
-                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn, timing: settings.timing)
+                primaryReminder = PrimaryReminder(text: text(), isOn: notifications, isDenied: remindersDenied, isWanted: address.notificationsOn)
             } else if address.notificationsOn {
                 if remindersDenied {
                     rowReminder = .denied
@@ -319,34 +320,77 @@ public struct HomeContent: Equatable, Sendable {
     /// Påminnelsen gäller kvällen före en hämtning eller samma morgon, i svensk tid. Har tiden för nästa hämtning redan
     /// passerat räknas den från nästa hämtning efter den. Finns ingen sådan visas en neutral text.
     /// Texten ska vara sann: en tid för Live Activity lovas bara när en aktivitet finns hos systemet.
-    private static func reminderText(notifications: Bool, settings: ReminderSettings, events: [PickupEvent], today: DayDate, now: Date, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> String {
-        if settings.liveActivityOn, let liveActivity {
+    private static func reminderText(notifications: Bool, settings: ReminderSettings, events: [PickupEvent], skipping: Set<DayDate>, today: DayDate, now: Date, liveActivity: ExistingActivity?, liveActivitiesEnabled: Bool, liveActivityError: String?, missedReminder: String?, reserveAt: Date?) -> String {
+        // En aktivitet för en utställd eller tystad tömning tas bort av planeringen, så den lovas inte.
+        if settings.liveActivityOn, let liveActivity, !skipping.contains(liveActivity.pickupDate) {
             guard liveActivity.isPending else { return "Live Activity visas nu" }
             // En tid som redan passerat lovas inte, även om aktiviteten står kvar som väntande.
             if liveActivity.start > now {
-                let day = StockholmClock.today(now: liveActivity.start)
-                let parts = StockholmClock.calendar.dateComponents([.hour, .minute], from: liveActivity.start)
-                let time = SwedishFormat.clock(minutes: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
-                // Notis och Live Activity startar vid samma tid. Står bara aktiviteten ser det ut som att notisen är av.
-                let what = notifications ? "Notis och Live Activity" : "Live Activity"
-                return "\(what) \(SwedishFormat.weekdayName(day)) kl. \(time)"
+                // Aktiviteten och notiserna för samma tömning nämns tillsammans. Står bara aktiviteten ser det ut som att
+                // notisen är av.
+                let notes = notifications ? notificationDates(for: liveActivity.pickupDate, settings: settings, skipping: skipping, now: now) : []
+                return upcomingText(notifications: notes, activityStart: liveActivity.start, today: today)
             }
         }
         // Felet visas även med notiser på. Annars kan kortet lova en senare tömning när nästa står utan påminnelse.
         if settings.liveActivityOn, let liveActivityError { return liveActivityError }
-        guard notifications || settings.liveActivityOn else { return settings.timing.toggleTitle }
+        guard notifications || settings.liveActivityOn else { return reminderTitle() }
         guard notifications else {
             return liveActivitiesEnabled ? "Ingen Live Activity planerad" : "Live Activities är avstängda"
         }
         // En reservnotis som ligger framför är den påminnelse som gäller just nu.
         if let reserveAt { return "Reservpåminnelse kl. \(AddressDetail.clock(of: reserveAt))" }
         if let missedReminder { return missedReminder }
-        for event in ScheduleLogic.upcoming(events, today: today) {
-            guard ReminderTime.date(forPickup: event.date, settings: settings) > now else { continue }
-            let day = ReminderTime.reminderDay(forPickup: event.date, timing: settings.timing)
-            return "Påminnelse \(SwedishFormat.weekdayName(day)) kl. \(SwedishFormat.clock(minutes: settings.activeMinutes))"
+        if let next = ReminderTime.next(events: events, settings: settings, now: now, skipping: skipping) {
+            return upcomingText(notifications: notificationDates(for: next.pickup, settings: settings, skipping: skipping, now: now), activityStart: nil, today: today)
         }
         return "Påminnelser på"
+    }
+
+    /// Notistiderna som är kvar för en tömning, i tidsordning: en per påslaget val.
+    private static func notificationDates(for pickup: DayDate, settings: ReminderSettings, skipping: Set<DayDate>, now: Date) -> [Date] {
+        guard !skipping.contains(pickup) else { return [] }
+        return settings.enabledTimings
+            .map { ReminderTime.date(forPickup: pickup, timing: $0, settings: settings) }
+            .filter { $0 > now }
+            .sorted()
+    }
+
+    /// Alla påminnelser som är kvar för samma tömning, i tidsordning. Bara notiser: "Påminnelse söndag kl. 15:00 och måndag
+    /// kl. 06:00". Med en aktivitet får varje tid sitt slag: "Notis och Live Activity söndag kl. 15:00, notis måndag kl. 06:00".
+    /// En notis inom en minut från starten räknas som samma tid, också när den har blivit reserv.
+    private static func upcomingText(notifications: [Date], activityStart: Date?, today: DayDate) -> String {
+        guard let activityStart else {
+            return "Påminnelse " + notifications.map { startText($0, today: today) }.joined(separator: " och ")
+        }
+        var moments: [(date: Date, label: String)] = []
+        var activityPlaced = false
+        for date in notifications {
+            if !activityPlaced, abs(date.timeIntervalSince(activityStart)) < 60 {
+                moments.append((activityStart, "notis och Live Activity"))
+                activityPlaced = true
+            } else {
+                moments.append((date, "notis"))
+            }
+        }
+        if !activityPlaced { moments.append((activityStart, "Live Activity")) }
+        let text = moments.sorted { $0.date < $1.date }.map { "\($0.label) \(startText($0.date, today: today))" }.joined(separator: ", ")
+        return capitalized(text)
+    }
+
+    /// Tömningarna för en adress som saknar påminnelser: mina egna utställda och de som hushållet har tystat. Samma mängd som
+    /// planeraren får, så att texterna aldrig lovar en påminnelse som planeraren har tagit bort.
+    static func skippedDays(for key: AddressKey, ownPlacedOut: Set<PlacedOut>, silencedPickups: Set<PlacedOut>) -> Set<DayDate> {
+        Set(ownPlacedOut.union(silencedPickups).filter { $0.key == key }.map(\.date))
+    }
+
+    /// "tisdag kl. 18:00", i svensk tid. Från en vecka bort räcker inte veckodagen, och då står datumet med:
+    /// "tisdag 8 dec kl. 18:00".
+    private static func startText(_ date: Date, today: DayDate) -> String {
+        let day = StockholmClock.today(now: date)
+        let weekday = SwedishFormat.weekdayName(day)
+        let when = today.days(until: day) >= 7 ? "\(weekday) \(SwedishFormat.dayMonth(day))" : weekday
+        return "\(when) kl. \(AddressDetail.clock(of: date))"
     }
 
     private static func capitalized(_ text: String) -> String {

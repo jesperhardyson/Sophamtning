@@ -21,6 +21,7 @@ struct SophamtningApp: App {
         Fonts.register()
         NavigationBarStyle.apply()
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
+        NotificationPresenter.registerCategories()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         let (model, cloudHousehold) = Self.makeModel(version: version, build: build)
