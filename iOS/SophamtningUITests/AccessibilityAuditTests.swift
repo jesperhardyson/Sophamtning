@@ -262,6 +262,9 @@ final class AccessibilityAuditTests: XCTestCase {
                         if element.elementType == .staticText, element.label.hasSuffix("förpackningar") { return true }
                         // Systemets sökfält i områdesvalet: placeholdern syns fullt ut i skärmdumpen, men fältets ram räknas som för smal.
                         if element.elementType == .searchField, element.label == "Sök område, ort eller gata" { return true }
+                        // Apples knapp ShortcutsLink i Siri-kortet: texten syns fullt ut i skärmdumpen, men ramen räknas som
+                        // för låg. Knappen ritas av systemet och går inte att ändra från appen.
+                        if element.elementType == .staticText, element.label == "Sophämtning-genvägar" { return true }
                     }
                     // Kontrasten är kontrollerad mot designens färgpar. Granskningen räknar fel på text över bilder och
                     // genomskinliga ytor, så den är fortsatt avstängd.
