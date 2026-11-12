@@ -39,8 +39,13 @@ private func schedule(_ events: [PickupEvent]) -> CachedSchedule {
 }
 
 @Test func delarnasTexter() {
-    #expect(ReminderTiming.eveningBefore.sectionFooter == "Dagen före tömningen, mellan 15:00 och 23:00.")
-    #expect(ReminderTiming.sameMorning.sectionFooter == "Samma dag som tömningen, mellan 05:00 och 09:00. Minst en påminnelse är på. Notiser slår du på och av per adress.")
+    #expect(ReminderTiming.eveningBefore.sectionFooter(minutes: 900) == "Dagen före tömningen kl. 15:00.")
+    #expect(ReminderTiming.sameMorning.sectionFooter(minutes: 360) == "Samma dag som tömningen kl. 06:00. Minst en påminnelse är på. Notiser slår du på och av per adress.")
+}
+
+@Test func tidslistansText() {
+    #expect(ReminderTiming.eveningBefore.timesFooter == "Välj en tid mellan 15:00 och 23:00.")
+    #expect(ReminderTiming.sameMorning.timesFooter == "Välj en tid mellan 05:00 och 09:00.")
 }
 
 private let both = ReminderSettings(eveningOn: true, morningOn: true, reminderMinutes: 1080, morningMinutes: 360)

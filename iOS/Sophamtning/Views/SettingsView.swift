@@ -96,7 +96,7 @@ struct SettingsView: View {
             heading("Påminnelser")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.time) {
-                    SettingsRow(title: "Påminnelse", value: model.settings.settingsValue)
+                    SettingsRow(title: "Påminnelser", value: model.settings.settingsValue)
                 }
                 if let primary = model.addresses.first(where: \.isPrimary) {
                     ResultDivider()
@@ -304,7 +304,7 @@ private struct ReminderTimeView: View {
                 .padding(.vertical, 16)
             }
         }
-        .navigationTitle("Påminnelse")
+        .navigationTitle("Påminnelser")
         .navigationBarTitleDisplayMode(.large)
     }
 
@@ -343,7 +343,7 @@ private struct ReminderTimeView: View {
                 .accessibilityLabel("Tid \(timing.title.lowercased())")
                 .accessibilityValue(SwedishFormat.clock(minutes: settings.minutes(for: timing)))
             }
-            Text(timing.sectionFooter)
+            Text(timing.sectionFooter(minutes: settings.minutes(for: timing)))
                 .font(.ui(16, weight: .semibold, relativeTo: .footnote))
                 .foregroundStyle(Color.Theme.text2)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -376,6 +376,10 @@ private struct ReminderTimesView: View {
                             }
                         }
                     }
+                    Text(timing.timesFooter)
+                        .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(Color.Theme.text2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
