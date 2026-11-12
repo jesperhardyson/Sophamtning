@@ -150,7 +150,10 @@ public struct AddressDetail: Equatable, Sendable {
         let today = StockholmClock.today(now: now)
         var asPrimary = address
         asPrimary.isPrimary = true
-        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: settings, now: now, household: household, ownPlacedOut: ownPlacedOut).primary!
+        // Live Activity gäller bara huvudadressen, så den ger knappen Ställ ut kärlen bara där.
+        var entrySettings = settings
+        entrySettings.liveActivityOn = settings.liveActivityOn && address.isPrimary
+        let entry = HomeContent.make(addresses: [asPrimary], schedules: schedule.map { [address.key: $0] } ?? [:], settings: entrySettings, now: now, household: household, ownPlacedOut: ownPlacedOut).primary!
         let response = schedule?.response
 
         let mode: Mode

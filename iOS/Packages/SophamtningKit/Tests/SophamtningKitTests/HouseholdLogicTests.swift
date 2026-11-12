@@ -212,4 +212,43 @@ struct HouseholdLogicTests {
         #expect(HouseholdTexts.placedOutBy(mark, participants: [sofie], myId: "sofie") == "av dig")
         #expect(HouseholdTexts.placedOutBy(mark, participants: [], myId: "jag") == "av någon")
     }
+
+    // MARK: Ställa ut utan hushåll
+
+    @Test func knappenVisasForEgenAdressMedPaminnelser() {
+        #expect(HouseholdLogic.showsPlaceOutButton(isShared: false, remindersOn: true, nextPickup: DayDate("2026-11-10")!, today: today))
+        #expect(HouseholdLogic.showsPlaceOutButton(isShared: false, remindersOn: true, nextPickup: DayDate("2026-11-11")!, today: today))
+        #expect(!HouseholdLogic.showsPlaceOutButton(isShared: false, remindersOn: true, nextPickup: DayDate("2026-11-12")!, today: today))
+        #expect(!HouseholdLogic.showsPlaceOutButton(isShared: false, remindersOn: false, nextPickup: DayDate("2026-11-10")!, today: today))
+    }
+
+    /// Efter Ångra på tömningsdagen ska kärlen gå att ställa ut igen, också utan hushåll.
+    @Test func egenAdressUtanBockFarKnappenNarPaminnelserArPa() throws {
+        let line = try #require(HouseholdLine.make(household: .empty, key: home, nextPickup: today, today: today, remindersOn: true))
+        #expect(line.showsButton)
+        #expect(!line.isShared)
+        #expect(line.placedOutText == nil)
+        #expect(line.sharedText == nil)
+    }
+
+    @Test func egenAdressUtanPaminnelserFarIngenKnapp() {
+        #expect(HouseholdLine.make(household: .empty, key: home, nextPickup: today, today: today, remindersOn: false) == nil)
+    }
+
+    @Test func egenAdressLangtTillTomningFarIngenKnapp() {
+        #expect(HouseholdLine.make(household: .empty, key: home, nextPickup: DayDate("2026-11-12")!, today: today, remindersOn: true) == nil)
+    }
+
+    @Test func egenUtstalldAdressVisarBockenUtanKnapp() throws {
+        let line = try #require(HouseholdLine.make(household: .empty, key: home, nextPickup: today, today: today, ownPlacedOut: [PlacedOut(key: home, date: today)], remindersOn: true))
+        #expect(!line.showsButton)
+        #expect(line.placedOutText == HouseholdTexts.ownPlacedOut)
+    }
+
+    @Test func egenAdressIHushalletFarKnappenNarPaminnelserArPa() throws {
+        let state = HouseholdState(role: .owner, myId: "jag", participants: [], addresses: [], marks: [], status: .synced)
+        let line = try #require(HouseholdLine.make(household: state, key: home, nextPickup: today, today: today, remindersOn: true))
+        #expect(line.showsButton)
+        #expect(!line.isShared)
+    }
 }

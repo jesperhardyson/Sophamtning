@@ -7,7 +7,7 @@ public struct HouseholdLine: Equatable, Sendable {
     public var isShared: Bool
     /// "Delas med Sofie" eller "Delas med Sofie och Kim" för en delad adress, annars `nil`.
     public var sharedText: String?
-    /// Knappen Ställ ut kärlen visas: delad adress, tömning i dag eller i morgon, och ingen bock än.
+    /// Knappen Ställ ut kärlen visas: delad adress eller påminnelser på, tömning i dag eller i morgon, och ingen bock än.
     public var showsButton: Bool
     /// "Utställt av Kim, kl. 19:42", när nästa tömning har en bock. Det är också det VoiceOver läser.
     public var placedOutText: String?
@@ -35,14 +35,20 @@ public struct HouseholdLine: Equatable, Sendable {
     ///
     /// - Parameter ownPlacedOut: mina egna utställda i `placed-out.json`. En sådan för en delad adress, som hushållet saknar
     ///   bock för, visas som en bock som väntar på att skickas, till exempel efter knappen i Live Activity.
-    public static func make(household: HouseholdState, key: AddressKey, nextPickup: DayDate?, today: DayDate, ownPlacedOut: Set<PlacedOut> = []) -> HouseholdLine? {
+    /// - Parameter remindersOn: adressen har notiser eller Live Activity på. Då får också en adress som inte delas knappen,
+    ///   så att kärlen går att ställa ut igen efter Ångra.
+    public static func make(household: HouseholdState, key: AddressKey, nextPickup: DayDate?, today: DayDate, ownPlacedOut: Set<PlacedOut> = [], remindersOn: Bool = false) -> HouseholdLine? {
         let ownMarked = nextPickup.map { ownPlacedOut.contains(PlacedOut(key: key, date: $0)) } == true
         // Utan roll men med adresser kvar, till exempel efter ett fel, visas raden ändå.
         let hasHousehold = household.role != .none || !household.addresses.isEmpty
         let isShared = hasHousehold && household.addresses.contains { $0.address.key == key }
         guard isShared else {
             // En adress som inte delas har bara min egen markering, till exempel från Klart i Live Activity.
-            guard ownMarked else { return hasHousehold ? HouseholdLine(isShared: false, showsButton: false, placedOutText: nil, isPending: false, statusText: HouseholdTexts.status(household.status)) : nil }
+            guard ownMarked else {
+                let showsButton = HouseholdLogic.showsPlaceOutButton(isShared: false, remindersOn: remindersOn, nextPickup: nextPickup, today: today)
+                guard hasHousehold || showsButton else { return nil }
+                return HouseholdLine(isShared: false, showsButton: showsButton, placedOutText: nil, isPending: false, statusText: hasHousehold ? HouseholdTexts.status(household.status) : nil)
+            }
             return HouseholdLine(isShared: false, showsButton: false, placedOutText: HouseholdTexts.ownPlacedOut, placedOutTitle: HouseholdTexts.ownPlacedOut, isPending: false, statusText: nil)
         }
         let mark = HouseholdLogic.currentMark(for: key, nextPickup: nextPickup, in: household.marks)
