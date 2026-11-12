@@ -97,7 +97,7 @@ struct SettingsView: View {
             heading("Påminnelser")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.time) {
-                    SettingsRow(title: "Påminnelser", value: model.settings.settingsValue)
+                    SettingsRow(title: "Notiser", value: model.settings.settingsValue)
                 }
                 if let primary = model.addresses.first(where: \.isPrimary) {
                     ResultDivider()
@@ -305,7 +305,7 @@ private struct ReminderTimeView: View {
                 .padding(.vertical, 16)
             }
         }
-        .navigationTitle("Påminnelser")
+        .navigationTitle("Notiser")
         .navigationBarTitleDisplayMode(.large)
     }
 
@@ -335,7 +335,7 @@ private struct ReminderTimeView: View {
                 .frame(minHeight: 56)
                 .padding(.vertical, 6)
                 .accessibilityLabel("Påminn mig \(timing.title.lowercased())")
-                // Tiden går att ändra även när valet är av, eftersom Live Activity kan använda den ändå.
+                // Tiden går att ställa in även när valet är av, så att den är rätt när valet slås på.
                 ResultDivider()
                 NavigationLink(value: SettingsRoute.times(timing)) {
                     SettingsRow(title: "Tid", value: SwedishFormat.clock(minutes: settings.minutes(for: timing)))
