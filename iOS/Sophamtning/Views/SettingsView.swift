@@ -334,13 +334,14 @@ private struct ReminderTimeView: View {
                 .frame(minHeight: 56)
                 .padding(.vertical, 6)
                 .accessibilityLabel("Påminn mig \(timing.title.lowercased())")
-                if isOn {
-                    ResultDivider()
-                    NavigationLink(value: SettingsRoute.times(timing)) {
-                        SettingsRow(title: "Tid", value: SwedishFormat.clock(minutes: settings.minutes(for: timing)))
-                    }
-                    .buttonStyle(.pressable)
+                // Tiden går att ändra även när valet är av, eftersom Live Activity kan använda den ändå.
+                ResultDivider()
+                NavigationLink(value: SettingsRoute.times(timing)) {
+                    SettingsRow(title: "Tid", value: SwedishFormat.clock(minutes: settings.minutes(for: timing)))
                 }
+                .buttonStyle(.pressable)
+                .accessibilityLabel("Tid \(timing.title.lowercased())")
+                .accessibilityValue(SwedishFormat.clock(minutes: settings.minutes(for: timing)))
             }
             Text(timing.sectionFooter)
                 .font(.ui(16, weight: .semibold, relativeTo: .footnote))

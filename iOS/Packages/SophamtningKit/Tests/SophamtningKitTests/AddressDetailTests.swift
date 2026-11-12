@@ -148,7 +148,7 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
         "Starten aviseras med ljud.",
         "Den försvinner senast efter 12 timmar.",
         "Öppna appen ibland, så att nästa tömning kommer med.",
-        "Med notiser på får du en reserv om du inte bekräftar.",
+        "Med notis vid samma tid får du en reserv om du inte bekräftar.",
     ])
 }
 
