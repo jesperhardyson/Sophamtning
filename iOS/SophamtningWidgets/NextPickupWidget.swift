@@ -249,8 +249,7 @@ private struct MediumPickup: View {
     }
 
     private func content(showsEnding: Bool, showsPlacedOut: Bool) -> some View {
-        let rows = fractions.count > Self.maxRows ? Array(fractions.prefix(Self.maxRows - 1)) : fractions
-        let hidden = fractions.count - rows.count
+        let (rows, hidden) = WidgetContent.mediumRows(fractions, maxRows: Self.maxRows)
         return HStack(alignment: .center, spacing: 16) {
             if let first = fractions.first {
                 VStack(spacing: 4) {
@@ -298,12 +297,8 @@ private struct MediumPickup: View {
                 .foregroundStyle(Color.Theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Spacer(minLength: 4)
-            Text(WidgetContent.rowDate(pickup))
-                .font(.ui(13, weight: .bold, relativeTo: .caption))
-                .foregroundStyle(Color.Theme.text2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            // Datumet står redan på kalenderbladet, eftersom alla rader gäller samma tömning.
+            Spacer(minLength: 0)
         }
     }
 }
