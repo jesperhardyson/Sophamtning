@@ -87,7 +87,7 @@ private func pending(start: Date) -> ExistingActivity {
 
 @Test func liveActivityTextFöljerSittVal() {
     let settings = ReminderSettings(eveningOn: true, morningOn: false, liveActivityTiming: .sameMorning)
-    #expect(AddressDetail.liveActivityText(settings: settings) == "Visas på låsskärmen från kl. 06:00 samma morgon.")
+    #expect(AddressDetail.liveActivityText(settings: settings) == "Visas på låsskärmen kl. 06:00–18:00 samma dag.")
 }
 
 @Test func inställningensTexter() {
@@ -120,7 +120,7 @@ private func pending(start: Date) -> ExistingActivity {
 }
 
 @Test func liveActivityPåMorgonen() {
-    #expect(AddressDetail.liveActivityText(settings: morning) == "Visas på låsskärmen från kl. 06:00 samma morgon.")
+    #expect(AddressDetail.liveActivityText(settings: morning) == "Visas på låsskärmen kl. 06:00–18:00 samma dag.")
 }
 
 @Test func huvudkortetPåMorgonen() throws {

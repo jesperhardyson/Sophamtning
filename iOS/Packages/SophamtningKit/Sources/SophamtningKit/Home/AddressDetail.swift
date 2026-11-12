@@ -298,9 +298,16 @@ public struct AddressDetail: Equatable, Sendable {
         ]
     }
 
+    /// Hela tiden aktiviteten syns, högst 12 timmar från starten: "Visas på låsskärmen kl. 21:00 dagen före till 09:00." eller
+    /// "Visas på låsskärmen kl. 06:00–18:00 samma dag."
     public static func liveActivityText(settings: ReminderSettings) -> String {
-        let time = SwedishFormat.clock(minutes: settings.minutes(for: settings.liveActivityTiming))
-        return "Visas på låsskärmen från kl. \(time) \(settings.liveActivityTiming.phrase)."
+        let start = settings.liveActivityStartMinutes
+        let from = SwedishFormat.clock(minutes: start)
+        let to = SwedishFormat.clock(minutes: (start + 12 * 60) % (24 * 60))
+        switch settings.liveActivityTiming {
+        case .eveningBefore: return "Visas på låsskärmen kl. \(from) dagen före till \(to)."
+        case .sameMorning: return "Visas på låsskärmen kl. \(from)–\(to) samma dag."
+        }
     }
 
     /// Påminnelsetiden i dag har redan passerat för tömningen den gäller, i morgon med kvällen före och i dag med samma

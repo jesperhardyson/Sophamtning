@@ -42,6 +42,11 @@ public enum ReminderTime {
         }
     }
 
+    /// Live Activityns start för en tömning: dagen före eller samma dag, på aktivitetens egen tid.
+    public static func liveActivityStart(forPickup pickup: DayDate, settings: ReminderSettings) -> Date {
+        StockholmClock.date(on: reminderDay(forPickup: pickup, timing: settings.liveActivityTiming), minutes: settings.liveActivityStartMinutes)
+    }
+
     /// Den tidigaste påminnelsen efter `now`, över kommande tömningar med fraktioner och alla påslagna val. Tömningar i
     /// `skipping` (utställda, eller tystade av hushållet) har inga påminnelser kvar och hoppas över.
     public static func next(events: [PickupEvent], settings: ReminderSettings, now: Date, skipping: Set<DayDate> = []) -> UpcomingReminder? {

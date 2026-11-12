@@ -52,7 +52,7 @@ Animationerna är byggda och inspelade i simulatorn, men simulatorn har ingen ha
 - [ ] **14. Ändrad påminnelsetid.** Ändra tiden under Inställningar > Påminnelsetid. Tiden går att välja mellan 15:00 och 23:00 i steg om 15 minuter. Notisen, hemkortet och adressvyn visar den nya tiden. Sätt tiden så att kvällens tid redan passerat när en tömning är i morgon: **Påminnelsen har passerat** visas, och ingen notis kommer i kväll.
 - [ ] **75. Två påminnelser.** Öppna Inställningar > Påminnelser och slå på både **Kvällen före** och **Samma morgon**. Raden visar **18:00 och 06:00**. Stäng av **Kvällen före**: **Samma morgon** går nu inte att stänga av (nedtonat). Slå på båda igen. Med en tömning i morgon och notis på för adressen visar raden under reglaget kvällens tid. När kvällens tid har passerat visar den morgonens tid, **Onsdag kl. 06:00, samma dag som tömningen.**
 - [ ] **76. Gammal inställning.** Installera över en version som hade **Samma morgon** valt. Efter uppdateringen är bara **Samma morgon** på, med samma tid, och Live Activity visas från samma morgon.
-- [ ] **77. Eget val för Live Activity.** Slå på Live Activity. Raden **Visas från** syns, med **Kvällen före**. Byt till **Samma morgon**: texten vid valet säger **Visas på låsskärmen från kl. 06:00 samma morgon.**, också när notisernas morgonval är av.
+- [ ] **77. Eget val och egen tid för Live Activity.** Slå på Live Activity. Raden **Visas från** syns, med **Kvällen före, 18:00**. Ändra tiden till 21:00: texten vid valet säger **Visas på låsskärmen kl. 21:00 dagen före till 09:00.**, och notisernas tid är oförändrad. Byt till **Samma morgon**: texten säger **Visas på låsskärmen kl. 06:00–18:00 samma dag.**, också när notisernas morgonval är av.
 
 ### Live Activity
 

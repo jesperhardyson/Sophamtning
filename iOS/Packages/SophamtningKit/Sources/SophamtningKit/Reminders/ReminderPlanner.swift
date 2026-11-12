@@ -220,10 +220,10 @@ public enum ReminderPlanner {
                 for timing in input.settings.enabledTimings {
                     var fireDate = ReminderTime.date(forPickup: pickup.date, timing: timing, settings: input.settings)
                     var title = ordinaryTitle
-                    // Reserven gäller bara notisen för aktivitetens val. Aktiviteten aviserar själv, men bara om den faktiskt finns
-                    // hos systemet. Syntes den redan behövs ingen påminnelse till. Annars ersätts notisen av en reserv efter starten,
-                    // med samma identifierare, så att den aldrig blir dubbel. Det andra valets notis påverkas inte.
-                    if activitiesActive, timing == input.settings.liveActivityTiming, input.existingActivities.contains(id) {
+                    // Reserven gäller bara notisen som kommer vid samma tid som aktiviteten. Aktiviteten aviserar själv, men bara om
+                    // den faktiskt finns hos systemet. Syntes den redan behövs ingen påminnelse till. Annars ersätts notisen av en
+                    // reserv efter starten, med samma identifierare, så att den aldrig blir dubbel. Andra notiser påverkas inte.
+                    if activitiesActive, input.settings.notificationMatchesLiveActivity(timing), input.existingActivities.contains(id) {
                         if input.shownActivities.contains(id) { continue }
                         fireDate = fallbackDate(start: input.activityStarts[id] ?? fireDate)
                         title = fallbackTitle
@@ -248,11 +248,11 @@ public enum ReminderPlanner {
     /// Notiser som står kvar när deras tid ligger framför även om planen inte längre innehåller dem. Gäller tömningar där den
     /// ordinarie notistiden har passerat, tömningen finns kvar i schemat och den varken är utställd eller bevisat visad:
     /// en väntande notis där är reserven, och tas den bort står tömningen utan påminnelse. Planeraren skapar aldrig en ny.
-    /// Bara aktivitetens val kan ha en reserv, så bara det valets notis behålls, och bara när valet är påslaget. Det andra
+    /// Bara notisen vid aktivitetens tid kan vara en reserv, så bara den behålls, och bara när valet är påslaget. Det andra
     /// valets passerade notis är aldrig en reserv. Slås aktiviteten av står reserven kvar, så att tömningen inte lämnas utan
     /// påminnelse. Adresser med notiser avstängda ingår inte, så avstängda val tar fortfarande bort sina notiser.
     public static func retainable(_ input: PlannerInput) -> [String: PlacedOut] {
-        guard input.settings.enabledTimings.contains(input.settings.liveActivityTiming) else { return [:] }
+        guard input.settings.notificationMatchesLiveActivity(input.settings.liveActivityTiming) else { return [:] }
         let timing = input.settings.liveActivityTiming
         let today = StockholmClock.today(now: input.now)
         var result: [String: PlacedOut] = [:]
@@ -284,7 +284,7 @@ public enum ReminderPlanner {
             return eligible && !input.placedOut.contains(PlacedOut(key: key, date: $0.date))
         }) else { return nil }
 
-        let start = ReminderTime.date(forPickup: next.date, timing: timing, settings: input.settings)
+        let start = ReminderTime.liveActivityStart(forPickup: next.date, settings: input.settings)
         // Passerad start ger direktstart, men bara när påminnelsedagen är i dag.
         let remindedToday = ReminderTime.reminderDay(forPickup: next.date, timing: timing) == today
         return PlannedLiveActivity(

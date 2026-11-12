@@ -750,7 +750,8 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     try store.markEnded([entry], today: DayDate("2026-11-10")!)
     try store.markPlacedOut(PlacedOut(key: storgatan, date: tomorrow), today: DayDate("2026-11-10")!)
 
-    #expect(model.setReminderMinutes(19 * 60, for: .eveningBefore))
+    // Aktivitetens egen tid är ett nytt val för den.
+    #expect(model.setLiveActivityMinutes(19 * 60))
 
     #expect(store.endedActivities().isEmpty)
     // En markering som utställd ändras inte av en ny tid.

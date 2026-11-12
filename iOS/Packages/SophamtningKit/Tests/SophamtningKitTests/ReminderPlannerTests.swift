@@ -760,3 +760,16 @@ private let morningId = PlannedNotification.identifier(key: homeKey, date: wed, 
     let s = ReminderSettings(eveningOn: true, morningOn: false, liveActivityTiming: .sameMorning, liveActivityOn: true)
     #expect(ReminderPlanner.retainable(twoInput(s, now: stockholm("2026-11-10T19:00"))).isEmpty)
 }
+
+@Test func ingenReservNärAktivitetenHarAnnanTid() {
+    // Notisen 15:00 och aktiviteten 21:00 samma kväll: notisen kommer som vanligt, och aktiviteten aviserar själv.
+    let settings = ReminderSettings(reminderMinutes: 900, liveActivityMinutes: 1260, liveActivityOn: true)
+    let starts = [wedId: stockholm("2026-11-10T21:00")]
+    let p = ReminderPlanner.plan(twoInput(settings, now: stockholm("2026-11-10T12:00"), existing: [wedId], starts: starts))
+    let evening = p.notifications.first { $0.identifier == eveningId }
+    #expect(evening?.fireDate == stockholm("2026-11-10T15:00"))
+    #expect(evening?.title == ReminderPlanner.ordinaryTitle)
+    #expect(p.liveActivity?.start == stockholm("2026-11-10T21:00"))
+    // Ingen kvarlämnad notis räknas som reserv när tiderna skiljer sig.
+    #expect(ReminderPlanner.retainable(twoInput(settings, now: stockholm("2026-11-10T16:00"), existing: [wedId], starts: starts)).isEmpty)
+}

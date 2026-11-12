@@ -139,13 +139,13 @@ private func schedule(_ events: [PickupEvent], fractions: [String: FractionInfo]
 @Test func tiderVisasMedValdTid() {
     let result = AddressDetail.make(address: address, schedule: nil, settings: ReminderSettings(reminderMinutes: 20 * 60 + 15), sourceName: nil, now: noon)
     #expect(result.reminderText == "Kvällen före varje tömning kl. 20:15.")
-    #expect(result.liveActivityText == "Visas på låsskärmen från kl. 20:15 dagen före.")
+    #expect(result.liveActivityText == "Visas på låsskärmen kl. 20:15 dagen före till 08:15.")
 }
 
 @Test func liveActivityTextenArEnMening() {
-    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 1080)) == "Visas på låsskärmen från kl. 18:00 dagen före.")
+    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 1080)) == "Visas på låsskärmen kl. 18:00 dagen före till 06:00.")
     // 15:00 är inte kväll, så texten säger dagen före.
-    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 900)) == "Visas på låsskärmen från kl. 15:00 dagen före.")
+    #expect(AddressDetail.liveActivityText(settings: ReminderSettings(reminderMinutes: 900)) == "Visas på låsskärmen kl. 15:00 dagen före till 03:00.")
     #expect(AddressDetail.liveActivityDetails() == [
         "Starten aviseras med ljud.",
         "Den försvinner senast efter 12 timmar.",

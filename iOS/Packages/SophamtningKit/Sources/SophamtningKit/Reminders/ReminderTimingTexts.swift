@@ -29,6 +29,9 @@ extension ReminderTiming {
         }
     }
 
+    /// Texten under listan med tider för Live Activity.
+    public static let liveActivityTimesFooter = "iOS visar en Live Activity i högst 12 timmar. Den försvinner tidigare när du trycker Klart, sveper bort den eller någon i hushållet ställer ut."
+
     /// Texten under listan med tider: vilka tider som går att välja.
     public var timesFooter: String {
         let first = SwedishFormat.clock(minutes: range.lowerBound)

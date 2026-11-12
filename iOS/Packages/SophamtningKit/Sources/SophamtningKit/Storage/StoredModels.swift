@@ -80,24 +80,29 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
     public var reminderMinutes: Int
     /// Morgontiden, i minuter efter midnatt i Europe/Stockholm. 360 är 06:00. Båda sparas, så en avstängd tid finns kvar.
     public var morningMinutes: Int
-    /// Vilket val Live Activity följer. Tiden för valet gäller också när notiserna för det är av.
+    /// Vilket val Live Activity följer: dagen före eller samma morgon.
     public var liveActivityTiming: ReminderTiming
+    /// Live Activityns egen starttid, i minuter efter midnatt i Europe/Stockholm. Oberoende av notisernas tider.
+    public var liveActivityMinutes: Int
     public var liveActivityOn: Bool
     /// Förslaget om påminnelse efter första adressen har visats och besvarats, eller en påminnelse har slagits på.
     public var reminderOfferShown: Bool
 
-    public init(eveningOn: Bool = true, morningOn: Bool = false, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityTiming: ReminderTiming = .eveningBefore, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
+    public init(eveningOn: Bool = true, morningOn: Bool = false, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityTiming: ReminderTiming = .eveningBefore, liveActivityMinutes: Int? = nil, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
         self.eveningOn = eveningOn
         self.morningOn = morningOn
         self.reminderMinutes = reminderMinutes
         self.morningMinutes = morningMinutes
         self.liveActivityTiming = liveActivityTiming
+        // Utan egen tid får aktiviteten tiden som notisen för samma val har.
+        self.liveActivityMinutes = 0
         self.liveActivityOn = liveActivityOn
         self.reminderOfferShown = reminderOfferShown
+        self.liveActivityMinutes = liveActivityMinutes ?? minutes(for: liveActivityTiming)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case eveningOn, morningOn, reminderMinutes, morningMinutes, liveActivityTiming, liveActivityOn, reminderOfferShown
+        case eveningOn, morningOn, reminderMinutes, morningMinutes, liveActivityTiming, liveActivityMinutes, liveActivityOn, reminderOfferShown
         /// Det gamla enda valet. Läses men skrivs aldrig.
         case timing
     }
@@ -124,6 +129,9 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         if !eveningOn && !morningOn { eveningOn = true }
         // Läses som text, så att ett okänt val, till exempel från en senare version, inte gör hela filen oläslig.
         liveActivityTiming = (try container.decodeIfPresent(String.self, forKey: .liveActivityTiming)).flatMap(ReminderTiming.init(rawValue:)) ?? old
+        // Sparade före den egna tiden: aktiviteten behåller tiden den hade, notisens tid för samma val.
+        liveActivityMinutes = 0
+        liveActivityMinutes = try container.decodeIfPresent(Int.self, forKey: .liveActivityMinutes) ?? minutes(for: liveActivityTiming)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -133,6 +141,7 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         try container.encode(reminderMinutes, forKey: .reminderMinutes)
         try container.encode(morningMinutes, forKey: .morningMinutes)
         try container.encode(liveActivityTiming, forKey: .liveActivityTiming)
+        try container.encode(liveActivityMinutes, forKey: .liveActivityMinutes)
         try container.encode(liveActivityOn, forKey: .liveActivityOn)
         try container.encode(reminderOfferShown, forKey: .reminderOfferShown)
     }
@@ -146,6 +155,16 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
     public func minutes(for timing: ReminderTiming) -> Int {
         let minutes = timing == .eveningBefore ? reminderMinutes : morningMinutes
         return Self.isValid(minutes: minutes, for: timing) ? minutes : timing.defaultMinutes
+    }
+
+    /// Live Activityns starttid. En tid som inte går för valet, till exempel 21:00 på morgonen, ger notisens tid för valet.
+    public var liveActivityStartMinutes: Int {
+        Self.isValid(minutes: liveActivityMinutes, for: liveActivityTiming) ? liveActivityMinutes : minutes(for: liveActivityTiming)
+    }
+
+    /// Notisen för valet kommer vid samma tid som Live Activityn. Bara då ersätts den av en reserv.
+    public func notificationMatchesLiveActivity(_ timing: ReminderTiming) -> Bool {
+        timing == liveActivityTiming && isEnabled(timing) && minutes(for: timing) == liveActivityStartMinutes
     }
 
     public func isEnabled(_ timing: ReminderTiming) -> Bool {

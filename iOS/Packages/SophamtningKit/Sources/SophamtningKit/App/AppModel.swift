@@ -445,7 +445,7 @@ public final class AppModel {
     }
 
     /// Tiden för ett val: 15:00 till 23:00 kvällen före, 05:00 till 09:00 samma morgon, i steg om 15 minuter. Annars, eller vid
-    /// lagringsfel, är allt kvar som förut. Bara en ändrad tid för Live Activitys val är ett nytt val för aktiviteten.
+    /// lagringsfel, är allt kvar som förut. Live Activity har en egen tid, så notisens tid rör inte aktiviteten.
     @discardableResult
     public func setReminderMinutes(_ minutes: Int, for timing: ReminderTiming) -> Bool {
         guard ReminderSettings.isValid(minutes: minutes, for: timing) else { return false }
@@ -457,18 +457,33 @@ public final class AppModel {
         case .sameMorning: updated.morningMinutes = minutes
         }
         guard saveSettings(updated) else { return false }
-        if timing == settings.liveActivityTiming { forgetStoppedActivities() }
         applyReminders()
         return true
     }
 
-    /// När Live Activity visas, kvällen före eller samma morgon, oberoende av vilka notiser som är på. Vid lagringsfel är allt
-    /// kvar som förut.
+    /// När Live Activity visas, kvällen före eller samma morgon, oberoende av vilka notiser som är på. Aktiviteten får tiden som
+    /// notisen för det nya valet har, och tiden kan sedan ändras. Vid lagringsfel är allt kvar som förut.
     @discardableResult
     public func setLiveActivityTiming(_ timing: ReminderTiming) -> Bool {
         guard timing != settings.liveActivityTiming else { return true }
         var updated = settings
         updated.liveActivityTiming = timing
+        updated.liveActivityMinutes = settings.minutes(for: timing)
+        guard saveSettings(updated) else { return false }
+        forgetStoppedActivities()
+        applyReminders()
+        return true
+    }
+
+    /// Live Activityns egen tid, för dess val: 15:00 till 23:00 dagen före eller 05:00 till 09:00 samma morgon, i steg om 15
+    /// minuter. En ändrad tid är ett nytt val, så en bortsvept aktivitet får starta igen. Samma tid igen ändrar ingenting. En
+    /// ogiltig tid, eller ett lagringsfel, lämnar allt som förut.
+    @discardableResult
+    public func setLiveActivityMinutes(_ minutes: Int) -> Bool {
+        guard ReminderSettings.isValid(minutes: minutes, for: settings.liveActivityTiming) else { return false }
+        guard minutes != settings.liveActivityStartMinutes else { return true }
+        var updated = settings
+        updated.liveActivityMinutes = minutes
         guard saveSettings(updated) else { return false }
         forgetStoppedActivities()
         applyReminders()

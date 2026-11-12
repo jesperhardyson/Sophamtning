@@ -9,7 +9,7 @@ let privacyLink = WebLink(url: URL(string: "https://sopor.hardyson.se/integritet
 private enum SettingsRoute: Hashable {
     case time, primary, sources
     case times(ReminderTiming)
-    case liveActivityTiming
+    case liveActivityTiming, liveActivityTimes
 }
 
 /// Inställningar i ett ark: påminnelsetid, huvudadress, Live Activity och om appen.
@@ -65,6 +65,7 @@ struct SettingsView: View {
                 case .time: ReminderTimeView(model: model)
                 case .times(let timing): ReminderTimesView(model: model, timing: timing)
                 case .liveActivityTiming: LiveActivityTimingView(model: model)
+                case .liveActivityTimes: ReminderTimesView(model: model, timing: model.settings.liveActivityTiming, forLiveActivity: true)
                 case .primary: PrimaryAddressView(model: model)
                 case .sources: SourcesView(sources: sources, loading: sourcesLoading, onRetry: { await loadSources() })
                 }
@@ -109,7 +110,7 @@ struct SettingsView: View {
                 if model.settings.liveActivityOn {
                     ResultDivider()
                     NavigationLink(value: SettingsRoute.liveActivityTiming) {
-                        SettingsRow(title: "Visas från", value: model.settings.liveActivityTiming.title)
+                        SettingsRow(title: "Visas från", value: "\(model.settings.liveActivityTiming.title), \(SwedishFormat.clock(minutes: model.settings.liveActivityStartMinutes))")
                     }
                 }
             }
@@ -351,10 +352,19 @@ private struct ReminderTimeView: View {
     }
 }
 
-/// Klockslagen för ett val i steg om 15 minuter.
+/// Klockslagen för ett val i steg om 15 minuter, för notiserna eller för Live Activityns egen tid.
 private struct ReminderTimesView: View {
     let model: AppModel
     let timing: ReminderTiming
+    var forLiveActivity = false
+
+    private var selected: Int {
+        forLiveActivity ? model.settings.liveActivityStartMinutes : model.settings.minutes(for: timing)
+    }
+
+    private var footer: String {
+        forLiveActivity ? "\(timing.timesFooter) \(ReminderTiming.liveActivityTimesFooter)" : timing.timesFooter
+    }
 
     var body: some View {
         ZStack {
@@ -370,13 +380,17 @@ private struct ReminderTimesView: View {
                     ResultList {
                         ForEach(Array(timing.times.enumerated()), id: \.element) { index, minutes in
                             if index > 0 { ResultDivider() }
-                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == model.settings.minutes(for: timing)) {
+                            ChoiceRow(title: SwedishFormat.clock(minutes: minutes), selected: minutes == selected) {
                                 model.clearStorageError()
-                                model.setReminderMinutes(minutes, for: timing)
+                                if forLiveActivity {
+                                    model.setLiveActivityMinutes(minutes)
+                                } else {
+                                    model.setReminderMinutes(minutes, for: timing)
+                                }
                             }
                         }
                     }
-                    Text(timing.timesFooter)
+                    Text(footer)
                         .font(.ui(16, weight: .semibold, relativeTo: .footnote))
                         .foregroundStyle(Color.Theme.text2)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -390,7 +404,7 @@ private struct ReminderTimesView: View {
     }
 }
 
-/// När Live Activity visas, kvällen före eller samma morgon. Valet är skilt från vilka notiser som är på.
+/// När Live Activity visas: kvällen före eller samma morgon, och en egen tid. Båda är skilda från notisernas.
 private struct LiveActivityTimingView: View {
     let model: AppModel
 
@@ -414,6 +428,16 @@ private struct LiveActivityTimingView: View {
                             }
                         }
                     }
+                    ResultList {
+                        NavigationLink(value: SettingsRoute.liveActivityTimes) {
+                            SettingsRow(title: "Tid", value: SwedishFormat.clock(minutes: model.settings.liveActivityStartMinutes))
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                    Text(AddressDetail.liveActivityText(settings: model.settings))
+                        .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(Color.Theme.text2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, PageMargin.horizontal)
                 .padding(.vertical, 16)
