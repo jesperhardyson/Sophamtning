@@ -130,16 +130,22 @@ struct SettingsView: View {
     /// Siri: tipset med frasen, och länken till appens genvägar. Där kan genvägen läggas till med ett eget namn, så att det
     /// räcker att säga till exempel "När töms soporna" utan appens namn.
     private var siri: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             heading("Siri")
-            SiriTipView(intent: NextPickupIntent())
-            Text(SiriTexts.ownPhrase)
-                .font(.ui(16, weight: .semibold, relativeTo: .footnote))
-                .foregroundStyle(Color.Theme.text2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            ShortcutsLink()
-                .shortcutsLinkStyle(.automaticOutline)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // Samma kort som de andra delarna.
+            VStack(alignment: .leading, spacing: 12) {
+                SiriTipView(intent: NextPickupIntent())
+                Text(SiriTexts.ownPhrase)
+                    .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                    .foregroundStyle(Color.Theme.text2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                ShortcutsLink()
+                    .shortcutsLinkStyle(.automaticOutline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(20)
+            .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
         }
     }
 
