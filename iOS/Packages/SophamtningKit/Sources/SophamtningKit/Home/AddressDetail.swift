@@ -134,6 +134,8 @@ public struct AddressDetail: Equatable, Sendable {
     public let fetchedText: String?
     /// Kommunens eller bolagets sida för adressen (`links.web`).
     public let webLink: URL?
+    /// Adressens schema som kalenderprenumeration (`webcal://`), eller `nil` utan `links.ics`.
+    public let calendarLink: URL?
     /// Raden under reglaget "Påminn mig".
     public let reminderText: String
     public let liveActivityText: String
@@ -214,6 +216,7 @@ public struct AddressDetail: Equatable, Sendable {
             noUpcomingMessage: noUpcomingMessage(response?.schedule, today: today, afterError: notice != nil, sourceName: sourceName),
             fetchedText: fetchedTime,
             webLink: response?.links.web,
+            calendarLink: CalendarLink.webcal(response?.links.ics),
             reminderText: nothingToRemind ?? rowText(events: response?.events ?? [], settings: settings, now: now, reserveAt: reserveAt, skipping: HomeContent.skippedDays(for: address.key, ownPlacedOut: ownPlacedOut, silencedPickups: silencedPickups)),
             liveActivityText: nothingToRemind ?? liveActivityText(settings: settings),
             isPrimary: address.isPrimary,

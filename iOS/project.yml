@@ -92,7 +92,11 @@ targets:
   SophamtningWidgets:
     type: app-extension
     platform: iOS
-    sources: [SophamtningWidgets]
+    sources:
+      - SophamtningWidgets
+      # Ställ ut kärlen körs också från kontrollen i Kontrollcenter (docs/specs/2026-11-12-lasskarm-och-kalender.md).
+      - path: Sophamtning/Siri/PlaceOutIntent.swift
+      - path: Sophamtning/Siri/AddressEntity.swift
     dependencies:
       - package: SophamtningKit
         product: SophamtningKit

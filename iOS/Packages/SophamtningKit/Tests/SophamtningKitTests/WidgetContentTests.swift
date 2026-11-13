@@ -378,3 +378,107 @@ private func fractionPickup(_ id: String, _ iso: String) -> FractionPickup {
     #expect(result.hidden == 2)
     #expect(WidgetContent.mediumRows([], maxRows: 3).rows.isEmpty)
 }
+
+// MARK: Låsskärmen
+
+private func lock(_ events: [PickupEvent], placedOut: Bool = false) -> LockScreenContent {
+    LockScreenContent.make(content: WidgetContent.make(addresses: [home], schedule: schedule(events), now: now), info: info, placedOut: placedOut)
+}
+
+@Test func låsskärmenNästaTömning() {
+    // Fredag 6 november. Torsdag 19 november är om 13 dagar.
+    let c = lock([event("2026-11-19", ["mat", "papper"]), event("2026-11-26", ["rest"])])
+    #expect(c.inline == "Tors 19 nov: Mat, Papper")
+    #expect(c.title == "Om 13 dagar")
+    #expect(c.date == "Tors 19 nov")
+    #expect(c.line == "Mat, Papper")
+    #expect(c.days == "13")
+    #expect(!c.placedOut)
+}
+
+@Test func låsskärmenIDagOchIMorgon() {
+    let tomorrow = lock([event("2026-11-07", ["rest"])])
+    #expect(tomorrow.inline == "I morgon: Rest")
+    #expect(tomorrow.title == "I morgon")
+    #expect(tomorrow.days == "1")
+    #expect(lock([event("2026-11-06", ["rest"])]).inline == "I dag: Rest")
+    #expect(lock([event("2026-11-06", ["rest"])]).days == "0")
+}
+
+@Test func låsskärmenBeräknatDatum() {
+    let c = lock([event("2026-11-19", ["mat"], estimated: true)])
+    #expect(c.title == "Ca om 13 dagar")
+    #expect(c.inline == "Ca tors 19 nov: Mat")
+    #expect(c.date == "Ca tors 19 nov")
+}
+
+@Test func låsskärmenUtställt() {
+    let c = lock([event("2026-11-07", ["rest", "mat"])], placedOut: true)
+    #expect(c.inline == "Utställt: Mat, Rest")
+    #expect(c.line == "Utställt")
+    #expect(c.days == nil)
+    #expect(c.placedOut)
+}
+
+@Test func låsskärmenUtanSchema() {
+    for content in [WidgetContent.noAddress, .unavailable, .noSchedule(name: "Hemma"), .failed(name: "Hemma")] {
+        let c = LockScreenContent.make(content: content, info: [:], placedOut: false)
+        #expect(c.title == "Sophämtning")
+        #expect(c.line == "Öppna appen")
+        #expect(c.inline == "Sophämtning: öppna appen")
+        #expect(c.days == nil)
+    }
+    let none = LockScreenContent.make(content: .noUpcoming(name: "Hemma"), info: [:], placedOut: false)
+    #expect(none.title == "Hemma")
+    #expect(none.line == "Inga kommande hämtningar")
+    #expect(none.inline == "Hemma: inga kommande hämtningar")
+}
+
+// MARK: Ställ ut kärlen i widgeten
+
+@Test func widgetensKnappDagenFöreOchSammaDag() throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    try store.setAddresses([home])
+    try store.setSchedule(schedule([event("2026-11-07", ["rest"])]), for: home.key)
+    var data = WidgetData.read(from: store)
+    #expect(data.placeOutEntry(at: now) == PlacedOut(key: home.key, date: DayDate("2026-11-07")!))
+    // Min egen bock gör att knappen försvinner och widgeten visar Utställt, också utan hushåll.
+    try store.markPlacedOut(PlacedOut(key: home.key, date: DayDate("2026-11-07")!), today: DayDate("2026-11-06")!)
+    data = WidgetData.read(from: store)
+    #expect(data.placeOutEntry(at: now) == nil)
+    #expect(data.placedOut(at: now))
+}
+
+@Test func widgetensKnappInteLängreBort() throws {
+    let temp = TempDir()
+    let store = LocalStore(directory: temp.url)
+    try store.setAddresses([home])
+    try store.setSchedule(schedule([event("2026-11-09", ["rest"])]), for: home.key)
+    #expect(WidgetData.read(from: store).placeOutEntry(at: now) == nil)
+}
+
+// MARK: Kalender
+
+@Test func kalenderlänken() {
+    #expect(CalendarLink.webcal(URL(string: "https://sopor.hardyson.se/api/v1/adress/x/y.ics")) == URL(string: "webcal://sopor.hardyson.se/api/v1/adress/x/y.ics"))
+    #expect(CalendarLink.webcal(nil) == nil)
+    #expect(CalendarLink.webcal(URL(string: "mailto:a@b.se")) == nil)
+    let link = SourceLink.calendar(URL(string: "webcal://example.com/a.ics")!)
+    #expect(link.kind == .calendar)
+    #expect(link.title == "Lägg till i Kalender")
+    #expect(link.icon == "calendar.badge.plus")
+    #expect(link.webLink == nil)
+    #expect(CalendarLink.section == "Kalender")
+    #expect(CalendarLink.footer.contains("påminner kl. 18 kvällen innan"))
+    // Kalendern har ett eget kort och står aldrig bland källans länkar.
+    #expect(SourceLink.links(for: nil, kommunInfo: URL(string: "https://example.com/a")).allSatisfy { $0.kind != .calendar })
+}
+
+@Test func kontrollensVärde() {
+    #expect(lock([event("2026-11-07", ["rest"])]).controlValue == "I morgon")
+    #expect(lock([event("2026-11-06", ["rest"])]).controlValue == "I dag")
+    #expect(lock([event("2026-11-19", ["rest"])]).controlValue == "Tors 19 nov")
+    #expect(lock([event("2026-11-07", ["rest"])], placedOut: true).controlValue == "Utställt")
+    #expect(LockScreenContent.make(content: .noAddress, info: [:], placedOut: false).controlValue == "Öppna appen")
+}

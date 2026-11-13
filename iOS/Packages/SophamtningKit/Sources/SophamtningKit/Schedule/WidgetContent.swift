@@ -88,6 +88,8 @@ public struct WidgetData: Equatable, Sendable {
     private let source: Source
     /// Hushållet från `household.json`, för "Utställt". Går filen inte att läsa visas ingen bock.
     private var household: HouseholdState = .empty
+    /// Mina egna bockar från `placed-out.json`, för "Utställt" också utan hushåll. Går filen inte att läsa visas ingen bock.
+    private var ownPlacedOut: Set<PlacedOut> = []
 
     /// Fraktionernas namn och ikoner ur det sparade schemat. Okända id:n får reservvärden av `ScheduleLogic.displayInfo`.
     public var fractionInfo: [String: FractionInfo] {
@@ -111,6 +113,7 @@ public struct WidgetData: Equatable, Sendable {
         case .value(let schedule):
             var data = WidgetData(source: .loaded(addresses: addresses, schedule: schedule))
             if case .value(let household) = store.householdState() { data.household = household }
+            data.ownPlacedOut = Set(store.placedOut())
             return data
         case .unavailable, .unreadable: return WidgetData(source: .unavailable)
         }
@@ -131,8 +134,29 @@ public struct WidgetData: Equatable, Sendable {
         }
     }
 
-    /// Sant när någon i hushållet har ställt ut kärlen för huvudadressens nästa tömning.
-    public func placedOut(at now: Date) -> Bool { placedOutMark(at: now) != nil }
+    /// Sant när kärlen är utställda för huvudadressens nästa tömning, av mig eller någon i hushållet.
+    public func placedOut(at now: Date) -> Bool {
+        placedOutMark(at: now) != nil || nextPickup(at: now).map(ownPlacedOut.contains) == true
+    }
+
+    /// Tömningen som knappen Ställ ut kärlen i den mellanstora widgeten markerar: huvudadressens nästa tömning när den
+    /// är i dag eller i morgon och inte redan är utställd. Annars `nil`, och knappen visas inte.
+    public func placeOutEntry(at now: Date) -> PlacedOut? {
+        guard let next = nextPickup(at: now), !placedOut(at: now),
+              (0...1).contains(StockholmClock.today(now: now).days(until: next.date))
+        else { return nil }
+        return next
+    }
+
+    /// Huvudadressens nästa tömning, som tömning för en bock.
+    private func nextPickup(at now: Date) -> PlacedOut? {
+        guard case .loaded(let addresses, let schedule?) = source,
+              let address = addresses.first(where: \.isPrimary) ?? addresses.first,
+              let events = schedule.response?.events,
+              let next = ScheduleLogic.nextPickup(events, today: StockholmClock.today(now: now))?.date
+        else { return nil }
+        return PlacedOut(key: address.key, date: next)
+    }
 
     /// Vem som ställde ut, "av Sofie" eller "av dig", eller `nil` utan bock.
     public func placedOutBy(at now: Date) -> String? {

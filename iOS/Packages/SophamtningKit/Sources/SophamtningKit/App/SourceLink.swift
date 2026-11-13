@@ -1,6 +1,6 @@
 import Foundation
 
-/// En länk i kortet "Ansvarar för hämtningen" och på sidan Datakällor. Bara det som har ett giltigt värde visas.
+/// En länk i kortet "Ansvarar för hämtningen", i kortet Kalender och på sidan Datakällor. Bara det som har ett giltigt värde visas.
 public struct SourceLink: Hashable, Sendable, Identifiable {
     public enum Kind: Hashable, Sendable {
         /// Källans webbplats, i appens webbvy.
@@ -13,6 +13,8 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         case email
         /// Källans kontaktsida, i appens webbvy.
         case contactPage
+        /// Adressens schema i Kalender (`webcal://`). iOS frågar om prenumeration.
+        case calendar
     }
 
     public let kind: Kind
@@ -30,6 +32,7 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         case .phone: "phone"
         case .email: "envelope"
         case .contactPage: "link"
+        case .calendar: "calendar.badge.plus"
         }
     }
 
@@ -43,7 +46,7 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
     public var webLink: WebLink? {
         switch kind {
         case .website, .kommunInfo, .contactPage: WebLink(url: url)
-        case .phone, .email: nil
+        case .phone, .email, .calendar: nil
         }
     }
 
@@ -52,8 +55,13 @@ public struct SourceLink: Hashable, Sendable, Identifiable {
         switch kind {
         case .phone: "Ring \(title)"
         case .email: "Mejla \(title)"
-        case .website, .kommunInfo, .contactPage: title
+        case .website, .kommunInfo, .contactPage, .calendar: title
         }
+    }
+
+    /// Raden i adressvyns eget kort Kalender, med `webcal://`-adressen från `CalendarLink.webcal`.
+    public static func calendar(_ url: URL) -> SourceLink {
+        SourceLink(kind: .calendar, title: CalendarLink.title, url: url)
     }
 
     /// Webbplats, kommunens information och kontakten, i den ordningen. `kommunInfo` saknas på Datakällor.

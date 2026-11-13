@@ -16,6 +16,13 @@ struct NextPickupEntry: TimelineEntry {
     var placedOut = false
     /// "av Sofie" eller "av dig", när det är känt vem som ställde ut.
     var placedOutBy: String?
+    /// Tömningen som knappen Ställ ut kärlen markerar, när den visas: i dag eller i morgon och inte utställd.
+    var placeOut: PlacedOut?
+
+    /// Texterna på låsskärmen.
+    var lockScreen: LockScreenContent {
+        LockScreenContent.make(content: content, info: fractionInfo, placedOut: placedOut)
+    }
 
     func info(for id: String) -> FractionInfo {
         ScheduleLogic.displayInfo(for: id, in: fractionInfo)
@@ -54,10 +61,10 @@ struct NextPickupProvider: TimelineProvider {
 
     private func entries(data: WidgetData, now: Date) -> [NextPickupEntry] {
         if data.reloadDate(after: now) != nil {
-            return [NextPickupEntry(date: now, content: data.content(at: now), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: now), placedOut: data.placedOut(at: now), placedOutBy: data.placedOutBy(at: now))]
+            return [NextPickupEntry(date: now, content: data.content(at: now), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: now), placedOut: data.placedOut(at: now), placedOutBy: data.placedOutBy(at: now), placeOut: data.placeOutEntry(at: now))]
         }
         return WidgetContent.timelineDates(from: now, days: Self.days).map {
-            NextPickupEntry(date: $0, content: data.content(at: $0), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: $0), placedOut: data.placedOut(at: $0), placedOutBy: data.placedOutBy(at: $0))
+            NextPickupEntry(date: $0, content: data.content(at: $0), fractionInfo: data.fractionInfo, scheduleEnding: data.scheduleEnding(at: $0), placedOut: data.placedOut(at: $0), placedOutBy: data.placedOutBy(at: $0), placeOut: data.placeOutEntry(at: $0))
         }
     }
 }
@@ -75,7 +82,7 @@ struct NextPickupWidget: Widget {
         }
         .configurationDisplayName("Nästa tömning")
         .description("Visar när soporna hämtas härnäst på din huvudadress.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryRectangular, .accessoryCircular])
     }
 }
 
@@ -86,6 +93,15 @@ struct NextPickupView: View {
     let entry: NextPickupEntry
 
     var body: some View {
+        switch family {
+        case .accessoryInline, .accessoryRectangular, .accessoryCircular:
+            LockScreenWidget(family: family, content: entry.lockScreen)
+        default:
+            homeScreen
+        }
+    }
+
+    @ViewBuilder private var homeScreen: some View {
         switch entry.content {
         case .pickup(let name, let relative, let shortDate, let fractions):
             if family == .systemMedium {
@@ -249,7 +265,8 @@ private struct MediumPickup: View {
     }
 
     private func content(showsEnding: Bool, showsPlacedOut: Bool) -> some View {
-        let (rows, hidden) = WidgetContent.mediumRows(fractions, maxRows: Self.maxRows)
+        // Knappen tar den sista radens plats.
+        let (rows, hidden) = WidgetContent.mediumRows(fractions, maxRows: entry.placeOut == nil ? Self.maxRows : Self.maxRows - 1)
         return HStack(alignment: .center, spacing: 16) {
             if let first = fractions.first {
                 VStack(spacing: 4) {
@@ -271,6 +288,16 @@ private struct MediumPickup: View {
                     .minimumScaleFactor(0.5)
                 ForEach(rows, id: \.fraction) { pickup in
                     row(pickup)
+                }
+                if let target = entry.placeOut {
+                    // Ett tryck markerar tömningen utan att öppna appen, som Klart i Live Activityn.
+                    Button(intent: MarkPlacedOutIntent(key: target.key, pickupDate: target.date)) {
+                        Label("Ställ ut kärlen", systemImage: "checkmark.circle")
+                            .font(.ui(14, weight: .heavy, relativeTo: .caption))
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.Theme.primary)
                 }
                 if hidden > 0 {
                     Text("+\(hidden) till")

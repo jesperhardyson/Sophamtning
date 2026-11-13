@@ -162,6 +162,13 @@ Förberedelse varje kväll, på huvudadressen med tömning dagen efter: slå på
 - [ ] **45. Kalenderbladet på morgonen.** Starta appen från början på morgonen efter en tömning: kalenderbladet vänds från dagens datum till nästa tömningsdag (se punkt 5). Hämtas ett nytt schema medan appen är öppen och nästa tömning byter datum, vänds bladet även då.
 - [ ] **46. Morgonen i appen.** Hemkortet visar inte längre **Live Activity visas nu** eller en gammal reservpåminnelse. Texten **Reservpåminnelse** visas bara när en reservnotis ligger framför.
 
+## Låsskärmen, widgetknappen, Kontrollcenter och Kalender
+
+- [ ] **L1. Låsskärmens widgetar.** Lägg till raden ovanför klockan, rektangeln och cirkeln på låsskärmen. Raden visar till exempel **Ons 25 nov: Mat, Papper**, rektangeln **Om 13 dagar**, datumet och kärlen, och cirkeln dagar kvar. Dagen före står **I morgon** och **1**. Efter Utställt visar de **Utställt** och en bock.
+- [ ] **L2. Ställ ut kärlen i widgeten.** Dagen före en tömning visar den mellanstora widgeten knappen **Ställ ut kärlen**. Tryck med låst telefon: widgeten visar **Utställt**, påminnelserna för tömningen kommer inte, och i ett hushåll syns bocken hos den andra. Två dagar före visas ingen knapp.
+- [ ] **L3. Kontrollcenter och Action-knappen.** Lägg kontrollen **Ställ ut kärlen** i Kontrollcenter och på Action-knappen. Värdet visar **I morgon** dagen före. Tryck: tömningen markeras, och värdet blir **Utställt**. Längre bort händer ingenting, och värdet visar datumet.
+- [ ] **L4. Lägg till i Kalender.** I adressvyn står avsnittet **Kalender** före kortet om källan, med raden **Lägg till i Kalender**. Tryck: iOS frågar om prenumeration. Kalendern visar tömningarna. Live-källor utan schema har inget avsnitt.
+
 ## Siri
 
 - [ ] **S1. Fråga Siri.** Med Siri på svenska, säg "När töms soporna i Sophämtning". Siri svarar med huvudadressens namn, kärlen och datum, till exempel **Hemma: Matavfall och Pappersförpackningar töms onsdag 25 november, om 13 dagar.**, och visar kortet med kalenderbladet och kärlen. Ingen fråga om adress när bara en är sparad. Gör samma sak med flygplansläge på: svaret är detsamma.

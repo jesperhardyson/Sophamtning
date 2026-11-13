@@ -3,6 +3,7 @@ import AppIntents
 import os
 import SophamtningKit
 import UserNotifications
+import WidgetKit
 
 /// Knappen **Klart**: sparar att soporna är utställda, så att samma tömning inte startas igen, avslutar aktiviteten och tar bort
 /// tömningens väntande reservnotis.
@@ -49,6 +50,9 @@ struct MarkPlacedOutIntent: LiveActivityIntent {
         let end: @Sendable () async -> Void = { await endActivities(key: entry.key, iso: entry.date.iso) }
         let saved = await PlacedOutAction.perform(store: LocalStore.shared(), entry: entry, today: StockholmClock.today(now: Date()), end: end, cancelReminder: cancelReminder)
         if saved {
+            // Widgetarna och kontrollen visar Utställt direkt.
+            WidgetCenter.shared.reloadAllTimelines()
+            ControlCenter.shared.reloadAllControls()
             // I appens process når bocken hushållet direkt. I widgetmålet görs det nästa gång appen körs.
             await PlacedOutAction.sendToHousehold?()
         } else {
