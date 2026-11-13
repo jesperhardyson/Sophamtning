@@ -25,7 +25,7 @@ extension ReminderTiming {
         case .eveningBefore:
             return "Dagen före tömningen kl. \(time)."
         case .sameMorning:
-            return "Samma dag som tömningen kl. \(time). Minst en påminnelse är på. Notiser slår du på och av per adress."
+            return "Samma dag som tömningen kl. \(time). Minst en påminnelse är på. Notiser slår du av under Adresser."
         }
     }
 
