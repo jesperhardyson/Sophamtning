@@ -470,6 +470,7 @@ private func lock(_ events: [PickupEvent], placedOut: Bool = false) -> LockScree
     #expect(link.icon == "calendar.badge.plus")
     #expect(link.webLink == nil)
     #expect(CalendarLink.section == "Kalender")
+    #expect(CalendarLink.footer.contains("påminner kl. 18 kvällen innan"))
     // Kalendern har ett eget kort och står aldrig bland källans länkar.
     #expect(SourceLink.links(for: nil, kommunInfo: URL(string: "https://example.com/a")).allSatisfy { $0.kind != .calendar })
 }

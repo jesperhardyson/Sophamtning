@@ -59,8 +59,8 @@ public enum CalendarLink {
     /// Rubriken över kortet i adressvyn.
     public static let section = "Kalender"
     public static let title = "Lägg till i Kalender"
-    /// Texten under raden.
-    public static let footer = "Tömningarna läggs in som en egen kalender, som uppdateras av sig själv."
+    /// Texten under raden. `links.ics` har ett larm kl. 18 kvällen före varje tömning, och det säger texten.
+    public static let footer = "Tömningarna läggs in som en egen kalender, som uppdateras av sig själv. Kalendern påminner kl. 18 kvällen innan, utöver appens notiser."
 
     public static func webcal(_ url: URL?) -> URL? {
         guard let url, url.scheme == "https", var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }

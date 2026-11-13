@@ -45,7 +45,7 @@ Stryker "Widgets på låsskärmen" under Inte med i `docs/specs/2026-11-06-ios-a
 
 ## 4. Lägg till i Kalender
 
-- Adressvyn får ett eget avsnitt **Kalender**, före kortet om källan, med raden **Lägg till i Kalender** och texten "Tömningarna läggs in som en egen kalender, som uppdateras av sig själv." Raden öppnar adressens `links.ics` med schemat `webcal://`, så att iOS frågar om prenumeration i Kalender. Kalendern uppdateras sedan av iOS, utan appen.
+- Adressvyn får ett eget avsnitt **Kalender**, före kortet om källan, med raden **Lägg till i Kalender** och texten "Tömningarna läggs in som en egen kalender, som uppdateras av sig själv. Kalendern påminner kl. 18 kvällen innan, utöver appens notiser." Raden öppnar adressens `links.ics` med schemat `webcal://`, så att iOS frågar om prenumeration i Kalender. Kalendern uppdateras sedan av iOS, utan appen. Filen har ett larm kl. 18 kvällen före varje tömning, som texten nämner, så att två påminnelser inte kommer som en överraskning.
 - Avsnittet visas bara när svaret har en `links.ics`. Live-källor utan schema har ingen.
 - Prenumerationen är användarens egen och syns inte i appen. Appen läser aldrig Kalender och behöver ingen behörighet.
 
