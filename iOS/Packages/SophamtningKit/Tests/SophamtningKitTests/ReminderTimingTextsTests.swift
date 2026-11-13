@@ -40,7 +40,7 @@ private func schedule(_ events: [PickupEvent]) -> CachedSchedule {
 
 @Test func delarnasTexter() {
     #expect(ReminderTiming.eveningBefore.sectionFooter(minutes: 900) == "Dagen före tömningen kl. 15:00.")
-    #expect(ReminderTiming.sameMorning.sectionFooter(minutes: 360) == "Samma dag som tömningen kl. 06:00. Minst en påminnelse är på. Notiser slår du på och av per adress.")
+    #expect(ReminderTiming.sameMorning.sectionFooter(minutes: 360) == "Samma dag som tömningen kl. 06:00. Minst en påminnelse är på. Notiser slår du av under Adresser.")
 }
 
 @Test func tidslistansText() {
@@ -134,4 +134,28 @@ private func pending(start: Date) -> ExistingActivity {
     // Morgonens notis står kvar som reserv efter bytet tillbaka till kvällen. Den gäller ändå onsdagens tömning.
     #expect(AddressDetail.reserveText(StockholmClock.date(on: wednesday, minutes: 6 * 60)) == "Onsdag kl. 06:00, samma dag som tömningen, om aktiviteten inte syns.")
     #expect(AddressDetail.reserveText(StockholmClock.date(on: DayDate("2026-11-10")!, minutes: 18 * 60 + 45)) == "Tisdag kl. 18:45 inför onsdagens tömning, om aktiviteten inte syns.")
+}
+
+// MARK: Inställningarnas texter
+
+@Test func notiserGällerAdresserna() {
+    #expect(ReminderSettingsTexts.notificationsFooter(addresses: []) == "Ingen adress har notiser på. Slå på Påminn mig i adressen.")
+    #expect(ReminderSettingsTexts.notificationsFooter(addresses: ["Hemma"]) == "Gäller Hemma. Slå på eller av i varje adress.")
+    #expect(ReminderSettingsTexts.notificationsFooter(addresses: ["Hemma", "Jobbet"]) == "Gäller Hemma och Jobbet. Slå på eller av i varje adress.")
+    #expect(ReminderSettingsTexts.notificationsFooter(addresses: ["Hemma", "Jobbet", "Stugan"]) == "Gäller Hemma, Jobbet och Stugan. Slå på eller av i varje adress.")
+}
+
+@Test func liveActivityOchHuvudadressensTexter() {
+    #expect(ReminderSettingsTexts.liveActivityFooter(primary: "Hemma") == "Visas för huvudadressen, Hemma.")
+    #expect(ReminderSettingsTexts.primaryFooter == "Används av Live Activity, widgetar och Siri.")
+    #expect(ReminderSettingsTexts.addressesFooter == "Samma som Påminn mig i varje adress. Stäng av alla för att inte få några notiser.")
+}
+
+@Test func adressernaIHemskärmensOrdning() {
+    func saved(_ name: String, primary: Bool) -> SavedAddress {
+        SavedAddress(key: AddressKey(source: "s", id: name), url: URL(string: "https://example.com/\(name)")!, street: "Gatan 1", locality: "Orten", kommun: "Kommunen", detail: nil, selection: "address", displayName: name, isPrimary: primary, addedAt: Date(timeIntervalSince1970: 0))
+    }
+    let order = ReminderSettingsTexts.homeOrder([saved("Jobbet", primary: false), saved("Hemma", primary: true), saved("Stugan", primary: false)])
+    #expect(order.map(\.displayName) == ["Hemma", "Jobbet", "Stugan"])
+    #expect(ReminderSettingsTexts.homeOrder([]).isEmpty)
 }

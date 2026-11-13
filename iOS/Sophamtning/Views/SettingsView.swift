@@ -99,20 +99,26 @@ struct SettingsView: View {
 
     // MARK: Delar
 
+    /// Notiser, Live Activity och Huvudadress, var och en i ett eget kort med en rad under om vad den gäller.
     private var reminders: some View {
         VStack(alignment: .leading, spacing: 0) {
-            heading("Påminnelser")
+            heading("Notiser")
             VStack(spacing: 0) {
                 NavigationLink(value: SettingsRoute.time) {
-                    SettingsRow(title: "Notiser", value: model.settings.settingsValue)
+                    SettingsRow(title: "Tid", value: model.settings.settingsValue)
                 }
-                if let primary = model.addresses.first(where: \.isPrimary) {
-                    ResultDivider()
-                    NavigationLink(value: SettingsRoute.primary) {
-                        SettingsRow(title: "Huvudadress", value: primary.displayName)
-                    }
-                }
-                ResultDivider()
+            }
+            .buttonStyle(.pressable)
+            .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+            footnote(ReminderSettingsTexts.notificationsFooter(addresses: ReminderSettingsTexts.homeOrder(model.addresses).filter { model.remindersOn(for: $0) }.map(\.displayName)))
+            if let missed = model.missedReminderText {
+                MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
+                    .padding(.top, 12)
+            }
+
+            heading("Live Activity")
+            VStack(spacing: 0) {
                 LiveActivityToggleRow(model: model, text: AddressDetail.liveActivityText(settings: model.settings))
                 if model.settings.liveActivityOn {
                     ResultDivider()
@@ -124,12 +130,34 @@ struct SettingsView: View {
             .buttonStyle(.pressable)
             .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+            if let primary = model.addresses.first(where: \.isPrimary) {
+                footnote(ReminderSettingsTexts.liveActivityFooter(primary: primary.displayName))
+            }
             LiveActivityNotices(model: model, edge: .top)
-            if let missed = model.missedReminderText {
-                MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
-                    .padding(.top, 12)
+
+            if let primary = model.addresses.first(where: \.isPrimary) {
+                heading("Huvudadress")
+                VStack(spacing: 0) {
+                    NavigationLink(value: SettingsRoute.primary) {
+                        SettingsRow(title: primary.displayName, value: "")
+                    }
+                }
+                .buttonStyle(.pressable)
+                .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+                footnote(ReminderSettingsTexts.primaryFooter)
             }
         }
+    }
+
+    /// Texten under ett kort.
+    private func footnote(_ text: String) -> some View {
+        Text(text)
+            .font(.ui(15, weight: .semibold, relativeTo: .footnote))
+            .foregroundStyle(Color.Theme.text2)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Siri: tipset med frasen, och länken till appens genvägar. Där kan genvägen läggas till med ett eget namn, så att det
@@ -328,6 +356,10 @@ private struct ReminderTimeView: View {
                         }
                         .buttonStyle(.pressable)
                     }
+                    // Adresserna överst, så att notiserna också går att stänga av helt här.
+                    if !model.addresses.isEmpty {
+                        addressSection
+                    }
                     ForEach(ReminderTiming.allCases, id: \.self) { timing in
                         timingSection(timing)
                     }
@@ -338,6 +370,41 @@ private struct ReminderTimeView: View {
         }
         .navigationTitle("Notiser")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    /// Ett reglage per adress, i hemskärmens ordning. Samma som Påminn mig i adressvyn, och frågar om tillåtelse på samma sätt.
+    private var addressSection: some View {
+        VStack(spacing: 12) {
+            Text("Adresser")
+                .font(.ui(20, weight: .heavy, relativeTo: .title3))
+                .foregroundStyle(Color.Theme.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+                .accessibilityAddTraits(.isHeader)
+            ResultList {
+                ForEach(Array(ReminderSettingsTexts.homeOrder(model.addresses).enumerated()), id: \.element.key) { index, address in
+                    if index > 0 { ResultDivider() }
+                    Toggle(isOn: Binding(
+                        get: { model.remindersOn(for: address) },
+                        set: { on in model.toggleNotifications(on, for: address.key, onTurnedOn: {}) }
+                    )) {
+                        Text(address.displayName)
+                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                            .foregroundStyle(Color.Theme.text)
+                    }
+                    .toggleStyle(.switch)
+                    .tint(Color.Theme.primary)
+                    .padding(.horizontal, 20)
+                    .frame(minHeight: 56)
+                    .padding(.vertical, 6)
+                    .accessibilityLabel("Notiser för \(address.displayName)")
+                }
+            }
+            Text(ReminderSettingsTexts.addressesFooter)
+                .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Color.Theme.text2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private func timingSection(_ timing: ReminderTiming) -> some View {
