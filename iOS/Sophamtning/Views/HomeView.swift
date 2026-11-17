@@ -282,6 +282,13 @@ struct HomeView: View {
                 .padding(.bottom, 12)
                 // Bubblan vid kärlet står under rubriken, ovanpå korten.
                 .zIndex(1)
+            ForEach(model.visibleSourceMessages) { item in
+                SourceMessageCard(model: model, item: item) {
+                    withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.dismissSourceMessage(item) }
+                }
+                .padding(.bottom, 16)
+                .transition(.opacity)
+            }
             if model.showsReminderOffer {
                 ReminderOfferCard(
                     onAccept: { setNotifications(true, for: primary.key) },
@@ -699,6 +706,27 @@ private struct AddressRow: View {
 
 #Preview("Tomt") {
     HomeView(model: AppModel(api: SoporClient(version: "preview"), store: LocalStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("preview-empty"))), entrance: StartEntrance(plays: false), onEntranceFinished: {})
+}
+
+/// Ett meddelande från källan, till exempel att hämtrutterna läggs om. Länken har samma ordval som på sajten.
+private struct SourceMessageCard: View {
+    let model: AppModel
+    let item: ActiveSourceMessage
+    let onClose: () -> Void
+
+    var body: some View {
+        MessageCard(
+            style: .neutral,
+            icon: "megaphone",
+            title: item.message.title,
+            message: item.message.text,
+            link: item.message.url.map { url in
+                MessageCard.Link(title: model.sourceName(for: item.source).map { "Läs mer hos \($0)" } ?? "Läs mer", url: url)
+            },
+            closeLabel: "Stäng meddelandet",
+            onClose: onClose
+        )
+    }
 }
 
 /// "Sofie gick med i hushållet" överst på hemskärmen, i samma stil som `MessageCard`. Ett tryck öppnar arket Hushåll,

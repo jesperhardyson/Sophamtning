@@ -224,6 +224,19 @@ public final class LocalStore: Sendable {
         try write(sources, to: "sources.json")
     }
 
+    // MARK: Meddelanden från källan
+
+    private static let sourceMessagesFile = "source-messages.json"
+
+    /// Vilka meddelanden som är sedda och stängda. Går filen inte att läsa får appen inte skicka några notiser för meddelanden.
+    public func sourceMessageMemoryState() -> StoreRead<SourceMessageMemory> {
+        readState(SourceMessageMemory.self, from: Self.sourceMessagesFile)
+    }
+
+    public func setSourceMessageMemory(_ memory: SourceMessageMemory) throws {
+        try write(memory, to: Self.sourceMessagesFile)
+    }
+
     // MARK: Scheman
 
     public func schedule(for key: AddressKey) -> CachedSchedule? {

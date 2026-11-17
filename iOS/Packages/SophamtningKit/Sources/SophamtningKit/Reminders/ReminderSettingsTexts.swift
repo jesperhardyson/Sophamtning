@@ -24,4 +24,10 @@ public enum ReminderSettingsTexts {
 
     /// Under adresserna på sidan Notiser.
     public static let addressesFooter = "Samma som Påminn mig i varje adress. Stäng av alla för att inte få några notiser."
+
+    /// Under reglaget Meddelanden från källan.
+    public static func sourceMessagesFooter(authorized: Bool) -> String {
+        let base = "Notis när källan har ett viktigt besked, till exempel att hämtrutterna läggs om. Skilt från påminnelserna."
+        return authorized ? base : base + " Notiser är avstängda för appen i iOS."
+    }
 }

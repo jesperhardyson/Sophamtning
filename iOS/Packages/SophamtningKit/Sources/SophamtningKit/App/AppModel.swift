@@ -63,6 +63,10 @@ public final class AppModel {
     @ObservationIgnored private var reminderQueue: Task<Void, Never>?
     /// Räknar om vyn när ett schema ändrats. `schedules` är ignorerat, och den här räknaren ersätter det.
     var scheduleRevision = 0
+    /// Sedda och stängda meddelanden från källorna (beteendet finns i AppModel+SourceMessages.swift).
+    var sourceMessageMemory = SourceMessageMemory()
+    /// Om `source-messages.json` gick att läsa. Annars skickas inga notiser för meddelanden och filen skrivs inte över.
+    @ObservationIgnored var sourceMessageMemoryKnown = true
 
     // MARK: Hushållets tillstånd (beteendet finns i AppModel+Household.swift)
 
@@ -134,6 +138,7 @@ public final class AppModel {
             householdCacheKnown = false
         }
         householdPreferences = store.householdPreferences()
+        loadSourceMessageMemory()
     }
 
     /// Läser om adresser och inställningar som inte gick att läsa vid uppstart, till exempel skyddad data efter omstart.
@@ -257,12 +262,14 @@ public final class AppModel {
 
     /// Uppdaterar alla adresser, en i taget. Anrop köas efter varandra: ett anrop som kommer medan
     /// ett annat pågår väntar, och adresser som då är nyss hämtade hoppas över av `RefreshPolicy`.
-    /// `startingActivities` är falskt i bakgrunden, där en Live Activity aldrig får startas.
-    public func refreshAll(manual: Bool, startingActivities: Bool = true) async {
+    /// `startingActivities` är falskt i bakgrunden, där en Live Activity aldrig får startas. `context` avgör om ett nytt
+    /// meddelande från källan ger en notis (`.background`) eller bara visas som kort (`.foreground`).
+    public func refreshAll(manual: Bool, startingActivities: Bool = true, context: RefreshContext = .foreground) async {
         let previous = queue
         let task = Task { @MainActor in
             await previous?.value
             await self.performRefresh(manual: manual, startingActivities: startingActivities)
+            await self.noteSourceMessages(context: context)
         }
         queue = task
         // Avbryts anroparen (dra för att uppdatera lämnar skärmen) fortsätter köplatsen ändå.
@@ -498,7 +505,7 @@ public final class AppModel {
     }
 
     @discardableResult
-    private func saveSettings(_ updated: ReminderSettings) -> Bool {
+    func saveSettings(_ updated: ReminderSettings) -> Bool {
         guard settingsReadable else {
             lastStorageError = "Inställningarna går inte att läsa just nu. Inget har ändrats."
             return false

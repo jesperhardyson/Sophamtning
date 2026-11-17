@@ -116,6 +116,7 @@ struct SettingsView: View {
                 MessageCard(style: .neutral, icon: "clock.badge.exclamationmark", title: "Påminnelsen har passerat", message: missed)
                     .padding(.top, 12)
             }
+            sourceMessages
 
             heading("Live Activity")
             VStack(spacing: 0) {
@@ -148,6 +149,27 @@ struct SettingsView: View {
                 footnote(ReminderSettingsTexts.primaryFooter)
             }
         }
+    }
+
+    /// Reglaget Meddelanden från källan. Det frågar aldrig om tillstånd, och utan tillstånd i iOS går det inte att ändra.
+    private var sourceMessages: some View {
+        let authorized = model.notificationAuthorization == .authorized
+        return VStack(spacing: 0) {
+            ReminderToggleRow(
+                title: "Meddelanden från källan",
+                text: ReminderSettingsTexts.sourceMessagesFooter(authorized: authorized),
+                symbol: "megaphone",
+                pulse: 0,
+                isOn: Binding(
+                    get: { model.settings.sourceMessagesOn },
+                    set: { model.clearStorageError(); model.setSourceMessages($0) }
+                )
+            )
+            .disabled(!authorized)
+        }
+        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+        .padding(.top, 12)
     }
 
     /// Texten under ett kort.
