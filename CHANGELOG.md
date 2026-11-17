@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0](https://github.com/jesperhardyson/Sophamtning/compare/v1.2.0...v1.3.0) (2026-11-17)
+
+
+### Nytt
+
+* Låsskärmens widgetar, Ställ ut i widgeten, Kontrollcenter och Kalender ([#74](https://github.com/jesperhardyson/Sophamtning/issues/74)) ([6743d74](https://github.com/jesperhardyson/Sophamtning/commit/6743d743e30cda2eca459ad0821b0f457b887569))
+* Meddelanden från källan i appen ([#79](https://github.com/jesperhardyson/Sophamtning/issues/79)) ([3dd012c](https://github.com/jesperhardyson/Sophamtning/commit/3dd012c33f9696a2b4bb8cb14cbfe99c572feb0d))
+* Påminnelserna i Inställningar uppdelade i Notiser, Live Activity och Huvudadress ([#77](https://github.com/jesperhardyson/Sophamtning/issues/77)) ([22fec96](https://github.com/jesperhardyson/Sophamtning/commit/22fec9629743a51c9d972284f47d4dc97ba4c0bc))
+
 ## [1.2.0](https://github.com/jesperhardyson/Sophamtning/compare/v1.1.0...v1.2.0) (2026-11-12)
 
 
