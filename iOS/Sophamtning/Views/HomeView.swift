@@ -18,6 +18,8 @@ struct HomeView: View {
     @State private var confirmingStartOver = false
     /// Adressen som står öppen efter ett svep. Bara en åt gången, och scrollning stänger den.
     @State private var openRow: AddressKey?
+    /// En länk från ett meddelande, som visas i appens webbvy.
+    @State private var messageLink: WebLink?
     /// Ökar när en adress eller ett område har sparats. Räknaren ligger här, eftersom arket stängs i samma
     /// uppdatering, så att den lätta vibrationen alltid hinner spelas.
     @State private var saves = 0
@@ -173,6 +175,7 @@ struct HomeView: View {
         // Ett tryck nedanför innehållet stänger också den öppna raden.
         .gesture(TapGesture().onEnded { openRow = nil }, including: openRow == nil ? .subviews : .all)
         .refreshable { await model.refreshAll(manual: true) }
+        .inAppBrowser(item: $messageLink)
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { openRow = nil }
         }
@@ -283,7 +286,7 @@ struct HomeView: View {
                 // Bubblan vid kärlet står under rubriken, ovanpå korten.
                 .zIndex(1)
             ForEach(model.visibleSourceMessages) { item in
-                SourceMessageCard(model: model, item: item) {
+                SourceMessageCard(model: model, item: item, onOpenLink: { messageLink = $0 }) {
                     withAnimation(Motion.transition(reduceMotion: reduceMotion)) { model.dismissSourceMessage(item) }
                 }
                 .padding(.bottom, 16)
@@ -712,6 +715,7 @@ private struct AddressRow: View {
 private struct SourceMessageCard: View {
     let model: AppModel
     let item: ActiveSourceMessage
+    let onOpenLink: (WebLink) -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -720,8 +724,9 @@ private struct SourceMessageCard: View {
             icon: "megaphone",
             title: item.message.title,
             message: item.message.text,
-            link: item.message.url.map { url in
-                MessageCard.Link(title: model.sourceName(for: item.source).map { "Läs mer hos \($0)" } ?? "Läs mer", url: url)
+            // Bara https-länkar visas, och de öppnas i appens webbvy.
+            link: item.message.url.flatMap(WebLink.init(url:)).map { link in
+                MessageCard.Link(title: model.sourceName(for: item.source).map { "Läs mer hos \($0)" } ?? "Läs mer") { onOpenLink(link) }
             },
             closeLabel: "Stäng meddelandet",
             onClose: onClose

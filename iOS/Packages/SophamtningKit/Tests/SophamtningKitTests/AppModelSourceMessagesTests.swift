@@ -13,7 +13,12 @@ private final class MessagesAPI: SoporAPI, @unchecked Sendable {
     private let lock = NSLock()
     private let base: AddressResponse
     private var current: [SourceMessage]
-    init(base: AddressResponse, messages: [SourceMessage]) { self.base = base; current = messages }
+    private var sourceCalls = 0
+    /// Källistan, eller `nil` när hämtningen misslyckas.
+    private var sourceList: [Source]?
+    init(base: AddressResponse, messages: [SourceMessage], sources: [Source]? = nil) { self.base = base; current = messages; sourceList = sources }
+    var sourcesCallCount: Int { lock.withLock { sourceCalls } }
+    func setSources(_ sources: [Source]?) { lock.withLock { sourceList = sources } }
     func setMessages(_ messages: [SourceMessage]) { lock.withLock { current = messages } }
     func address(url: URL) async throws -> AddressResponse {
         let messages = lock.withLock { current }
@@ -23,8 +28,14 @@ private final class MessagesAPI: SoporAPI, @unchecked Sendable {
     func search(query: String, source: String?) async throws -> SearchResponse { fatalError() }
     func areas(place: String) async throws -> SearchResponse { fatalError() }
     func areas(place: String, lastEmptied: DayDate) async throws -> SearchResponse { fatalError() }
-    func sources() async throws -> SourcesResponse { fatalError() }
+    func sources() async throws -> SourcesResponse {
+        let list = lock.withLock { sourceCalls += 1; return sourceList }
+        guard let list else { throw APIError.unexpected(500) }
+        return SourcesResponse(sources: list, fractions: [:])
+    }
 }
+
+private let avesta = Source(id: "avesta", name: "Avesta Vatten och Avfall", url: URL(string: "https://www.avestavatten.se")!, kommuner: [], testData: false)
 
 /// Ett notiscenter som minns notiserna som visats direkt.
 private final class DeliveringScheduler: NotificationScheduling, @unchecked Sendable {
@@ -118,15 +129,44 @@ private func setup(_ temp: TempDir, status: NotificationAuthorization = .authori
     #expect(s.scheduler.delivered.count == 1)
 }
 
-@Test @MainActor func notisensRubrikArKallansNamn() async throws {
+@Test @MainActor func notisensRubrikArKallansNamnFranSparadLista() async throws {
     let temp = TempDir()
     let s = try setup(temp)
-    let source = Source(id: "avesta", name: "Avesta Vatten och Avfall", url: URL(string: "https://www.avestavatten.se")!, kommuner: [], testData: false)
-    try s.store.setSources(CachedSources(response: SourcesResponse(sources: [source], fractions: [:]), fetchedAt: now))
+    try s.store.setSources(CachedSources(response: SourcesResponse(sources: [avesta], fractions: [:]), fetchedAt: now))
     await s.model.refreshAll(manual: false, context: .background)
     #expect(s.scheduler.delivered.first?.title == "Avesta Vatten och Avfall")
     #expect(s.model.sourceName(for: "avesta") == "Avesta Vatten och Avfall")
     #expect(s.model.sourceName(for: "sater") == nil)
+    #expect(s.api.sourcesCallCount == 0)
+}
+
+@Test @MainActor func kallistanHamtasNarNamnetSaknas() async throws {
+    let temp = TempDir()
+    let s = try setup(temp)
+    s.api.setSources([avesta])
+    await s.model.refreshAll(manual: false, context: .background)
+    #expect(s.api.sourcesCallCount == 1)
+    #expect(s.scheduler.delivered.first?.title == "Avesta Vatten och Avfall")
+    #expect(s.model.sourceName(for: "avesta") == "Avesta Vatten och Avfall")
+}
+
+@Test @MainActor func kallistanHamtasInteUtanMeddelanden() async throws {
+    let temp = TempDir()
+    let s = try setup(temp, messages: [])
+    await s.model.refreshAll(manual: false)
+    #expect(s.api.sourcesCallCount == 0)
+}
+
+@Test @MainActor func misslyckadKallistaForsokerHogstEnGangITimmen() async throws {
+    let temp = TempDir()
+    let s = try setup(temp)
+    await s.model.refreshAll(manual: false)
+    #expect(s.api.sourcesCallCount == 1)
+    await s.model.refreshAll(manual: true)
+    #expect(s.api.sourcesCallCount == 1)
+    s.clock.set(later)
+    await s.model.refreshAll(manual: false)
+    #expect(s.api.sourcesCallCount == 2)
 }
 
 @Test @MainActor func tvaAdresserHosSammaKallaGerEnNotis() async throws {

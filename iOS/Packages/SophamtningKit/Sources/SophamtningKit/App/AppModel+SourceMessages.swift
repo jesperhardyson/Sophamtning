@@ -55,6 +55,7 @@ extension AppModel {
     /// per meddelande. Går minnet inte att läsa händer ingenting, så att ingen får samma notis två gånger.
     func noteSourceMessages(context: RefreshContext) async {
         if !sourceMessageMemoryKnown { loadSourceMessageMemory() }
+        await fetchMissingSourceNames()
         guard sourceMessageMemoryKnown else { return }
         let fresh = SourceMessages.unseen(activeSourceMessages(), memory: sourceMessageMemory)
         guard !fresh.isEmpty else { return }
@@ -75,6 +76,17 @@ extension AppModel {
                 body: item.message.title
             )
         }
+    }
+
+    /// Länken ("Läs mer hos …") och notisens rubrik behöver källans namn, som bara finns i källistan. Den hämtas när ett
+    /// meddelande som gäller saknar namnet, högst en gång i timmen, och sparas av `sourceList()` i ett dygn.
+    private func fetchMissingSourceNames() async {
+        guard activeSourceMessages().contains(where: { sourceName(for: $0.source) == nil }) else { return }
+        if let last = sourceNamesFetchedAt, now().timeIntervalSince(last) < Self.sourcesRetryAfter { return }
+        sourceNamesFetchedAt = now()
+        _ = await sourceList()
+        // Namnet läses från lagringen, som vyn inte observerar.
+        scheduleRevision += 1
     }
 
     private func activeSourceMessages() -> [ActiveSourceMessage] {

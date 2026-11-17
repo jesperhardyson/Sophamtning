@@ -57,7 +57,7 @@ Meddelandena samlas från alla sparade adressers sparade svar, och nyckeln är k
 ## Startsidan
 
 - Ett `MessageCard` per meddelande som gäller och inte är stängt, överst under felrutorna och före förslaget om påminnelser. Stil `neutral` och ikonen `megaphone`.
-- Rubrik och text som i API:t. Finns `url` visas en länk under texten, "Läs mer hos <källans namn>" med källans namn från den sparade källistan, eller "Läs mer" när namnet inte finns. Det är samma ordval som på sajten.
+- Rubrik och text som i API:t. Finns `url` visas en länk under texten, "Läs mer hos <källans namn>" med källans namn från den sparade källistan, eller "Läs mer" när namnet inte finns. Det är samma ordval som på sajten. Länken öppnas i appens webbvy, som andra länkar i appen, och bara `https` visas. Saknas källans namn hämtas källistan, högst en gång i timmen, så att både länken och notisen får namnet.
 - Kortet har en stängknapp ("Stäng meddelandet" för VoiceOver). Ett stängt meddelande sparas och visas inte igen på den här telefonen.
 - `MessageCard` får en valfri stängknapp och en valfri länk. Befintliga användningar ändras inte.
 

@@ -8,14 +8,15 @@ public struct MessageCard: View {
         case warning
     }
 
-    /// En länk under texten, till exempel "Läs mer hos Avesta Vatten och Avfall".
-    public struct Link: Sendable {
+    /// En länk under texten, till exempel "Läs mer hos Avesta Vatten och Avfall". `open` bestämmer var den öppnas,
+    /// i appen i appens egen webbvy.
+    public struct Link {
         public let title: String
-        public let url: URL
+        public let open: () -> Void
 
-        public init(title: String, url: URL) {
+        public init(title: String, open: @escaping () -> Void) {
             self.title = title
-            self.url = url
+            self.open = open
         }
     }
 
@@ -60,12 +61,15 @@ public struct MessageCard: View {
                     }
                     .accessibilityElement(children: .combine)
                     if let link {
-                        SwiftUI.Link(destination: link.url) {
+                        Button(action: link.open) {
                             Text(link.title)
                                 .font(.ui(14, weight: .heavy, relativeTo: .footnote))
                                 .foregroundStyle(Color.Theme.primary)
                                 .underline()
+                                .multilineTextAlignment(.leading)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(.isLink)
                         .padding(.top, 6)
                     }
                 }
@@ -95,7 +99,7 @@ public struct MessageCard: View {
         MessageCard(style: .neutral, icon: "info.circle", title: "Rubrik", message: "Förklaring i en eller två rader.")
         MessageCard(style: .warning, icon: "exclamationmark.triangle", title: "Kunde inte hämta", message: "Försök igen om en stund.")
         MessageCard(style: .neutral, icon: "megaphone", title: "Hämtrutterna läggs om", message: "Schemat här kan bli fel.",
-                    link: .init(title: "Läs mer hos Avesta Vatten och Avfall", url: URL(string: "https://www.avestavatten.se")!),
+                    link: .init(title: "Läs mer hos Avesta Vatten och Avfall", open: {}),
                     closeLabel: "Stäng meddelandet", onClose: {})
     }
     .padding()

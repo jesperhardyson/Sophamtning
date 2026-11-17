@@ -67,6 +67,8 @@ public final class AppModel {
     var sourceMessageMemory = SourceMessageMemory()
     /// Om `source-messages.json` gick att läsa. Annars skickas inga notiser för meddelanden och filen skrivs inte över.
     @ObservationIgnored var sourceMessageMemoryKnown = true
+    /// När källistan senast hämtades för att ett meddelande saknade källans namn, så att det görs högst en gång i timmen.
+    @ObservationIgnored var sourceNamesFetchedAt: Date?
 
     // MARK: Hushållets tillstånd (beteendet finns i AppModel+Household.swift)
 
