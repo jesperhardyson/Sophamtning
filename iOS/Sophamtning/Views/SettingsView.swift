@@ -151,25 +151,32 @@ struct SettingsView: View {
         }
     }
 
-    /// Reglaget Meddelanden från källan. Det frågar aldrig om tillstånd, och utan tillstånd i iOS går det inte att ändra.
+    /// Reglaget Meddelanden från källan, i samma stil som adressernas reglage, så att rubriken får plats på en rad.
+    /// Det frågar aldrig om tillstånd, och utan tillstånd i iOS går det inte att ändra.
     private var sourceMessages: some View {
         let authorized = model.notificationAuthorization == .authorized
         return VStack(spacing: 0) {
-            ReminderToggleRow(
-                title: "Meddelanden från källan",
-                text: ReminderSettingsTexts.sourceMessagesFooter(authorized: authorized),
-                symbol: "megaphone",
-                pulse: 0,
-                isOn: Binding(
+            VStack(spacing: 0) {
+                Toggle(isOn: Binding(
                     get: { model.settings.sourceMessagesOn },
                     set: { model.clearStorageError(); model.setSourceMessages($0) }
-                )
-            )
-            .disabled(!authorized)
+                )) {
+                    Text("Meddelanden från källan")
+                        .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                        .foregroundStyle(Color.Theme.text)
+                }
+                .toggleStyle(.switch)
+                .tint(Color.Theme.primary)
+                .disabled(!authorized)
+                .padding(.horizontal, 20)
+                .frame(minHeight: 56)
+                .padding(.vertical, 6)
+            }
+            .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
+            footnote(ReminderSettingsTexts.sourceMessagesFooter(authorized: authorized))
         }
-        .background(Color.Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.Theme.border))
-        .padding(.top, 12)
+        .padding(.top, 16)
     }
 
     /// Texten under ett kort.
