@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var link: WebLink?
     @State private var showsHousehold = false
     @State private var showsChangelog = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var sourceCount: Int? { sources.map { $0.filter { !$0.testData }.count } }
 
@@ -151,7 +152,7 @@ struct SettingsView: View {
         }
     }
 
-    /// Reglaget Meddelanden från källan, i samma stil som adressernas reglage, så att rubriken får plats på en rad.
+    /// Reglaget Meddelanden från källan, med ikon som Live Activity men utan text i raden, så att rubriken får plats på en rad.
     /// Det frågar aldrig om tillstånd, och utan tillstånd i iOS går det inte att ändra.
     private var sourceMessages: some View {
         let authorized = model.notificationAuthorization == .authorized
@@ -161,9 +162,18 @@ struct SettingsView: View {
                     get: { model.settings.sourceMessagesOn },
                     set: { model.clearStorageError(); model.setSourceMessages($0) }
                 )) {
-                    Text("Meddelanden från källan")
-                        .font(.ui(20, weight: .heavy, relativeTo: .headline))
-                        .foregroundStyle(Color.Theme.text)
+                    HStack(spacing: 12) {
+                        Image(systemName: "megaphone")
+                            .font(.system(.title3, weight: .semibold))
+                            .foregroundStyle(Color.Theme.primary)
+                            .accessibilityHidden(true)
+                        // En rad, som krymper lite hellre än att brytas. Med de största textstorlekarna får den brytas.
+                        Text("Meddelanden från källan")
+                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                            .foregroundStyle(Color.Theme.text)
+                            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                            .minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
+                    }
                 }
                 .toggleStyle(.switch)
                 .tint(Color.Theme.primary)
