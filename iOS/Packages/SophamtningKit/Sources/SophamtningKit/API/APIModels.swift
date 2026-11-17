@@ -290,8 +290,10 @@ public struct AddressResponse: Codable, Hashable, Sendable {
     public let updatedAt: DayDate
     /// Hur långt schemat gäller. `nil` för live-källor, i äldre svar och när fältet är trasigt.
     public let schedule: SchedulePeriod?
+    /// Källans meddelanden som gällde när svaret hämtades. `[]` i äldre svar och när fältet saknas eller är trasigt.
+    public let messages: [SourceMessage]
 
-    public init(today: DayDate, address: Address, next: [NextPickup], summary: String, events: [PickupEvent], bins: [Bin], fractions: [String: FractionInfo], links: Links, updatedAt: DayDate, schedule: SchedulePeriod? = nil) {
+    public init(today: DayDate, address: Address, next: [NextPickup], summary: String, events: [PickupEvent], bins: [Bin], fractions: [String: FractionInfo], links: Links, updatedAt: DayDate, schedule: SchedulePeriod? = nil, messages: [SourceMessage] = []) {
         self.today = today
         self.address = address
         self.next = next
@@ -302,6 +304,7 @@ public struct AddressResponse: Codable, Hashable, Sendable {
         self.links = links
         self.updatedAt = updatedAt
         self.schedule = schedule
+        self.messages = messages
     }
 }
 
@@ -319,6 +322,41 @@ extension AddressResponse {
         updatedAt = try c.decode(DayDate.self, forKey: .updatedAt)
         // Saknas, `null` eller trasigt: ingen rad om hur långt schemat gäller. Schemat visas ändå.
         schedule = (try? c.decodeIfPresent(SchedulePeriod.self, forKey: .schedule)) ?? nil
+        // Saknas, `null` eller trasigt: inga meddelanden. Ett trasigt meddelande tas bort och fäller inte de andra.
+        let raw = (try? c.decodeIfPresent([Lenient<SourceMessage>].self, forKey: .messages)) ?? nil
+        messages = (raw ?? []).compactMap(\.value)
+    }
+}
+
+/// Ett tillfälligt besked från källan, till exempel att hämtrutterna läggs om. `id` är unikt inom källan och återanvänds aldrig.
+public struct SourceMessage: Codable, Hashable, Sendable {
+    public let id: String
+    public let title: String
+    public let text: String
+    /// Källans egen sida om saken, eller `nil`.
+    public let url: URL?
+    /// Första och sista dagen meddelandet gäller, båda inklusive.
+    public let validFrom: DayDate
+    public let validTo: DayDate
+
+    public init(id: String, title: String, text: String, url: URL?, validFrom: DayDate, validTo: DayDate) {
+        self.id = id
+        self.title = title
+        self.text = text
+        self.url = url
+        self.validFrom = validFrom
+        self.validTo = validTo
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        text = try c.decode(String.self, forKey: .text)
+        // En länk som inte går att tolka tas bort, men meddelandet visas ändå.
+        url = (try? c.decodeIfPresent(URL.self, forKey: .url)) ?? nil
+        validFrom = try c.decode(DayDate.self, forKey: .validFrom)
+        validTo = try c.decode(DayDate.self, forKey: .validTo)
     }
 }
 

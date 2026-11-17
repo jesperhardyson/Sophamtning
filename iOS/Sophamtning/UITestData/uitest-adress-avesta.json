@@ -161,5 +161,15 @@
     "ics": "https://sopor.hardyson.se/ics/avesta/trakt-1.ics",
     "web": "https://sopor.hardyson.se/avesta/trakt-1"
   },
-  "updatedAt": "2026-11-03"
+  "updatedAt": "2026-11-03",
+  "messages": [
+    {
+      "id": "nya-rutter-2026",
+      "title": "Hämtrutterna läggs om",
+      "text": "Avesta Vatten och Avfall lägger om hämtrutterna under hösten 2026 när kärlen för förpackningar ställs ut. Schemat här kan bli fel. Kontrollera dina tömningsdagar på Mina sidor hos Avesta Vatten.",
+      "url": "https://avestavatten.se/avfall/Narsorterat/",
+      "validFrom": "2026-01-01",
+      "validTo": "2099-12-31"
+    }
+  ]
 }

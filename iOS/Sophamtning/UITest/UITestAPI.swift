@@ -46,7 +46,8 @@ struct UITestAPI: SoporAPI {
         return AddressResponse(
             today: response.today, address: response.address, next: response.next, summary: response.summary,
             events: response.events, bins: response.bins, fractions: response.fractions, links: response.links,
-            updatedAt: response.updatedAt, schedule: SchedulePeriod(until: until, reason: response.schedule?.reason)
+            updatedAt: response.updatedAt, schedule: SchedulePeriod(until: until, reason: response.schedule?.reason),
+            messages: response.messages
         )
     }
 

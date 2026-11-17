@@ -87,8 +87,10 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
     public var liveActivityOn: Bool
     /// Förslaget om påminnelse efter första adressen har visats och besvarats, eller en påminnelse har slagits på.
     public var reminderOfferShown: Bool
+    /// Notis när källan har ett nytt meddelande. På från början, men skickas bara när iOS redan tillåter notiser.
+    public var sourceMessagesOn: Bool
 
-    public init(eveningOn: Bool = true, morningOn: Bool = false, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityTiming: ReminderTiming = .eveningBefore, liveActivityMinutes: Int? = nil, liveActivityOn: Bool = false, reminderOfferShown: Bool = false) {
+    public init(eveningOn: Bool = true, morningOn: Bool = false, reminderMinutes: Int = 1080, morningMinutes: Int = 360, liveActivityTiming: ReminderTiming = .eveningBefore, liveActivityMinutes: Int? = nil, liveActivityOn: Bool = false, reminderOfferShown: Bool = false, sourceMessagesOn: Bool = true) {
         self.eveningOn = eveningOn
         self.morningOn = morningOn
         self.reminderMinutes = reminderMinutes
@@ -98,11 +100,12 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         self.liveActivityMinutes = 0
         self.liveActivityOn = liveActivityOn
         self.reminderOfferShown = reminderOfferShown
+        self.sourceMessagesOn = sourceMessagesOn
         self.liveActivityMinutes = liveActivityMinutes ?? minutes(for: liveActivityTiming)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case eveningOn, morningOn, reminderMinutes, morningMinutes, liveActivityTiming, liveActivityMinutes, liveActivityOn, reminderOfferShown
+        case eveningOn, morningOn, reminderMinutes, morningMinutes, liveActivityTiming, liveActivityMinutes, liveActivityOn, reminderOfferShown, sourceMessagesOn
         /// Det gamla enda valet. Läses men skrivs aldrig.
         case timing
     }
@@ -115,6 +118,8 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         reminderMinutes = try container.decode(Int.self, forKey: .reminderMinutes)
         liveActivityOn = try container.decode(Bool.self, forKey: .liveActivityOn)
         reminderOfferShown = try container.decodeIfPresent(Bool.self, forKey: .reminderOfferShown) ?? false
+        // Sparade före valet: på, som för nya användare.
+        sourceMessagesOn = try container.decodeIfPresent(Bool.self, forKey: .sourceMessagesOn) ?? true
         morningMinutes = try container.decodeIfPresent(Int.self, forKey: .morningMinutes) ?? ReminderTiming.sameMorning.defaultMinutes
         let old = (try container.decodeIfPresent(String.self, forKey: .timing)).flatMap(ReminderTiming.init(rawValue:)) ?? .eveningBefore
         let evening = try container.decodeIfPresent(Bool.self, forKey: .eveningOn)
@@ -144,6 +149,7 @@ public struct ReminderSettings: Hashable, Codable, Sendable {
         try container.encode(liveActivityMinutes, forKey: .liveActivityMinutes)
         try container.encode(liveActivityOn, forKey: .liveActivityOn)
         try container.encode(reminderOfferShown, forKey: .reminderOfferShown)
+        try container.encode(sourceMessagesOn, forKey: .sourceMessagesOn)
     }
 
     /// Giltigt är det valdas tider i steg om 15 minuter.

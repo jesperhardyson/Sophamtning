@@ -4,7 +4,7 @@ import Foundation
 /// och appens tunna lager kopplar den till BackgroundTasks.
 ///
 /// Körningen bokar nästa körning först, hämtar hushållets ändringar, hämtar scheman enligt `RefreshPolicy` (`refreshAll(manual: false)`), kör
-/// `applyReminders`, laddar om widgeten och avslutar. Den startar aldrig en Live Activity: en bakgrundskörning får inte det,
+/// `applyReminders`, laddar om widgeten. Nya meddelanden från källan ger då en notis och avslutar. Den startar aldrig en Live Activity: en bakgrundskörning får inte det,
 /// och planerarens aktiviteter startas bara när appen är öppen. Att ta bort och uppdatera går bra. Tiden ute (`expire()`) avslutar uppgiften direkt.
 /// `complete` anropas exakt en gång, oavsett om arbetet eller tiden ute kommer först.
 @MainActor
@@ -44,7 +44,7 @@ public final class BackgroundRefreshRun {
         work = Task { @MainActor in
             // Hushållets ändringar först, så att andras bockar tystar påminnelserna som planeras nedan.
             await model.fetchHouseholdChanges()
-            await model.refreshAll(manual: false, startingActivities: false)
+            await model.refreshAll(manual: false, startingActivities: false, context: .background)
             model.applyReminders(startingActivities: false)
             await model.settleReminders()
             finish(success: true)

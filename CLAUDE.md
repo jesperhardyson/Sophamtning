@@ -41,6 +41,7 @@ UI-testerna är bara några få kärnflöden och tar cirka 3 minuter som hel svi
 - User-Agent är `Sophamtning-iOS/<version>`. Varje adress hämtas högst en gång i timmen.
 - "I dag" och alla påminnelsetider räknas i `Europe/Stockholm`, oavsett telefonens tidszon.
 - Notiser och Live Activities är avstängda från början. Inget schemaläggs utan användarens val.
+  - Undantag: Meddelanden från källan är på från början, men en sådan notis skickas bara när iOS redan tillåter notiser, och appen frågar aldrig om tillstånd för den.
 - Sparade `daysUntil`, `isToday`, `isTomorrow` och `text` visas aldrig. Adress-id tolkas och byggs aldrig om.
 - Fraktioner visas alltid med färg, ikon och text. `estimated: true` visas som "ca" överallt.
 - Tekniska fel får aldrig se ut som att en adress eller kommun saknas.
