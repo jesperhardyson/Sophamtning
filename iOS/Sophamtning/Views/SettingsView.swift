@@ -23,7 +23,6 @@ struct SettingsView: View {
     @State private var link: WebLink?
     @State private var showsHousehold = false
     @State private var showsChangelog = false
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var sourceCount: Int? { sources.map { $0.filter { !$0.testData }.count } }
 
@@ -167,12 +166,11 @@ struct SettingsView: View {
                             .font(.system(.title3, weight: .semibold))
                             .foregroundStyle(Color.Theme.primary)
                             .accessibilityHidden(true)
-                        // En rad, som krymper lite hellre än att brytas. Med de största textstorlekarna får den brytas.
+                        // 18 pt, så att rubriken ryms på en rad bredvid ikonen utan att krympas. Krympt text räknas som klippt
+                        // i granskningen. Vid större text bryts den i stället.
                         Text("Meddelanden från källan")
-                            .font(.ui(20, weight: .heavy, relativeTo: .headline))
+                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
                             .foregroundStyle(Color.Theme.text)
-                            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
-                            .minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
                     }
                 }
                 .toggleStyle(.switch)
