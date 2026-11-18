@@ -64,7 +64,7 @@ Meddelandena samlas från alla sparade adressers sparade svar, och nyckeln är k
 ## Inställningar
 
 - Under avsnittet Notiser, efter raden Tid: reglaget **Meddelanden från källan**, på från början.
-- Reglaget står i ett eget kort under raden Tid, med ikonen `megaphone` som Live Activity men utan text i raden, så att rubriken får plats på en rad. Den krymper hellre än bryts, utom vid de största textstorlekarna. Texten under kortet: "Notis när källan har ett viktigt besked, till exempel att hämtrutterna läggs om. Skilt från påminnelserna."
+- Reglaget står i ett eget kort under raden Tid, med ikonen `megaphone` som Live Activity men utan text i raden, så att rubriken får plats på en rad. Rubriken är 18 pt och krymps aldrig, eftersom granskningen räknar krympt text som klippt. Vid större text bryts den. Texten under kortet: "Notis när källan har ett viktigt besked, till exempel att hämtrutterna läggs om. Skilt från påminnelserna."
 - När iOS inte tillåter notiser är reglaget avstängt och texten slutar med "Notiser är avstängda för appen i iOS." Reglaget frågar aldrig om tillstånd.
 - Valet sparas i `ReminderSettings` som `sourceMessagesOn`. Inställningar sparade före fältet läses som `true`.
 

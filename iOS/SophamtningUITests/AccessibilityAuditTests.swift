@@ -265,6 +265,9 @@ final class AccessibilityAuditTests: XCTestCase {
                         // Apples knapp ShortcutsLink i Siri-kortet: texten syns fullt ut i skärmdumpen, men ramen räknas som
                         // för låg. Knappen ritas av systemet och går inte att ändra från appen.
                         if element.elementType == .staticText, element.label == "Sophämtning-genvägar" { return true }
+                        // Apples SiriTipView i Siri-kortet: frasen syns fullt ut i skärmdumpen, men ramen räknas som för smal.
+                        // Vyn ritas av systemet och går inte att ändra från appen.
+                        if element.elementType == .staticText, element.label == "Säg ”När töms soporna i Sophämtning”" { return true }
                     }
                     // Kontrasten är kontrollerad mot designens färgpar. Granskningen räknar fel på text över bilder och
                     // genomskinliga ytor, så den är fortsatt avstängd.
