@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/jesperhardyson/Sophamtning/compare/v1.3.0...v1.3.1) (2026-11-18)
+
+
+### Rättat
+
+* Rubriken Meddelanden från källan krymps inte i Inställningar ([#80](https://github.com/jesperhardyson/Sophamtning/issues/80)) ([448d4fa](https://github.com/jesperhardyson/Sophamtning/commit/448d4fa062bb1eef0a1acf1e5b60451072609d97))
+
 ## [1.3.0](https://github.com/jesperhardyson/Sophamtning/compare/v1.2.0...v1.3.0) (2026-11-17)
 
 
