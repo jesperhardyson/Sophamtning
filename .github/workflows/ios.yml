@@ -8,7 +8,36 @@ permissions:
   contents: read
 
 jobs:
+  # Avgör om iOS har ändrats. Filtret ligger inte i on:, eftersom regeluppsättningen kräver kontrollen test: en workflow
+  # som aldrig startar lämnar kontrollen hängande, medan ett jobb som hoppas över med if räknas som godkänt.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Ändrade filer
+        id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          files=$(git diff --name-only "$BASE" HEAD)
+          echo "$files"
+          if echo "$files" | grep -qE '^(iOS/|scripts/|\.github/workflows/(ios|release)\.yml$|release-please-config\.json$|\.release-please-manifest\.json$)'; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: changes
+    # Hoppas bara över när changes säger nej. Fallerar changes körs testerna ändå, så att inget mergas otestat.
+    if: ${{ !cancelled() && needs.changes.outputs.ios != 'false' }}
     runs-on: macos-26
     timeout-minutes: 30
     steps:

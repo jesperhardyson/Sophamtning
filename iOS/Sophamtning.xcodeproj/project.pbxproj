@@ -43,7 +43,6 @@
 		74A4A665F1F1EEE78D8A723A /* ScheduleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2646AA909312B4395C8FC349 /* ScheduleViews.swift */; };
 		7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6B786AF21090DE7863B3899 /* Assets.xcassets */; };
 		76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */; };
-		78D513CB16D19AD771582847 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 42858D5F7A3FA95398AC0C85 /* CHANGELOG.md */; };
 		90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F307C543EEA02E99659E697 /* NotificationPresenter.swift */; };
 		920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83C77BCFF8F5F3C97D1E11A /* UITestAPI.swift */; };
 		9392F46D1606F5A50029A130 /* MarkPlacedOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */; };
@@ -63,6 +62,7 @@
 		D829D046905BD3FA5C15762E /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 08A2A12CB9B32C2777C3AF04 /* SophamtningDesign */; };
 		D9CC6F196E7BF4D16BA2BB8E /* QuickActionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E3159073675AD584A68EDF /* QuickActionsTests.swift */; };
 		E3E832556BDB2AF4EA1BFBF4 /* uitest-adress-avesta.json in Resources */ = {isa = PBXBuildFile; fileRef = 83F19D1437073960567F4C69 /* uitest-adress-avesta.json */; };
+		E4D73DB86AA83416269BE800 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = FCDA2FA118647EE389A499AB /* CHANGELOG.md */; };
 		E52B35185576088B07E7F7AA /* AddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519B4FEE665A1EE8E9AF3CD7 /* AddressView.swift */; };
 		E8809D7C66D5ED4E729C59D1 /* CoreFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */; };
 		EDAA18B8BBA5A40D6D490A37 /* AreaPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */; };
@@ -118,7 +118,6 @@
 		398251C87A41F3B198FCCA12 /* CoreFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreFlowTests.swift; sourceTree = "<group>"; };
 		3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkPlacedOutIntent.swift; sourceTree = "<group>"; };
 		3F0D4BB96881209C2ACA88F8 /* HouseholdShareAcceptance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdShareAcceptance.swift; sourceTree = "<group>"; };
-		42858D5F7A3FA95398AC0C85 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
 		456CA478F3DAA6359F968AE6 /* LiveActivityScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityScheduler.swift; sourceTree = "<group>"; };
 		49713674AF12521818193251 /* AreaFinderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaFinderSheet.swift; sourceTree = "<group>"; };
@@ -171,6 +170,7 @@
 		F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerView.swift; sourceTree = "<group>"; };
 		FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressEntity.swift; sourceTree = "<group>"; };
 		FC4BE44B59AE1A33494CA69B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FCDA2FA118647EE389A499AB /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -223,10 +223,10 @@
 		4D7DA47755D74838DFD79873 = {
 			isa = PBXGroup;
 			children = (
+				FCDA2FA118647EE389A499AB /* CHANGELOG.md */,
 				6B7534172D11547D4E2C9651 /* Config */,
 				7A0FE1F3ACCC9DCB17052506 /* Packages */,
 				74D8575D7FC8CD9FD1EC9E7B /* Sophamtning */,
-				F18E1E6A07B5E25FDAD22FB7 /* Sophamtning-lasskarm */,
 				A56B39B834D616C72AA4C4A5 /* SophamtningUITests */,
 				8695B78B42B387C7502982F5 /* SophamtningWidgets */,
 				9EA4635974972027A134D901 /* Products */,
@@ -363,15 +363,6 @@
 			path = Siri;
 			sourceTree = "<group>";
 		};
-		F18E1E6A07B5E25FDAD22FB7 /* Sophamtning-lasskarm */ = {
-			isa = PBXGroup;
-			children = (
-				42858D5F7A3FA95398AC0C85 /* CHANGELOG.md */,
-			);
-			name = "Sophamtning-lasskarm";
-			path = ..;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -490,7 +481,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7609E70879B0A5FF6059EDB8 /* Assets.xcassets in Resources */,
-				78D513CB16D19AD771582847 /* CHANGELOG.md in Resources */,
+				E4D73DB86AA83416269BE800 /* CHANGELOG.md in Resources */,
 				6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */,
 				E3E832556BDB2AF4EA1BFBF4 /* uitest-adress-avesta.json in Resources */,
 				5C1BFCD9B4E55AB06D91F058 /* uitest-adress-tom.json in Resources */,

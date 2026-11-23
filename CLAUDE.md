@@ -58,9 +58,12 @@ Releaser sköts med Release Please (googleapis/release-please-action), med versi
 
 - Release Please läser commit-meddelandena på `main`: `feat:` höjer minor, `fix:` höjer patch och `!` höjer major. Andra typer ger ingen release och syns inte i changelogen.
 - Repot squash-mergar, så PR-titeln blir commit-meddelandet på `main`. Titeln måste därför följa formatet ovan.
-- Release Please håller en öppen release-PR med nästa version i `version.txt` och `CHANGELOG.md`. När den mergas skapas taggen `vX.Y.Z` och en GitHub Release.
+- Varje app är en egen komponent i Release Please, med egen version, changelog och tagg. iOS har `iOS/version.txt`, `iOS/CHANGELOG.md` och taggen `ios-vX.Y.Z`. Releaser före 1.3.2 har taggen `vX.Y.Z`. Spec: `docs/specs/2026-11-23-android-app.md`.
+- En commit räknas till den app vars filer den ändrar. En commit som bara ändrar `docs/`, `scripts/` eller roten ger ingen release.
+- Release Please håller en öppen release-PR per app med nästa version. När den mergas skapas appens tagg och en GitHub Release.
+- I `ios.yml` avgör jobbet `changes` om iOS har ändrats. Annars hoppas den obligatoriska kontrollen `test` över, vilket räknas som godkänt.
 - Innan release-PR:en mergas körs schemat `Granskning` (tillgänglighetsgranskningen och största texten, cirka 10 minuter). Det körs inte i den vanliga sviten.
 - När release-PR:en mergas startar jobbet TestFlight i samma körning. Det väntar på Jespers godkännande i miljön `testflight`, och laddar sedan upp till App Store Connect. App Store-inskickning görs bara efter hans godkännande. En uppladdning kan göras om med Actions > Release > Run workflow och taggen.
-- Ett testbygge görs med Actions > Release > Run workflow, med en gren vald och tomt taggfält. Det får nästa patchversion efter `version.txt` och ändrar ingen fil i repot.
-- Appens version (`MARKETING_VERSION` i `iOS/Config/Version.xcconfig`) ska alltid vara densamma som i `version.txt`. Release Please uppdaterar båda. Byggnumret räknas fram i jobbet. Ändra aldrig version eller changelog för hand.
+- Ett testbygge görs med Actions > Release > Run workflow, med en gren vald och tomt taggfält. Det får nästa patchversion efter `iOS/version.txt` och ändrar ingen fil i repot.
+- Appens version (`MARKETING_VERSION` i `iOS/Config/Version.xcconfig`) ska alltid vara densamma som i `iOS/version.txt`. Release Please uppdaterar båda. Byggnumret räknas fram i jobbet. Ändra aldrig version eller changelog för hand.
 - Ändringar i specen godkänns av Jesper innan bygget fortsätter.

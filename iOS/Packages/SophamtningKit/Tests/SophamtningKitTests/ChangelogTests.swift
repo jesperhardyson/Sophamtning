@@ -66,8 +66,8 @@ private let sample = """
 }
 
 @Test func riktigaChangelogenGårAttLäsa() throws {
-    // Repots CHANGELOG.md, som följer med appen. Ändrar Release Please formatet ska det märkas här.
-    let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appending(path: "../../../../../CHANGELOG.md").standardizedFileURL
+    // iOS-appens CHANGELOG.md, som följer med appen. Ändrar Release Please formatet ska det märkas här.
+    let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appending(path: "../../../../CHANGELOG.md").standardizedFileURL
     let versions = Changelog.parse(try String(contentsOf: root, encoding: .utf8))
     #expect(!versions.isEmpty)
     #expect(versions.allSatisfy { $0.title.contains(" · ") && !$0.sections.isEmpty })

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Taggen vars changelog ska användas, till exempel v1.0.1"
+        description: "Taggen vars changelog ska användas, till exempel ios-v1.4.0 eller v1.3.1"
         required: true
 
 permissions:
@@ -38,5 +38,7 @@ jobs:
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt==2.13.0" "cryptography==49.0.0"
+          # Versionen ur ios-vX.Y.Z eller en äldre vX.Y.Z.
+          version="${TAG#ios-}"
           "$RUNNER_TEMP/venv/bin/python" scripts/release_notes.py appstore \
-            --version "${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
+            --version "${version#v}" --notes-file "$RUNNER_TEMP/notes.md"
