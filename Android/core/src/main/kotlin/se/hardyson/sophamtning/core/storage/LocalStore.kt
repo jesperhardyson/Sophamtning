@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import se.hardyson.sophamtning.core.dates.DayDate
+import se.hardyson.sophamtning.core.messages.SourceMessageMemory
 
 /**
  * Resultatet av att läsa en fil. `Missing` är en fil som inte finns, vilket är ett normalt läge. Finns den men går inte att
@@ -102,6 +103,13 @@ class LocalStore(
     fun sources(): CachedSources? = read(SOURCES, CachedSources.serializer())
 
     fun setSources(sources: CachedSources) = write(SOURCES, CachedSources.serializer(), sources)
+
+    // MARK: Meddelanden från källan
+
+    /** Sedda och stängda meddelanden. En fil som inte går att läsa ger [StoreRead.Unreadable] och skrivs inte över här. */
+    fun sourceMessageMemoryState(): StoreRead<SourceMessageMemory> = readState(SOURCE_MESSAGES, SourceMessageMemory.serializer())
+
+    fun setSourceMessageMemory(memory: SourceMessageMemory) = write(SOURCE_MESSAGES, SourceMessageMemory.serializer(), memory)
 
     // MARK: Scheman
 
@@ -204,6 +212,7 @@ class LocalStore(
         private const val ADDRESSES = "addresses.json"
         private const val SETTINGS = "settings.json"
         private const val SOURCES = "sources.json"
+        private const val SOURCE_MESSAGES = "source-messages.json"
         private const val PLACED_OUT = "placed-out.json"
         private const val SHOWN = "shown-activities.json"
         private const val ENDED = "ended-activities.json"
