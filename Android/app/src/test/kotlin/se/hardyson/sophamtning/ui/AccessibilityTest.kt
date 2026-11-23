@@ -52,6 +52,10 @@ import se.hardyson.sophamtning.navigation.FullSchedule
 import se.hardyson.sophamtning.navigation.Home
 import se.hardyson.sophamtning.navigation.KommunCheck
 import se.hardyson.sophamtning.navigation.Settings
+import se.hardyson.sophamtning.navigation.LiveUpdateTiming
+import se.hardyson.sophamtning.navigation.ReminderTimeChoice
+import se.hardyson.sophamtning.navigation.ReminderTimes
+import se.hardyson.sophamtning.core.storage.ReminderTiming
 import se.hardyson.sophamtning.ui.theme.SophamtningTheme
 
 /**
@@ -167,6 +171,31 @@ open class AccessibilityTest {
     @Test
     fun installningarna() {
         show(Settings, "Testgatan 1", waitFor = "Om appen")
+        audit()
+    }
+
+    @Test
+    fun installningarnaMedLiveUpdate() {
+        app.store.setSettings(se.hardyson.sophamtning.core.storage.ReminderSettings(liveActivityOn = true))
+        show(Settings, "Testgatan 1", waitFor = "Visas från")
+        audit()
+    }
+
+    @Test
+    fun notisernasTider() {
+        show(ReminderTimes, "Testgatan 1", waitFor = "Samma morgon")
+        audit()
+    }
+
+    @Test
+    fun klockslagen() {
+        show(ReminderTimeChoice(ReminderTiming.SameMorning, liveUpdate = false), waitFor = "05:00")
+        audit()
+    }
+
+    @Test
+    fun liveUpdatensTid() {
+        show(LiveUpdateTiming, waitFor = "Kvällen före")
         audit()
     }
 

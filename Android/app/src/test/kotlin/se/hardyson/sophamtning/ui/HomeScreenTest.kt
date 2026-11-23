@@ -128,7 +128,7 @@ class HomeScreenTest {
         assertFalse(compose.isShowing("i morgon", substring = true))
     }
 
-    // Tills plan 5 finns inga påminnelser, och det som inte kan fungera visas inte.
+    // Utan påminnelser (DisabledNotifications) visas inget som inte kan fungera.
 
     @Test
     fun forslagetVisasNarPaminnelserFinns() {

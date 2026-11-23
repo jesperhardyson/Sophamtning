@@ -81,6 +81,7 @@ import se.hardyson.sophamtning.ui.components.SectionTitle
 import se.hardyson.sophamtning.ui.components.isLargeText
 import se.hardyson.sophamtning.ui.home.PlacedOutRow
 import se.hardyson.sophamtning.ui.home.openNotificationSettings
+import se.hardyson.sophamtning.ui.settings.ReminderToggleRow
 import se.hardyson.sophamtning.ui.theme.ThemeToken
 import se.hardyson.sophamtning.ui.theme.Weight
 import se.hardyson.sophamtning.ui.theme.color
@@ -359,34 +360,11 @@ private fun Reminders(detail: AddressDetail, ui: AddressViewModel.Ui, vm: Addres
         }
     }
     SectionCard {
-        ToggleRow(HomeContent.reminderTitle(), detail.reminderText, ui.remindersOn) { on -> vm.setNotifications(on, onDenied) }
+        ReminderToggleRow(HomeContent.reminderTitle(), detail.reminderText, ui.remindersOn) { on -> vm.setNotifications(on, onDenied) }
         // Live Update gäller bara huvudadressen.
         if (detail.isPrimary) {
             SectionDivider()
-            ToggleRow(stringResource(R.string.live_update), detail.liveActivityText, ui.state.settings.liveActivityOn, vm::setLiveActivity)
+            ReminderToggleRow(stringResource(R.string.live_update), detail.liveActivityText, ui.state.settings.liveActivityOn, vm::setLiveActivity)
         }
-    }
-}
-
-/** En rad med reglage, som ReminderToggleRow.swift. Hela raden är reglaget för TalkBack. */
-@Composable
-private fun ToggleRow(title: String, text: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color)
-            Text(text, style = uiText(15, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = null,
-            colors = SwitchDefaults.colors(checkedTrackColor = ThemeToken.Primary.color, checkedThumbColor = ThemeToken.OnPrimary.color),
-        )
     }
 }

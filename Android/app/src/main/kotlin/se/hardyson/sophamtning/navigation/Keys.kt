@@ -3,6 +3,7 @@ package se.hardyson.sophamtning.navigation
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import se.hardyson.sophamtning.core.storage.AddressKey
+import se.hardyson.sophamtning.core.storage.ReminderTiming
 
 // Skärmarna i backstacken. Nycklarna sparas när appen dödas, så att backstacken finns kvar när den startas om.
 
@@ -64,3 +65,15 @@ data object DataSources : NavKey
 /** Nyheter, från raden Version i Inställningar. */
 @Serializable
 data object Changelog : NavKey
+
+/** Notisernas val, från raden Tid i Inställningar: adresserna, kvällen före och samma morgon. */
+@Serializable
+data object ReminderTimes : NavKey
+
+/** Klockslagen för [timing], för notisen eller, med [liveUpdate], för Live Updatens egen tid. */
+@Serializable
+data class ReminderTimeChoice(val timing: ReminderTiming, val liveUpdate: Boolean) : NavKey
+
+/** När Live Update visas, från raden Visas från i Inställningar. */
+@Serializable
+data object LiveUpdateTiming : NavKey

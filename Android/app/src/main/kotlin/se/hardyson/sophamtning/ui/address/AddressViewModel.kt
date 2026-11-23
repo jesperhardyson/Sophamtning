@@ -50,7 +50,9 @@ class AddressViewModel(private val dependencies: AppDependencies, val key: Addre
                 settings = state.settings,
                 sourceName = sources?.let { list -> sourceName(key.source, list) },
                 now = now,
-                remindersOn = state.remindersOn(it),
+                // Raden om passerad påminnelse gäller inte när tömningen redan är påmind eller en reserv ligger framför.
+                remindersOn = state.missedReminderApplies(it, now),
+                reserveAt = state.reserveNotificationDate(it, now),
                 ownPlacedOut = state.ownPlacedOut,
                 placedOutTimes = state.placedOutTimes,
             ).let(state::withoutUnavailableReminders)
@@ -99,9 +101,10 @@ class AddressViewModel(private val dependencies: AppDependencies, val key: Addre
         }
     }
 
+    /** Live Update är en notis på Android, så frågan om notiser ställs när den slås på och tillståndet inte är avgjort. */
     fun setLiveActivity(on: Boolean) {
         model.clearStorageError()
-        model.setLiveActivity(on)
+        viewModelScope.launch { model.setLiveUpdate(on) }
     }
 
     fun placeOut() {

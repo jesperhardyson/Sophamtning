@@ -637,6 +637,25 @@ class AppModel(
         applyReminders()
     }
 
+    /**
+     * Live Update som användaren slår på eller av i appen. På Android är den en notis, så frågan om notiser ställs när den
+     * slås på och tillståndet inte är avgjort, som för Påminn mig. Valet sparas även när systemet nekar notiser, så att
+     * rutan om avstängda notiser visas. `Denied` när systemet nekar, `Failed` när valet inte gick att spara.
+     */
+    suspend fun setLiveUpdate(on: Boolean): PermissionResult {
+        var status = NotificationAuthorization.Authorized
+        if (on) {
+            status = notifications.authorization()
+            if (status == NotificationAuthorization.NotDetermined) {
+                status = if (notifications.requestAuthorization()) NotificationAuthorization.Authorized else NotificationAuthorization.Denied
+                _state.update { it.copy(notificationAuthorization = status) }
+            }
+        }
+        if (!saveSettings(current.settings.copy(liveActivityOn = on))) return PermissionResult.Failed
+        applyReminders()
+        return if (status == NotificationAuthorization.Authorized) PermissionResult.Granted else PermissionResult.Denied
+    }
+
     /** Slår kvällen före eller samma morgon på eller av. Minst ett val är alltid på, så det sista går inte att stänga av. */
     fun setReminder(timing: ReminderTiming, on: Boolean): Boolean {
         val settings = current.settings

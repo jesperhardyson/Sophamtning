@@ -878,4 +878,31 @@ class AppModelRemindersTest {
         model.settleReminders()
         assertNull(model.s.reserveNotificationDate(model.s.addresses[0], clock.now))
     }
+
+    // Android: Live Update är en notis, så frågan om notiser ställs när den slås på, som för Påminn mig.
+
+    @Test
+    fun liveUpdateFragarOmNotiserNarTillstandetInteArAvgjort() = runTest {
+        val dir = tempDir()
+        val scheduler = FakeNotifications(NotificationAuthorization.NotDetermined)
+        val model = makeModel(scheduler, dir)
+        assertEquals(PermissionResult.Granted, model.setLiveUpdate(true))
+        assertEquals(1, scheduler.requests)
+        assertTrue(LocalStore(dir).settings().liveActivityOn)
+        // Avgjort tillstånd frågas inte igen, och att stänga av frågar aldrig.
+        assertEquals(PermissionResult.Granted, model.setLiveUpdate(false))
+        assertEquals(PermissionResult.Granted, model.setLiveUpdate(true))
+        assertEquals(1, scheduler.requests)
+    }
+
+    @Test
+    fun liveUpdateSparasAvenNarNotiserNekas() = runTest {
+        val dir = tempDir()
+        val scheduler = FakeNotifications(NotificationAuthorization.NotDetermined, answer = false)
+        val model = makeModel(scheduler, dir)
+        assertEquals(PermissionResult.Denied, model.setLiveUpdate(true))
+        // Valet är kvar, och rutan om avstängda notiser visas tills systemet tillåter dem.
+        assertTrue(model.s.settings.liveActivityOn)
+        assertEquals(NotificationAuthorization.Denied, model.s.notificationAuthorization)
+    }
 }

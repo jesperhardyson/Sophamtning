@@ -144,6 +144,15 @@
     <string name="channel_source_messages">Meddelanden från källan</string>
     <string name="channel_source_messages_description">Nya meddelanden från den som tömmer kärlen, till exempel ändrade turer.</string>
     <string name="settings_time">Tid</string>
+    <string name="settings_addresses">Adresser</string>
+    <string name="settings_remind_me">Påminn mig</string>
+    <string name="settings_live_update_from">Visas från</string>
+    <string name="settings_exact_times">Exakta tider</string>
+    <string name="settings_exact_times_value">Tillåt</string>
+    <string name="settings_exact_times_footer">Påminnelserna kommer inom 10 minuter efter vald tid. Tillåt exakta tider i systemet för att få dem på minuten.</string>
+    <string name="live_update_off_title">Live Update är avstängd</string>
+    <string name="live_update_off_text">Du har stängt av notiser för Live Update i systemet.</string>
+    <string name="live_update_missing_title">Live Update saknas</string>
     <string name="settings_source_messages">Meddelanden från källan</string>
     <string name="settings_primary">Huvudadress</string>
     <string name="settings_about">Om appen</string>
