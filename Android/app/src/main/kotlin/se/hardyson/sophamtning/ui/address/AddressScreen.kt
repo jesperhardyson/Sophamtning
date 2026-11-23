@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.address
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,9 +85,6 @@ import se.hardyson.sophamtning.ui.theme.Weight
 import se.hardyson.sophamtning.ui.theme.color
 import se.hardyson.sophamtning.ui.theme.uiText
 
-/** Texterna när systemet har nekat notiser, samma i adressvyn och i dialogen. */
-private const val DENIED_TITLE = "Notiser är avstängda"
-private const val DENIED_MESSAGE = "Du har stängt av notiser för Sophämtning i systemet."
 
 @Composable
 private fun addressViewModel(key: AddressKey): AddressViewModel {
@@ -115,19 +114,19 @@ fun AddressScreen(key: AddressKey, navigator: AppNavigator) {
         actions = {
             if (detail != null) {
                 Box {
-                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "Mer") }
+                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more)) }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(text = { Text("Byt namn") }, leadingIcon = { Icon(Icons.Filled.Edit, null) }, onClick = {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, leadingIcon = { Icon(Icons.Filled.Edit, null) }, onClick = {
                             menuOpen = false
                             navigator.open(Rename(key))
                         })
                         if (!detail.isPrimary) {
-                            DropdownMenuItem(text = { Text("Gör till huvudadress") }, leadingIcon = { Icon(Icons.Filled.Home, null) }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.action_make_primary)) }, leadingIcon = { Icon(Icons.Filled.Home, null) }, onClick = {
                                 menuOpen = false
                                 vm.setPrimary()
                             })
                         }
-                        DropdownMenuItem(text = { Text("Ta bort") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.action_remove)) }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = {
                             menuOpen = false
                             confirmingRemoval = true
                         })
@@ -175,15 +174,15 @@ fun AddressScreen(key: AddressKey, navigator: AppNavigator) {
     if (deniedDialog) {
         AlertDialog(
             onDismissRequest = { deniedDialog = false },
-            title = { Text(DENIED_TITLE) },
-            text = { Text(DENIED_MESSAGE) },
+            title = { Text(stringResource(R.string.notifications_denied_title)) },
+            text = { Text(stringResource(R.string.notifications_denied_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     deniedDialog = false
                     context.openNotificationSettings()
-                }) { Text("Öppna inställningar") }
+                }) { Text(stringResource(R.string.action_open_settings)) }
             },
-            dismissButton = { TextButton(onClick = { deniedDialog = false }) { Text("OK") } },
+            dismissButton = { TextButton(onClick = { deniedDialog = false }) { Text(stringResource(R.string.action_ok)) } },
             containerColor = ThemeToken.Surface.color,
         )
     }
@@ -194,7 +193,7 @@ fun AddressScreen(key: AddressKey, navigator: AppNavigator) {
 fun FullScheduleScreen(key: AddressKey, navigator: AppNavigator) {
     val vm = addressViewModel(key)
     val ui by vm.ui.collectAsStateWithLifecycle()
-    ScreenScaffold(title = "Hela schemat", onBack = { navigator.back() }, large = true) { padding ->
+    ScreenScaffold(title = stringResource(R.string.full_schedule), onBack = { navigator.back() }, large = true) { padding ->
         RefreshableColumn(onRefresh = vm::refresh, modifier = Modifier.padding(padding)) {
             val detail = ui.detail
             if (detail == null) {
@@ -243,8 +242,8 @@ private fun RefreshableColumn(onRefresh: suspend () -> Unit, modifier: Modifier 
 @Composable
 private fun StorageErrorCard(error: String, onClear: () -> Unit) {
     MessageCard(
-        title = "Något gick fel",
-        text = "$error Tryck för att stänga.",
+        title = stringResource(R.string.error_title),
+        text = stringResource(R.string.error_tap_to_close, error),
         style = MessageStyle.Warning,
         icon = Icons.Filled.Warning,
         modifier = Modifier.padding(bottom = 16.dp).clickable(role = Role.Button, onClick = onClear),
@@ -255,9 +254,9 @@ private fun StorageErrorCard(error: String, onClear: () -> Unit) {
 @Composable
 private fun MissingAddress(problem: StorageProblem?) {
     if (problem == StorageProblem.AddressesUnreadable || problem == StorageProblem.AddressesUnavailable) {
-        MessageCard("Dina adresser kan inte läsas just nu", "Inget har raderats. Gå tillbaka till hemskärmen och försök igen.", MessageStyle.Warning, Icons.Filled.Warning)
+        MessageCard(stringResource(R.string.storage_addresses_unavailable), stringResource(R.string.missing_unreadable_text), MessageStyle.Warning, Icons.Filled.Warning)
     } else {
-        MessageCard("Adressen är borttagen", "Den finns inte längre bland dina sparade adresser.", MessageStyle.Neutral, AppSymbols.LocationCity)
+        MessageCard(stringResource(R.string.missing_removed_title), stringResource(R.string.missing_removed_text), MessageStyle.Neutral, AppSymbols.LocationCity)
     }
 }
 
@@ -267,14 +266,14 @@ private fun Schedule(detail: AddressDetail, vm: AddressViewModel, onFullSchedule
     detail.placedOut?.let { line ->
         PlacedOutRow(line, onCard = false, onPlaceOut = vm::placeOut, onUndo = vm::undoPlaceOut, modifier = Modifier.padding(top = 16.dp))
     }
-    detail.nextWarning?.let { MessageCard("Varning från källan", it, MessageStyle.Warning, Icons.Filled.Warning, Modifier.padding(top = 12.dp)) }
+    detail.nextWarning?.let { MessageCard(stringResource(R.string.source_warning), it, MessageStyle.Warning, Icons.Filled.Warning, Modifier.padding(top = 12.dp)) }
     if (detail.upcoming.isNotEmpty()) {
         if (isLargeText()) {
-            SectionTitle("Kommande")
+            SectionTitle(stringResource(R.string.section_upcoming))
             if (detail.hasFullSchedule) FullScheduleLink(onFullSchedule, Modifier.padding(bottom = 12.dp))
         } else {
             Row(verticalAlignment = Alignment.Bottom) {
-                SectionTitle("Kommande", Modifier.weight(1f))
+                SectionTitle(stringResource(R.string.section_upcoming), Modifier.weight(1f))
                 if (detail.hasFullSchedule) FullScheduleLink(onFullSchedule, Modifier.padding(bottom = 4.dp))
             }
         }
@@ -283,7 +282,7 @@ private fun Schedule(detail: AddressDetail, vm: AddressViewModel, onFullSchedule
     // Hur långt schemat gäller, direkt under de kommande tömningarna.
     detail.schedulePeriod?.let { SchedulePeriodView(it, Modifier.padding(top = 12.dp)) }
     detail.scheduleEnding?.let { MessageCard(it.title, it.message, MessageStyle.Neutral, AppSymbols.CalendarMonth, Modifier.padding(top = 12.dp)) }
-    SectionTitle("Per kärl")
+    SectionTitle(stringResource(R.string.section_bins))
     SectionCard {
         detail.bins.forEachIndexed { index, bin ->
             if (index > 0) SectionDivider()
@@ -298,7 +297,7 @@ private fun FullScheduleLink(onClick: () -> Unit, modifier: Modifier = Modifier)
         modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Hela schemat", style = uiText(16, Weight.HEAVY), color = ThemeToken.Primary.color)
+        Text(stringResource(R.string.full_schedule), style = uiText(16, Weight.HEAVY), color = ThemeToken.Primary.color)
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = ThemeToken.Primary.color)
     }
 }
@@ -317,7 +316,7 @@ private fun NextCard(next: HomeContent.Pickup, deviation: String?) {
     ) {
         val text: @Composable () -> Unit = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("NÄSTA TÖMNING", style = uiText(13, Weight.HEAVY).copy(letterSpacing = CapsTracking), color = ThemeToken.BrandText.color)
+                Text(stringResource(R.string.next_pickup_caps), style = uiText(13, Weight.HEAVY).copy(letterSpacing = CapsTracking), color = ThemeToken.BrandText.color)
                 Text(next.headline, style = uiText(32, Weight.HEAVY), color = ThemeToken.Text.color)
                 Text(next.longDate, style = uiText(17, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
                 // Står här och inte under Kommande, som börjar efter nästa tömning.
@@ -340,13 +339,13 @@ private fun NextCard(next: HomeContent.Pickup, deviation: String?) {
 @Composable
 private fun Reminders(detail: AddressDetail, ui: AddressViewModel.Ui, vm: AddressViewModel, onDenied: () -> Unit) {
     val context = LocalContext.current
-    SectionTitle("Påminnelser")
-    detail.missedReminder?.let { MessageCard("Påminnelsen har passerat", it, MessageStyle.Neutral, AppSymbols.Schedule, Modifier.padding(bottom = 12.dp)) }
+    SectionTitle(stringResource(R.string.section_reminders))
+    detail.missedReminder?.let { MessageCard(stringResource(R.string.reminder_missed), it, MessageStyle.Neutral, AppSymbols.Schedule, Modifier.padding(bottom = 12.dp)) }
     if (ui.notificationsDenied) {
         Column(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            MessageCard(DENIED_TITLE, DENIED_MESSAGE, MessageStyle.Warning, Icons.Filled.Warning)
+            MessageCard(stringResource(R.string.notifications_denied_title), stringResource(R.string.notifications_denied_text), MessageStyle.Warning, Icons.Filled.Warning)
             TextButton(onClick = { context.openNotificationSettings() }) {
-                Text("Öppna inställningar", style = uiText(17, Weight.HEAVY), color = ThemeToken.Primary.color)
+                Text(stringResource(R.string.action_open_settings), style = uiText(17, Weight.HEAVY), color = ThemeToken.Primary.color)
             }
         }
     }
@@ -355,7 +354,7 @@ private fun Reminders(detail: AddressDetail, ui: AddressViewModel.Ui, vm: Addres
         // Live Update gäller bara huvudadressen.
         if (detail.isPrimary) {
             SectionDivider()
-            ToggleRow("Live Update", detail.liveActivityText, ui.state.settings.liveActivityOn, vm::setLiveActivity)
+            ToggleRow(stringResource(R.string.live_update), detail.liveActivityText, ui.state.settings.liveActivityOn, vm::setLiveActivity)
         }
     }
 }

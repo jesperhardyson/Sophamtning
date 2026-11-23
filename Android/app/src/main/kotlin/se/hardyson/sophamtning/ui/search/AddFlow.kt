@@ -20,8 +20,6 @@ fun AppModel.save(hit: SearchHit): AddressKey? {
     return AddressKey(hit.source, hit.id)
 }
 
-const val SAVE_FAILED_MESSAGE = "Adressen kunde inte sparas. Försök igen."
-
 /** Sidan där man tipsar om sin kommun. */
 const val TIP_LINK = "https://sopor.hardyson.se/bidra"
 

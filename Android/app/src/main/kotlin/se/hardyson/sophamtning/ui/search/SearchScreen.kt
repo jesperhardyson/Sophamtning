@@ -1,5 +1,8 @@
 package se.hardyson.sophamtning.ui.search
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -70,7 +73,7 @@ fun SearchScreen(key: AddAddress, navigator: AppNavigator) {
     val query by vm.query.collectAsStateWithLifecycle()
     val ui by vm.ui.collectAsStateWithLifecycle()
 
-    ScreenScaffold(title = "Lägg till adress", onBack = { navigator.back() }) { padding ->
+    ScreenScaffold(title = stringResource(R.string.search_title), onBack = { navigator.back() }) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
@@ -79,7 +82,7 @@ fun SearchScreen(key: AddAddress, navigator: AppNavigator) {
                 .padding(horizontal = PageMargin)
                 .padding(bottom = 24.dp),
         ) {
-            FlowSearchField(query, vm::setQuery, placeholder = "Gata och husnummer", modifier = Modifier.padding(top = 8.dp))
+            FlowSearchField(query, vm::setQuery, placeholder = stringResource(R.string.search_placeholder), modifier = Modifier.padding(top = 8.dp))
             Column(Modifier.padding(top = 20.dp).alpha(if (ui.updating) 0.4f else 1f)) {
                 SearchContent(
                     ui = ui,
@@ -112,35 +115,35 @@ private fun SearchContent(
     val failedNames = { failed: List<String> -> failed.joinToString(", ") { sourceName(it, ui.sources) } }
     when (val state = ui.outcome.state) {
         SearchState.Idle -> Guidance(onKommun)
-        SearchState.Searching -> SearchingRow("Söker …", Modifier.fillMaxWidth().padding(top = 32.dp))
+        SearchState.Searching -> SearchingRow(stringResource(R.string.search_searching), Modifier.fillMaxWidth().padding(top = 32.dp))
         is SearchState.Results -> Results(ui, state, enabled, failedNames(state.failed), onAreas, onChoose)
         is SearchState.SourcesFailed -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             MessageCard(
-                title = "Kunde inte söka hos alla källor",
-                text = "Försök igen. Det betyder inte att adressen saknas.",
+                title = stringResource(R.string.search_sources_failed_title),
+                text = stringResource(R.string.search_sources_failed_text),
                 style = MessageStyle.Warning,
                 icon = Icons.Filled.Warning,
             )
-            PrimaryButton("Försök igen", onRetry)
+            PrimaryButton(stringResource(R.string.action_retry), onRetry)
         }
         is SearchState.NoHits -> NoHits(ui, onRetry, onKommun, onAreas)
         is SearchState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (state.error == ApiError.BadRequest) {
                 // 400 är inget nätfel, och samma anrop upprepas inte.
                 MessageCard(
-                    title = "Sökningen gick inte att tolka",
-                    text = "Kontrollera texten och försök med gata och husnummer.",
+                    title = stringResource(R.string.search_bad_request_title),
+                    text = stringResource(R.string.search_bad_request_text),
                     style = MessageStyle.Neutral,
                     icon = Icons.Outlined.Info,
                 )
             } else {
                 MessageCard(
-                    title = "Kunde inte söka just nu",
-                    text = "Källan svarar inte. Det betyder inte att adressen saknas.",
+                    title = stringResource(R.string.search_failed_title),
+                    text = stringResource(R.string.search_failed_text),
                     style = MessageStyle.Warning,
                     icon = AppSymbols.ErrorOutline,
                 )
-                PrimaryButton("Försök igen", onRetry)
+                PrimaryButton(stringResource(R.string.action_retry), onRetry)
             }
         }
     }
@@ -149,7 +152,7 @@ private fun SearchContent(
 @Composable
 private fun Guidance(onKommun: () -> Unit) {
     Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Skriv gata och husnummer, gärna med ort.", style = uiText(16, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
+        Text(stringResource(R.string.search_guidance), style = uiText(16, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
         KommunLink(onKommun)
     }
 }
@@ -163,7 +166,7 @@ fun KommunLink(onClick: () -> Unit, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(Icons.Filled.Place, contentDescription = null, tint = ThemeToken.Primary.color, modifier = Modifier.size(22.dp))
-        Text("Finns min kommuns hämtningsschema?", style = uiText(18, Weight.HEAVY), color = ThemeToken.Primary.color)
+        Text(stringResource(R.string.kommun_question), style = uiText(18, Weight.HEAVY), color = ThemeToken.Primary.color)
     }
 }
 
@@ -179,15 +182,15 @@ private fun Results(
     Column {
         if (state.failed.isNotEmpty()) {
             MessageCard(
-                title = "Alla källor svarade inte",
-                text = "$failedNames svarade inte just nu. Saknas din adress kan du försöka igen om en stund.",
+                title = stringResource(R.string.search_partial_title),
+                text = stringResource(R.string.search_partial_text, failedNames),
                 style = MessageStyle.Warning,
                 icon = Icons.Filled.Warning,
                 modifier = Modifier.padding(bottom = 20.dp),
             )
         }
         if (ui.saveFailed) {
-            MessageCard(title = "Något gick fel", text = SAVE_FAILED_MESSAGE, style = MessageStyle.Warning, icon = Icons.Filled.Warning, modifier = Modifier.padding(bottom = 20.dp))
+            MessageCard(title = stringResource(R.string.error_title), text = stringResource(R.string.save_failed), style = MessageStyle.Warning, icon = Icons.Filled.Warning, modifier = Modifier.padding(bottom = 20.dp))
         }
         val areas = ui.outcome.areas
         if (areas is AreaLookup.Found && areas.areas.isNotEmpty()) {
@@ -196,7 +199,7 @@ private fun Results(
         val rows = AreaLookup.visibleHits(state.hits, areas)
         if (rows.isNotEmpty()) {
             Text(
-                if (rows.size == 1) "1 träff" else "${rows.size} träffar",
+                pluralStringResource(R.plurals.search_hits, rows.size, rows.size),
                 style = uiText(17, Weight.HEAVY),
                 color = ThemeToken.Text2.color,
                 modifier = Modifier.padding(bottom = 12.dp),
@@ -217,8 +220,8 @@ private fun AreaRow(place: String, areas: List<SearchHit>, sources: List<AreaSou
     SectionCard(modifier) {
         IconPlateRow(
             icon = AppSymbols.Map,
-            title = "Välj område i ${kommunDisplayName(areas[0].kommun)}",
-            subtitle = "Här finns schemat per område, inte per adress.",
+            title = stringResource(R.string.search_choose_area_in, kommunDisplayName(areas[0].kommun)),
+            subtitle = stringResource(R.string.search_area_row_subtitle),
             onClick = { onAreas(areas[0].kommun, place, areas, sources) },
         )
     }
@@ -253,7 +256,7 @@ private fun NoHits(ui: SearchViewModel.Ui, onRetry: () -> Unit, onKommun: () -> 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(AppSymbols.LocationCity, contentDescription = null, tint = ThemeToken.Text2.color, modifier = Modifier.padding(top = 12.dp).size(44.dp))
         Text(
-            "Adressen hittades inte",
+            stringResource(R.string.search_no_hits),
             style = uiText(24, Weight.HEAVY),
             color = ThemeToken.Text.color,
             textAlign = TextAlign.Center,
@@ -262,7 +265,7 @@ private fun NoHits(ui: SearchViewModel.Ui, onRetry: () -> Unit, onKommun: () -> 
         when {
             found != null -> {
                 Text(
-                    "${sourceName(found.areas[0].source, ui.sources)} publicerar inte alla adresser. Där väljer du i stället ditt tömningsområde.",
+                    stringResource(R.string.search_source_publishes, sourceName(found.areas[0].source, ui.sources)),
                     style = uiText(18, Weight.SEMIBOLD),
                     color = ThemeToken.Text2.color,
                     textAlign = TextAlign.Center,
@@ -272,16 +275,16 @@ private fun NoHits(ui: SearchViewModel.Ui, onRetry: () -> Unit, onKommun: () -> 
             }
             ui.outcome.areas == AreaLookup.Failed -> {
                 MessageCard(
-                    title = "Kunde inte hämta områden",
-                    text = "Försök igen. Det betyder inte att kommunen saknar områdesval.",
+                    title = stringResource(R.string.search_areas_failed_title),
+                    text = stringResource(R.string.search_areas_failed_text),
                     style = MessageStyle.Warning,
                     icon = Icons.Filled.Warning,
                     modifier = Modifier.padding(top = 10.dp),
                 )
-                PrimaryButton("Försök igen", onRetry, Modifier.padding(top = 12.dp))
+                PrimaryButton(stringResource(R.string.action_retry), onRetry, Modifier.padding(top = 12.dp))
             }
             else -> Text(
-                "Kontrollera stavningen och skriv gata, husnummer och gärna ort. Alla adresser finns inte hos alla källor.",
+                stringResource(R.string.search_no_hits_text),
                 style = uiText(18, Weight.SEMIBOLD),
                 color = ThemeToken.Text2.color,
                 textAlign = TextAlign.Center,
@@ -289,7 +292,7 @@ private fun NoHits(ui: SearchViewModel.Ui, onRetry: () -> Unit, onKommun: () -> 
             )
         }
         Text(
-            "Skriv gata och husnummer, gärna med ort.",
+            stringResource(R.string.search_guidance),
             style = uiText(16, Weight.SEMIBOLD),
             color = ThemeToken.Text2.color,
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),

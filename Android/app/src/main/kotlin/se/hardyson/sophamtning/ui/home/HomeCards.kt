@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.home
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,7 +50,7 @@ import se.hardyson.sophamtning.ui.theme.uiText
 @Composable
 fun OthersTitle() {
     Text(
-        "Fler adresser",
+        stringResource(R.string.home_others),
         style = uiText(20, Weight.BOLD),
         color = ThemeToken.Text2.color,
         modifier = Modifier.padding(top = 28.dp, bottom = 14.dp).semantics { heading() },
@@ -80,7 +82,7 @@ fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier
         Column(
             Modifier
                 .fillMaxWidth()
-                .clickable(role = Role.Button, onClickLabel = "Öppnar adressen", onClick = onOpen)
+                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.home_open_address), onClick = onOpen)
                 .clearAndSetSemantics { contentDescription = spoken },
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -97,12 +99,12 @@ fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier
                         }
                     }
                 }
-                HomeContent.Status.Loading -> Text("Hämtar schema", style = uiText(15, Weight.BOLD), color = foreground)
+                HomeContent.Status.Loading -> Text(stringResource(R.string.loading_schedule), style = uiText(15, Weight.BOLD), color = foreground)
                 HomeContent.Status.NoUpcoming, is HomeContent.Status.Failed ->
                     Text(entry.summary, style = uiText(20, Weight.HEAVY), color = foreground)
             }
             if (entry.refreshFailed) {
-                Text("Kunde inte uppdatera schemat. Visar det senast hämtade.", style = uiText(13, Weight.SEMIBOLD), color = foreground.copy(alpha = 0.85f))
+                Text(stringResource(R.string.home_refresh_failed), style = uiText(13, Weight.SEMIBOLD), color = foreground.copy(alpha = 0.85f))
             }
         }
         below()
@@ -129,7 +131,7 @@ private fun CardHeader(entry: HomeContent.Entry, foreground: Color) {
 private fun NextPickup(pickup: HomeContent.Pickup, dayNote: String?, foreground: Color) {
     val text: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("NÄSTA TÖMNING", style = uiText(13, Weight.HEAVY).copy(letterSpacing = CapsTracking), color = foreground.copy(alpha = 0.9f))
+            Text(stringResource(R.string.next_pickup_caps), style = uiText(13, Weight.HEAVY).copy(letterSpacing = CapsTracking), color = foreground.copy(alpha = 0.9f))
             Text(pickup.headline, style = uiText(32, Weight.HEAVY), color = foreground)
             Text(pickup.longDate, style = uiText(17, Weight.BOLD), color = foreground)
             // På tömningsdagen säger kortet vad som gäller, i stället för bara "I dag".

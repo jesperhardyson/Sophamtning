@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.home
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -42,10 +44,11 @@ fun SwipeToRemove(onRemove: () -> Unit, cornerRadius: Dp, modifier: Modifier = M
     val state = rememberSwipeToDismissBoxState()
     val scope = rememberCoroutineScope()
     var confirming by rememberSaveable { mutableStateOf(false) }
+    val removeLabel = stringResource(R.string.action_remove)
     SwipeToDismissBox(
         state = state,
         modifier = modifier.semantics {
-            customActions = listOf(CustomAccessibilityAction("Ta bort") { confirming = true; true })
+            customActions = listOf(CustomAccessibilityAction(removeLabel) { confirming = true; true })
         },
         enableDismissFromStartToEnd = false,
         onDismiss = { confirming = true },
@@ -57,7 +60,7 @@ fun SwipeToRemove(onRemove: () -> Unit, cornerRadius: Dp, modifier: Modifier = M
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(AppSymbols.Delete, contentDescription = null, tint = ThemeToken.WarnBg.color)
-                Text("Ta bort", style = uiText(16, Weight.HEAVY), color = ThemeToken.WarnBg.color)
+                Text(stringResource(R.string.action_remove), style = uiText(16, Weight.HEAVY), color = ThemeToken.WarnBg.color)
             }
         },
     ) { content() }

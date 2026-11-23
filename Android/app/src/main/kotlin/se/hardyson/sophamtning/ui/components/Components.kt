@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.components
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -134,7 +136,7 @@ fun MessageCard(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     link: MessageLink? = null,
-    closeLabel: String = "Stäng",
+    closeLabel: String = stringResource(R.string.action_close),
     onClose: (() -> Unit)? = null,
 ) {
     val warning = style == MessageStyle.Warning
@@ -250,7 +252,7 @@ fun FlowSearchField(value: String, onValueChange: (String) -> Unit, placeholder:
         textStyle = uiText(18, Weight.SEMIBOLD).copy(color = ThemeToken.Text.color),
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = ThemeToken.Text.color) },
         trailingIcon = if (value.isEmpty()) null else {
-            { IconButton(onClick = { onValueChange("") }) { Icon(Icons.Filled.Close, contentDescription = "Rensa", tint = ThemeToken.Text2.color) } }
+            { IconButton(onClick = { onValueChange("") }) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_clear), tint = ThemeToken.Text2.color) } }
         },
         singleLine = true,
         shape = CircleShape,

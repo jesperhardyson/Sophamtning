@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.address
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -145,36 +147,36 @@ fun AddressNotice(notice: AddressDetail.Notice?, onRetry: () -> Unit, onSearchAg
     when (notice) {
         null -> {}
         is AddressDetail.Notice.SavedShown -> MessageCard(
-            title = "Visar senast hämtade schema",
-            text = listOfNotNull("Källan svarar inte just nu.", notice.fetched).joinToString(" "),
+            title = stringResource(R.string.notice_saved_title),
+            text = listOfNotNull(stringResource(R.string.notice_saved_text), notice.fetched).joinToString(" "),
             style = MessageStyle.Neutral,
             icon = AppSymbols.ErrorOutline,
             modifier = padded,
         )
         AddressDetail.Notice.SourceUnavailable -> Column(padded, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            MessageCard("Källan svarar inte just nu", "Schemat kan inte hämtas. Det betyder inte att adressen saknas.", MessageStyle.Warning, AppSymbols.ErrorOutline)
-            PrimaryButton("Försök igen", onRetry)
+            MessageCard(stringResource(R.string.notice_unavailable_title), stringResource(R.string.notice_unavailable_text), MessageStyle.Warning, AppSymbols.ErrorOutline)
+            PrimaryButton(stringResource(R.string.action_retry), onRetry)
         }
         AddressDetail.Notice.NotFound -> Column(padded, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            MessageCard("Adressen hittas inte längre", "Källan känner inte igen adressen. Sök upp den på nytt för att få schemat.", MessageStyle.Warning, Icons.Filled.Warning)
-            PrimaryButton("Sök igen", onSearchAgain)
+            MessageCard(stringResource(R.string.notice_not_found_title), stringResource(R.string.notice_not_found_text), MessageStyle.Warning, Icons.Filled.Warning)
+            PrimaryButton(stringResource(R.string.action_search_again), onSearchAgain)
         }
         // Samma anrop upprepas inte, så det finns ingen Försök igen.
         AddressDetail.Notice.BadRequest -> MessageCard(
-            title = "Källan godtog inte förfrågan",
-            text = "Förfrågan för den här adressen avvisades. Det betyder inte att adressen saknas. Appen hämtar schemat på nytt som vanligt, högst en gång i timmen.",
+            title = stringResource(R.string.notice_bad_request_title),
+            text = stringResource(R.string.notice_bad_request_text),
             style = MessageStyle.Warning,
             icon = Icons.Filled.Warning,
             modifier = padded,
         )
         AddressDetail.Notice.StorageFailed -> Column(padded, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             MessageCard(
-                "Schemat kunde inte sparas",
-                "Det går inte att spara på telefonen just nu, och schemat visas först när det har sparats. Det betyder inte att adressen saknas.",
+                stringResource(R.string.notice_storage_title),
+                stringResource(R.string.notice_storage_text),
                 MessageStyle.Warning,
                 Icons.Filled.Warning,
             )
-            PrimaryButton("Försök igen", onRetry)
+            PrimaryButton(stringResource(R.string.action_retry), onRetry)
         }
     }
 }
@@ -186,7 +188,7 @@ fun ScheduleLoadingCard(modifier: Modifier = Modifier) {
         modifier.fillMaxWidth().background(ThemeToken.Surface.color, RoundedCornerShape(20.dp)).padding(vertical = 24.dp),
         horizontalArrangement = Arrangement.Center,
     ) {
-        SearchingRow("Hämtar schema")
+        SearchingRow(stringResource(R.string.loading_schedule))
     }
 }
 
@@ -217,7 +219,7 @@ fun SourceCard(source: String, sources: List<Source>?, detail: AddressDetail, mo
     val fetched = if (detail.mode == AddressDetail.Mode.Loading) null else detail.fetchedText
     SectionCard(modifier) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Ansvarar för hämtningen", style = uiText(15, Weight.HEAVY), color = ThemeToken.Text2.color, modifier = Modifier.semantics { heading() })
+            Text(stringResource(R.string.source_card_title), style = uiText(15, Weight.HEAVY), color = ThemeToken.Text2.color, modifier = Modifier.semantics { heading() })
             Text(sourceName(source, sources), style = uiText(20, Weight.HEAVY), color = ThemeToken.Text.color)
         }
         for (link in links) {

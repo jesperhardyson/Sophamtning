@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.area
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,7 +76,6 @@ import se.hardyson.sophamtning.ui.components.ScreenScaffold
 import se.hardyson.sophamtning.ui.components.SearchingRow
 import se.hardyson.sophamtning.ui.components.SectionCard
 import se.hardyson.sophamtning.ui.components.SectionDivider
-import se.hardyson.sophamtning.ui.search.SAVE_FAILED_MESSAGE
 import se.hardyson.sophamtning.ui.search.save
 import se.hardyson.sophamtning.ui.theme.ThemeToken
 import se.hardyson.sophamtning.ui.theme.Weight
@@ -92,9 +93,9 @@ fun AreaPickerScreen(key: AreaPicker, navigator: AppNavigator) {
     val notice = key.hits.firstNotNullOfOrNull { it.notice }
     val warning = remember(key) { AreaWarning.make(notice, AreaSourceNote.notes(key.sources)) }
     val openFinder = { key.place?.let { navigator.open(AreaFinder(it)) } }
-    ScreenScaffold(title = "Välj område · ${key.title}", onBack = { navigator.back() }) { padding ->
+    ScreenScaffold(title = stringResource(R.string.area_picker_title, key.title), onBack = { navigator.back() }) { padding ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(horizontal = PageMargin).padding(bottom = 24.dp)) {
-            FlowSearchField(query, { query = it }, placeholder = "Sök område, ort eller gata", focus = false, modifier = Modifier.padding(top = 8.dp))
+            FlowSearchField(query, { query = it }, placeholder = stringResource(R.string.area_search_placeholder), focus = false, modifier = Modifier.padding(top = 8.dp))
             // Under en sökning visas bara träffarna. Varningen kommer tillbaka när fältet töms.
             if (content.showsWarning) AreaWarningCard(warning, Modifier.padding(top = 16.dp))
             val emptyText = content.emptyText
@@ -127,7 +128,7 @@ fun AreaPickerScreen(key: AreaPicker, navigator: AppNavigator) {
 /** "Vet du inte vilket område?" Öppnar Hitta område, där senaste tömningen pekar ut området. */
 @Composable
 private fun FinderRow(onClick: () -> Unit) {
-    IconPlateRow(AppSymbols.CalendarMonth, "Vet du inte vilket område?", "Hitta det med din senaste tömning", onClick, horizontalPadding = 20, verticalPadding = 16)
+    IconPlateRow(AppSymbols.CalendarMonth, stringResource(R.string.area_finder_row_title), stringResource(R.string.area_finder_row_subtitle), onClick, horizontalPadding = 20, verticalPadding = 16)
 }
 
 // MARK: Stämmer området?
@@ -142,7 +143,7 @@ fun AreaConfirmScreen(key: AreaConfirm, navigator: AppNavigator) {
     ScreenScaffold(title = "", onBack = { navigator.back() }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = PageMargin).padding(bottom = 24.dp)) {
-                Text("Stämmer området?", style = uiText(28, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.area_confirm_title), style = uiText(28, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
                 val content = AreaRowContent.make(hit)
                 Column(
                     Modifier.padding(top = 20.dp).fillMaxWidth().background(ThemeToken.Surface2.color, RoundedCornerShape(20.dp)).padding(16.dp),
@@ -160,13 +161,13 @@ fun AreaConfirmScreen(key: AreaConfirm, navigator: AppNavigator) {
                 }
                 hit.notice?.let { Text(it, style = uiText(18, Weight.SEMIBOLD), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 16.dp)) }
                 if (saveFailed) {
-                    MessageCard("Något gick fel", SAVE_FAILED_MESSAGE, MessageStyle.Warning, Icons.Filled.Warning, Modifier.padding(top = 12.dp))
+                    MessageCard(stringResource(R.string.error_title), stringResource(R.string.save_failed), MessageStyle.Warning, Icons.Filled.Warning, Modifier.padding(top = 12.dp))
                 }
-                PlainButton("Välj ett annat område", { navigator.back() }, Modifier.padding(top = 16.dp))
+                PlainButton(stringResource(R.string.area_choose_other), { navigator.back() }, Modifier.padding(top = 16.dp))
             }
             // Spara området står fast längst ned, så att knappen alltid syns, också med största textstorlek.
             PrimaryButton(
-                "Spara området",
+                stringResource(R.string.area_save),
                 {
                     val saved = dependencies.model.save(hit)
                     saveFailed = saved == null
@@ -211,18 +212,20 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
         pickerState.selectedDateMillis?.let { finder.setDraft(dayFromUtcMillis(it)) }
     }
     val choose = { hit: SearchHit -> navigator.open(AreaConfirm(hit)) }
-    ScreenScaffold(title = "Hitta område", onBack = { navigator.back() }) { padding ->
+    ScreenScaffold(title = stringResource(R.string.area_finder_title), onBack = { navigator.back() }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = PageMargin).padding(bottom = 24.dp)) {
-                Text("När tömdes ditt kärl senast?", style = uiText(28, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+                Text(stringResource(R.string.area_finder_question), style = uiText(28, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
                 Text(
-                    "Varje hämtdag hör till ett område, så datumet visar vilket som gäller.",
+                    stringResource(R.string.area_finder_text),
                     style = uiText(18, Weight.SEMIBOLD),
                     color = ThemeToken.Text2.color,
                     modifier = Modifier.padding(top = 14.dp),
                 )
-                Text("Senaste tömning", style = uiText(15, Weight.HEAVY), color = ThemeToken.Text2.color, modifier = Modifier.padding(top = 20.dp))
-                val dateText = snapshot.date?.let(SwedishFormat::longDateWithYear) ?: "Välj datum"
+                Text(stringResource(R.string.area_finder_last), style = uiText(15, Weight.HEAVY), color = ThemeToken.Text2.color, modifier = Modifier.padding(top = 20.dp))
+                val dateText = snapshot.date?.let(SwedishFormat::longDateWithYear) ?: stringResource(R.string.area_finder_choose_date)
+                val dateLabel = stringResource(R.string.area_finder_date_label, dateText)
+                val changesDate = stringResource(R.string.area_finder_changes_date)
                 Row(
                     Modifier
                         .padding(top = 8.dp)
@@ -232,8 +235,8 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
                         .border(2.dp, ThemeToken.Primary.color, CircleShape)
                         .clickable(role = Role.Button) { showCalendar = !showCalendar }
                         .semantics(mergeDescendants = true) {
-                            contentDescription = "Senaste tömning, $dateText"
-                            stateDescription = "Ändrar datum"
+                            contentDescription = dateLabel
+                            stateDescription = changesDate
                         }
                         .padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -259,17 +262,17 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
                     )
                 }
                 Column(Modifier.padding(top = 16.dp)) { FinderResult(finder, snapshot, choose) }
-                PlainButton("Välj område själv", { navigator.back() }, Modifier.padding(top = 8.dp))
+                PlainButton(stringResource(R.string.area_finder_choose_self), { navigator.back() }, Modifier.padding(top = 8.dp))
             }
             // Den primära knappen för läget står fast längst ned.
             val primary: Pair<String, () -> Unit>? = when {
-                showCalendar -> "Hitta område" to {
+                showCalendar -> stringResource(R.string.area_finder_title) to {
                     showCalendar = false
                     finder.find()
                 }
-                snapshot.state is AreaFinderState.Match -> "Välj det här området" to { choose((snapshot.state as AreaFinderState.Match).hit) }
-                snapshot.state == AreaFinderState.Failed && snapshot.retryable -> "Försök igen" to { finder.retry() }
-                snapshot.state == AreaFinderState.Failed -> "Välj ett annat datum" to { showCalendar = true }
+                snapshot.state is AreaFinderState.Match -> stringResource(R.string.area_finder_choose_this) to { choose((snapshot.state as AreaFinderState.Match).hit) }
+                snapshot.state == AreaFinderState.Failed && snapshot.retryable -> stringResource(R.string.action_retry) to { finder.retry() }
+                snapshot.state == AreaFinderState.Failed -> stringResource(R.string.area_finder_other_date) to { showCalendar = true }
                 else -> null
             }
             primary?.let { (title, action) -> PrimaryButton(title, action, Modifier.padding(horizontal = PageMargin, vertical = 8.dp).navigationBarsPadding()) }
@@ -282,18 +285,18 @@ private fun FinderResult(finder: Finder, snapshot: Finder.Snapshot, choose: (Sea
     val today = finder.latestSelectable
     when (val state = snapshot.state) {
         AreaFinderState.Idle -> {}
-        AreaFinderState.Searching -> SearchingRow("Söker områden", Modifier.heightIn(min = 52.dp).padding(horizontal = 4.dp))
+        AreaFinderState.Searching -> SearchingRow(stringResource(R.string.area_finder_searching), Modifier.heightIn(min = 52.dp).padding(horizontal = 4.dp))
         is AreaFinderState.Match -> Column(
             Modifier.fillMaxWidth().background(ThemeToken.BrandSoft.color, RoundedCornerShape(20.dp)).padding(20.dp).semantics(mergeDescendants = true) {},
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("Det här bör vara ditt område", style = uiText(16, Weight.HEAVY), color = ThemeToken.BrandText.color)
+            Text(stringResource(R.string.area_finder_match), style = uiText(16, Weight.HEAVY), color = ThemeToken.BrandText.color)
             AreaDetails(AreaRowContent.make(state.hit), Modifier.padding(top = 8.dp), titleSize = 24, labelBackground = ThemeToken.Surface.color)
             Text(AreaFinderText.check(state.hit.pickups, today), style = uiText(18, Weight.SEMIBOLD), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 8.dp))
             if (snapshot.partial) PartialText()
         }
         is AreaFinderState.Multiple -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Flera områden hade hämtning den dagen. Välj ditt område.", style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color)
+            Text(stringResource(R.string.area_finder_multiple), style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color)
             if (snapshot.partial) PartialText()
             val showKommun = AreaFinderText.showsKommun(state.hits)
             for (hit in state.hits) {
@@ -314,20 +317,20 @@ private fun FinderResult(finder: Finder, snapshot: Finder.Snapshot, choose: (Sea
                 }
             }
         }
-        AreaFinderState.NoPickup -> InfoCard("Inget område har hämtning den dagen", "Prova ett annat datum eller välj område i listan.")
-        AreaFinderState.OutsideSchedule -> InfoCard("Schemat täcker inte det datumet", "Prova ett senare datum eller välj område i listan.")
+        AreaFinderState.NoPickup -> InfoCard(stringResource(R.string.area_finder_no_pickup_title), stringResource(R.string.area_finder_no_pickup_text))
+        AreaFinderState.OutsideSchedule -> InfoCard(stringResource(R.string.area_finder_outside_title), stringResource(R.string.area_finder_outside_text))
         AreaFinderState.Failed -> Column(
             Modifier.fillMaxWidth().background(ThemeToken.WarnBg.color, RoundedCornerShape(20.dp)).padding(16.dp).semantics(mergeDescendants = true) {},
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                if (snapshot.retryable) "Kunde inte kontrollera just nu" else "Kunde inte kontrollera det datumet",
+                if (snapshot.retryable) stringResource(R.string.area_finder_failed_title) else stringResource(R.string.area_finder_failed_date_title),
                 style = uiText(20, Weight.HEAVY),
                 color = ThemeToken.Warn.color,
             )
             Text(
-                if (snapshot.retryable) "Det säger inget om ditt område. Försök igen om en stund."
-                else "Det säger inget om ditt område. Välj ett annat datum eller välj område själv.",
+                if (snapshot.retryable) stringResource(R.string.area_finder_failed_text)
+                else stringResource(R.string.area_finder_failed_date_text),
                 style = uiText(17, Weight.SEMIBOLD),
                 color = ThemeToken.Text.color,
             )

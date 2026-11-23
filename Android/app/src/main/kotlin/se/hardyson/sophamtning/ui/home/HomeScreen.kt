@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.home
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -115,13 +117,13 @@ fun HomeScreen(navigator: AppNavigator) {
         }
     }
     ScreenScaffold(
-        title = if (filled) "Sophämtning" else "",
+        title = if (filled) stringResource(R.string.app_title) else "",
         onBack = null,
         large = filled,
         snackbarHostState = snackbar,
         actions = {
             if (filled) {
-                IconButton(onClick = { navigator.open(AddAddress()) }) { Icon(Icons.Filled.Add, contentDescription = "Lägg till") }
+                IconButton(onClick = { navigator.open(AddAddress()) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add)) }
             }
         },
     ) { padding ->
@@ -140,8 +142,8 @@ fun HomeScreen(navigator: AppNavigator) {
                 ui.state.lastStorageError?.let { error ->
                     // Ett felmeddelande i flödet, som stängs med ett tryck.
                     MessageCard(
-                        title = "Något gick fel",
-                        text = "$error Tryck för att stänga.",
+                        title = stringResource(R.string.error_title),
+                        text = stringResource(R.string.error_tap_to_close, error),
                         style = MessageStyle.Warning,
                         icon = Icons.Filled.Warning,
                         modifier = Modifier.padding(top = 12.dp).clickable(role = Role.Button) { vm.clearStorageError() },
@@ -153,7 +155,7 @@ fun HomeScreen(navigator: AppNavigator) {
                     else -> StartContent(onSearch = { navigator.open(AddAddress()) }, onKommun = { navigator.open(KommunCheck) })
                 }
                 Text(
-                    "Inofficiell app, inte kopplad till någon kommun. Vid avvikelser gäller kommunens information.",
+                    stringResource(R.string.disclaimer),
                     style = uiText(15, Weight.SEMIBOLD),
                     color = ThemeToken.Text2.color,
                     modifier = Modifier.padding(top = 32.dp),
@@ -205,7 +207,7 @@ private fun Filled(
 private fun SourceMessageCard(item: ActiveSourceMessage, sourceName: String?, onOpen: (WebLink) -> Unit, onClose: () -> Unit) {
     // Bara https-länkar visas, och de öppnas i Custom Tabs.
     val link = item.message.url?.let { WebLink(it) }?.let { web ->
-        MessageLink(sourceName?.let { "Läs mer hos $it" } ?: "Läs mer") { onOpen(web) }
+        MessageLink(sourceName?.let { stringResource(R.string.message_read_more_at, it) } ?: stringResource(R.string.message_read_more)) { onOpen(web) }
     }
     MessageCard(
         title = item.message.title,
@@ -213,7 +215,7 @@ private fun SourceMessageCard(item: ActiveSourceMessage, sourceName: String?, on
         style = MessageStyle.Neutral,
         icon = AppSymbols.Campaign,
         link = link,
-        closeLabel = "Stäng meddelandet",
+        closeLabel = stringResource(R.string.message_close),
         onClose = onClose,
         modifier = Modifier.padding(bottom = 16.dp),
     )
@@ -233,17 +235,17 @@ private fun ReminderOfferCard(onAccept: () -> Unit, onDecline: () -> Unit, modif
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(AppSymbols.NotificationsActive, contentDescription = null, tint = ThemeToken.Primary.color, modifier = Modifier.size(24.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Vill du bli påmind?", style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
-                Text("Få en notis kvällen före varje tömning. Du kan ändra det när som helst.", style = uiText(16, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
+                Text(stringResource(R.string.offer_title), style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.offer_text), style = uiText(16, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
             }
         }
         if (isLargeText()) {
-            PrimaryButton("Påminn mig", onAccept)
-            PlainButton("Inte nu", onDecline)
+            PrimaryButton(stringResource(R.string.offer_accept), onAccept)
+            PlainButton(stringResource(R.string.offer_decline), onDecline)
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PrimaryButton("Påminn mig", onAccept, Modifier.weight(1f))
-                PlainButton("Inte nu", onDecline, Modifier.weight(1f))
+                PrimaryButton(stringResource(R.string.offer_accept), onAccept, Modifier.weight(1f))
+                PlainButton(stringResource(R.string.offer_decline), onDecline, Modifier.weight(1f))
             }
         }
     }
@@ -257,7 +259,7 @@ private fun DeniedReminderNotice(onOpenSettings: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(HomeContent.RowReminder.Denied.text, style = uiText(15, Weight.BOLD), color = ThemeToken.OnPrimary.color)
-        TextButton(onClick = onOpenSettings) { Text("Öppna inställningar", style = uiText(15, Weight.HEAVY), color = ThemeToken.OnPrimary.color) }
+        TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.action_open_settings), style = uiText(15, Weight.HEAVY), color = ThemeToken.OnPrimary.color) }
     }
 }
 
@@ -274,37 +276,37 @@ private fun StorageProblemView(problem: StorageProblem, onRetry: () -> Unit, onS
     // Bara en skadad fil kan göras om. En fil som bara är otillgänglig just nu rörs aldrig.
     val corrupt = problem == StorageProblem.AddressesUnreadable || problem == StorageProblem.SettingsUnreadable
     val title = when (problem) {
-        StorageProblem.AddressesUnreadable -> "Dina sparade adresser kunde inte läsas"
-        StorageProblem.AddressesUnavailable -> "Dina adresser kan inte läsas just nu"
-        StorageProblem.SettingsUnreadable -> "Dina inställningar kunde inte läsas"
-        StorageProblem.SettingsUnavailable -> "Dina inställningar kan inte läsas just nu"
+        StorageProblem.AddressesUnreadable -> stringResource(R.string.storage_addresses_unreadable)
+        StorageProblem.AddressesUnavailable -> stringResource(R.string.storage_addresses_unavailable)
+        StorageProblem.SettingsUnreadable -> stringResource(R.string.storage_settings_unreadable)
+        StorageProblem.SettingsUnavailable -> stringResource(R.string.storage_settings_unavailable)
     }
     var confirming by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.Start) {
         Text(title, style = brandText(30), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 32.dp).semantics { heading() })
         MessageCard(
-            title = "Inget har raderats",
+            title = stringResource(R.string.storage_nothing_removed),
             text = if (corrupt) {
-                "Filen på telefonen är skadad. Försök igen. Fungerar det inte kan du börja om."
+                stringResource(R.string.storage_corrupt_text)
             } else {
-                "Lås upp telefonen och försök igen. Är den upplåst kan filen vara skyddad en kort stund efter en omstart."
+                stringResource(R.string.storage_unavailable_text)
             },
             style = MessageStyle.Warning,
             icon = Icons.Filled.Warning,
         )
-        PrimaryButton("Försök igen", onRetry)
-        if (corrupt) PlainButton("Börja om", { confirming = true })
+        PrimaryButton(stringResource(R.string.action_retry), onRetry)
+        if (corrupt) PlainButton(stringResource(R.string.storage_start_over), { confirming = true })
     }
     if (confirming) {
         AlertDialog(
             onDismissRequest = { confirming = false },
-            title = { Text(if (addresses) "Börja om utan sparade adresser?" else "Använda standardinställningarna?") },
+            title = { Text(if (addresses) stringResource(R.string.storage_start_over_addresses_title) else stringResource(R.string.storage_start_over_settings_title)) },
             text = {
                 Text(
                     if (addresses) {
-                        "Dina sparade adresser tas bort från appen och appens väntande påminnelser avbryts. Den skadade filen sparas åt sidan på telefonen. Därefter kan du lägga till adresser igen."
+                        stringResource(R.string.storage_start_over_addresses_text)
                     } else {
-                        "Påminnelsetid och Live Update återställs till standard (kl. 18:00, Live Update av). Dina adresser behålls. Den skadade filen sparas åt sidan på telefonen."
+                        stringResource(R.string.storage_start_over_settings_text)
                     },
                 )
             },
@@ -312,9 +314,9 @@ private fun StorageProblemView(problem: StorageProblem, onRetry: () -> Unit, onS
                 TextButton(onClick = {
                     confirming = false
                     onStartOver()
-                }) { Text(if (addresses) "Ta bort sparade adresser och börja om" else "Använd standardinställningar", color = ThemeToken.Warn.color) }
+                }) { Text(if (addresses) stringResource(R.string.storage_start_over_addresses_confirm) else stringResource(R.string.storage_start_over_settings_confirm), color = ThemeToken.Warn.color) }
             },
-            dismissButton = { TextButton(onClick = { confirming = false }) { Text("Avbryt") } },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.action_cancel)) } },
             containerColor = ThemeToken.Surface.color,
         )
     }

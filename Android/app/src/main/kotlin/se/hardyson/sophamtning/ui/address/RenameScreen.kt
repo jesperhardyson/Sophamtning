@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.address
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,15 +54,15 @@ fun RenameScreen(key: AddressKey, navigator: AppNavigator) {
     }
     val requester = remember { FocusRequester() }
     ScreenScaffold(
-        title = "Byt namn",
+        title = stringResource(R.string.action_rename),
         onBack = { navigator.back() },
-        actions = { TextButton(onClick = save, enabled = valid) { Text("Spara", style = uiText(16, Weight.HEAVY)) } },
+        actions = { TextButton(onClick = save, enabled = valid) { Text(stringResource(R.string.action_save), style = uiText(16, Weight.HEAVY)) } },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = PageMargin, vertical = 16.dp)) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Namn") },
+                label = { Text(stringResource(R.string.rename_name)) },
                 singleLine = true,
                 textStyle = uiText(18, Weight.SEMIBOLD).copy(color = ThemeToken.Text.color),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
@@ -74,7 +76,7 @@ fun RenameScreen(key: AddressKey, navigator: AppNavigator) {
                 modifier = Modifier.fillMaxWidth().focusRequester(requester),
             )
             Text(
-                "Namnet får vara högst ${AddressList.MAX_NAME_LENGTH} tecken.",
+                stringResource(R.string.rename_limit, AddressList.MAX_NAME_LENGTH),
                 style = uiText(14, Weight.SEMIBOLD),
                 color = ThemeToken.Text2.color,
                 modifier = Modifier.padding(top = 8.dp),

@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.start
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,9 +42,9 @@ import se.hardyson.sophamtning.ui.theme.uiText
 @Composable
 fun StartContent(onSearch: () -> Unit, onKommun: () -> Unit) {
     Column {
-        Text("När töms dina kärl?", style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
+        Text(stringResource(R.string.start_title), style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
         Text(
-            "Skriv in din adress så ser du vilka kärl som töms och när. Inget konto behövs.",
+            stringResource(R.string.start_text),
             style = uiText(18, Weight.SEMIBOLD),
             color = ThemeToken.Text2.color,
             modifier = Modifier.padding(top = 14.dp),
@@ -61,11 +63,11 @@ fun StartContent(onSearch: () -> Unit, onKommun: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(Icons.Filled.Search, contentDescription = null, tint = ThemeToken.Text2.color)
-            Text("Gata och husnummer", style = uiText(18, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
+            Text(stringResource(R.string.search_placeholder), style = uiText(18, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
         }
         Row(Modifier.padding(top = 16.dp).semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = ThemeToken.BrandText.color, modifier = Modifier.size(20.dp))
-            Text("Adressen sparas bara i din telefon.", style = uiText(15, Weight.BOLD), color = ThemeToken.BrandText.color)
+            Text(stringResource(R.string.start_private), style = uiText(15, Weight.BOLD), color = ThemeToken.BrandText.color)
         }
         val shape = RoundedCornerShape(20.dp)
         Row(
@@ -82,7 +84,7 @@ fun StartContent(onSearch: () -> Unit, onKommun: () -> Unit) {
             Box(Modifier.size(44.dp).background(ThemeToken.BrandSoft.color, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Icon(AppSymbols.Map, contentDescription = null, tint = ThemeToken.BrandText.color)
             }
-            Text("Finns min kommuns hämtningsschema?", style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.kommun_question), style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color, modifier = Modifier.weight(1f))
             Chevron()
         }
     }

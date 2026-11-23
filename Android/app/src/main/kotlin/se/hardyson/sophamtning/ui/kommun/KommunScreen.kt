@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.kommun
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -73,14 +75,14 @@ fun KommunScreen(navigator: AppNavigator) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(horizontal = PageMargin).padding(bottom = 24.dp),
         ) {
-            Text("Finns min kommuns hämtningsschema?", style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
+            Text(stringResource(R.string.kommun_question), style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
             Text(
-                "Skriv din kommun eller ort. Svaret kommer medan du skriver.",
+                stringResource(R.string.kommun_text),
                 style = uiText(18, Weight.SEMIBOLD),
                 color = ThemeToken.Text2.color,
                 modifier = Modifier.padding(top = 14.dp),
             )
-            FlowSearchField(query, vm::setQuery, placeholder = "Kommun eller ort", modifier = Modifier.padding(top = 24.dp))
+            FlowSearchField(query, vm::setQuery, placeholder = stringResource(R.string.kommun_placeholder), modifier = Modifier.padding(top = 24.dp))
             Column(Modifier.padding(top = 16.dp).alpha(if (ui.updating) 0.4f else 1f)) {
                 Answer(ui.result, vm::setQuery, vm::retry, navigator)
             }
@@ -93,7 +95,7 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
     val context = LocalContext.current
     when (val answer = result.answer) {
         KommunAnswer.Empty -> Text(
-            "Till exempel Örebro eller Krylbo.",
+            stringResource(R.string.kommun_example),
             style = uiText(16, Weight.SEMIBOLD),
             color = ThemeToken.Text2.color,
             modifier = Modifier.padding(horizontal = 4.dp),
@@ -105,16 +107,16 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
                 IconAndText(
                     icon = Icons.Filled.CheckCircle,
                     tint = ThemeToken.BrandText.color,
-                    title = answer.viaPlace?.let { "Ja, ${capitalizedFirst(it)} ligger i ${kommunDisplayName(row.name)}" } ?: "Ja, ${kommunDisplayName(row.name)} finns",
-                    message = if (hasAreas) "Här väljer du tömningsområde i stället för adress, eftersom källan inte publicerar alla adresser." else null,
+                    title = answer.viaPlace?.let { stringResource(R.string.kommun_covered_via, capitalizedFirst(it), kommunDisplayName(row.name)) } ?: stringResource(R.string.kommun_covered, kommunDisplayName(row.name)),
+                    message = if (hasAreas) stringResource(R.string.kommun_areas_text) else null,
                     messageColor = ThemeToken.Text.color,
                 )
                 if (hasAreas) {
-                    PrimaryButton("Välj område i ${kommunDisplayName(row.name)}", {
+                    PrimaryButton(stringResource(R.string.search_choose_area_in, kommunDisplayName(row.name)), {
                         navigator.open(AreaPicker(row.name, shortKommunName(row.name), result.areas, result.areaSources))
                     })
                 } else {
-                    PrimaryButton("Sök din adress", { navigator.open(AddAddress(source = row.sourceId)) })
+                    PrimaryButton(stringResource(R.string.kommun_search_address), { navigator.open(AddAddress(source = row.sourceId)) })
                 }
             }
         }
@@ -122,8 +124,8 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
             IconAndText(
                 icon = Icons.Outlined.Info,
                 tint = ThemeToken.Text.color,
-                title = "Inte än",
-                message = "${kommunDisplayName(answer.row.name)} finns inte med ännu. Sopor lägger till fler kommuner efter hand.",
+                title = stringResource(R.string.kommun_not_yet),
+                message = stringResource(R.string.kommun_not_yet_text, kommunDisplayName(answer.row.name)),
                 messageColor = ThemeToken.Text.color,
             )
             Row(
@@ -132,12 +134,12 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Icon(AppSymbols.OpenInNew, contentDescription = null, tint = ThemeToken.BrandText.color, modifier = Modifier.size(20.dp))
-                Text("Tipsa om din kommun", style = uiText(16, Weight.HEAVY), color = ThemeToken.BrandText.color)
+                Text(stringResource(R.string.kommun_tip), style = uiText(16, Weight.HEAVY), color = ThemeToken.BrandText.color)
             }
         }
         is KommunAnswer.Multiple -> AnswerCard(ThemeToken.Surface.color, bordered = true) {
             Text(
-                "${capitalizedFirst(answer.place)} finns i flera kommuner",
+                stringResource(R.string.kommun_multiple, capitalizedFirst(answer.place)),
                 style = uiText(20, Weight.HEAVY),
                 color = ThemeToken.Text.color,
                 modifier = Modifier.semantics { heading() },
@@ -145,7 +147,7 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
             for (row in answer.rows) MultipleRow(row) { source -> navigator.open(AddAddress(source = source)) }
         }
         is KommunAnswer.Suggestions -> AnswerCard(ThemeToken.Surface.color, bordered = true) {
-            Text("Menar du?", style = uiText(15, Weight.HEAVY), color = ThemeToken.Text2.color)
+            Text(stringResource(R.string.kommun_suggestions), style = uiText(15, Weight.HEAVY), color = ThemeToken.Text2.color)
             for (name in answer.suggestions) {
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { setQuery(name) },
@@ -161,8 +163,8 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
             IconAndText(
                 icon = Icons.Outlined.Search,
                 tint = ThemeToken.Text.color,
-                title = "Vi hittar ingen sådan plats",
-                message = "Kontrollera stavningen, eller skriv kommunens namn.",
+                title = stringResource(R.string.kommun_unknown_title),
+                message = stringResource(R.string.kommun_unknown_text),
                 messageColor = ThemeToken.Text.color,
             )
         }
@@ -170,11 +172,11 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
             IconAndText(
                 icon = AppSymbols.ErrorOutline,
                 tint = ThemeToken.Warn.color,
-                title = "Kunde inte kontrollera just nu",
-                message = "Försök igen om en stund. Det betyder inte att kommunen saknas.",
+                title = stringResource(R.string.area_finder_failed_title),
+                message = stringResource(R.string.kommun_unavailable_text),
                 messageColor = ThemeToken.Text.color,
             )
-            PrimaryButton("Försök igen", retry)
+            PrimaryButton(stringResource(R.string.action_retry), retry)
         }
     }
 }
@@ -182,6 +184,7 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
 @Composable
 private fun MultipleRow(row: KommunRow, onSearch: (String) -> Unit) {
     val name = kommunDisplayName(row.name)
+    val searchIn = stringResource(R.string.kommun_search_in, name)
     val source = row.sourceId
     val content: @Composable () -> Unit = {
         Icon(
@@ -194,17 +197,17 @@ private fun MultipleRow(row: KommunRow, onSearch: (String) -> Unit) {
     val action: @Composable () -> Unit = {
         if (source != null) {
             Text(
-                "Sök adress",
+                stringResource(R.string.kommun_search),
                 style = uiText(16, Weight.HEAVY),
                 color = ThemeToken.Primary.color,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
                     .clickable(role = Role.Button) { onSearch(source) }
-                    .semantics { contentDescription = "Sök adress i $name" }
+                    .semantics { contentDescription = searchIn }
                     .padding(vertical = 12.dp),
             )
         } else {
-            Text("Inte än", style = uiText(16, Weight.BOLD), color = ThemeToken.Text2.color)
+            Text(stringResource(R.string.kommun_not_yet), style = uiText(16, Weight.BOLD), color = ThemeToken.Text2.color)
         }
     }
     if (isLargeText()) {

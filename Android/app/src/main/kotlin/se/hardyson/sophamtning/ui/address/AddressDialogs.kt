@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.address
 
+import androidx.compose.ui.res.stringResource
+import se.hardyson.sophamtning.R
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -16,10 +18,10 @@ import se.hardyson.sophamtning.ui.theme.uiText
 fun RemoveAddressDialog(onRemove: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Ta bort adressen?") },
-        text = { Text("Adressen, det sparade schemat och dess påminnelser tas bort från telefonen.") },
-        confirmButton = { TextButton(onClick = onRemove) { Text("Ta bort", color = ThemeToken.Warn.color, style = uiText(16, Weight.HEAVY)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt", style = uiText(16, Weight.HEAVY)) } },
+        title = { Text(stringResource(R.string.remove_title)) },
+        text = { Text(stringResource(R.string.remove_text)) },
+        confirmButton = { TextButton(onClick = onRemove) { Text(stringResource(R.string.action_remove), color = ThemeToken.Warn.color, style = uiText(16, Weight.HEAVY)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), style = uiText(16, Weight.HEAVY)) } },
         containerColor = ThemeToken.Surface.color,
     )
 }
