@@ -5,6 +5,9 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
@@ -32,6 +35,7 @@ import se.hardyson.sophamtning.core.reminders.DisabledNotifications
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.CachedSchedule
+import se.hardyson.sophamtning.ui.components.ScreenTags
 
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = PHONE)
@@ -246,5 +250,25 @@ class HomeScreenTest {
         compose.onAllNodes(shows("Ångra")).onFirst().performScrollTo().performClick()
         compose.waitForText("Ställ ut kärlen")
         assertFalse(compose.isShowing("Kärlen är utställda"))
+    }
+
+    @Test
+    fun karletSynsDirektEfterForstaAdressen() {
+        val app = TestApp()
+        start(app)
+        compose.waitForText("När töms dina kärl?")
+        // Den första adressen sparas från sökningen, och hemskärmen byter från tomt till fyllt läge.
+        compose.onNodeWithText("Gata och husnummer").performClick()
+        compose.waitForIdle()
+        compose.onNode(hasSetTextAction()).performTextInput("Testgatan")
+        compose.idleFor(500)
+        compose.waitForText("Testgatan 1", substring = true)
+        compose.onAllNodes(shows("Testgatan 1", substring = true)).onFirst().performClick()
+        compose.waitForText("Hemma")
+        compose.onNodeWithTag(ScreenTags.LARGE_TITLE_LEADING, useUnmergedTree = true).assertIsDisplayed()
+        // Och efter att skärmen ritats klart, med schemat hämtat.
+        compose.waitForText("NÄSTA TÖMNING")
+        compose.advance(2_000)
+        compose.onNodeWithTag(ScreenTags.LARGE_TITLE_LEADING, useUnmergedTree = true).assertIsDisplayed()
     }
 }
