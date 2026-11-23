@@ -27,7 +27,8 @@ object PlacedOutAction {
         cancelReminder: suspend (String) -> Unit,
     ): Boolean {
         val saved = attempt { store.markPlacedOut(entry, today) }
-        end()
+        // Avslutningen kan kasta på Android, till exempel när systemet nekar. Notiserna tas bort ändå.
+        attempt { end() }
         for (timing in ReminderTiming.entries) {
             attempt { cancelReminder(PlannedNotification.identifier(entry.key, entry.date, timing)) }
         }

@@ -82,4 +82,14 @@ class PlacedOutActionTest {
         )
         assertEquals(2, center.cancelled.size)
     }
+
+    @Test
+    fun utstalltTarBortNotisernaAvenNarAvslutningenMisslyckas() = runTest {
+        val store = LocalStore(tempDir())
+        val center = FakeCenter()
+        val saved = PlacedOutAction.perform(store, entry(1), today, end = { throw SecurityException("nekad") }, cancelReminder = center::cancel)
+        assertTrue(saved)
+        assertEquals(listOf(entry(1)), store.placedOut())
+        assertEquals(2, center.cancelled.size)
+    }
 }
