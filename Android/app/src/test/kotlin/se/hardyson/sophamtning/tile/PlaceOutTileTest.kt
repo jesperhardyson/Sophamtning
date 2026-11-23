@@ -54,6 +54,8 @@ class PlaceOutTileTest {
     private fun tile(): Pair<PlaceOutTileService, Tile> {
         val service = Robolectric.buildService(PlaceOutTileService::class.java).create().get()
         service.onStartListening()
+        // Lagringen läses utanför huvudtråden, och rutan ritas sedan.
+        idleUntil { service.qsTile.subtitle != null }
         return service to service.qsTile
     }
 
@@ -92,7 +94,9 @@ class PlaceOutTileTest {
         assertEquals(Tile.STATE_UNAVAILABLE, tile.state)
         assertEquals("Ons 11 nov", tile.subtitle)
         service.onClick()
-        idleUntil { true }
+        org.robolectric.shadows.ShadowLooper.idleMainLooper(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        Thread.sleep(200)
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
         assertTrue(appStore.placedOut().isEmpty())
     }
 
@@ -113,6 +117,30 @@ class PlaceOutTileTest {
         assertTrue(pickup in app.model.state.value.ownPlacedOut)
         assertEquals(ReminderTiming.entries.map { PlannedNotification.identifier(key, pickup.date, it) }.toSet(), reminders.cancelled.toSet())
     }
+
+    @Test
+    fun rutanArAktivOchRitasOmNarAppenBerOmDet() {
+        // En aktiv ruta binds av systemet när appen ber om det, så att den stämmer när snabbinställningarna öppnas.
+        val info = application.packageManager.getServiceInfo(
+            android.content.ComponentName(application, PlaceOutTileService::class.java),
+            android.content.pm.PackageManager.GET_META_DATA,
+        )
+        assertTrue(info.metaData.getBoolean(android.service.quicksettings.TileService.META_DATA_ACTIVE_TILE))
+    }
+
+    @Test
+    fun rutanFarAlarmetVidMidnattUtanWidget() {
+        // Rutan ritas bara om när appen ber om det, så den behöver midnatten för att "i morgon" ska bli "i dag".
+        install(StockholmClock.dateOn(day("2026-11-10"), 12 * 60))
+        val service = Robolectric.buildService(PlaceOutTileService::class.java).create().get()
+        service.onTileAdded()
+        assertTrue(midnight().isNotEmpty())
+        service.onTileRemoved()
+        assertTrue(midnight().isEmpty())
+    }
+
+    private fun midnight() = se.hardyson.sophamtning.reminders.alarms.scheduledAlarms
+        .filter { org.robolectric.Shadows.shadowOf(it.operation).savedIntent.action == se.hardyson.sophamtning.widget.WidgetUpdates.ACTION_MIDNIGHT }
 
     /** Notiser som tillåts, och som minns vilka som tagits bort. */
     private class RecordingReminders : NotificationScheduling {

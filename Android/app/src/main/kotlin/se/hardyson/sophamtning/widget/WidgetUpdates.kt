@@ -17,6 +17,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -43,6 +46,9 @@ object WidgetUpdates {
     /** Ökar varje gång widgetarna ska läsa om lagringen. Widgeten som visas läser om när värdet ändras. */
     val version: StateFlow<Int> = _version.asStateFlow()
 
+    /** Ändringar som kommer så här tätt ger en enda omritning. */
+    private val BURST: Duration = Duration.ofMillis(300)
+
     /** Hur långt efter midnatt alarmet får komma, när appen inte får använda exakta alarm. */
     private val window: Duration = Duration.ofMinutes(10)
 
@@ -52,8 +58,9 @@ object WidgetUpdates {
     }
 
     /**
-     * Ritar om widgetarna från det som är sparat nu och väntar tills det är gjort. För mottagare och bakgrundsarbete, där
-     * processen kan frysas när arbetet är klart.
+     * Ber widgetarna och rutan läsa om lagringen nu. Funktionen väntar tills Glance har tagit emot omritningen för varje
+     * widget, men inte tills hemskärmen har visat den: den ritas av Glance i en egen session efteråt. För mottagare och
+     * bakgrundsarbete, så att begäran är gjord innan processen kan frysas.
      */
     suspend fun updateNow(context: Context) {
         _version.update { it + 1 }
@@ -88,26 +95,35 @@ object WidgetUpdates {
      * Ritar om widgetarna när det de visar ändras i appens tillstånd: adresserna (och därmed huvudadressen), scheman och
      * Utställt. Också en gång direkt, så att en widget som missat något, till exempel en midnatt, stämmer när processen startar.
      */
+    @OptIn(FlowPreview::class)
     fun observe(model: AppModel, context: Context, scope: CoroutineScope) {
         scope.launch {
             model.state
                 .map { Triple(it.addresses, it.schedules, it.ownPlacedOut) }
                 .distinctUntilChanged()
-                .collect { requestUpdate(context, scope) }
+                // En hämtning av flera adresser ändrar tillståndet flera gånger i rad. Widgetarna ritas om en gång efteråt.
+                .debounce(BURST.toMillis())
+                .collectLatest { updateNow(context) }
         }
     }
 
-    /** Om det finns någon widget på hemskärmen. Utan widget behövs inget alarm. */
+    /** Om det finns någon widget på hemskärmen. */
     fun hasWidgets(context: Context): Boolean =
         AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, NextPickupWidgetReceiver::class.java)).isNotEmpty()
+
+    /**
+     * Om något visar dagen och behöver alarmet vid midnatt: en widget, eller rutan i snabbinställningarna, som är aktiv och
+     * bara ritas om när appen ber om det.
+     */
+    private fun needsMidnight(context: Context): Boolean = hasWidgets(context) || PlaceOutTileService.isAdded(context)
 
     /** Nästa midnatt i Stockholm efter [now]. */
     fun nextMidnight(now: Instant): Instant = StockholmClock.dateOn(StockholmClock.today(now).plusDays(1), 0)
 
-    /** Lägger alarmet vid nästa midnatt i Stockholm, eller tar bort det när ingen widget finns. */
+    /** Lägger alarmet vid nästa midnatt i Stockholm, eller tar bort det när varken widget eller ruta finns. */
     fun armMidnight(context: Context, now: Instant = Instant.now()) {
         val manager = context.getSystemService(AlarmManager::class.java)
-        if (!hasWidgets(context)) {
+        if (!needsMidnight(context)) {
             manager.cancel(midnightIntent(context))
             return
         }
@@ -118,10 +134,6 @@ object WidgetUpdates {
         } else {
             manager.setWindow(AlarmManager.RTC, at, window.toMillis(), operation)
         }
-    }
-
-    fun cancelMidnight(context: Context) {
-        context.getSystemService(AlarmManager::class.java).cancel(midnightIntent(context))
     }
 
     internal fun midnightIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(

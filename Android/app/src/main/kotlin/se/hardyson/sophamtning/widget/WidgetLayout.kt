@@ -75,20 +75,21 @@ internal object WidgetLayout {
         val row = maxOf(28f, lineHeight(15f, fontScale, scale)) + ROW_SPACING
         val more = lineHeight(13f, fontScale, scale) + 6
         val top = lineHeight(24f, fontScale, scale) + 6 + button
-        // Så många kärl på egna rader som ryms, högst tre, eller två med knappen. Ryms inte alla blir sista raden "+N till".
-        // Ryms inga rader alls står bara dagen och knappen kvar, och "+N till" om den raden ryms.
+        // Så många kärl på egna rader som ryms, högst tre, eller två med knappen. Ryms inte alla står resten som "+N till",
+        // som tar en rads plats av de tre. Det första kärlet står hellre kvar med "+N till" än att bara "+N till" visas,
+        // vilket skiljer sig från iOS. Ryms inga rader alls står bara dagen och knappen kvar, och "+N till" om den ryms.
         val most = if (placeOut) MAX_ROWS - 1 else MAX_ROWS
         var rows = 0
         var hidden = 0
         var used = top
-        for (slots in most downTo 0) {
-            val shown = if (sameDay > slots) maxOf(slots - 1, 0) else sameDay
+        for (shown in minOf(sameDay, most) downTo 0) {
             val rest = sameDay - shown
+            if (rest > 0 && shown > maxOf(most - 1, 1)) continue
             val height = top + shown * row + if (rest > 0) more else 0f
-            if (height <= inner || slots == 0) {
+            if (height <= inner) {
                 rows = shown
-                hidden = if (rest > 0 && height <= inner) rest else 0
-                used = top + shown * row + if (hidden > 0) more else 0f
+                hidden = rest
+                used = height
                 break
             }
         }

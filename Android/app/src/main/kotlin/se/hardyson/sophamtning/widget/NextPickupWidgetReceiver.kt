@@ -16,6 +16,7 @@ class NextPickupWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        WidgetUpdates.cancelMidnight(context)
+        // Den sista widgeten är borta. Alarmet tas bort, om inte rutan i snabbinställningarna behöver det.
+        WidgetUpdates.armMidnight(context)
     }
 }

@@ -11,6 +11,9 @@ import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.dates.DayDate
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.PlacedOut
+import se.hardyson.sophamtning.core.storage.LocalStore
+import se.hardyson.sophamtning.core.widget.WidgetData
+import java.time.Instant
 
 /**
  * Knappen **Ställ ut kärlen** i widgeten. Gör samma sak som Klart i Live Updaten och Utställt i notisen, via
@@ -19,14 +22,30 @@ import se.hardyson.sophamtning.core.storage.PlacedOut
  */
 class PlaceOutAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val entry = entry(parameters) ?: return
-        placeOut(context, entry)
+        perform(context, parameters)
     }
 
     companion object {
         private val source = ActionParameters.Key<String>("källa")
         private val id = ActionParameters.Key<String>("id")
         private val date = ActionParameters.Key<String>("datum")
+
+        /**
+         * Trycket på knappen. Widgeten kan ha ritats för en tömning som inte längre gäller, till exempel efter att schemat
+         * ändrats, så tömningen räknas om från lagringen och klockan nu. Bara när den är samma ställs kärlen ut.
+         */
+        suspend fun perform(context: Context, parameters: ActionParameters) {
+            val requested = entry(parameters) ?: return
+            val current = withContext(Dispatchers.IO) {
+                val store = LocalStore(SophamtningApplication.storeDirectory(context))
+                WidgetData.read(store).placeOutEntry(clock(context)())
+            }
+            if (current == requested) placeOut(context, requested)
+        }
+
+        private suspend fun clock(context: Context): () -> Instant = withContext(Dispatchers.Main) {
+            (context.applicationContext as SophamtningApplication).dependencies.clock
+        }
 
         fun parameters(entry: PlacedOut): ActionParameters =
             actionParametersOf(source to entry.key.source, id to entry.key.id, date to entry.date.iso)

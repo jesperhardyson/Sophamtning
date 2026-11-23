@@ -13,6 +13,7 @@ import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.cancel
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import se.hardyson.sophamtning.SophamtningApplication
@@ -207,6 +208,44 @@ class NextPickupWidgetTest {
         // Nästa gång processen startar, av appen, ett alarm eller bakgrundshämtningen, läggs midnatten in igen.
         application.onCreate()
         assertEquals(listOf(WidgetUpdates.nextMidnight(Instant.now()).toEpochMilli()), midnightAlarms())
+    }
+
+    @Test
+    fun knappenGallerTommningenSomGallerNarDenTrycks() {
+        // Knappen ritades för en annan tömning än den som gäller när trycket kommer, till exempel efter att schemat
+        // ändrats. Då ställs inget ut.
+        val after = StockholmClock.dateOn(day("2026-11-12"), 8 * 60)
+        val store = store(SophamtningApplication.storeDirectory(application))
+        val app = TestApp(clock = TestClock(after), dir = SophamtningApplication.storeDirectory(application))
+        application.dependencies = app.dependencies
+        val stale = PlaceOutAction.parameters(PlacedOut(key, day("2026-11-18")))
+        onMain { PlaceOutAction.perform(application, stale) }
+        assertTrue(store.placedOut().isEmpty())
+        // Gäller trycket tömningen som är aktuell, ställs den ut.
+        val current = PlacedOut(key, day("2026-11-12"))
+        onMain { PlaceOutAction.perform(application, PlaceOutAction.parameters(current)) }
+        assertTrue(current in store.placedOut())
+    }
+
+    @Test
+    fun flerAndringarIRadGerEnOmritning() {
+        val app = TestApp(clock = TestClock(friday))
+        val scope = kotlinx.coroutines.MainScope()
+        WidgetUpdates.observe(app.model, application, scope)
+        idle(1_000)
+        val before = WidgetUpdates.version.value
+        // En hämtning av flera adresser ändrar tillståndet flera gånger i rad, med en kort stund emellan.
+        for (street in listOf("Testgatan 1", "Testgatan 2", "Testgatan 3")) {
+            app.model.add(se.hardyson.sophamtning.ui.testHit(street))
+            idle(50)
+        }
+        idle(1_000)
+        assertEquals(before + 1, WidgetUpdates.version.value)
+        scope.cancel()
+    }
+
+    private fun idle(millis: Long) {
+        org.robolectric.shadows.ShadowLooper.idleMainLooper(millis, java.util.concurrent.TimeUnit.MILLISECONDS)
     }
 
     private fun midnightAlarms() = alarms.scheduledAlarms

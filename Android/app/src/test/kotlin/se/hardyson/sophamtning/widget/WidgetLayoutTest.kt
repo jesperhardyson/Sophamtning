@@ -37,4 +37,13 @@ class WidgetLayoutTest {
         assertEquals(3, roomy.rows)
         assertEquals(0, roomy.hidden)
     }
+
+    @Test
+    fun mellanVisarForstaKarletHellreAnBaraPlusTill() {
+        // Ryms en rad och "+N till", men inte två rader, står det första kärlet kvar och resten blir "+1 till".
+        val layout = WidgetLayout.medium(156f, 1.3f, sameDay = 2, placeOut = true, placedOut = false, ending = false)
+        assertEquals(1, layout.rows)
+        assertEquals(1, layout.hidden)
+        assertTrue(layout.height <= 156f)
+    }
 }

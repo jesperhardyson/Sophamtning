@@ -1,6 +1,7 @@
 package se.hardyson.sophamtning.shortcuts
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -31,18 +32,32 @@ object AppShortcuts {
         }
     }
 
+    /**
+     * Lägger in genvägen till [primary], eller tar bort den utan huvudadress. Genvägen läggs bara in när adressen eller
+     * namnet har ändrats sedan förra gången, också i en tidigare process, så att varje start av appen inte lägger in den
+     * på nytt.
+     */
     fun update(context: Context, primary: SavedAddress?) {
+        val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        val pushed = primary?.let { listOf(it.key.source, it.key.id, it.displayName) }
+        val previous = PUSHED.map { preferences.getString(it, null) }.takeIf { values -> values.all { it != null } }
+        if (previous == pushed) return
         if (primary == null) {
             ShortcutManagerCompat.removeDynamicShortcuts(context, listOf(PRIMARY_ID))
-            return
+        } else {
+            val shortcut = ShortcutInfoCompat.Builder(context, PRIMARY_ID)
+                .setShortLabel(primary.displayName)
+                .setLongLabel(context.getString(R.string.shortcut_primary_long, primary.displayName))
+                .setIcon(IconCompat.createWithResource(context, R.drawable.ic_shortcut_home))
+                .setIntent(AppLink.OpenAddress(primary.key).intent(context))
+                .build()
+            // Ersätter genvägen med samma id, och låter startprogrammet räkna hur den används.
+            ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
         }
-        val shortcut = ShortcutInfoCompat.Builder(context, PRIMARY_ID)
-            .setShortLabel(primary.displayName)
-            .setLongLabel(context.getString(R.string.shortcut_primary_long, primary.displayName))
-            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_shortcut_home))
-            .setIntent(AppLink.OpenAddress(primary.key).intent(context))
-            .build()
-        // Ersätter genvägen med samma id, och låter startprogrammet räkna hur den används.
-        ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
+        preferences.edit { PUSHED.forEachIndexed { index, name -> putString(name, pushed?.get(index)) } }
     }
+
+    private const val PREFERENCES = "genvagar"
+    /** Källan, id:t och namnet för genvägen som senast lades in. De jämförs bara, och tolkas aldrig. */
+    private val PUSHED = listOf("källa", "id", "namn")
 }

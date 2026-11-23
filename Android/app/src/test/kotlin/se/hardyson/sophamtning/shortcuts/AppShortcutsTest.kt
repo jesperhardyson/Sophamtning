@@ -59,6 +59,23 @@ class AppShortcutsTest {
     }
 
     @Test
+    fun genvagenLaggsInBaraNarHuvudadressenAndras() {
+        val app = TestApp()
+        val hit = testHit("Testgatan 1")
+        app.model.add(hit)
+        val primary = app.model.state.value.addresses.single()
+        AppShortcuts.update(application, primary)
+        assertEquals(1, dynamic().size)
+        // Tas genvägen bort utifrån, läggs den inte in igen för samma adress och namn, som när en ny process startar.
+        ShortcutManagerCompat.removeAllDynamicShortcuts(application)
+        AppShortcuts.update(application, primary)
+        assertEquals(0, dynamic().size)
+        // Ett nytt namn läggs in.
+        AppShortcuts.update(application, primary.copy(displayName = "Stugan"))
+        assertEquals("Stugan", dynamic().single().shortLabel)
+    }
+
+    @Test
     fun genvagenLaggTillAdressOppnarSokningen() {
         // Den fasta genvägen i shortcuts.xml har en länk som navigeringen läser.
         val parser = application.resources.getXml(R.xml.shortcuts)
