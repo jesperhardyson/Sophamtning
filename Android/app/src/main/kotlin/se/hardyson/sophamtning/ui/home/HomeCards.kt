@@ -24,6 +24,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import se.hardyson.sophamtning.LocalAppDependencies
+import se.hardyson.sophamtning.core.bin.CalendarFlipTimeline
+import se.hardyson.sophamtning.core.bin.EntranceTimeline
+import se.hardyson.sophamtning.core.dates.StockholmClock
+import se.hardyson.sophamtning.ui.bin.animationsOff
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -151,9 +157,24 @@ private fun CardHeader(entry: HomeContent.Entry, foreground: Color) {
     }
 }
 
+/** Huvudkortets namn för bläddringen vid start, och dess plats i ordningen efter rubriken, som på iOS. */
+private const val PRIMARY_CARD = "huvudkort"
+private const val PRIMARY_CARD_INDEX = 1
+
 /** Kalenderbrickan och raden om nästa tömning, under varandra med största text. */
 @Composable
 private fun NextPickup(pickup: HomeContent.Pickup, dayNote: String?, foreground: Color) {
+    val dependencies = LocalAppDependencies.current
+    val reduceMotion = animationsOff()
+    // Vid varje start av appen vänds bladet från dagens datum till tömningsdagen, en gång per process, när kortet har
+    // kommit fram. Inte om tömningen är i dag.
+    val opening = remember {
+        if (!dependencies.calendarOpenings.shouldPlay(PRIMARY_CARD)) return@remember null
+        dependencies.calendarOpenings.markShown(PRIMARY_CARD)
+        CalendarFlipTimeline.openingDate(StockholmClock.today(dependencies.clock()), pickup.date)
+    }
+    val openingDelay = EntranceTimeline.flipDelay(cardIndex = PRIMARY_CARD_INDEX, reduceMotion = reduceMotion)
+    val tile: @Composable () -> Unit = { CalendarTile(pickup.date, opening = opening, openingDelay = openingDelay) }
     val text: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.next_pickup_caps), style = uiText(13, Weight.HEAVY).copy(letterSpacing = CapsTracking), color = foreground.copy(alpha = 0.9f))
@@ -165,12 +186,12 @@ private fun NextPickup(pickup: HomeContent.Pickup, dayNote: String?, foreground:
     }
     if (isLargeText()) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            CalendarTile(pickup.date)
+            tile()
             text()
         }
     } else {
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            CalendarTile(pickup.date)
+            tile()
             text()
         }
     }

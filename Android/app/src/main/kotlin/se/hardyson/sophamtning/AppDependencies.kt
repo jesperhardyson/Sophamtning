@@ -28,6 +28,8 @@ class AppDependencies(
     val changelog: () -> String? = { null },
     /** Kärlen som redan har spelat sitt första varv i den här processen, så att det inte spelas igen vid retur. */
     val binFirstRounds: ShownOnce<String> = ShownOnce(),
+    /** Kalenderbladen som redan har bläddrats vid start i den här processen, så att det inte görs igen vid retur. */
+    val calendarOpenings: ShownOnce<String> = ShownOnce(),
     /** Frågan om notiser, som aktiviteten kopplar in. `null` i testerna, där ingen fråga ställs. */
     val notificationPermission: NotificationPermission? = null,
 )
