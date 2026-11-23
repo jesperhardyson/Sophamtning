@@ -31,6 +31,9 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+
+    // Svaren som UI-testerna på iOS använder delas och kopieras inte. Testerna här läser samma filer.
+    sourceSets["test"].resources.srcDir("../../iOS/Sophamtning/UITestData")
 }
 
 kotlin {
