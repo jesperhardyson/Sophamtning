@@ -4,11 +4,6 @@ import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.storage.LocalStore
 
@@ -25,22 +20,13 @@ class RescheduleReceiver : BroadcastReceiver() {
         runCatching { AndroidNotifications.rescheduleAll(context, store) }
         runCatching { AndroidLiveUpdates.rescheduleAll(context, store) }
         val model = (context.applicationContext as SophamtningApplication).dependencies.model
-        // Modellen hör till huvudtråden. Mottagaren har ungefär tio sekunder på sig.
-        CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
-            try {
-                withTimeoutOrNull(TIME_LIMIT_MILLIS) {
-                    model.applyReminders()
-                    model.settleReminders()
-                }
-            } finally {
-                pending.finish()
-            }
+        ReceiverWork.launch(finish = pending::finish) {
+            model.applyReminders()
+            model.settleReminders()
         }
     }
 
     companion object {
-        private const val TIME_LIMIT_MILLIS = 8_000L
-
         private val ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_TIME_CHANGED,

@@ -8,9 +8,11 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
+import java.time.Duration
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
 import se.hardyson.sophamtning.R
+import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
 import se.hardyson.sophamtning.core.reminders.NotificationScheduling
 import se.hardyson.sophamtning.core.reminders.PendingNotification
@@ -154,14 +156,23 @@ class AndroidNotifications(
             }
         }
 
+        /** Hur sen en missad påminnelse får vara och ändå visas. */
+        val MISSED_LIMIT: Duration = Duration.ofHours(2)
+
         /**
-         * Lägger in alarmen igen från filen, efter omstart, ändrad tid eller tidszon, en appuppdatering eller ändrade exakta
-         * alarm. Utan nät. En notis vars tid passerade medan telefonen var avstängd tas bort: den gäller en tid som redan är förbi.
+         * Lägger in alarmen igen från filen: när appen startar, efter omstart, ändrad tid eller tidszon, en appuppdatering eller
+         * ändrade exakta alarm. Utan nät. Systemet kan ha glömt alarmen utan att säga till, till exempel efter tvångsstopp.
+         * En påminnelse vars tid passerade medan telefonen var avstängd visas direkt, om den är högst [MISSED_LIMIT] sen och
+         * tömningen inte har passerat i Stockholm. Annars tas den bort.
          */
         fun rescheduleAll(context: Context, store: LocalStore, now: Instant = Instant.now()) {
             val scheduled = ScheduledReminders(store)
             val file = scheduled.read()
             val (future, past) = file.notifications.partition { it.fireDate > now }
+            val today = StockholmClock.today(now)
+            for (entry in past) {
+                if (entry.fireDate >= now.minus(MISSED_LIMIT) && entry.pickupDate >= today) post(context, entry.identifier, reminder(context, entry))
+            }
             for (entry in future) {
                 try {
                     Alarms.set(context, entry.fireDate, alarmIntent(context, entry.identifier))

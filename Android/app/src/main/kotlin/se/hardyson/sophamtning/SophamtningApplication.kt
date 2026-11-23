@@ -6,7 +6,10 @@ import android.content.Context
 import io.ktor.client.engine.okhttp.OkHttp
 import java.io.File
 import java.time.Instant
+import android.util.Log
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.plus
 import se.hardyson.sophamtning.core.app.AppModel
 import se.hardyson.sophamtning.background.RefreshWorker
 import se.hardyson.sophamtning.core.api.SoporClient
@@ -29,6 +32,9 @@ class SophamtningApplication : Application() {
         val clock = { Instant.now() }
         val store = LocalStore(storeDirectory(this))
         NotificationChannels.create(this)
+        // Systemet kan ha glömt alarmen utan att säga till: efter tvångsstopp, eller när exakta alarm drogs in.
+        runCatching { AndroidNotifications.rescheduleAll(this, store) }
+        runCatching { AndroidLiveUpdates.rescheduleAll(this, store) }
         val permission = NotificationPermission(this)
         val model = AppModel(
             api = api,
@@ -36,7 +42,9 @@ class SophamtningApplication : Application() {
             notifications = AndroidNotifications(this, store, permission),
             liveActivities = AndroidLiveUpdates(this, store),
             clock = clock,
-            scope = MainScope(),
+            // Ett fel i en planering loggas och kraschar inte appen, som kan köras utan att synas, från ett alarm eller en
+            // mottagare. Nästa planering försöker igen.
+            scope = MainScope() + CoroutineExceptionHandler { _, error -> Log.w("Sophamtning", "Planeringen misslyckades", error) },
             appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
         )
         dependencies = AppDependencies(

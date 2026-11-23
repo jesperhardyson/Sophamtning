@@ -3,11 +3,6 @@ package se.hardyson.sophamtning.reminders
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.reminders.PlacedOutNotification
 import se.hardyson.sophamtning.core.storage.LocalStore
@@ -37,24 +32,15 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         const val ACTION_PLACED_OUT = "se.hardyson.sophamtning.action.UTSTALLT"
         const val EXTRA_IDENTIFIER = "identifierare"
 
-        /** Mottagaren har ungefär tio sekunder på sig. Arbetet avbryts före det, och nästa planering rättar det som återstår. */
-        private const val TIME_LIMIT_MILLIS = 8_000L
-
         /**
          * Ställer ut kärlen i appens modell, utan att appen öppnas, och avslutar sedan [pending]. Modellen hör till
          * huvudtråden, som på iOS.
          */
         internal fun markPlacedOut(context: Context, entry: PlacedOut, pending: PendingResult) {
             val model = (context.applicationContext as SophamtningApplication).dependencies.model
-            CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
-                try {
-                    withTimeoutOrNull(TIME_LIMIT_MILLIS) {
-                        model.markPlacedOut(entry.key, entry.date)
-                        model.settleReminders()
-                    }
-                } finally {
-                    pending.finish()
-                }
+            ReceiverWork.launch(finish = pending::finish) {
+                model.markPlacedOut(entry.key, entry.date)
+                model.settleReminders()
             }
         }
     }

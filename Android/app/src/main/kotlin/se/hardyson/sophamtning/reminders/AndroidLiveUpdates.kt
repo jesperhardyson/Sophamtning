@@ -101,7 +101,12 @@ class AndroidLiveUpdates(
     }
 
     override suspend fun update(id: String, content: PickupActivityContent) {
-        val updated = scheduled.update { f -> f.copy(liveUpdates = f.liveUpdates.map { if (it.id == id) it.copy(content = content) else it }) }
+        val updated = try {
+            scheduled.update { f -> f.copy(liveUpdates = f.liveUpdates.map { if (it.id == id) it.copy(content = content) else it }) }
+        } catch (_: Exception) {
+            // Utan sparat innehåll visas det gamla. Nästa planering försöker igen.
+            return
+        }
         val entry = updated.liveUpdates.firstOrNull { it.id == id } ?: return
         if (entry.started && !entry.dismissed && id in showingTags(context)) show(context, entry)
     }
@@ -220,7 +225,8 @@ class AndroidLiveUpdates(
                     when {
                         // Ett alarm i det förflutna går direkt, och då visas den.
                         !entry.started -> Alarms.set(context, start, startIntent(context, entry.id))
-                        entry.id !in showing -> show(context, entry)
+                        // Tidsgränsen räknas från starten, så att en omstart inte förlänger den.
+                        entry.id !in showing -> show(context, entry, timeout = Duration.between(now, start.plus(TIMEOUT)))
                     }
                 } catch (_: Exception) {
                     // Nästa planering lägger in den igen.

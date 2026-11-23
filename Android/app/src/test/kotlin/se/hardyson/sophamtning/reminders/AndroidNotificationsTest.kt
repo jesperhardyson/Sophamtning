@@ -5,6 +5,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.Duration
+import java.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,14 +56,15 @@ class AndroidNotificationsTest {
     }
 
     @Test
-    fun schemalaggerFonsterNarExaktaTiderInteArTillatna() = runBlocking {
+    fun schemalaggerUtanExaktTidNarExaktaTiderInteArTillatna() = runBlocking {
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
         val notification = planned(monday)
         notifications.schedule(listOf(notification))
         val alarm = alarms.scheduledAlarms.single()
-        // Fönstret börjar på vald tid och är högst 10 minuter.
+        // Ett inexakt alarm från vald tid, som också går när telefonen vilar (Doze).
         assertEquals(notification.fireDate.toEpochMilli(), alarm.triggerAtMs)
-        assertTrue(alarm.windowLengthMs in 1..Duration.ofMinutes(10).toMillis())
+        assertEquals(ShadowAlarmManager.WINDOW_HEURISTIC, alarm.windowLengthMs)
+        assertTrue(alarm.isAllowWhileIdle)
     }
 
     @Test
@@ -146,4 +148,49 @@ class AndroidNotificationsTest {
         assertEquals(0, notificationManager.size())
         assertFalse(notifications.pending().any { it.identifier == notification.identifier })
     }
+
+    /** En notis i filen som aldrig fick gå: telefonen var avstängd vid [fireDate]. */
+    private fun missed(fireDate: Instant, pickup: se.hardyson.sophamtning.core.dates.DayDate): String {
+        val entry = ScheduledNotification.from(planned(pickup).copy(fireDate = fireDate))
+        ScheduledReminders(appStore).update { it.copy(notifications = it.notifications + entry) }
+        return entry.identifier
+    }
+
+    @Test
+    fun missadUnderAvstangningVisasNarDenArHogstTvaTimmarSen() {
+        val now = Instant.now()
+        val late = missed(now.minus(Duration.ofMinutes(90)), StockholmClock.today().plusDays(1))
+        AndroidNotifications.rescheduleAll(application, appStore, now)
+        // Påminnelsen kommer när telefonen startar, och står inte kvar som väntande.
+        assertEquals("Ställ ut kärlen", requireNotNull(shown(late)) { "Notisen visas inte" }.extras.getString(NotificationCompat.EXTRA_TITLE))
+        assertTrue(ScheduledReminders(appStore).read().notifications.isEmpty())
+    }
+
+    @Test
+    fun missadUnderAvstangningTasBortNarDenArForSenEllerTomningenPasserat() {
+        val now = Instant.now()
+        val tooLate = missed(now.minus(Duration.ofMinutes(150)), StockholmClock.today().plusDays(1))
+        val passed = missed(now.minus(Duration.ofMinutes(30)), StockholmClock.today().plusDays(-1))
+        AndroidNotifications.rescheduleAll(application, appStore, now)
+        assertNull(shown(tooLate))
+        assertNull(shown(passed))
+        assertTrue(ScheduledReminders(appStore).read().notifications.isEmpty())
+    }
+
+    @Test
+    fun appstartenLaggerInAlarmenFranFilenIgen() {
+        // Systemet har tagit bort alarmen, till exempel efter tvångsstopp eller när exakta alarm drogs in.
+        val notification = planned(monday)
+        ScheduledReminders(appStore).update { it.copy(notifications = listOf(ScheduledNotification.from(notification))) }
+        val live = ScheduledLiveUpdate("live.x", testKey, monday, Instant.now().plusSeconds(7200).toEpochMilli(), notificationContent)
+        ScheduledReminders(appStore).update { it.copy(liveUpdates = listOf(live)) }
+        assertTrue(alarms.scheduledAlarms.isEmpty())
+
+        application.onCreate()
+        assertEquals(setOf(notification.fireDate.toEpochMilli(), live.start), alarms.scheduledAlarms.map { it.triggerAtMs }.toSet())
+    }
 }
+
+private val notificationContent = se.hardyson.sophamtning.core.reminders.PickupActivityContent(
+    "Hemma", "Måndag 9 november", "Mån 9 nov", emptyList(), false, null,
+)

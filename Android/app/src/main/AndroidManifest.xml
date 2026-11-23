@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Frågas bara när användaren slår på en påminnelse eller Live Update. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Exakta tider för påminnelserna. Appen begär det aldrig själv, och utan det kommer påminnelsen inom 10 minuter. -->
+    <!-- Exakta tider för påminnelserna. Appen begär det aldrig själv, och utan det kommer påminnelsen oftast inom några minuter. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Live Update: den pågående notisen får begäras som framhävd i Android 16 och senare. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />

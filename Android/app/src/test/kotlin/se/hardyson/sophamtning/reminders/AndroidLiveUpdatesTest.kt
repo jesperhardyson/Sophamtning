@@ -182,4 +182,25 @@ class AndroidLiveUpdatesTest {
         assertEquals(PickupActivityContent.ALERT_TITLE, notification.extras.getString(NotificationCompat.EXTRA_TITLE))
         assertEquals(listOf(PickupActivityContent.DONE_BUTTON), notification.actions.map { it.title.toString() })
     }
+
+    @Test
+    fun uppdateringSomInteKanSparasKraschar() = runBlocking {
+        // Lagringens katalog är en fil, så inget går att spara.
+        val blocked = java.io.File(application.cacheDir, "blockerad").apply { writeBytes(ByteArray(0)) }
+        AndroidLiveUpdates(application, LocalStore(blocked)).update("live.x", content)
+    }
+
+    @Test
+    fun visadFoeOmstartenFarBaraResterandeTid() {
+        val now = Instant.now()
+        val entry = ScheduledLiveUpdate("live.efter-omstart", testKey, StockholmClock.today(), now.minus(java.time.Duration.ofHours(11)).toEpochMilli(), content, started = true)
+        val expired = ScheduledLiveUpdate("live.utgangen", testKey, StockholmClock.today(), now.minus(java.time.Duration.ofHours(13)).toEpochMilli(), content, started = true)
+        ScheduledReminders(appStore).update { it.copy(liveUpdates = listOf(entry, expired)) }
+
+        AndroidLiveUpdates.rescheduleAll(application, appStore, now)
+        // Tidsgränsen räknas från starten, inte från omstarten: ungefär en timme kvar.
+        val timeout = requireNotNull(shown(entry.id)) { "Live Updaten visas inte igen" }.timeoutAfter
+        assertTrue("$timeout", timeout in java.time.Duration.ofMinutes(59).toMillis()..java.time.Duration.ofHours(1).toMillis())
+        assertNull(shown(expired.id))
+    }
 }
