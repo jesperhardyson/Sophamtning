@@ -16,7 +16,7 @@ import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.CachedSchedule
 import se.hardyson.sophamtning.core.storage.ReminderSettings
 
-// Texttesterna i LiveActivityDiffTests.swift. Själva LiveActivityDiff kommer i plan 5, men texterna används av Live Update.
+// Texttesterna i LiveActivityDiffTests.swift. Resten finns i LiveActivityDiffTest.
 
 private val home = AddressKey("kallor", "hem")
 private val today = DayDate.parse("2026-11-08")!!

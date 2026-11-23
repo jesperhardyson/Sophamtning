@@ -17,6 +17,8 @@ import se.hardyson.sophamtning.core.api.SourcesResponse
 import se.hardyson.sophamtning.core.storage.CachedSources
 import se.hardyson.sophamtning.core.storage.LocalStore
 import se.hardyson.sophamtning.core.storage.tempDir
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
+import se.hardyson.sophamtning.core.reminders.DisabledLiveActivities
 
 private class SourcesApi(@Volatile var result: Result<SourcesResponse>) : UnusedApi() {
     @Volatile var callCount = 0
@@ -41,7 +43,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(3600)))
         val api = SourcesApi(Result.success(list("ny")))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertEquals("sparad", model.sourceList()?.first()?.id)
         assertEquals(0, api.callCount)
     }
@@ -51,7 +53,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(60), appVersion = "1.0.0 (201)"))
         val api = SourcesApi(Result.success(list("ny")))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
         assertEquals("ny", model.sourceList()?.first()?.id)
         assertEquals("1.0.1 (301)", store.sources()?.appVersion)
         model.sourceList()
@@ -63,7 +65,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(60)))
         val api = SourcesApi(Result.success(list("ny")))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
         assertEquals("ny", model.sourceList()?.first()?.id)
     }
 
@@ -72,7 +74,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(60), appVersion = "1.0.1 (301)"))
         val api = SourcesApi(Result.success(list("ny")))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
         assertEquals("sparad", model.sourceList()?.first()?.id)
         assertEquals(0, api.callCount)
     }
@@ -82,7 +84,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(60), appVersion = "1.0.0 (201)"))
         val api = SourcesApi(Result.failure(ApiError.Network))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope, appVersion = "1.0.1 (301)")
         assertEquals("sparad", model.sourceList()?.first()?.id)
     }
 
@@ -91,7 +93,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(90_000)))
         val api = SourcesApi(Result.success(list("ny")))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertEquals("ny", model.sourceList()?.first()?.id)
         assertEquals("ny", store.sources()?.response?.sources?.first()?.id)
         assertEquals(t0, store.sources()?.fetchedAt)
@@ -102,7 +104,7 @@ class SourceListTest {
     @Test
     fun saknadListaHamtas() = runTest {
         val api = SourcesApi(Result.success(list("ny")))
-        val model = AppModel(api, LocalStore(tempDir()), NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(api, LocalStore(tempDir()), DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertEquals("ny", model.sourceList()?.first()?.id)
     }
 
@@ -111,14 +113,14 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(90_000)))
         val api = SourcesApi(Result.failure(ApiError.Network))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertEquals("sparad", model.sourceList()?.first()?.id)
     }
 
     @Test
     fun inteSparatOchMisslyckadGerNilAldrigTomLista() = runTest {
         val api = SourcesApi(Result.failure(ApiError.SourceUnavailable))
-        val model = AppModel(api, LocalStore(tempDir()), NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(api, LocalStore(tempDir()), DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertNull(model.sourceList())
         // Ett nytt försök hämtar igen, så att Försök igen fungerar.
         api.result = Result.success(list("ny"))
@@ -130,7 +132,7 @@ class SourceListTest {
         val store = LocalStore(tempDir())
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(90_000)))
         val api = SourcesApi(Result.failure(CancellationException("avbruten")))
-        val model = AppModel(api, store, NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertEquals("sparad", model.sourceList()?.first()?.id)
         api.result = Result.success(list("ny"))
         assertEquals("ny", model.sourceList()?.first()?.id)
@@ -143,7 +145,7 @@ class SourceListTest {
         store.setSources(CachedSources(list("sparad"), fetchedAt = t0.minusSeconds(90_000)))
         val clock = TestClock(t0)
         val api = SourcesApi(Result.failure(ApiError.Network))
-        val model = AppModel(api, store, NoReminders, { clock.now }, backgroundScope)
+        val model = AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { clock.now }, backgroundScope)
         model.sourceList()
         model.sourceList()
         assertEquals(1, api.callCount)
@@ -161,7 +163,7 @@ class SourceListTest {
 
     @Test
     fun visningsnamn() = runTest {
-        val model = AppModel(SourcesApi(Result.failure(ApiError.Network)), LocalStore(tempDir()), NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(SourcesApi(Result.failure(ApiError.Network)), LocalStore(tempDir()), DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         assertTrue(model.add(areaHit("1", "Kvarnvägen 3", "address")))
         assertTrue(model.add(areaHit("2", "Skogsbo tätort, Rosse m.fl.", "area")))
         assertTrue(model.add(areaHit("3", "Storgatan 5", "address")))
@@ -173,7 +175,7 @@ class SourceListTest {
     @Test
     fun misslyckatSparandeGerFalseOchLamnarListanOforandrad() = runTest {
         val blocked = File(tempDir(), "blockerad").apply { writeBytes(ByteArray(0)) }
-        val model = AppModel(SourcesApi(Result.failure(ApiError.Network)), LocalStore(blocked), NoReminders, { t0 }, backgroundScope)
+        val model = AppModel(SourcesApi(Result.failure(ApiError.Network)), LocalStore(blocked), DisabledNotifications, DisabledLiveActivities, { t0 }, backgroundScope)
         val hit = SearchHit(
             id = "1", street = "Storgatan 1", locality = "Örebro", kommun = "Örebro kommun", source = "orebro", detail = null,
             selection = "address", notice = null, areasUrl = null, url = "https://sopor.hardyson.se/api/v1/adress/orebro/1",

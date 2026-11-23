@@ -25,7 +25,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import se.hardyson.sophamtning.SophamtningApp
 import se.hardyson.sophamtning.core.api.SearchHit
-import se.hardyson.sophamtning.core.app.NoReminders
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
 import se.hardyson.sophamtning.core.home.AddressDetail
 import se.hardyson.sophamtning.core.storage.AddressKey
 
@@ -134,7 +134,7 @@ class AddressScreenTest {
 
     @Test
     fun paminnelsenVisasInteUtanPaminnelser() {
-        app = TestApp(reminders = NoReminders)
+        app = TestApp(reminders = DisabledNotifications)
         openAddress()
         compose.onNodeWithText("Per kärl").performScrollTo()
         assertTrue(compose.isShowing("Ansvarar för hämtningen"))

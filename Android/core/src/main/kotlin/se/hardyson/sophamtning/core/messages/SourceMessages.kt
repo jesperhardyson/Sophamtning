@@ -41,7 +41,7 @@ object SourceMessages {
     fun unseen(active: List<ActiveSourceMessage>, memory: SourceMessageMemory): List<ActiveSourceMessage> =
         active.filter { !memory.isSeen(it.key) }
 
-    /** Identifieraren för notisen, som på iOS. Ett heltals-id för Android-notiser byggs av den i plan 5. */
+    /** Identifieraren för notisen, som på iOS. Notisens heltals-id på Android räknas fram av den. */
     fun notificationId(key: SourceMessageKey): String = "kalla.${key.source}.${key.id}"
 }
 

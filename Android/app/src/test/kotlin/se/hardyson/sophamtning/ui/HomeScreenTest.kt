@@ -28,7 +28,7 @@ import se.hardyson.sophamtning.SophamtningApp
 import se.hardyson.sophamtning.core.api.ApiDecoding
 import se.hardyson.sophamtning.core.api.ApiError
 import se.hardyson.sophamtning.core.api.SearchHit
-import se.hardyson.sophamtning.core.app.NoReminders
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.CachedSchedule
@@ -139,7 +139,7 @@ class HomeScreenTest {
 
     @Test
     fun forslagetVisasInteUtanPaminnelser() {
-        val app = TestApp(reminders = NoReminders)
+        val app = TestApp(reminders = DisabledNotifications)
         start(app, testHit("Testgatan 1"))
         compose.waitForText("Ons 11 nov", substring = true)
         assertFalse(compose.isShowing("Vill du bli påmind?"))
@@ -198,7 +198,7 @@ class HomeScreenTest {
 
     @Test
     fun menynVisarInteParminnelserUtanPaminnelser() {
-        val app = TestApp(reminders = NoReminders)
+        val app = TestApp(reminders = DisabledNotifications)
         start(app, testHit("Testgatan 1"))
         compose.waitForText("Ons 11 nov", substring = true)
         longPress("Hemma")

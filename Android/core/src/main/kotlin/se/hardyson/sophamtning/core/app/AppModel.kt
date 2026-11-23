@@ -26,7 +26,27 @@ import se.hardyson.sophamtning.core.messages.ActiveSourceMessage
 import se.hardyson.sophamtning.core.messages.SourceMessageMemory
 import se.hardyson.sophamtning.core.messages.SourceMessages
 import se.hardyson.sophamtning.core.placedout.PlacedOutAction
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
+import se.hardyson.sophamtning.core.reminders.ExistingActivity
+import se.hardyson.sophamtning.core.reminders.LiveActivityAction
+import se.hardyson.sophamtning.core.reminders.LiveActivityDiff
+import se.hardyson.sophamtning.core.reminders.LiveActivityNotInForeground
+import se.hardyson.sophamtning.core.reminders.LiveActivityPhase
+import se.hardyson.sophamtning.core.reminders.LiveActivityScheduling
+import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
+import se.hardyson.sophamtning.core.reminders.NotificationDiff
+import se.hardyson.sophamtning.core.reminders.NotificationScheduling
+import se.hardyson.sophamtning.core.reminders.PermissionResult
+import se.hardyson.sophamtning.core.reminders.PlannedLiveActivity
+import se.hardyson.sophamtning.core.reminders.PlannedNotification
+import se.hardyson.sophamtning.core.reminders.PlannerAddress
+import se.hardyson.sophamtning.core.reminders.PlannerInput
+import se.hardyson.sophamtning.core.reminders.ReminderPlan
+import se.hardyson.sophamtning.core.reminders.ReminderPlanner
 import se.hardyson.sophamtning.core.reminders.ReminderTime
+import se.hardyson.sophamtning.core.reminders.StartMode
+import se.hardyson.sophamtning.core.reminders.SystemActivity
+import se.hardyson.sophamtning.core.reminders.startMode
 import se.hardyson.sophamtning.core.schedule.RefreshOutcome
 import se.hardyson.sophamtning.core.schedule.ScheduleLogic
 import se.hardyson.sophamtning.core.schedule.ScheduleRefresher
@@ -65,8 +85,22 @@ data class AppState(
     val sourceMessageMemory: SourceMessageMemory = SourceMessageMemory(),
     /** Källornas namn per id, från den sparade källistan. Tom när listan inte har hämtats. */
     val sourceNames: Map<String, String> = emptyMap(),
-    /** Om påminnelserna finns ([ReminderScheduling.available]). Annars visas inget om påminnelser. */
+    /** Om påminnelserna finns, alltså om notiserna inte är [DisabledNotifications]. Annars visas inget om påminnelser. */
     val remindersAvailable: Boolean = false,
+    /** Om några väntande notiser inte gick att lägga in, annars `null`. Försöket upprepas vid nästa planering. */
+    val reminderError: String? = null,
+    /** Om Live Updates kan visas, senast läst. Läses om av `applyReminders()`. Valet i appen ändras aldrig av det. */
+    val liveActivitiesEnabled: Boolean = true,
+    /** Huvudadressens Live Update efter senaste planeringen, med den pågående först. Hemkortet visar den. */
+    val currentLiveActivity: ExistingActivity? = null,
+    /** Om Live Updaten inte gick att lägga in, annars `null`. Notisen står då kvar, och försöket upprepas vid nästa planering. */
+    val liveActivityError: String? = null,
+    /** Tömningar som redan är påminda: utställda, visade eller med en Live Update som syns nu. */
+    val handledPickups: Set<PlacedOut> = emptySet(),
+    /** Reservnotiser som väntar framför, med sina tider. */
+    val reserveNotifications: Map<PlacedOut, Instant> = emptyMap(),
+    /** Tömningar med en väntande Live Update. */
+    val pendingActivityPickups: Set<PlacedOut> = emptySet(),
 ) {
     val primary: SavedAddress? get() = addresses.firstOrNull { it.isPrimary } ?: addresses.firstOrNull()
 
@@ -76,17 +110,39 @@ data class AppState(
     fun remindersOn(address: SavedAddress): Boolean =
         address.notificationsOn && notificationAuthorization == NotificationAuthorization.Authorized
 
+    /** Om tömningen redan är påmind: Utställt är tryckt eller Live Updaten visas eller har visats. */
+    fun handledPickup(key: AddressKey, date: DayDate): Boolean = PlacedOut(key, date) in handledPickups
+
+    /** Tiden för adressens väntande reservnotis, annars `null`. Reserven kommer om Live Updaten inte syns eller bekräftas. */
+    fun reserveNotificationDate(address: SavedAddress, now: Instant): Instant? {
+        if (!remindersOn(address)) return null
+        return reserveNotifications.filter { it.key.key == address.key && it.value > now }.values.minOrNull()
+    }
+
     /**
-     * "Tömning i morgon. Påminnelsen för i kväll har redan passerat." för en adress med påminnelser på, när påminnelsetiden
-     * för tömningen redan passerat och kärlen inte är utställda. På iOS räknas också visade Live Activities och reservnotiser
-     * bort. De finns på Android först i plan 5.
+     * "Påminnelsen har passerat" gäller bara en adress med notiser på, och inte när tömningen som dagens sista påminnelse
+     * gäller redan är påmind, Live Updaten väntar eller en reservnotis ligger framför.
+     */
+    fun missedReminderApplies(address: SavedAddress, now: Instant): Boolean {
+        // Tömningen som dagens sista påminnelse gäller: i morgon med bara kvällen före, i dag när samma morgon är på.
+        val day = ReminderTime.pickupDay(StockholmClock.today(now), settings.latestTiming)
+        val pickup = PlacedOut(address.key, day)
+        return remindersOn(address) && pickup !in handledPickups && pickup !in pendingActivityPickups &&
+            (reserveNotifications[pickup]?.let { it <= now } ?: true)
+    }
+
+    /**
+     * "Tömning i morgon. Påminnelsen för i kväll har redan passerat." (eller "Tömning i dag. … i morse …") för en adress
+     * med påminnelser på, när påminnelsetiden för tömningen redan passerat. Ingen ersättningsnotis skickas, eftersom varje
+     * planering annars kunde skicka en ny.
      */
     fun missedReminderText(address: SavedAddress, now: Instant): String? {
-        if (!remindersOn(address)) return null
-        val day = ReminderTime.pickupDay(StockholmClock.today(now), settings.latestTiming)
-        if (PlacedOut(address.key, day) in ownPlacedOut) return null
+        if (!missedReminderApplies(address, now)) return null
         return AddressDetail.missedReminder(schedules[address.key]?.response?.events ?: emptyList(), settings, now)
     }
+
+    /** Samma text för den första adressen den gäller. */
+    fun missedReminderText(now: Instant): String? = addresses.firstNotNullOfOrNull { missedReminderText(it, now) }
 
     /**
      * Kortet "Vill du bli påmind?" på hemskärmen: efter att en adress har sparats, så länge ingen påminnelse är på och
@@ -109,7 +165,11 @@ data class AppState(
         now = now,
         remindersAllowed = notificationAuthorization == NotificationAuthorization.Authorized,
         remindersDenied = notificationAuthorization == NotificationAuthorization.Denied,
-        missedReminder = primary?.let { missedReminderText(it, now) },
+        liveActivity = currentLiveActivity,
+        liveActivitiesEnabled = liveActivitiesEnabled,
+        liveActivityError = liveActivityError,
+        missedReminder = addresses.firstOrNull { it.isPrimary }?.let { missedReminderText(it, now) },
+        reserveAt = addresses.firstOrNull { it.isPrimary }?.let { reserveNotificationDate(it, now) },
         ownPlacedOut = ownPlacedOut,
         placedOutTimes = placedOutTimes,
     ).let { content ->
@@ -133,7 +193,8 @@ data class AppState(
             settings = settings,
             sourceName = sourceNames[key.source],
             now = now,
-            remindersOn = remindersOn(address),
+            remindersOn = missedReminderApplies(address, now),
+            reserveAt = reserveNotificationDate(address, now),
             ownPlacedOut = ownPlacedOut,
             placedOutTimes = placedOutTimes,
         ).let(::withoutUnavailableReminders)
@@ -141,8 +202,8 @@ data class AppState(
 }
 
 /**
- * Appens tillstånd: sparade adresser, inställningar och hämtade scheman. Som `AppModel` på iOS, utan hushållet och utan
- * påminnelsernas planering, som görs bakom [ReminderScheduling].
+ * Appens tillstånd: sparade adresser, inställningar och hämtade scheman, och påminnelsernas planering bakom
+ * [NotificationScheduling] och [LiveActivityScheduling]. Som `AppModel` på iOS, utan hushållet.
  *
  * Funktionerna anropas från samma tråd, appens huvudtråd, som `@MainActor` på iOS. Hämtningar och planeringar körs i
  * [scope] och köas, så att två aldrig körs samtidigt och ett avbrott hos den som anropar inte avbryter köplatsen.
@@ -150,7 +211,8 @@ data class AppState(
 class AppModel(
     private val api: SoporApi,
     private val store: LocalStore,
-    private val reminders: ReminderScheduling,
+    private val notifications: NotificationScheduling,
+    private val liveActivities: LiveActivityScheduling,
     private val clock: () -> Instant,
     private val scope: CoroutineScope,
     /** Appens version och bygge, till exempel "1.0.1 (301)". Sparas med källistan. */
@@ -160,6 +222,9 @@ class AppModel(
     private val refreshLock = Mutex()
     private val reminderLock = Mutex()
     private var reminderJob: Job? = null
+
+    /** Live Updates appen själv har tagit bort. Systemet kan lista dem en stund som avslutade, och det är inget svep. */
+    private val removedActivityIds = mutableSetOf<String>()
 
     /** När källistan senast försökte hämtas utan att lyckas, så att inte varje tangenttryck hämtar på nytt. */
     private var failedSourcesAt: Instant? = null
@@ -202,7 +267,7 @@ class AppModel(
                 ownPlacedOut = store.placedOut().toSet(),
                 placedOutTimes = store.placedOutTimes(),
                 sourceNames = readSourceNames(),
-                remindersAvailable = reminders.available,
+                remindersAvailable = notifications !== DisabledNotifications,
             ),
         )
         state = _state.asStateFlow()
@@ -294,7 +359,8 @@ class AppModel(
             }
             addressesIssue = null
             _state.update { it.copy(addresses = emptyList(), schedules = emptyMap()) }
-            reminders.cancelAll()
+            val own = notifications.pending().map { it.identifier }.filter(NotificationDiff::isOwn)
+            if (own.isNotEmpty()) notifications.cancel(own)
         }
         if (settingsIssue == StoreIssue.Corrupt) {
             try {
@@ -314,20 +380,21 @@ class AppModel(
 
     /**
      * Uppdaterar alla adresser, en i taget. Anrop köas efter varandra: ett anrop som kommer medan ett annat pågår väntar,
-     * och adresser som då är nyss hämtade hoppas över av `RefreshPolicy`. [context] avgör om ett nytt meddelande från
-     * källan ger en notis (`Background`) eller bara visas som kort (`Foreground`).
+     * och adresser som då är nyss hämtade hoppas över av `RefreshPolicy`. [startingActivities] avgör om planeringen efter en
+     * lyckad hämtning får starta en Live Update. [context] avgör om ett nytt meddelande från källan ger en notis
+     * (`Background`) eller bara visas som kort (`Foreground`).
      */
-    suspend fun refreshAll(manual: Boolean, context: RefreshContext = RefreshContext.Foreground) {
+    suspend fun refreshAll(manual: Boolean, startingActivities: Boolean = true, context: RefreshContext = RefreshContext.Foreground) {
         // Avbryts den som anropar (dra för att uppdatera lämnar skärmen) fortsätter köplatsen ändå, i modellens scope.
         scope.launch {
             refreshLock.withLock {
-                performRefresh(manual)
+                performRefresh(manual, startingActivities)
                 noteSourceMessages(context)
             }
         }.join()
     }
 
-    private suspend fun performRefresh(manual: Boolean) {
+    private suspend fun performRefresh(manual: Boolean, startingActivities: Boolean) {
         reloadStorageIfNeeded()
         var fetchedAny = false
         for (address in current.addresses) {
@@ -358,7 +425,7 @@ class AppModel(
                 removeStoredSchedule(address.key)
             }
         }
-        if (fetchedAny) applyReminders()
+        if (fetchedAny) applyReminders(startingActivities)
     }
 
     // MARK: Källor
@@ -494,15 +561,15 @@ class AppModel(
 
     /**
      * Ställer ut kärlen för tömningen [date]: sparas i `placed-out.json` med tiden, Live Updaten avslutas och tömningens
-     * notiser tas bort, som `PlacedOutAction`.
+     * notiser tas bort, som `PlacedOutAction`. Används av knappen i appen, Klart i Live Updaten och Utställt i notisen.
      */
     suspend fun markPlacedOut(key: AddressKey, date: DayDate) {
         val entry = PlacedOut(key, date)
         val today = StockholmClock.today(now())
         val saved = PlacedOutAction.perform(
             store, entry, today,
-            end = { reminders.endLiveUpdate(entry) },
-            cancelReminder = { reminders.cancel(listOf(it)) },
+            end = { endActivities(entry) },
+            cancelReminder = { notifications.cancel(listOf(it)) },
         )
         if (!saved) {
             setError("Kunde inte spara att kärlen är utställda.")
@@ -533,6 +600,23 @@ class AppModel(
         }
         readPlacedOut()
         applyReminders()
+    }
+
+    /**
+     * Avslutar tömningens Live Update. En väntande har aldrig visats och tas bort direkt. En pågående visar bocken i
+     * `PlacedOutAction.checkmarkDuration` innan den försvinner.
+     */
+    private suspend fun endActivities(entry: PlacedOut) {
+        for (item in liveActivities.current()) {
+            val activity = item.activity
+            if (activity.key != entry.key || activity.pickupDate != entry.date) continue
+            when (item.phase) {
+                LiveActivityPhase.Pending -> liveActivities.remove(activity.id)
+                LiveActivityPhase.Ended, LiveActivityPhase.Dismissed -> {}
+                else -> liveActivities.end(activity.id, activity.content.markedPlacedOut())
+            }
+            removedActivityIds += activity.id
+        }
     }
 
     private fun readPlacedOut() {
@@ -639,9 +723,9 @@ class AppModel(
     suspend fun setNotifications(on: Boolean, key: AddressKey): PermissionResult {
         if (!on) return if (setNotificationsOn(false, key)) PermissionResult.Granted else PermissionResult.Failed
         if (current.address(key) == null) return PermissionResult.Failed
-        var status = reminders.authorization()
+        var status = notifications.authorization()
         if (status == NotificationAuthorization.NotDetermined) {
-            status = if (reminders.requestAuthorization()) NotificationAuthorization.Authorized else NotificationAuthorization.Denied
+            status = if (notifications.requestAuthorization()) NotificationAuthorization.Authorized else NotificationAuthorization.Denied
         }
         _state.update { it.copy(notificationAuthorization = status) }
         // Nekas tillstånd ändras aldrig `notificationsOn`, så att notiserna planeras igen när tillståndet kommer tillbaka.
@@ -676,14 +760,15 @@ class AppModel(
     }
 
     /**
-     * Läser systemets tillstånd och de utställda, och planerar om påminnelserna. Körs vid lyckad hämtning, när appen öppnas
-     * och när ett val ändras. Uppdateringarna köas, så att två aldrig körs samtidigt.
+     * Läser systemets tillstånd, kör planeraren och ändrar bara skillnaden mot det som redan är schemalagt. Körs vid lyckad
+     * hämtning, när appen öppnas, efter omstart av telefonen och när ett val ändras. Uppdateringarna köas, så att två aldrig
+     * körs samtidigt. Med [startingActivities] falskt startas ingen Live Update, men de kan tas bort och uppdateras.
      */
-    fun applyReminders() {
+    fun applyReminders(startingActivities: Boolean = true) {
         val previous = reminderJob
         reminderJob = scope.launch {
             previous?.join()
-            reminderLock.withLock { performApplyReminders() }
+            reminderLock.withLock { performApplyReminders(startingActivities) }
         }
     }
 
@@ -692,15 +777,25 @@ class AppModel(
         reminderJob?.join()
     }
 
-    private suspend fun performApplyReminders() {
+    /**
+     * Ordningen är planera, ändra Live Updates, läs dem på nytt, planera igen och ändra notiserna. En notis tas alltså bort
+     * först när Live Updaten faktiskt finns. Ska en Live Update bort läggs dess notis in före borttagningen, så att ingen
+     * tömning står utan påminnelse om processen dör mitt i. En ny startas före borttagningen av den gamla, så att ett fel
+     * lämnar den gamla kvar.
+     */
+    private suspend fun performApplyReminders(startingActivities: Boolean) {
         reloadStorageIfNeeded()
         // Går adresserna eller inställningarna inte att läsa vet appen inte vad användaren valt, så inget ändras.
         if (!addressesReadable || !settingsReadable) return
-        val status = reminders.authorization()
-        _state.update { it.copy(notificationAuthorization = status) }
+        val status = notifications.authorization()
+        val systemAllows = liveActivities.areEnabled()
+        _state.update { it.copy(notificationAuthorization = status, liveActivitiesEnabled = systemAllows) }
+
+        val current = now()
+        val today = StockholmClock.today(current)
         // Rensningen är bara städning. Lyckas den inte görs den nästa gång.
         try {
-            store.prunePlacedOut(StockholmClock.today(now()))
+            store.prunePlacedOut(today)
         } catch (_: Exception) {
         }
         val placedOut = when (val read = store.placedOutState()) {
@@ -710,8 +805,208 @@ class AppModel(
             StoreRead.Unavailable -> return
         }
         _state.update { it.copy(ownPlacedOut = placedOut, placedOutTimes = store.placedOutTimes()) }
-        val state = current
-        reminders.apply(ReminderRequest(state.addresses, state.schedules, state.settings, placedOut, now()))
+        val state = this.current
+        val settings = state.settings
+
+        val primary = state.addresses.firstOrNull { it.isPrimary }?.key
+        val snapshot = liveActivities.current()
+        recordShown(snapshot, current, today, settings.liveActivityOn)
+        val existing = snapshot.filter { it.phase.countsAsExisting }.map { it.activity }
+        // En väntande vars start har passerat går inte att lita på, så den ersätter ingen notis.
+        val counted = existing.filter { !LiveActivityDiff.isOverdue(it, current) }
+        // Visad eller avslutad men inte längre kvar: bortsvept eller avslutad. Bara omstarten stoppas. Notisen rörs inte av
+        // det, och bara en bevisat visad Live Update släcker reserven (`shownActivities` i planeraren).
+        val stopped = (store.shownActivities().toSet() + store.endedActivities()) - existing.map { PlacedOut(it.key, it.pickupDate) }.toSet()
+        val desired = reminderPlan(state, counted, placedOut + stopped, systemAllows).liveActivity
+        val todayContent = ReminderPlanner.activityContent(today, plannerInput(state, counted, placedOut, systemAllows))
+        val actions = LiveActivityDiff.actions(
+            desired, existing, today, settings.liveActivityOn, primary = primary, canStart = startingActivities, now = current,
+            todayContent = todayContent,
+        ).toMutableList()
+        // Utan läsbart schema för huvudadressen går det inte att planera någon ersättning, så dess Live Updates står kvar.
+        if (settings.liveActivityOn && primary != null && state.schedules[primary]?.response == null) {
+            val protected = existing.filter { it.key == primary }.map { it.id }.toSet()
+            actions.removeAll { (it is LiveActivityAction.Remove && it.id in protected) || (it is LiveActivityAction.End && it.id in protected) }
+        }
+
+        val removals = actions.mapNotNull {
+            when (it) {
+                is LiveActivityAction.Remove -> it.id
+                is LiveActivityAction.End -> it.id
+                else -> null
+            }
+        }
+        // Live Updates som visar bocken för Utställt en kort stund innan de avslutas.
+        val endings = actions.filterIsInstance<LiveActivityAction.End>().associate { it.id to it.content }
+        if (removals.isNotEmpty() && status == NotificationAuthorization.Authorized) {
+            // Även en passerad väntande finns kvar hos systemet, och dess reservnotis ska ligga kvar.
+            val remaining = existing.filter { it.id !in removals }
+            val safe = reminderPlan(state, remaining, placedOut, systemAllows)
+            applyNotifications(state, safe.notifications, removing = false)
+        }
+
+        val notStarted = mutableListOf<PlannedLiveActivity>()
+        var startFailed = false
+        for (action in actions) {
+            when (action) {
+                is LiveActivityAction.Remove, is LiveActivityAction.End -> {}
+                is LiveActivityAction.Update -> liveActivities.update(action.id, action.content)
+                is LiveActivityAction.Start -> {
+                    val activity = action.activity
+                    try {
+                        liveActivities.start(activity)
+                        // En direktstart syns med en gång, och är bevis för att tömningen har visats.
+                        if (activity.startMode(current) == StartMode.Immediately) {
+                            try {
+                                store.markShown(listOf(PlacedOut(activity.key, activity.pickupDate)), today)
+                            } catch (_: Exception) {
+                            }
+                        }
+                    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                        throw e
+                    } catch (_: LiveActivityNotInForeground) {
+                        notStarted += activity
+                    } catch (_: Exception) {
+                        notStarted += activity
+                        startFailed = true
+                    }
+                }
+            }
+        }
+        for (id in removals) {
+            // Kunde den nya inte startas är den gamla för samma tömning bättre än ingen.
+            val activity = existing.firstOrNull { it.id == id }
+            if (notStarted.any { it.key == activity?.key && it.pickupDate == activity.pickupDate }) continue
+            removedActivityIds += id
+            val content = endings[id]
+            if (content != null) liveActivities.end(id, content) else liveActivities.remove(id)
+        }
+        // En inaktuell räknas inte, och den visas inte längre med rätt innehåll.
+        for (item in snapshot) {
+            if (item.phase != LiveActivityPhase.Stale) continue
+            removedActivityIds += item.activity.id
+            liveActivities.remove(item.activity.id)
+        }
+        if (startFailed) {
+            _state.update { it.copy(liveActivityError = LIVE_ACTIVITY_ERROR) }
+        } else if (notStarted.isEmpty() && (startingActivities || !settings.liveActivityOn)) {
+            _state.update { it.copy(liveActivityError = null) }
+        }
+
+        // Det är de Live Updates som faktiskt finns nu som avgör om notisen behövs, inte de som skulle ha startats.
+        val remainingNow = liveActivities.current()
+            .filter { it.phase.countsAsExisting && it.activity.id !in removedActivityIds }
+            .map { it.activity }
+        val actual = remainingNow.filter { !LiveActivityDiff.isOverdue(it, current) }
+        val own = actual.filter { it.key == primary }
+        val handled = placedOut + store.shownActivities() + actual.filter { !it.isPending }.map { PlacedOut(it.key, it.pickupDate) }
+        _state.update {
+            it.copy(
+                currentLiveActivity = own.firstOrNull { a -> !a.isPending } ?: own.minByOrNull { a -> a.start },
+                pendingActivityPickups = actual.filter { a -> a.isPending }.map { a -> PlacedOut(a.key, a.pickupDate) }.toSet(),
+                handledPickups = handled,
+                reserveNotifications = emptyMap(),
+            )
+        }
+
+        // Utan tillstånd rörs inga notiser: `notificationsOn` är kvar, och när tillståndet kommer tillbaka planeras de igen.
+        if (status != NotificationAuthorization.Authorized) return
+        // En passerad väntande är inget bevis för en visning, men reservnotisen täcker den med riktig tid.
+        val finalInput = plannerInput(state, remainingNow, placedOut, systemAllows)
+        val final = ReminderPlanner.plan(finalInput)
+        // En reserv som redan väntar och ligger framför står kvar, även när ordinarie tid har passerat och planen saknar den.
+        val retained = ReminderPlanner.retainable(finalInput)
+        val pendingFireDates = applyNotifications(state, final.notifications, removing = true, retaining = retained.keys)
+        val reserves = mutableMapOf<PlacedOut, Instant>()
+        for (notification in final.notifications) {
+            if (notification.title == ReminderPlanner.FALLBACK_TITLE) reserves[PlacedOut(notification.key, notification.pickupDate)] = notification.fireDate
+        }
+        // En kvarlämnad notis kallas reserv bara när Live Update är på. Annars är den en ordinarie notis som står kvar efter
+        // att tiden ändrats, och raderna ska inte kalla den reserv.
+        if (settings.liveActivityOn && systemAllows) {
+            for ((id, entry) in retained) {
+                if (entry in reserves) continue
+                val fireDate = pendingFireDates[id] ?: continue
+                if (fireDate > current) reserves[entry] = fireDate
+            }
+        }
+        _state.update { it.copy(reserveNotifications = reserves) }
+    }
+
+    /**
+     * Sparar vad appen vet om en tömnings Live Update. Pågående är bevis för att den syntes (`shown`) och släcker
+     * reservnotisen. Avslutad eller bortsvept efter starten (`ended`) stoppar bara omstarten. Är valet av töms båda listorna,
+     * så att samma tömning kan starta när valet slås på igen. Ett skrivfel gör bara att Live Updaten kan startas igen.
+     */
+    private fun recordShown(snapshot: List<SystemActivity>, now: Instant, today: DayDate, liveActivityOn: Boolean) {
+        try {
+            if (!liveActivityOn) {
+                store.clearShown()
+                store.clearEnded()
+                return
+            }
+            val candidates = snapshot.filter { it.activity.id !in removedActivityIds }
+            val shown = candidates.filter { it.phase == LiveActivityPhase.Active }
+            val ended = candidates.filter {
+                (it.phase == LiveActivityPhase.Ended || it.phase == LiveActivityPhase.Dismissed) && it.activity.start <= now
+            }
+            // Även utan nya poster, så att passerade rensas.
+            store.markShown(shown.map { PlacedOut(it.activity.key, it.activity.pickupDate) }, today)
+            store.markEnded(ended.map { PlacedOut(it.activity.key, it.activity.pickupDate) }, today)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun plannerInput(state: AppState, existing: List<ExistingActivity>, placedOut: Set<PlacedOut>, activitiesAllowed: Boolean) = PlannerInput(
+        addresses = state.addresses.map { PlannerAddress(it, state.schedules[it.key]) },
+        settings = state.settings,
+        placedOut = placedOut,
+        now = now(),
+        liveActivitiesAllowed = activitiesAllowed,
+        existingActivities = existing.map { PlacedOut(it.key, it.pickupDate) }.toSet(),
+        // En pågående Live Update syns, och en tidigare visad är sparad. Då behövs ingen reservnotis.
+        shownActivities = store.shownActivities().toSet() + existing.filter { !it.isPending }.map { PlacedOut(it.key, it.pickupDate) },
+        activityStarts = existing.groupBy { PlacedOut(it.key, it.pickupDate) }.mapValues { (_, list) -> list.minOf { it.start } },
+    )
+
+    private fun reminderPlan(state: AppState, existing: List<ExistingActivity>, placedOut: Set<PlacedOut>, activitiesAllowed: Boolean): ReminderPlan =
+        ReminderPlanner.plan(plannerInput(state, existing, placedOut, activitiesAllowed))
+
+    /**
+     * Ändrar bara skillnaden mot de väntande notiserna. Med [removing] falskt läggs de bara in, och ingen tas bort. Svarar
+     * med de väntande notisernas tider efter ändringen, per identifierare.
+     */
+    private suspend fun applyNotifications(
+        state: AppState,
+        desired: List<PlannedNotification>,
+        removing: Boolean,
+        retaining: Set<String> = emptySet(),
+    ): Map<String, Instant> {
+        // Bara notiser som appen själv lagt in räknas, även om schemaläggaren skulle lämna fler.
+        val pending = notifications.pending().filter { NotificationDiff.isOwn(it.identifier) }
+        val pendingDates = pending.mapNotNull { p -> p.fireDate?.let { p.identifier to it } }.toMap()
+        val changes = NotificationDiff.diff(
+            desired = desired,
+            pendingIds = pending.map { it.identifier }.toSet(),
+            pendingFireDates = pendingDates,
+            pendingBodies = pending.associate { it.identifier to it.body },
+            retain = if (removing) retaining else emptySet(),
+            now = now(),
+        )
+        if (removing) {
+            // En adress med påminnelser på men utan läsbart schema behåller sina väntande notiser tills ett schema finns.
+            val protected = state.addresses.filter { it.notificationsOn && state.schedules[it.key]?.response == null }.map { "${it.key.fileName}-" }
+            // En ersatt notis läggs in med samma identifierare, som ersätter den gamla. Den tas därför inte bort först.
+            val replaced = changes.add.map { it.identifier }.toSet()
+            val removals = changes.removeIds.filter { id -> id !in replaced && protected.none { id.startsWith(it) } }
+            if (removals.isNotEmpty()) notifications.cancel(removals)
+        }
+        val failed = if (changes.add.isEmpty()) emptyList() else notifications.schedule(changes.add)
+        _state.update { it.copy(reminderError = if (failed.isEmpty()) null else REMINDER_ERROR) }
+        val dates = pendingDates.toMutableMap()
+        for (id in changes.removeIds) if (changes.add.none { it.identifier == id }) dates.remove(id)
+        for (notification in changes.add) if (notification.identifier !in failed) dates[notification.identifier] = notification.fireDate
+        return dates
     }
 
     // MARK: Meddelanden från källan
@@ -761,9 +1056,9 @@ class AppModel(
         }
         _state.update { it.copy(sourceMessageMemory = updated) }
         if (context != RefreshContext.Background || !current.settings.sourceMessagesOn) return
-        if (reminders.authorization() != NotificationAuthorization.Authorized) return
+        if (notifications.authorization() != NotificationAuthorization.Authorized) return
         for (item in fresh) {
-            reminders.deliverNow(
+            notifications.deliverNow(
                 identifier = SourceMessages.notificationId(item.key),
                 title = sourceName(item.source) ?: SOURCE_MESSAGE_FALLBACK_TITLE,
                 body = item.message.title,
@@ -791,6 +1086,9 @@ class AppModel(
     companion object {
         /** Rubriken på notisen när källans namn inte är känt. */
         const val SOURCE_MESSAGE_FALLBACK_TITLE = "Sophämtning"
+
+        internal const val REMINDER_ERROR = "Några påminnelser kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
+        internal const val LIVE_ACTIVITY_ERROR = "Live Update kunde inte läggas in. Appen försöker igen nästa gång den öppnas."
 
         private val SOURCES_MAX_AGE: Duration = Duration.ofHours(24)
         private val SOURCES_RETRY_AFTER: Duration = Duration.ofHours(1)

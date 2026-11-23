@@ -22,6 +22,9 @@ import se.hardyson.sophamtning.core.storage.LocalStore
 import se.hardyson.sophamtning.core.storage.fixtureResponse
 import se.hardyson.sophamtning.core.storage.tempDir
 import kotlinx.coroutines.test.runTest
+import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
+import se.hardyson.sophamtning.core.reminders.DisabledLiveActivities
 
 /** Ett API vars meddelanden går att byta mellan hämtningarna. */
 private class MessagesApi(private val base: AddressResponse, @Volatile var messages: List<SourceMessage>, @Volatile var sourceList: List<Source>? = null) : UnusedApi() {
@@ -50,7 +53,7 @@ private val rutter = SourceMessage(id = "nya-rutter-2026", title = "Hämtruttern
 
 private fun avestaHit(id: String) = hit(id, source = "avesta", locality = "Avesta", kommun = "Avesta")
 
-private class Setup(val model: AppModel, val api: MessagesApi, val reminders: RecordingReminders, val clock: TestClock, val store: LocalStore, val dir: File)
+private class Setup(val model: AppModel, val api: MessagesApi, val reminders: FakeNotifications, val clock: TestClock, val store: LocalStore, val dir: File)
 
 private fun TestScope.setup(
     dir: File = tempDir(),
@@ -59,17 +62,17 @@ private fun TestScope.setup(
     hits: List<SearchHit> = listOf(avestaHit("1")),
 ): Setup {
     val api = MessagesApi(fixtureResponse(), messages)
-    val reminders = RecordingReminders(status)
+    val reminders = FakeNotifications(status)
     val clock = TestClock(now)
     val store = LocalStore(dir)
-    val model = AppModel(api, store, reminders, { clock.now }, backgroundScope)
+    val model = AppModel(api, store, reminders, DisabledLiveActivities, { clock.now }, backgroundScope)
     for (h in hits) model.add(h)
     return Setup(model, api, reminders, clock, store, dir)
 }
 
 private fun AppModel.visibleIds() = state.value.visibleSourceMessages(StockholmClock.today(now)).map { it.message.id }
 
-private fun model(api: MessagesApi, dir: File, at: Instant, scope: CoroutineScope) = AppModel(api, LocalStore(dir), NoReminders, { at }, scope)
+private fun model(api: MessagesApi, dir: File, at: Instant, scope: CoroutineScope) = AppModel(api, LocalStore(dir), DisabledNotifications, DisabledLiveActivities, { at }, scope)
 
 // Från AppModelSourceMessagesTests på iOS.
 class AppModelSourceMessagesTest {

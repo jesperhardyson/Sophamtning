@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 import se.hardyson.sophamtning.AppDependencies
 import se.hardyson.sophamtning.core.api.Source
 import se.hardyson.sophamtning.core.app.AppState
-import se.hardyson.sophamtning.core.app.NotificationAuthorization
-import se.hardyson.sophamtning.core.app.PermissionResult
+import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
+import se.hardyson.sophamtning.core.reminders.PermissionResult
 import se.hardyson.sophamtning.core.home.AddressDetail
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.ui.search.sourceName

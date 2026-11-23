@@ -22,7 +22,7 @@ import se.hardyson.sophamtning.BuildConfig
 import se.hardyson.sophamtning.LocalAppDependencies
 import se.hardyson.sophamtning.R
 import se.hardyson.sophamtning.core.app.AppState
-import se.hardyson.sophamtning.core.app.NotificationAuthorization
+import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
 import se.hardyson.sophamtning.core.home.AddressDetail
 import se.hardyson.sophamtning.core.reminders.ReminderSettingsTexts
 import se.hardyson.sophamtning.navigation.AppNavigator

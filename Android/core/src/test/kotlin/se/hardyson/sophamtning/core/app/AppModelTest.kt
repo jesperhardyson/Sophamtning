@@ -21,6 +21,12 @@ import kotlinx.coroutines.test.runTest
 import se.hardyson.sophamtning.core.api.AddressResponse
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.home.HomeContent
+import se.hardyson.sophamtning.core.reminders.DisabledLiveActivities
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
+import se.hardyson.sophamtning.core.reminders.ExistingActivity
+import se.hardyson.sophamtning.core.reminders.LiveActivityPhase
+import se.hardyson.sophamtning.core.reminders.PickupActivityContent
+import se.hardyson.sophamtning.core.reminders.SystemActivity
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.LocalStore
 import se.hardyson.sophamtning.core.storage.PlacedOut
@@ -43,7 +49,7 @@ private class CountingApi(private val response: AddressResponse) : UnusedApi() {
 private val fixedNow: Instant = Instant.ofEpochSecond(1_800_000_000)
 
 private fun makeModel(api: CountingApi, store: LocalStore, scope: CoroutineScope) =
-    AppModel(api, store, NoReminders, { fixedNow }, scope)
+    AppModel(api, store, DisabledNotifications, DisabledLiveActivities, { fixedNow }, scope)
 
 // Från AppModelTests på iOS.
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -174,19 +180,23 @@ class AppModelTest {
     @Test
     fun stallUtSparasMedTidOchAngraTarBortBada() = runTest {
         val store = LocalStore(tempDir())
-        val reminders = RecordingReminders()
+        val reminders = FakeNotifications()
+        val activities = FakeActivities()
         val now = StockholmClock.dateOn(se.hardyson.sophamtning.core.dates.DayDate.parse("2026-11-08")!!, 19 * 60 + 42)
-        val model = AppModel(CountingApi(fixtureResponse()), store, reminders, { now }, backgroundScope)
+        val model = AppModel(CountingApi(fixtureResponse()), store, reminders, activities, { now }, backgroundScope)
         model.add(hit("1"))
         val entry = PlacedOut(AddressKey("orebro", "1"), se.hardyson.sophamtning.core.dates.DayDate.parse("2026-11-09")!!)
+        val content = PickupActivityContent("Hemma", "Måndag 9 november", "Mån 9 nov", emptyList(), false, null)
+        activities.insert(SystemActivity(ExistingActivity("x", entry.key, entry.date, content, false, now), LiveActivityPhase.Active))
 
         model.markPlacedOut(entry.key, entry.date)
         assertEquals(setOf(entry), model.state.value.ownPlacedOut)
         assertEquals(mapOf(entry to now), model.state.value.placedOutTimes)
-        assertEquals(listOf(entry), reminders.ended)
+        // Live Updaten visar bocken innan den försvinner, och tömningens båda notiser tas bort.
+        assertEquals(listOf("x"), activities.endedWithPlacedOut)
         assertEquals(2, reminders.cancelled.size)
         // En ny modell från samma lagring läser tiden.
-        val again = AppModel(CountingApi(fixtureResponse()), store, NoReminders, { now }, backgroundScope)
+        val again = AppModel(CountingApi(fixtureResponse()), store, DisabledNotifications, DisabledLiveActivities, { now }, backgroundScope)
         assertEquals(mapOf(entry to now), again.state.value.placedOutTimes)
 
         model.undoPlacedOut(entry.key, entry.date)
@@ -195,7 +205,7 @@ class AppModelTest {
         assertTrue(store.placedOutTimes().isEmpty())
     }
 
-    // Android: påminnelserna visas bara när de finns (plan 5).
+    // Android: påminnelserna visas bara när notiserna inte är DisabledNotifications.
 
     @Test
     fun utanPaminnelserVisasInteForslaget() = runTest {
@@ -211,7 +221,7 @@ class AppModelTest {
     @Test
     fun medPaminnelserVisasForslaget() = runTest {
         val now = StockholmClock.dateOn(se.hardyson.sophamtning.core.dates.DayDate.parse("2026-11-08")!!, 12 * 60)
-        val model = AppModel(CountingApi(fixtureResponse()), LocalStore(tempDir()), RecordingReminders(), { now }, backgroundScope)
+        val model = AppModel(CountingApi(fixtureResponse()), LocalStore(tempDir()), FakeNotifications(), DisabledLiveActivities, { now }, backgroundScope)
         model.add(hit("1"))
         model.refreshAll(manual = false)
         model.settleReminders()

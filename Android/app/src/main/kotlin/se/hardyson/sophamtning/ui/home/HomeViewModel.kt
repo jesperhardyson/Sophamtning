@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import se.hardyson.sophamtning.AppDependencies
 import se.hardyson.sophamtning.core.app.AppState
-import se.hardyson.sophamtning.core.app.PermissionResult
+import se.hardyson.sophamtning.core.reminders.PermissionResult
 import se.hardyson.sophamtning.core.app.visibleSourceMessages
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.home.HomeContent

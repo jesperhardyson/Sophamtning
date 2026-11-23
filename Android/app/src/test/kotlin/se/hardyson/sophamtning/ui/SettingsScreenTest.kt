@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import se.hardyson.sophamtning.BuildConfig
 import se.hardyson.sophamtning.SophamtningApp
-import se.hardyson.sophamtning.core.app.NoReminders
+import se.hardyson.sophamtning.core.reminders.DisabledNotifications
 
 /** Inställningarna, datakällorna och Nyheter, som SettingsView.swift och ChangelogSheet.swift. */
 @RunWith(AndroidJUnit4::class)
@@ -105,7 +105,7 @@ class SettingsScreenTest {
 
     @Test
     fun paminnelserVisasInteNarDeInteFinns() {
-        openSettings(TestApp(reminders = NoReminders))
+        openSettings(TestApp(reminders = DisabledNotifications))
         compose.waitForText("Huvudadress")
         for (text in listOf("Notiser", "Meddelanden från källan", "Live Update")) assertFalse(text, compose.isShowing(text))
     }
