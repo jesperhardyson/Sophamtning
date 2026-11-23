@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sparade adresser och inställningar följer med säkerhetskopian och till en ny telefon. Inget lämnar telefonen på annat sätt. -->
+<!--
+    Sparade adresser och inställningar följer med säkerhetskopian och till en ny telefon. Inget lämnar telefonen på annat sätt.
+    Det som är schemalagt på telefonen (scheduled-reminders.json) och om appen redan har frågat om notiser (notiser.xml) följer
+    inte med: alarmen och frågan hör till telefonen, och nästa planering lägger in påminnelserna på den nya.
+-->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="file" path="." />
         <include domain="sharedpref" path="." />
+        <exclude domain="file" path="Sophamtning/scheduled-reminders.json" />
+        <exclude domain="sharedpref" path="notiser.xml" />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="." />
         <include domain="sharedpref" path="." />
+        <exclude domain="file" path="Sophamtning/scheduled-reminders.json" />
+        <exclude domain="sharedpref" path="notiser.xml" />
     </device-transfer>
 </data-extraction-rules>

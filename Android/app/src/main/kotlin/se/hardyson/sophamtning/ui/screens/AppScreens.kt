@@ -22,6 +22,9 @@ import se.hardyson.sophamtning.ui.settings.ChangelogScreen
 import se.hardyson.sophamtning.ui.settings.DataSourcesScreen
 import se.hardyson.sophamtning.ui.settings.PrimaryAddressScreen
 import se.hardyson.sophamtning.ui.settings.SettingsScreen
+import se.hardyson.sophamtning.ui.settings.LiveUpdateTimingScreen
+import se.hardyson.sophamtning.ui.settings.ReminderTimeChoiceScreen
+import se.hardyson.sophamtning.ui.settings.ReminderTimesScreen
 
 /** Skärmen för varje nyckel i backstacken. */
 object AppScreens {
@@ -36,6 +39,10 @@ object AppScreens {
     @Composable fun Rename(key: Rename, navigator: AppNavigator) = RenameScreen(key.key, navigator)
     @Composable fun Settings(navigator: AppNavigator) = SettingsScreen(navigator)
     @Composable fun PrimaryAddressChoice(navigator: AppNavigator) = PrimaryAddressScreen(navigator)
+    @Composable fun ReminderTimes(navigator: AppNavigator) = ReminderTimesScreen(navigator)
+    @Composable fun ReminderTimeChoice(key: se.hardyson.sophamtning.navigation.ReminderTimeChoice, navigator: AppNavigator) =
+        ReminderTimeChoiceScreen(key.timing, key.liveUpdate, navigator)
+    @Composable fun LiveUpdateTiming(navigator: AppNavigator) = LiveUpdateTimingScreen(navigator)
     @Composable fun DataSources(navigator: AppNavigator) = DataSourcesScreen(navigator)
     @Composable fun Changelog(navigator: AppNavigator) = ChangelogScreen(navigator)
 }

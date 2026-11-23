@@ -129,3 +129,29 @@ internal fun ChoiceRow(title: String, selected: Boolean, onClick: () -> Unit) {
         if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = ThemeToken.Primary.color)
     }
 }
+
+/**
+ * En rad med reglage för en påminnelse, med rubrik och en rad om vad den gör, som ReminderToggleRow.swift. Hela raden är
+ * reglaget för TalkBack.
+ */
+@Composable
+internal fun ReminderToggleRow(title: String, text: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = uiText(18, Weight.HEAVY), color = ThemeToken.Text.color)
+            Text(text, style = uiText(15, Weight.SEMIBOLD), color = ThemeToken.Text2.color)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(checkedTrackColor = ThemeToken.Primary.color, checkedThumbColor = ThemeToken.OnPrimary.color),
+        )
+    }
+}

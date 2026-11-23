@@ -10,6 +10,7 @@ import se.hardyson.sophamtning.core.api.SoporApi
 import se.hardyson.sophamtning.core.app.AppModel
 import se.hardyson.sophamtning.core.bin.ShownOnce
 import se.hardyson.sophamtning.core.kommun.PlaceIndex
+import se.hardyson.sophamtning.reminders.NotificationPermission
 
 /**
  * Det skärmarna behöver: appens tillstånd, API:t och klockan. Skapas en gång i [SophamtningApplication], och testerna
@@ -27,6 +28,8 @@ class AppDependencies(
     val changelog: () -> String? = { null },
     /** Kärlen som redan har spelat sitt första varv i den här processen, så att det inte spelas igen vid retur. */
     val binFirstRounds: ShownOnce<String> = ShownOnce(),
+    /** Frågan om notiser, som aktiviteten kopplar in. `null` i testerna, där ingen fråga ställs. */
+    val notificationPermission: NotificationPermission? = null,
 )
 
 /**

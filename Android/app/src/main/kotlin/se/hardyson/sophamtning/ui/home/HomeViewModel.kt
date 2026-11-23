@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import se.hardyson.sophamtning.AppDependencies
 import se.hardyson.sophamtning.core.app.AppState
-import se.hardyson.sophamtning.core.app.PermissionResult
+import se.hardyson.sophamtning.core.reminders.PermissionResult
 import se.hardyson.sophamtning.core.app.visibleSourceMessages
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.home.HomeContent
@@ -85,9 +85,10 @@ class HomeViewModel(private val dependencies: AppDependencies) : ViewModel() {
         }
     }
 
+    /** Live Update är en notis på Android, så frågan om notiser ställs när den slås på och tillståndet inte är avgjort. */
     fun setLiveActivity(on: Boolean) {
         model.clearStorageError()
-        model.setLiveActivity(on)
+        viewModelScope.launch { model.setLiveUpdate(on) }
     }
 
     fun dismissMessage(item: ActiveSourceMessage) = model.dismissSourceMessage(item)

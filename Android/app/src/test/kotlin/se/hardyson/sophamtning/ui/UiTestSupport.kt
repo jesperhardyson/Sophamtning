@@ -21,14 +21,16 @@ import se.hardyson.sophamtning.core.api.SearchResponse
 import se.hardyson.sophamtning.core.api.SoporApi
 import se.hardyson.sophamtning.core.api.SourcesResponse
 import se.hardyson.sophamtning.core.app.AppModel
-import se.hardyson.sophamtning.core.app.NotificationAuthorization
-import se.hardyson.sophamtning.core.app.ReminderRequest
-import se.hardyson.sophamtning.core.app.ReminderScheduling
+import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
 import se.hardyson.sophamtning.core.dates.DayDate
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.kommun.PlaceIndex
 import se.hardyson.sophamtning.core.storage.LocalStore
-import se.hardyson.sophamtning.core.storage.PlacedOut
+import se.hardyson.sophamtning.core.reminders.DisabledLiveActivities
+import se.hardyson.sophamtning.core.reminders.LiveActivityScheduling
+import se.hardyson.sophamtning.core.reminders.NotificationScheduling
+import se.hardyson.sophamtning.core.reminders.PendingNotification
+import se.hardyson.sophamtning.core.reminders.PlannedNotification
 
 /** Svaren som UI-testerna på iOS använder, ur `iOS/Sophamtning/UITestData/` (se build.gradle.kts). */
 fun uiTestData(name: String): String =
@@ -79,15 +81,13 @@ class FakeSoporApi : SoporApi {
     }
 }
 
-/** Påminnelser som säger att systemet tillåter notiser, så att Ställ ut kärlen visas. Inget schemaläggs. */
-class AllowedReminders(var status: NotificationAuthorization = NotificationAuthorization.Authorized) : ReminderScheduling {
-    override val available = true
+/** Notiser som säger att systemet tillåter dem, så att Ställ ut kärlen visas. Inget schemaläggs. */
+class AllowedReminders(var status: NotificationAuthorization = NotificationAuthorization.Authorized) : NotificationScheduling {
     override suspend fun authorization() = status
     override suspend fun requestAuthorization() = status == NotificationAuthorization.Authorized
-    override suspend fun apply(request: ReminderRequest) {}
+    override suspend fun pending() = emptyList<PendingNotification>()
+    override suspend fun schedule(notifications: List<PlannedNotification>) = emptyList<String>()
     override suspend fun cancel(identifiers: List<String>) {}
-    override suspend fun cancelAll() {}
-    override suspend fun endLiveUpdate(entry: PlacedOut) {}
     override suspend fun deliverNow(identifier: String, title: String, body: String) {}
 }
 
@@ -107,7 +107,8 @@ val recordedNoon: Instant = StockholmClock.dateOn(day("2026-11-06"), 12 * 60)
 class TestApp(
     val api: FakeSoporApi = FakeSoporApi(),
     val clock: TestClock = TestClock(recordedNoon),
-    val reminders: ReminderScheduling = AllowedReminders(),
+    val reminders: NotificationScheduling = AllowedReminders(),
+    val liveActivities: LiveActivityScheduling = DisabledLiveActivities,
     val dir: File = Files.createTempDirectory("sophamtning-ui-").toFile().also { it.deleteOnExit() },
     /** Innehållet i `CHANGELOG.md`, eller `null` som i appen innan Android har släppts. */
     val changelog: String? = null,
@@ -115,7 +116,7 @@ class TestApp(
     val placeIndex: () -> PlaceIndex? = { PlaceIndex.load() },
 ) {
     val store = LocalStore(dir)
-    val model by lazy { AppModel(api, store, reminders, { clock.now }, CoroutineScope(SupervisorJob() + Dispatchers.Main), appVersion = "test") }
+    val model by lazy { AppModel(api, store, reminders, liveActivities, { clock.now }, CoroutineScope(SupervisorJob() + Dispatchers.Main), appVersion = "test") }
     val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = placeIndex, changelog = { changelog }) }
 }
 

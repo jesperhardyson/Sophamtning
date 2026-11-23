@@ -14,7 +14,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val dependencies = (application as SophamtningApplication).dependencies
+        // Frågan om notiser går genom aktiviteten, och ställs bara när användaren slår på en påminnelse eller Live Update.
+        dependencies.notificationPermission?.attach(this)
         setContent { SophamtningApp(dependencies) }
+    }
+
+    override fun onDestroy() {
+        (application as SophamtningApplication).dependencies.notificationPermission?.detach(this)
+        super.onDestroy()
     }
 }
 

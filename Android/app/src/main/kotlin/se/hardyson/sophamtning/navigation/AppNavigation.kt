@@ -86,6 +86,9 @@ fun AppNavigation(model: AppModel, backStack: NavBackStack<NavKey> = rememberNav
             entry<Rename> { AppScreens.Rename(it, navigator) }
             entry<Settings> { AppScreens.Settings(navigator) }
             entry<PrimaryAddressChoice> { AppScreens.PrimaryAddressChoice(navigator) }
+            entry<ReminderTimes> { AppScreens.ReminderTimes(navigator) }
+            entry<ReminderTimeChoice> { AppScreens.ReminderTimeChoice(it, navigator) }
+            entry<LiveUpdateTiming> { AppScreens.LiveUpdateTiming(navigator) }
             entry<DataSources> { AppScreens.DataSources(navigator) }
             entry<Changelog> { AppScreens.Changelog(navigator) }
         },
