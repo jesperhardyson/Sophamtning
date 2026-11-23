@@ -10,8 +10,8 @@ import kotlinx.coroutines.MainScope
 import se.hardyson.sophamtning.core.app.AppModel
 import se.hardyson.sophamtning.core.api.SoporClient
 import se.hardyson.sophamtning.core.kommun.PlaceIndex
-import se.hardyson.sophamtning.core.reminders.DisabledLiveActivities
 import se.hardyson.sophamtning.core.storage.LocalStore
+import se.hardyson.sophamtning.reminders.AndroidLiveUpdates
 import se.hardyson.sophamtning.reminders.AndroidNotifications
 import se.hardyson.sophamtning.reminders.NotificationChannels
 import se.hardyson.sophamtning.reminders.NotificationPermission
@@ -33,7 +33,7 @@ class SophamtningApplication : Application() {
             api = api,
             store = store,
             notifications = AndroidNotifications(this, store, permission),
-            liveActivities = DisabledLiveActivities,
+            liveActivities = AndroidLiveUpdates(this, store),
             clock = clock,
             scope = MainScope(),
             appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",

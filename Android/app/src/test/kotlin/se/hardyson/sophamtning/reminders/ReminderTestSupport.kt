@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
+import kotlinx.coroutines.async
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAlarmManager
 import org.robolectric.shadows.ShadowNotificationManager
@@ -46,4 +47,14 @@ fun idleUntil(condition: () -> Boolean) {
         if (System.nanoTime() > deadline) throw AssertionError("Villkoret uppfylldes inte")
         Thread.sleep(10)
     }
+}
+
+/**
+ * Kör [block] och låter huvudtråden arbeta under tiden. Appens modell hör till huvudtråden, och i Robolectric är testets
+ * tråd huvudtråden, så `runBlocking` med modellen skulle aldrig bli klar.
+ */
+fun <T> onMain(block: suspend () -> T): T {
+    val result = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).async { block() }
+    idleUntil { result.isCompleted }
+    return kotlinx.coroutines.runBlocking { result.await() }
 }

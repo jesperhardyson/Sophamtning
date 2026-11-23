@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Exakta tider för påminnelserna. Appen begär det aldrig själv, och utan det kommer påminnelsen inom 10 minuter. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Live Update: den pågående notisen får begäras som framhävd i Android 16 och senare. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -27,6 +29,11 @@
         <!-- Påminnelsernas alarm och knappen Utställt i notisen. -->
         <receiver
             android:name=".reminders.ReminderAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Live Updatens start, knappen Klart och bortsvepningen. -->
+        <receiver
+            android:name=".reminders.LiveUpdateReceiver"
             android:exported="false" />
     </application>
 </manifest>
