@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import se.hardyson.sophamtning.ui.components.Chevron
 import se.hardyson.sophamtning.ui.components.isLargeText
@@ -72,7 +73,7 @@ internal fun SettingsRow(title: String, value: String, onClick: (() -> Unit)?) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val titleText: @Composable (Modifier) -> Unit = { modifier ->
-            Text(title, style = uiText(20, Weight.HEAVY), color = ThemeToken.Text.color, maxLines = 2, modifier = modifier)
+            Text(title, style = uiText(20, Weight.HEAVY), color = ThemeToken.Text.color, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = modifier)
         }
         val valueText: @Composable () -> Unit = {
             if (value.isNotEmpty()) Text(value, style = uiText(19, Weight.SEMIBOLD), color = ThemeToken.Text2.color)

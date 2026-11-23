@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LastBaseline
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
@@ -93,9 +94,13 @@ fun ScreenScaffold(
                 val largeStyle = MaterialTheme.typography.headlineMedium
                 val measurer = rememberTextMeasurer()
                 val windowWidth = LocalWindowInfo.current.containerSize.width
+                val layoutDirection = LocalLayoutDirection.current
+                // Fältet lägger sig innanför navigeringsfältet och kameran vid sidan, i liggande läge.
+                val barInsets = TopAppBarDefaults.windowInsets
                 val expandedHeight = with(LocalDensity.current) {
                     val leadingWidth = if (largeTitleLeading != null) (largeTitleLeadingSize.width + LEADING_SPACING).roundToPx() else 0
-                    val width = (windowWidth - TITLE_HORIZONTAL_SPACE.roundToPx() - leadingWidth).coerceAtLeast(1)
+                    val sides = barInsets.getLeft(this, layoutDirection) + barInsets.getRight(this, layoutDirection)
+                    val width = (windowWidth - sides - TITLE_HORIZONTAL_SPACE.roundToPx() - leadingWidth).coerceAtLeast(1)
                     val layout = measurer.measure(
                         title.ifEmpty { " " },
                         largeStyle,

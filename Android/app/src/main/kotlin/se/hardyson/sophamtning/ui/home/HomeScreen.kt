@@ -127,7 +127,7 @@ fun HomeScreen(navigator: AppNavigator) {
         onBack = null,
         large = filled,
         snackbarHostState = snackbar,
-        largeTitleLeading = { BinRoundView(width = TITLE_BIN_WIDTH, maxWidth = TITLE_BIN_MAX_WIDTH, bubbleTip = BubbleTip.Start, tapTrigger = titleTaps) },
+        largeTitleLeading = { BinRoundView(width = TITLE_BIN_WIDTH, maxWidth = TITLE_BIN_MAX_WIDTH, bubbleTip = BubbleTip.Start, firstRound = "rubrik", tapTrigger = titleTaps) },
         largeTitleLeadingSize = titleBinWidth.let { DpSize(it, it * BIN_ASPECT) },
         onLargeTitleTap = { titleTaps += 1 },
         actions = {

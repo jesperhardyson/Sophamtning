@@ -24,7 +24,14 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
+import se.hardyson.sophamtning.LocalAppDependencies
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -94,6 +101,12 @@ private class BinRoundState {
         if (bubbles.bubbles.isEmpty()) announced = null
     }
 
+    /** Tar bort bubblorna, till exempel när skärmen lämnas. */
+    fun clearBubbles() {
+        bubbles = bubbles.copy(bubbles = emptyList())
+        announced = null
+    }
+
     /** Ett tryck: alltid en ny bubbla med nästa text, och ett nytt varv bara om kärlet står still. */
     fun tap(time: Double, reduceMotion: Boolean) {
         now = time
@@ -122,7 +135,8 @@ private suspend fun frameSeconds(): Double = withFrameNanos { it } / 1e9
  *
  * @param width kärlets bredd. Växer med textstorleken, högst till [maxWidth].
  * @param bubbleTip var bubblan står i förhållande till kärlet: mitt under, eller med vänsterkanten vid kärlet.
- * @param playsFirstRound om det första varvet spelas när kärlet visas.
+ * @param firstRound kärlets namn för det första varvet, som spelas en gång per process när kärlet visas, som på iOS där
+ *   varvet inte spelas igen vid retur. `null` spelar inget första varv.
  * @param tapTrigger ökar när något annat än kärlet ska räknas som ett tryck på det, till exempel rubriken bredvid.
  * @param reduceMotion tvingar läget. Utan värde läses "Ta bort animationer".
  */
@@ -133,7 +147,7 @@ fun BinRoundView(
     maxWidth: Dp = BinRound.MAX_WIDTH.dp,
     bubbleTip: BubbleTip = BubbleTip.Center,
     bubblePlacement: BinBubbleTimeline.Placement = BinBubbleTimeline.Placement.BelowBin,
-    playsFirstRound: Boolean = true,
+    firstRound: String? = null,
     tapTrigger: Int = 0,
     reduceMotion: Boolean? = null,
 ) {
@@ -143,18 +157,30 @@ fun BinRoundView(
     val haptics = LocalHapticFeedback.current
     val drawn = scaledBinWidth(width, maxWidth)
     val currentStill by rememberUpdatedState(still)
+    val firstRounds = LocalAppDependencies.current.binFirstRounds
 
     fun tapped() {
+        // Ett tryck före det första varvet ersätter det.
+        firstRound?.let(firstRounds::markShown)
         haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
         scope.launch { state.tap(frameSeconds(), currentStill) }
     }
 
-    LaunchedEffect(playsFirstRound) {
-        if (!playsFirstRound || state.playedFirst) return@LaunchedEffect
+    LaunchedEffect(firstRound) {
+        if (firstRound == null || !firstRounds.shouldPlay(firstRound) || state.playedFirst) return@LaunchedEffect
+        firstRounds.markShown(firstRound)
         state.playedFirst = true
         if (!currentStill) state.roundStart = frameSeconds()
     }
     LaunchedEffect(tapTrigger) { if (tapTrigger > 0) tapped() }
+    // Bubblorna hör till skärmen som syns. Lämnas den, eller läggs appen i bakgrunden, tas de bort, så att de inte står
+    // kvar ovanpå nästa skärm.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val resumed by lifecycle.currentStateAsState()
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { state.clearBubbles() }
+    // Bubblorna står i ett eget fönster, så de visas bara medan kärlet syns helt, och inte när det har scrollats bort eller
+    // när rubriken har krympt.
+    var binShown by remember { mutableStateOf(true) }
     // Klockan går bara medan ett varv spelas eller en bubbla syns.
     LaunchedEffect(state.animating) {
         while (state.animating) withFrameNanos { state.frame(it / 1e9) }
@@ -165,6 +191,10 @@ fun BinRoundView(
             pose = { state.pose(still) },
             modifier = Modifier
                 .size(drawn, drawn * BIN_ASPECT)
+                .onGloballyPositioned { coordinates ->
+                    val visible = coordinates.boundsInWindow()
+                    binShown = coordinates.isAttached && visible.height >= coordinates.size.height - 1 && visible.width >= coordinates.size.width - 1
+                }
                 .testTag(BinTags.BIN)
                 .semantics {
                     hideFromAccessibility()
@@ -192,7 +222,7 @@ fun BinRoundView(
                 state.announced?.let { contentDescription = it }
             },
         )
-        if (state.bubbles.bubbles.isNotEmpty()) {
+        if (state.bubbles.bubbles.isNotEmpty() && binShown && resumed.isAtLeast(Lifecycle.State.RESUMED)) {
             Bubbles(state, still, drawn, bubbleTip, bubblePlacement)
         }
     }

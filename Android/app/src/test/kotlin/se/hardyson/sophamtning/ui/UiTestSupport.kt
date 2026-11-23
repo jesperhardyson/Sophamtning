@@ -41,6 +41,9 @@ fun uiTestData(name: String): String =
 class FakeSoporApi : SoporApi {
     /** Ett fel som varje hämtning av ett schema ger, till exempel 502. */
     @Volatile var addressError: ApiError? = null
+
+    /** Håller kvar varje hämtning av ett schema tills den släpps, så att laddningen syns. */
+    @Volatile var addressGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
     /** Lägger till en källa med testdata i källistan, som appen inte ska visa. */
     @Volatile var sourcesWithTestData = false
     val addressCalls = mutableListOf<String>()
@@ -62,6 +65,7 @@ class FakeSoporApi : SoporApi {
 
     override suspend fun address(url: String): AddressResponse {
         addressCalls += url
+        addressGate?.await()
         addressError?.let { throw it }
         if ("/adress/avesta/" in url) return ApiDecoding.addressResponse(uiTestData("uitest-adress-avesta"))
         if ("/testgatan-4_" in url) return ApiDecoding.addressResponse(uiTestData("uitest-adress-tom"))

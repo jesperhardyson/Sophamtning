@@ -8,6 +8,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import java.time.Instant
 import se.hardyson.sophamtning.core.api.SoporApi
 import se.hardyson.sophamtning.core.app.AppModel
+import se.hardyson.sophamtning.core.bin.ShownOnce
 import se.hardyson.sophamtning.core.kommun.PlaceIndex
 
 /**
@@ -24,6 +25,8 @@ class AppDependencies(
     val heldAreas: HeldAreas = HeldAreas(),
     /** Innehållet i `CHANGELOG.md` som följer med appen, eller `null` när filen inte finns, som före den första releasen. */
     val changelog: () -> String? = { null },
+    /** Kärlen som redan har spelat sitt första varv i den här processen, så att det inte spelas igen vid retur. */
+    val binFirstRounds: ShownOnce<String> = ShownOnce(),
 )
 
 /**

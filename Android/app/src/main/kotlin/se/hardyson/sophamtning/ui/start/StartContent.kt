@@ -46,7 +46,7 @@ fun StartContent(onSearch: () -> Unit, onKommun: () -> Unit) {
     Column {
         // Ytan ovanför kärlet är till för fraktionen som faller, så kärlet står ungefär där logotypen stod. Pratbubblorna
         // står under kärlet och växer nedåt över rubriken.
-        Box(Modifier.fillMaxWidth().padding(bottom = 33.dp), contentAlignment = Alignment.Center) { BinRoundView() }
+        Box(Modifier.fillMaxWidth().padding(bottom = 33.dp), contentAlignment = Alignment.Center) { BinRoundView(firstRound = "tomt") }
         Text(stringResource(R.string.start_title), style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
         Text(
             stringResource(R.string.start_text),

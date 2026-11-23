@@ -6,7 +6,10 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -34,10 +37,10 @@ class BinTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private fun startEmpty() {
+    private fun startEmpty(app: TestApp = TestApp()) {
         // Klockan går bara när testet flyttar den, så att bubblorna inte hinner tonas bort medan testet väntar.
         compose.mainClock.autoAdvance = false
-        compose.setContent { SophamtningApp(TestApp().dependencies) }
+        compose.setContent { SophamtningApp(app.dependencies) }
         compose.mainClock.advanceTimeBy(100)
         compose.waitForIdle()
     }
@@ -111,5 +114,37 @@ class BinTest {
     fun allaKarletsBanorGarAttTolka() {
         assertEquals(7, BinArtwork.lidParts.size)
         for (part in BinArtwork.lidParts + BinArtwork.bodyParts) assertFalse(part.isEmpty)
+    }
+
+    @Test
+    fun bubblanSynsInteOverNastaSkarm() {
+        startEmpty()
+        tapBin()
+        assertEquals(1, bubbleCount())
+        compose.onNodeWithContentDescription("Inställningar").performClick()
+        // Mitt i övergången till nästa skärm.
+        compose.mainClock.advanceTimeBy(100)
+        compose.waitForIdle()
+        assertEquals(0, bubbleCount())
+    }
+
+    @Test
+    fun forstaVarvetSpelasBaraEnGang() {
+        val app = TestApp()
+        app.model.add(testHit("Testgatan 1"))
+        startEmpty(app)
+        // Kärlet bredvid rubriken spelar sitt första varv när hemskärmen visas.
+        assertTrue(playing())
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.waitForIdle()
+        assertFalse(playing())
+        compose.onNode(shows("Hemma", substring = true) and hasClickAction()).performClick()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Tillbaka").performClick()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        // Tillbaka på hemskärmen står kärlet still, som på iOS.
+        assertFalse(playing())
     }
 }

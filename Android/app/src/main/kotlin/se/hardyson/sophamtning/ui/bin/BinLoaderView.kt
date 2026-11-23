@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -50,13 +51,15 @@ fun BinLoaderView(
     showsText: Boolean = true,
     textColor: Color = ThemeToken.Text2.color,
     reduceMotion: Boolean? = null,
+    /** Nästa roliga text. Testerna ger en fast text. */
+    nextText: (() -> String)? = null,
 ) {
     val still = reduceMotion ?: animationsOff()
     val label = stringResource(R.string.loading_schedule)
     var elapsed by remember { mutableDoubleStateOf(0.0) }
     var settled by remember { mutableStateOf(false) }
     // Ingen text upprepas förrän alla visats, och samma text står kvar vid omritning.
-    val texts = remember { TextSequence() }
+    val texts = remember { TextSequence(nextText) }
     LaunchedEffect(still) {
         if (still) {
             // Bara den enkla toningen in finns kvar.
@@ -94,6 +97,7 @@ fun BinLoaderView(
                 textAlign = TextAlign.Center,
                 minLines = 2,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .widthIn(max = 340.dp)
                     .graphicsLayer { alpha = if (still) 1f else BinLoaderTimeline.textOpacity(elapsed).toFloat() },
@@ -103,12 +107,12 @@ fun BinLoaderView(
 }
 
 /** En ny text slumpas först när cykeln byter, och ingen upprepas förrän alla visats. */
-private class TextSequence {
+private class TextSequence(private val next: (() -> String)?) {
     private val queue = BinLoaderTexts.Queue()
     private val drawn = mutableListOf<String>()
 
     fun text(cycle: Int): String {
-        while (drawn.size <= cycle) drawn += queue.next()
+        while (drawn.size <= cycle) drawn += next?.invoke() ?: queue.next()
         return drawn[cycle]
     }
 }
