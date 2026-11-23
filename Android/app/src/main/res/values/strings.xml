@@ -137,6 +137,12 @@
 
     <string name="settings_title">Inställningar</string>
     <string name="settings_notifications">Notiser</string>
+    <string name="channel_reminders">Påminnelser</string>
+    <string name="channel_reminders_description">Kvällen före eller samma morgon som kärlen töms, med knappen Utställt.</string>
+    <string name="channel_live_update">Live Update</string>
+    <string name="channel_live_update_description">Kärlen och knappen Klart, medan det är dags att ställa ut dem.</string>
+    <string name="channel_source_messages">Meddelanden från källan</string>
+    <string name="channel_source_messages_description">Nya meddelanden från den som tömmer kärlen, till exempel ändrade turer.</string>
     <string name="settings_time">Tid</string>
     <string name="settings_source_messages">Meddelanden från källan</string>
     <string name="settings_primary">Huvudadress</string>
