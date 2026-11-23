@@ -220,4 +220,16 @@ class LocalStoreTest {
         File(dir, "addresses.json").writeText(ios)
         assertEquals(Instant.parse("2026-10-29T20:53:20.500Z"), LocalStore(dir).addresses().single().addedAt)
     }
+
+    @Test
+    fun djuptNastladFilArOlasbarOchKrascharInte() {
+        val dir = tempDir()
+        File(dir, "addresses.json").writeText("[".repeat(200_000))
+        assertIs<StoreRead.Unreadable>(LocalStore(dir).addressesState())
+        File(dir, "settings.json").writeText("{\"a\":".repeat(200_000))
+        assertIs<StoreRead.Unreadable>(LocalStore(dir).settingsState())
+        File(dir, "schedules").mkdirs()
+        File(dir, "schedules/${testKey.fileName}.json").writeText("{\"response\":" + "[".repeat(200_000))
+        assertIs<StoreRead.Unreadable>(LocalStore(dir).scheduleState(testKey))
+    }
 }

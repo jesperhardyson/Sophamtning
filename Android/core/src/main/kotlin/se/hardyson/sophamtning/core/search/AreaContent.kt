@@ -114,6 +114,15 @@ data class AreaSourceNote(
          */
         private val phonePattern = Regex("""\+?\(?\d[\d  ()-]*\d""")
 
+        /**
+         * Ett svenskt telefonnummer börjar med 0 eller +, och har minst sju siffror. Så blir postnummer ("791 83"), datum
+         * ("2026-11-23") och öppettider ("08-16") inte länkar, som de inte heller blir på iOS.
+         */
+        private fun isPhoneNumber(value: String): Boolean {
+            val start = value.trimStart('(')
+            return (start.startsWith("0") || start.startsWith("+")) && value.count(Char::isDigit) >= 7
+        }
+
         /** En förklaring per källa som har något att säga. Utan källor blir listan tom, och då visas dagens meddelande. */
         fun notes(sources: List<AreaSource>): List<AreaSourceNote> {
             val seen = mutableSetOf<String>()
@@ -128,7 +137,7 @@ data class AreaSourceNote(
 
         /** Texten med varje telefonnummer som en `tel:`-länk. Hittas inget nummer är texten oförändrad. */
         fun linkingPhoneNumbers(text: String): LinkedText {
-            val links = phonePattern.findAll(text).mapNotNull { match ->
+            val links = phonePattern.findAll(text).filter { isPhoneNumber(it.value) }.mapNotNull { match ->
                 telURL(match.value)?.let { url -> LinkedText.Link(match.range, url) }
             }.toList()
             return LinkedText(text, links)

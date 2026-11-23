@@ -1,6 +1,7 @@
 package se.hardyson.sophamtning.core.storage
 
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files
@@ -35,7 +36,7 @@ sealed interface StoreRead<out T> {
 class LocalStore(
     private val directory: File,
     /** Skriver byte till en fil. Byts bara ut i test, för att pröva en avbruten skrivning. */
-    private val writeBytes: (File, ByteArray) -> Unit = { file, bytes -> file.writeBytes(bytes) },
+    private val writeBytes: (File, ByteArray) -> Unit = ::writeAndSync,
 ) {
     // MARK: Adresser, inställningar, utställda och källor
 
@@ -209,6 +210,17 @@ class LocalStore(
     private fun lockFor(path: String): Any = locks.computeIfAbsent(File(directory, path).absolutePath) { Any() }
 
     companion object {
+        /**
+         * Skriver och synkar till disken före flytten, som `AtomicFile` i Android. Annars kan flytten nå disken före
+         * innehållet vid strömavbrott, och filen blir tom.
+         */
+        private fun writeAndSync(file: File, bytes: ByteArray) {
+            FileOutputStream(file).use { stream ->
+                stream.write(bytes)
+                stream.fd.sync()
+            }
+        }
+
         private const val ADDRESSES = "addresses.json"
         private const val SETTINGS = "settings.json"
         private const val SOURCES = "sources.json"

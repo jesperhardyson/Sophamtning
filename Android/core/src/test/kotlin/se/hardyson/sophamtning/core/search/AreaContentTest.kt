@@ -268,4 +268,13 @@ class AreaWarningTest {
         val single = AreaWarning.make(notice = null, notes = AreaSourceNote.notes(listOf(avesta)))
         assertNull(single.explanations.first().name)
     }
+
+    @Test
+    fun postnummerOchDatumBlirInteTelefonlankar() {
+        for (text in listOf("Skicka till Box 123, 791 83 Falun.", "Nya tider från 2026-11-23.", "Öppet 08-16 vardagar.")) {
+            assertEquals(emptyList(), AreaSourceNote.linkingPhoneNumbers(text).links, text)
+        }
+        val help = AreaSourceNote.linkingPhoneNumbers("Ring 0226-64 55 00 eller +46 226-64 55 00.")
+        assertEquals(listOf("tel:0226645500", "tel:+46226645500"), help.links.map { it.url })
+    }
 }
