@@ -109,4 +109,33 @@ class PlacedOutStoreTest {
         // Filerna är skilda åt: en visad är inte utställd.
         assertTrue(store.placedOut().isEmpty())
     }
+
+    // Android: tiden då kärlen ställdes ut, för raden "av dig · kl. 19:42".
+
+    @Test
+    fun tidenForUtstalltSparasOchRensasMedBocken() {
+        val dir = tempDir()
+        val store = LocalStore(dir)
+        val at = java.time.Instant.parse("2026-11-08T18:42:00Z")
+        store.markPlacedOut(entry(1), today)
+        store.setPlacedOutTime(entry(1), at)
+        assertEquals(mapOf(entry(1) to at), store.placedOutTimes())
+        // Samma format som tiderna i övriga filer: sekunder sedan 2001.
+        val json = File(dir, "placed-out-times.json").readText()
+        assertTrue(json.contains("\"${key.fileName}-${entry(1).date.iso}\""), json)
+        assertEquals(815856120.0, json.substringAfter(":").trimEnd('}').toDouble(), json)
+
+        store.unmarkPlacedOut(entry(1))
+        assertTrue(store.placedOutTimes().isEmpty())
+        assertFalse(File(dir, "placed-out-times.json").readText().contains(key.fileName))
+    }
+
+    @Test
+    fun tidenRensasNarBockenHarPasserat() {
+        val store = LocalStore(tempDir())
+        store.markPlacedOut(entry(0), today)
+        store.setPlacedOutTime(entry(0), java.time.Instant.parse("2026-11-08T18:42:00Z"))
+        store.prunePlacedOut(today.plusDays(1))
+        assertTrue(store.placedOutTimes().isEmpty())
+    }
 }

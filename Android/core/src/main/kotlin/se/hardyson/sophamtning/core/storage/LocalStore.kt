@@ -11,6 +11,8 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import se.hardyson.sophamtning.core.dates.DayDate
 import se.hardyson.sophamtning.core.messages.SourceMessageMemory
 
@@ -67,11 +69,49 @@ class LocalStore(
         if (entry in current) current else current + entry
     }
 
-    /** Tar bort en enskild post, till exempel när användaren ångrar. Finns den inte skrivs ingenting. */
-    fun unmarkPlacedOut(entry: PlacedOut) = updateLocked(PLACED_OUT) { saved -> saved.filter { it != entry } }
+    /** Tar bort en enskild post, till exempel när användaren ångrar. Finns den inte skrivs ingenting. Tiden tas bort med den. */
+    fun unmarkPlacedOut(entry: PlacedOut) {
+        updateLocked(PLACED_OUT) { saved -> saved.filter { it != entry } }
+        pruneTimes()
+    }
 
-    /** Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting. */
-    fun prunePlacedOut(today: DayDate) = updateLocked(PLACED_OUT) { saved -> saved.filter { it.date >= today } }
+    /** Tar bort poster vars datum har passerat. Finns inget att ta bort skrivs ingenting. Tiderna rensas med dem. */
+    fun prunePlacedOut(today: DayDate) {
+        updateLocked(PLACED_OUT) { saved -> saved.filter { it.date >= today } }
+        pruneTimes()
+    }
+
+    // MARK: Tiden för Utställt (bara Android)
+
+    /**
+     * När kärlen ställdes ut, för raden "av dig · kl. 19:42". Bara de som fortfarande är utställda. Sparas i
+     * `placed-out-times.json` som `{ "<filnamn>-<iso>": <sekunder sedan 2001> }`. Filen finns bara på Android, och en fil som
+     * inte går att läsa ger inga tider.
+     */
+    fun placedOutTimes(): Map<PlacedOut, Instant> {
+        val times = locked(PLACED_OUT_TIMES) { read(PLACED_OUT_TIMES, timesMap) } ?: return emptyMap()
+        return placedOut().mapNotNull { entry -> times[timeKey(entry)]?.let { entry to it } }.toMap()
+    }
+
+    /** Sparar tiden för en utställd tömning. Tider för tömningar som inte längre är utställda tas bort samtidigt. */
+    fun setPlacedOutTime(entry: PlacedOut, at: Instant) = updateTimes { it + (timeKey(entry) to at) }
+
+    /** Tar bort tiderna för tömningar som inte längre är utställda. Ett fel här är bara städning som görs nästa gång. */
+    private fun pruneTimes() {
+        try {
+            updateTimes { it }
+        } catch (_: IOException) {
+        }
+    }
+
+    private fun updateTimes(change: (Map<String, Instant>) -> Map<String, Instant>) = locked(PLACED_OUT_TIMES) {
+        val saved = read(PLACED_OUT_TIMES, timesMap) ?: emptyMap()
+        val current = placedOut().map(::timeKey).toSet()
+        val updated = change(saved).filterKeys { it in current }
+        if (updated != saved) write(PLACED_OUT_TIMES, timesMap, updated)
+    }
+
+    private fun timeKey(entry: PlacedOut) = "${entry.key.fileName}-${entry.date.iso}"
 
     // MARK: Visade och avslutade Live Updates
 
@@ -228,9 +268,11 @@ class LocalStore(
         private const val PLACED_OUT = "placed-out.json"
         private const val SHOWN = "shown-activities.json"
         private const val ENDED = "ended-activities.json"
+        private const val PLACED_OUT_TIMES = "placed-out-times.json"
 
         private val addressList = ListSerializer(SavedAddress.serializer())
         private val placedOutList = ListSerializer(PlacedOut.serializer())
+        private val timesMap = MapSerializer(String.serializer(), SwiftDateSerializer)
 
         /** Ett lås per fil för hela processen, så att två `LocalStore` för samma katalog inte skriver över varandra. */
         private val locks = ConcurrentHashMap<String, Any>()
