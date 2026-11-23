@@ -56,9 +56,12 @@ interface ReminderScheduling {
     suspend fun deliverNow(identifier: String, title: String, body: String)
 }
 
-/** Inga påminnelser: notiser är inte tillåtna och inget schemaläggs. Används tills plan 5. */
+/**
+ * Inga påminnelser: inget schemaläggs och ingen fråga ställs. Används tills plan 5. Tillståndet är "inte avgjort", så att
+ * appen aldrig säger att notiserna är avstängda i systemet när de inte är det.
+ */
 object NoReminders : ReminderScheduling {
-    override suspend fun authorization() = NotificationAuthorization.Denied
+    override suspend fun authorization() = NotificationAuthorization.NotDetermined
     override suspend fun requestAuthorization() = false
     override suspend fun apply(request: ReminderRequest) {}
     override suspend fun cancel(identifiers: List<String>) {}
