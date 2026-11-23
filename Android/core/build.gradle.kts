@@ -8,6 +8,11 @@ kotlin {
     jvmToolchain(21)
 }
 
+// Ortlistan delas med iOS och kopieras inte. Kommunkollen på båda plattformarna läser samma fil.
+sourceSets.main {
+    resources.srcDir("../../iOS/Packages/SophamtningKit/Sources/SophamtningKit/Kommun/Resources")
+}
+
 // Fixturerna delas med iOS och kopieras inte. Ett test på iOS och samma test här läser samma fil.
 sourceSets.test {
     resources.srcDir("../../iOS/Packages/SophamtningKit/Tests/SophamtningKitTests/Fixtures")
