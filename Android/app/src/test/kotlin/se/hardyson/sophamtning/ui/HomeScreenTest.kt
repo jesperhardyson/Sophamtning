@@ -24,6 +24,7 @@ import se.hardyson.sophamtning.SophamtningApp
 import se.hardyson.sophamtning.core.api.ApiDecoding
 import se.hardyson.sophamtning.core.api.ApiError
 import se.hardyson.sophamtning.core.api.SearchHit
+import se.hardyson.sophamtning.core.app.NoReminders
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.CachedSchedule
@@ -121,5 +122,23 @@ class HomeScreenTest {
         compose.advance(61_000)
         compose.waitForText("i dag", substring = true)
         assertFalse(compose.isShowing("i morgon", substring = true))
+    }
+
+    // Tills plan 5 finns inga påminnelser, och det som inte kan fungera visas inte.
+
+    @Test
+    fun forslagetVisasNarPaminnelserFinns() {
+        val app = TestApp()
+        start(app, testHit("Testgatan 1"))
+        compose.waitForText("Vill du bli påmind?")
+    }
+
+    @Test
+    fun forslagetVisasInteUtanPaminnelser() {
+        val app = TestApp(reminders = NoReminders)
+        start(app, testHit("Testgatan 1"))
+        compose.waitForText("Ons 11 nov", substring = true)
+        assertFalse(compose.isShowing("Vill du bli påmind?"))
+        assertFalse(compose.isShowing("Påminn mig"))
     }
 }

@@ -194,4 +194,28 @@ class AppModelTest {
         assertTrue(model.state.value.placedOutTimes.isEmpty())
         assertTrue(store.placedOutTimes().isEmpty())
     }
+
+    // Android: påminnelserna visas bara när de finns (plan 5).
+
+    @Test
+    fun utanPaminnelserVisasInteForslaget() = runTest {
+        val model = makeModel(CountingApi(fixtureResponse()), LocalStore(tempDir()), backgroundScope)
+        model.add(hit("1"))
+        model.refreshAll(manual = false)
+        val state = model.state.value
+        assertEquals(false, state.remindersAvailable)
+        assertEquals(false, state.showsReminderOffer(fixedNow))
+        assertEquals(null, state.homeContent(fixedNow).primary?.reminder?.line)
+    }
+
+    @Test
+    fun medPaminnelserVisasForslaget() = runTest {
+        val now = StockholmClock.dateOn(se.hardyson.sophamtning.core.dates.DayDate.parse("2026-11-08")!!, 12 * 60)
+        val model = AppModel(CountingApi(fixtureResponse()), LocalStore(tempDir()), RecordingReminders(), { now }, backgroundScope)
+        model.add(hit("1"))
+        model.refreshAll(manual = false)
+        model.settleReminders()
+        assertTrue(model.state.value.remindersAvailable)
+        assertTrue(model.state.value.showsReminderOffer(now))
+    }
 }

@@ -65,6 +65,8 @@ data class AppState(
     val sourceMessageMemory: SourceMessageMemory = SourceMessageMemory(),
     /** Källornas namn per id, från den sparade källistan. Tom när listan inte har hämtats. */
     val sourceNames: Map<String, String> = emptyMap(),
+    /** Om påminnelserna finns ([ReminderScheduling.available]). Annars visas inget om påminnelser. */
+    val remindersAvailable: Boolean = false,
 ) {
     val primary: SavedAddress? get() = addresses.firstOrNull { it.isPrimary } ?: addresses.firstOrNull()
 
@@ -91,6 +93,7 @@ data class AppState(
      * förslaget inte har besvarats. Inte när systemet har nekat notiser, och bara när huvudadressen har en kommande hämtning.
      */
     fun showsReminderOffer(now: Instant): Boolean {
+        if (!remindersAvailable) return false
         if (storageProblem != null || settings.reminderOfferShown || notificationAuthorization == NotificationAuthorization.Denied) return false
         if (addresses.any { it.notificationsOn }) return false
         val primary = addresses.firstOrNull { it.isPrimary } ?: return false
@@ -98,7 +101,7 @@ data class AppState(
         return ScheduleLogic.nextPickup(events, StockholmClock.today(now)) != null
     }
 
-    /** Hemskärmens innehåll vid [now]. */
+    /** Hemskärmens innehåll vid [now]. Utan påminnelser står ingen rad eller reglage om dem. */
     fun homeContent(now: Instant): HomeContent = HomeContent.make(
         addresses = addresses,
         schedules = schedules,
@@ -109,7 +112,17 @@ data class AppState(
         missedReminder = primary?.let { missedReminderText(it, now) },
         ownPlacedOut = ownPlacedOut,
         placedOutTimes = placedOutTimes,
-    )
+    ).let { content ->
+        if (remindersAvailable) {
+            content
+        } else {
+            HomeContent(content.primary?.copy(reminder = null, rowReminder = null), content.others.map { it.copy(rowReminder = null) })
+        }
+    }
+
+    /** Adressvyns innehåll med delen Påminnelser dold när påminnelserna inte finns. */
+    fun withoutUnavailableReminders(detail: AddressDetail): AddressDetail =
+        if (remindersAvailable) detail else detail.copy(showsReminders = false, missedReminder = null)
 
     /** Adressvyns innehåll vid [now], eller `null` när adressen inte finns längre. */
     fun addressDetail(key: AddressKey, now: Instant): AddressDetail? {
@@ -123,7 +136,7 @@ data class AppState(
             remindersOn = remindersOn(address),
             ownPlacedOut = ownPlacedOut,
             placedOutTimes = placedOutTimes,
-        )
+        ).let(::withoutUnavailableReminders)
     }
 }
 
@@ -189,6 +202,7 @@ class AppModel(
                 ownPlacedOut = store.placedOut().toSet(),
                 placedOutTimes = store.placedOutTimes(),
                 sourceNames = readSourceNames(),
+                remindersAvailable = reminders.available,
             ),
         )
         state = _state.asStateFlow()

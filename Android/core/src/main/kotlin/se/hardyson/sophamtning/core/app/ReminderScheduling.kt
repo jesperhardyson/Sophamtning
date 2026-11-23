@@ -35,6 +35,12 @@ data class ReminderRequest(
  * `LiveActivityScheduling` på iOS. Android-lagret, med planeraren, alarm och notiser, byggs i plan 5.
  */
 interface ReminderScheduling {
+    /**
+     * Om påminnelserna finns i den här versionen av appen. Falskt tills plan 5: då visas inget förslag, inget reglage och
+     * ingen rad om påminnelser, eftersom de inte skulle fungera.
+     */
+    val available: Boolean
+
     suspend fun authorization(): NotificationAuthorization
 
     /** Frågar om tillstånd för notiser. Anropas bara när användaren slår på en påminnelse. */
@@ -61,6 +67,7 @@ interface ReminderScheduling {
  * appen aldrig säger att notiserna är avstängda i systemet när de inte är det.
  */
 object NoReminders : ReminderScheduling {
+    override val available = false
     override suspend fun authorization() = NotificationAuthorization.NotDetermined
     override suspend fun requestAuthorization() = false
     override suspend fun apply(request: ReminderRequest) {}

@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -24,6 +25,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import se.hardyson.sophamtning.SophamtningApp
 import se.hardyson.sophamtning.core.api.SearchHit
+import se.hardyson.sophamtning.core.app.NoReminders
 import se.hardyson.sophamtning.core.home.AddressDetail
 import se.hardyson.sophamtning.core.storage.AddressKey
 
@@ -33,7 +35,7 @@ class AddressScreenTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val app = TestApp()
+    private var app = TestApp()
 
     /** Sparar adressen, visar hemskärmen och öppnar adressvyn från huvudkortet. */
     private fun openAddress(hit: SearchHit = testHit("Testgatan 1")) {
@@ -121,5 +123,22 @@ class AddressScreenTest {
         compose.waitForText("När töms dina kärl?")
         assertTrue(app.store.addresses().isEmpty())
         assertNull(app.store.schedule(key))
+    }
+
+    @Test
+    fun paminnelsenVisasNarDenFinns() {
+        openAddress()
+        compose.onNodeWithText("Påminnelser").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Påminn mig")).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun paminnelsenVisasInteUtanPaminnelser() {
+        app = TestApp(reminders = NoReminders)
+        openAddress()
+        compose.onNodeWithText("Per kärl").performScrollTo()
+        assertTrue(compose.isShowing("Ansvarar för hämtningen"))
+        assertFalse(compose.isShowing("Påminnelser"))
+        assertFalse(compose.isShowing("Påminn mig"))
     }
 }

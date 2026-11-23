@@ -73,6 +73,7 @@ class FakeSoporApi : SoporApi {
 
 /** Påminnelser som säger att systemet tillåter notiser, så att Ställ ut kärlen visas. Inget schemaläggs. */
 class AllowedReminders(var status: NotificationAuthorization = NotificationAuthorization.Authorized) : ReminderScheduling {
+    override val available = true
     override suspend fun authorization() = status
     override suspend fun requestAuthorization() = status == NotificationAuthorization.Authorized
     override suspend fun apply(request: ReminderRequest) {}

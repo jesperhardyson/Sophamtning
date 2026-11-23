@@ -53,7 +53,7 @@ class AddressViewModel(private val dependencies: AppDependencies, val key: Addre
                 remindersOn = state.remindersOn(it),
                 ownPlacedOut = state.ownPlacedOut,
                 placedOutTimes = state.placedOutTimes,
-            )
+            ).let(state::withoutUnavailableReminders)
         }
         return Ui(
             state = state,

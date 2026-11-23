@@ -39,6 +39,7 @@ internal class RecordingReminders(var status: NotificationAuthorization = Notifi
     var cancelledAll = 0
     var grant = false
 
+    override val available = true
     override suspend fun authorization() = status
     override suspend fun requestAuthorization(): Boolean {
         requests++
