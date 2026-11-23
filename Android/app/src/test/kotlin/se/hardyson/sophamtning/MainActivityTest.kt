@@ -16,8 +16,8 @@ class MainActivityTest {
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun rubrikenVisas() {
-        compose.onNodeWithText("Sophämtning").assertIsDisplayed()
+    fun startvynVisasUtanSparadeAdresser() {
+        compose.onNodeWithText("När töms dina kärl?").assertIsDisplayed()
     }
 
     @Test
