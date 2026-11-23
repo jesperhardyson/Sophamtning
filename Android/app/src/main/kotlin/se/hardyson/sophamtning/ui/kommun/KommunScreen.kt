@@ -92,6 +92,7 @@ fun KommunScreen(navigator: AppNavigator) {
 
 @Composable
 private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, retry: () -> Unit, navigator: AppNavigator) {
+    val held = LocalAppDependencies.current.heldAreas
     val context = LocalContext.current
     when (val answer = result.answer) {
         KommunAnswer.Empty -> Text(
@@ -113,7 +114,7 @@ private fun Answer(result: KommunViewModel.Result, setQuery: (String) -> Unit, r
                 )
                 if (hasAreas) {
                     PrimaryButton(stringResource(R.string.search_choose_area_in, kommunDisplayName(row.name)), {
-                        navigator.open(AreaPicker(row.name, shortKommunName(row.name), result.areas, result.areaSources))
+                        navigator.open(AreaPicker(row.name, shortKommunName(row.name), held.put(result.areas, result.areaSources)))
                     })
                 } else {
                     PrimaryButton(stringResource(R.string.kommun_search_address), { navigator.open(AddAddress(source = row.sourceId)) })

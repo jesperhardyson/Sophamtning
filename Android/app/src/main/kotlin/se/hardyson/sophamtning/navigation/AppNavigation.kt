@@ -1,5 +1,9 @@
 package se.hardyson.sophamtning.navigation
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -14,7 +18,7 @@ import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.ui.screens.AppScreens
 
 /** Flyttar mellan skärmarna. Skärmarna känner bara till det här, inte backstacken. */
-class AppNavigator(private val backStack: NavBackStack<NavKey>, private val model: AppModel) {
+class AppNavigator(private val backStack: NavBackStack<NavKey>, private val model: AppModel, private val scope: CoroutineScope) {
     fun open(key: NavKey) {
         backStack.add(key)
     }
@@ -37,6 +41,8 @@ class AppNavigator(private val backStack: NavBackStack<NavKey>, private val mode
         if (replacing != null && replacing != new) model.replace(replacing, new)
         closeAddFlow()
         if (backStack.isEmpty()) backStack.add(Home)
+        // Schemat för den nya adressen hämtas direkt.
+        scope.launch { model.refreshAll(manual = false) }
     }
 
     /** Tillbaka till hemskärmen, till exempel när adressen har tagits bort. */
@@ -46,11 +52,20 @@ class AppNavigator(private val backStack: NavBackStack<NavKey>, private val mode
     }
 }
 
-/** Appens skärmar i en backstack som sparas när telefonen vrids eller appen dödas. Bakåtgesten är systemets, med förhandsvisning. */
+/**
+ * Appens skärmar i en backstack som sparas när telefonen vrids eller appen dödas. Bakåtgesten är systemets, med
+ * förhandsvisning. När appen kommer i förgrunden, vilken skärm som än syns, räknas påminnelserna om och adresserna hämtas,
+ * högst en gång i timmen per adress, som på iOS vid `scenePhase == .active`.
+ */
 @Composable
-fun AppNavigation(model: AppModel) {
-    val backStack = rememberNavBackStack(Home)
-    val navigator = remember(backStack) { AppNavigator(backStack, model) }
+fun AppNavigation(model: AppModel, backStack: NavBackStack<NavKey> = rememberNavBackStack(Home)) {
+    val scope = rememberCoroutineScope()
+    val navigator = remember(backStack) { AppNavigator(backStack, model, scope) }
+    LifecycleResumeEffect(Unit) {
+        model.applyReminders()
+        scope.launch { model.refreshAll(manual = false) }
+        onPauseOrDispose {}
+    }
     NavDisplay(
         backStack = backStack,
         onBack = { navigator.back() },

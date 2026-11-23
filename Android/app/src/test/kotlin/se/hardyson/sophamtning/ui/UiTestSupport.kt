@@ -1,6 +1,7 @@
 package se.hardyson.sophamtning.ui
 
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import java.io.File
@@ -143,3 +144,20 @@ fun ComposeTestRule.advance(millis: Long) {
 
 /** En vanlig telefon, så att skärmarna får samma mått som i verkligheten. */
 const val PHONE = "w411dp-h891dp-xxhdpi"
+
+/** Textens layout i en nod, för att se om texten ryms. */
+fun androidx.compose.ui.test.SemanticsNodeInteraction.textLayout(): androidx.compose.ui.text.TextLayoutResult {
+    val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+    performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { action -> action(results) }
+    return results.single()
+}
+
+/**
+ * Texten ryms: varje rad slutar innanför textens bredd och ingen rad är avklippt nedtill, eller så slutar den med en
+ * ellips. Radernas bredd jämförs med nodens, eftersom en text kan läggas ut bredare än den plats den får.
+ */
+fun androidx.compose.ui.text.TextLayoutResult.fitsOrEllipsized(): Boolean {
+    if (isLineEllipsized(lineCount - 1)) return true
+    val widest = (0 until lineCount).maxOf { getLineRight(it) - getLineLeft(it) }
+    return widest <= size.width + 1 && !didOverflowHeight
+}

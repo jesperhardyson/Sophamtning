@@ -1,5 +1,7 @@
 package se.hardyson.sophamtning.ui.home
 
+import androidx.compose.runtime.key
+import se.hardyson.sophamtning.ui.components.MinuteTick
 import androidx.compose.ui.res.stringResource
 import se.hardyson.sophamtning.R
 import android.content.Context
@@ -32,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import se.hardyson.sophamtning.LocalAppDependencies
 import se.hardyson.sophamtning.core.app.StorageProblem
@@ -89,18 +89,12 @@ fun HomeScreen(navigator: AppNavigator) {
     val snackbar = remember { SnackbarHostState() }
     var refreshing by remember { mutableStateOf(false) }
 
-    // Hämtar när appen kommer i förgrunden och när man kommer tillbaka till hemskärmen.
+    // Hämtningen när appen kommer i förgrunden görs för hela appen, i AppNavigation. Här räknas bara dagen om.
     LifecycleResumeEffect(Unit) {
-        vm.onShown()
+        vm.tick()
         onPauseOrDispose {}
     }
-    // Räknar om dagen vid varje minutbyte medan skärmen syns, till exempel vid midnatt.
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(60_000L - dependencies.clock().toEpochMilli() % 60_000L)
-            vm.tick()
-        }
-    }
+    MinuteTick(dependencies.clock, vm::tick)
 
     val content = ui.content
     val primary = content.primary
@@ -182,20 +176,26 @@ private fun Filled(
         if (ui.showsReminderOffer) {
             ReminderOfferCard(onAccept = { vm.acceptReminderOffer(primary.key) }, onDecline = vm::declineReminderOffer, modifier = Modifier.padding(bottom = 16.dp))
         }
-        SwipeToRemove(onRemove = { vm.remove(primary.key) }, cornerRadius = 28.dp) {
-            PrimaryCard(primary, onOpen = { navigator.open(Address(primary.key)) }) {
-                val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
-                if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
-                primary.placedOut?.let { line ->
-                    PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { vm.undoPlaceOut(primary) })
+        // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
+        key(primary.key) {
+            SwipeToRemove(onRemove = { vm.remove(primary.key) }, cornerRadius = 28.dp) {
+                PrimaryCard(primary, onOpen = { navigator.open(Address(primary.key)) }) {
+                    val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
+                    if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
+                    primary.placedOut?.let { line ->
+                        PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { vm.undoPlaceOut(primary) })
+                    }
                 }
             }
         }
         if (others.isNotEmpty()) {
             OthersTitle()
             for (entry in others) {
-                SwipeToRemove(onRemove = { vm.remove(entry.key) }, cornerRadius = 20.dp, modifier = Modifier.padding(bottom = 12.dp)) {
-                    AddressRow(entry, onOpen = { navigator.open(Address(entry.key)) })
+                // Varje rad behåller sitt svep och sin bekräftelse när en annan adress tas bort.
+                key(entry.key) {
+                    SwipeToRemove(onRemove = { vm.remove(entry.key) }, cornerRadius = 20.dp, modifier = Modifier.padding(bottom = 12.dp)) {
+                        AddressRow(entry, onOpen = { navigator.open(Address(entry.key)) })
+                    }
                 }
             }
         }

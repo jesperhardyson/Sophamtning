@@ -48,19 +48,6 @@ class HomeViewModel(private val dependencies: AppDependencies) : ViewModel() {
         now.value = dependencies.clock()
     }
 
-    /**
-     * Skärmen syns, när appen startar, kommer tillbaka i förgrunden eller när man går tillbaka till hemskärmen. Påminnelserna
-     * räknas om och adresserna hämtas, högst en gång i timmen per adress.
-     */
-    fun onShown() {
-        tick()
-        model.applyReminders()
-        viewModelScope.launch {
-            model.refreshAll(manual = false)
-            tick()
-        }
-    }
-
     /** Ställer ut kärlen för nästa tömning, och svarar med om det gick. */
     fun placeOut(entry: HomeContent.Entry, onDone: (Boolean) -> Unit = {}) {
         val pickup = (entry.status as? HomeContent.Status.Upcoming)?.pickup ?: return

@@ -57,6 +57,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import se.hardyson.sophamtning.core.dates.DayDate
@@ -84,9 +85,11 @@ fun isLargeText(): Boolean = LocalDensity.current.fontScale >= 1.6f
 @Composable
 fun CalendarTile(day: DayDate, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(16.dp)
+    // Brickan växer med textstorleken, som `@ScaledMetric` på iOS, men högst till dubbla bredden.
+    val width = 78.dp * LocalDensity.current.fontScale.coerceIn(1f, 2f)
     Column(
         modifier = modifier
-            .width(78.dp)
+            .width(width)
             .border(1.dp, ThemeToken.Border.color, shape)
             .background(ThemeToken.Surface.color, shape)
             .clearAndSetSemantics { contentDescription = SwedishFormat.longDate(day, capitalized = false) },
@@ -96,11 +99,11 @@ fun CalendarTile(day: DayDate, modifier: Modifier = Modifier) {
             Modifier.fillMaxWidth().background(ThemeToken.Primary.color, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).heightIn(min = 26.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(SwedishFormat.monthUppercased(day), style = uiText(12, 900), color = ThemeToken.OnPrimary.color, maxLines = 1)
+            Text(SwedishFormat.monthUppercased(day), style = uiText(12, 900), color = ThemeToken.OnPrimary.color, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Column(Modifier.padding(horizontal = 4.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(SwedishFormat.dayNumber(day), style = brandText(38), color = ThemeToken.Text.color, maxLines = 1)
-            Text(SwedishFormat.weekdayName(day), style = uiText(12, Weight.BOLD), color = ThemeToken.Text2.color, maxLines = 1)
+            Text(SwedishFormat.dayNumber(day), style = brandText(38), color = ThemeToken.Text.color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(SwedishFormat.weekdayName(day), style = uiText(12, Weight.BOLD), color = ThemeToken.Text2.color, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -1,5 +1,6 @@
 package se.hardyson.sophamtning
 
+import androidx.annotation.VisibleForTesting
 import android.app.Application
 import io.ktor.client.engine.okhttp.OkHttp
 import java.io.File
@@ -13,8 +14,9 @@ import se.hardyson.sophamtning.core.storage.LocalStore
 
 /** Skapar nätet, lagringen och appens tillstånd en gång för hela processen. */
 class SophamtningApplication : Application() {
+    /** Sätts i `onCreate`. Testerna som startar `MainActivity` sätter sina egna innan aktiviteten skapas. */
+    @set:VisibleForTesting
     lateinit var dependencies: AppDependencies
-        private set
 
     override fun onCreate() {
         super.onCreate()

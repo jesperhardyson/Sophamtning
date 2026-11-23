@@ -141,4 +141,20 @@ class HomeScreenTest {
         assertFalse(compose.isShowing("Vill du bli påmind?"))
         assertFalse(compose.isShowing("Påminn mig"))
     }
+
+    @Test
+    fun bekraftelsenFoljerSinAdressNarEnAnnanTasBort() {
+        val app = TestApp()
+        val hits = listOf("Testgatan 1", "Testgatan 2", "Testgatan 3", "Testgatan 4").map(::testHit)
+        start(app, *hits.toTypedArray())
+        compose.waitForText("Fler adresser")
+        compose.onNode(shows("Testgatan 3,", substring = true)).performScrollTo().performTouchInput { swipeLeft() }
+        compose.waitForText("Ta bort adressen?")
+        // En annan adress försvinner medan bekräftelsen är öppen.
+        app.model.remove(AddressKey(hits[1].source, hits[1].id))
+        compose.waitForIdle()
+        compose.onNode(androidx.compose.ui.test.hasText("Ta bort") and androidx.compose.ui.test.hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Testgatan 1", "Testgatan 4"), app.model.state.value.addresses.map { it.street })
+    }
 }

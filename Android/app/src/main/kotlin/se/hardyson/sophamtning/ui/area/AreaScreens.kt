@@ -88,10 +88,16 @@ import se.hardyson.sophamtning.core.search.AreaFinder as Finder
 /** "Välj område", som AreaPickerView.swift: varningen, sedan listan med Hitta område först och områdena. */
 @Composable
 fun AreaPickerScreen(key: AreaPicker, navigator: AppNavigator) {
+    val held = LocalAppDependencies.current.heldAreas.get(key.held)
+    if (held == null) {
+        // Appen har dödats och områdena finns inte kvar i minnet. Skärmen före hämtar dem igen.
+        LaunchedEffect(key) { navigator.back() }
+        return
+    }
     var query by rememberSaveable { mutableStateOf("") }
-    val content = AreaPickerContent.make(key.hits, query, hasFinder = key.place != null)
-    val notice = key.hits.firstNotNullOfOrNull { it.notice }
-    val warning = remember(key) { AreaWarning.make(notice, AreaSourceNote.notes(key.sources)) }
+    val content = AreaPickerContent.make(held.hits, query, hasFinder = key.place != null)
+    val notice = held.hits.firstNotNullOfOrNull { it.notice }
+    val warning = remember(key) { AreaWarning.make(notice, AreaSourceNote.notes(held.sources)) }
     val openFinder = { key.place?.let { navigator.open(AreaFinder(it)) } }
     ScreenScaffold(title = stringResource(R.string.area_picker_title, key.title), onBack = { navigator.back() }) { padding ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(horizontal = PageMargin).padding(bottom = 24.dp)) {
@@ -111,7 +117,7 @@ fun AreaPickerScreen(key: AreaPicker, navigator: AppNavigator) {
                     content.hits.forEachIndexed { index, hit ->
                         if (index > 0) SectionDivider()
                         Row(
-                            Modifier.fillMaxWidth().clickable(role = Role.Button) { navigator.open(AreaConfirm(hit)) }.padding(horizontal = 20.dp, vertical = 16.dp),
+                            Modifier.fillMaxWidth().clickable(role = Role.Button) { navigator.open(AreaConfirm(key.held, hit.id)) }.padding(horizontal = 20.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
@@ -139,7 +145,12 @@ fun AreaConfirmScreen(key: AreaConfirm, navigator: AppNavigator) {
     val dependencies = LocalAppDependencies.current
     var saveFailed by rememberSaveable { mutableStateOf(false) }
     var allPlaces by rememberSaveable { mutableStateOf(false) }
-    val hit = key.hit
+    val hit = dependencies.heldAreas.get(key.held)?.hits?.firstOrNull { it.id == key.hitId }
+    if (hit == null) {
+        // Appen har dödats och området finns inte kvar i minnet. Skärmen före hämtar det igen.
+        LaunchedEffect(key) { navigator.back() }
+        return
+    }
     ScreenScaffold(title = "", onBack = { navigator.back() }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = PageMargin).padding(bottom = 24.dp)) {
@@ -211,7 +222,7 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
     LaunchedEffect(pickerState.selectedDateMillis) {
         pickerState.selectedDateMillis?.let { finder.setDraft(dayFromUtcMillis(it)) }
     }
-    val choose = { hit: SearchHit -> navigator.open(AreaConfirm(hit)) }
+    val choose = { hit: SearchHit -> navigator.open(AreaConfirm(dependencies.heldAreas.put(listOf(hit)), hit.id)) }
     ScreenScaffold(title = stringResource(R.string.area_finder_title), onBack = { navigator.back() }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = PageMargin).padding(bottom = 24.dp)) {

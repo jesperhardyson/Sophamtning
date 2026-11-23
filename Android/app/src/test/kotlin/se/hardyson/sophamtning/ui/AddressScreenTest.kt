@@ -141,4 +141,30 @@ class AddressScreenTest {
         assertFalse(compose.isShowing("Påminnelser"))
         assertFalse(compose.isShowing("Påminn mig"))
     }
+
+    @Test
+    fun appenHamtarNarDenKommerTillbakaMedAdressvynOverst() {
+        openAddress()
+        val before = app.api.addressCalls.size
+        // Mer än en timme senare får adressen hämtas igen.
+        app.clock.set(recordedNoon.plus(java.time.Duration.ofHours(2)))
+        compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        for (i in 0 until 30) {
+            if (app.api.addressCalls.size > before) break
+            compose.idleFor(100)
+        }
+        assertTrue("hämtningar ${app.api.addressCalls.size}", app.api.addressCalls.size > before)
+    }
+
+    @Test
+    fun adressvynRaknasOmVidDagbytet() {
+        val clock = TestClock(se.hardyson.sophamtning.core.dates.StockholmClock.dateOn(day("2026-11-10"), 23 * 60 + 59).plusSeconds(30))
+        app = TestApp(clock = clock)
+        openAddress()
+        compose.waitForText("Nästa tömning. I morgon", substring = true)
+        clock.set(se.hardyson.sophamtning.core.dates.StockholmClock.dateOn(day("2026-11-11"), 0).plusSeconds(30))
+        compose.advance(61_000)
+        compose.waitForText("Nästa tömning. I dag", substring = true)
+    }
 }

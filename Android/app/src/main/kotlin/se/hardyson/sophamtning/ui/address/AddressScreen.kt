@@ -1,5 +1,6 @@
 package se.hardyson.sophamtning.ui.address
 
+import se.hardyson.sophamtning.ui.components.MinuteTick
 import androidx.compose.ui.res.stringResource
 import se.hardyson.sophamtning.R
 import androidx.compose.foundation.border
@@ -103,10 +104,12 @@ fun AddressScreen(key: AddressKey, navigator: AppNavigator) {
     var menuOpen by remember { mutableStateOf(false) }
     var deniedDialog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val clock = LocalAppDependencies.current.clock
     LifecycleResumeEffect(Unit) {
         vm.tick()
         onPauseOrDispose {}
     }
+    MinuteTick(clock, vm::tick)
     ScreenScaffold(
         title = detail?.title ?: "",
         onBack = { navigator.back() },
@@ -193,6 +196,12 @@ fun AddressScreen(key: AddressKey, navigator: AppNavigator) {
 fun FullScheduleScreen(key: AddressKey, navigator: AppNavigator) {
     val vm = addressViewModel(key)
     val ui by vm.ui.collectAsStateWithLifecycle()
+    val clock = LocalAppDependencies.current.clock
+    LifecycleResumeEffect(Unit) {
+        vm.tick()
+        onPauseOrDispose {}
+    }
+    MinuteTick(clock, vm::tick)
     ScreenScaffold(title = stringResource(R.string.full_schedule), onBack = { navigator.back() }, large = true) { padding ->
         RefreshableColumn(onRefresh = vm::refresh, modifier = Modifier.padding(padding)) {
             val detail = ui.detail

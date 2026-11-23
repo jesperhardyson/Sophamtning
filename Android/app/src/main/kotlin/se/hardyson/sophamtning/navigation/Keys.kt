@@ -2,8 +2,6 @@ package se.hardyson.sophamtning.navigation
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
-import se.hardyson.sophamtning.core.api.AreaSource
-import se.hardyson.sophamtning.core.api.SearchHit
 import se.hardyson.sophamtning.core.storage.AddressKey
 
 // Skärmarna i backstacken. Nycklarna sparas när appen dödas, så att backstacken finns kvar när den startas om.
@@ -24,18 +22,18 @@ data object KommunCheck : NavKey
 
 /**
  * Välj område. [place] är platsen som områdena hämtades för. Utan plats finns inte "Vet du inte vilket område?".
- * [sources] är källorna som svarade, med förklaringen överst.
+ * [held] är id:t för områdena och källorna i `HeldAreas`, så att backstacken förblir liten.
  */
 @Serializable
-data class AreaPicker(val title: String, val place: String?, val hits: List<SearchHit>, val sources: List<AreaSource>) : NavKey
+data class AreaPicker(val title: String, val place: String?, val held: String) : NavKey
 
 /** När tömdes ditt kärl senast? */
 @Serializable
 data class AreaFinder(val place: String) : NavKey
 
-/** Stämmer området? Området sparas först när användaren trycker Spara området. */
+/** Stämmer området? [hitId] är områdets id bland områdena [held] i `HeldAreas`. Det sparas först vid Spara området. */
 @Serializable
-data class AreaConfirm(val hit: SearchHit) : NavKey
+data class AreaConfirm(val held: String, val hitId: String) : NavKey
 
 @Serializable
 data class Address(val key: AddressKey) : NavKey

@@ -89,10 +89,10 @@ fun SearchScreen(key: AddAddress, navigator: AppNavigator) {
                     enabled = !ui.updating,
                     onRetry = vm::retry,
                     onKommun = { navigator.open(KommunCheck) },
-                    onAreas = { title, place, hits, sources -> navigator.open(AreaPicker(title, place, hits, sources)) },
+                    onAreas = { title, place, hits, sources -> navigator.open(AreaPicker(title, place, dependencies.heldAreas.put(hits, sources))) },
                     onChoose = { hit ->
                         if (hit.isArea) {
-                            navigator.open(AreaConfirm(hit))
+                            navigator.open(AreaConfirm(dependencies.heldAreas.put(listOf(hit)), hit.id))
                         } else {
                             vm.save(hit)?.let(navigator::saved)
                         }
