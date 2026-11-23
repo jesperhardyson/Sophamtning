@@ -8,6 +8,7 @@ import java.io.File
 import java.time.Instant
 import kotlinx.coroutines.MainScope
 import se.hardyson.sophamtning.core.app.AppModel
+import se.hardyson.sophamtning.background.RefreshWorker
 import se.hardyson.sophamtning.core.api.SoporClient
 import se.hardyson.sophamtning.core.kommun.PlaceIndex
 import se.hardyson.sophamtning.core.storage.LocalStore
@@ -47,6 +48,18 @@ class SophamtningApplication : Application() {
             changelog = { runCatching { assets.open("CHANGELOG.md").bufferedReader().use { it.readText() } }.getOrNull() },
             notificationPermission = permission,
         )
+        scheduleBackgroundRefresh()
+    }
+
+    /**
+     * Lägger in bakgrundshämtningen. WorkManager startas av appens startprovider innan `onCreate`, och utan den, som i
+     * Robolectric-testerna, finns ingen bakgrundshämtning att lägga in.
+     */
+    private fun scheduleBackgroundRefresh() {
+        try {
+            RefreshWorker.schedule(this)
+        } catch (_: IllegalStateException) {
+        }
     }
 
     companion object {
