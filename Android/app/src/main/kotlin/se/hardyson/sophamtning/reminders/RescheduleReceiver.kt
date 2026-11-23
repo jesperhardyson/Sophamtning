@@ -6,10 +6,11 @@ import android.content.Context
 import android.content.Intent
 import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.storage.LocalStore
+import se.hardyson.sophamtning.widget.WidgetUpdates
 
 /**
  * Lägger in påminnelserna igen när systemet har glömt eller flyttat alarmen: efter omstart, ändrad tid eller tidszon, en
- * appuppdatering och när exakta alarm slås på eller av. Allt läses från det som är sparat, utan nät. Sedan planeras
+ * appuppdatering och när exakta alarm slås på eller av. Widgetarnas alarm vid midnatt läggs också in igen. Allt läses från det som är sparat, utan nät. Sedan planeras
  * påminnelserna om från det sparade schemat, så att de gäller kl. 18:00 svensk tid oavsett telefonens tidszon.
  */
 class RescheduleReceiver : BroadcastReceiver() {
@@ -20,9 +21,12 @@ class RescheduleReceiver : BroadcastReceiver() {
         runCatching { AndroidNotifications.rescheduleAll(context, store) }
         runCatching { AndroidLiveUpdates.rescheduleAll(context, store) }
         val model = (context.applicationContext as SophamtningApplication).dependencies.model
+        // Widgetarnas midnatt är också ett alarm, och en ändrad tid kan ha flyttat dagen.
+        runCatching { WidgetUpdates.armMidnight(context) }
         ReceiverWork.launch(finish = pending::finish) {
             model.applyReminders()
             model.settleReminders()
+            WidgetUpdates.updateNow(context)
         }
     }
 

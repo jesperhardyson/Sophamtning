@@ -19,6 +19,7 @@ import se.hardyson.sophamtning.reminders.AndroidLiveUpdates
 import se.hardyson.sophamtning.reminders.AndroidNotifications
 import se.hardyson.sophamtning.reminders.NotificationChannels
 import se.hardyson.sophamtning.reminders.NotificationPermission
+import se.hardyson.sophamtning.widget.WidgetUpdates
 
 /** Skapar nätet, lagringen och appens tillstånd en gång för hela processen. */
 class SophamtningApplication : Application() {
@@ -57,7 +58,13 @@ class SophamtningApplication : Application() {
             notificationPermission = permission,
         )
         scheduleBackgroundRefresh()
+        // Widgetarna ritas om när det de visar ändras, och förhandsvisningen läggs in i widgetgalleriet.
+        WidgetUpdates.observe(model, this, widgetScope)
+        WidgetUpdates.publishPreview(this, widgetScope, BuildConfig.VERSION_CODE)
     }
+
+    /** Omritningen av widgetarna, som pågår så länge processen lever. Ett fel loggas och kraschar inte appen. */
+    private val widgetScope = MainScope() + CoroutineExceptionHandler { _, error -> Log.w("Sophamtning", "Widgetarna kunde inte ritas om", error) }
 
     /**
      * Lägger in bakgrundshämtningen. WorkManager startas av appens startprovider innan `onCreate`, och utan den, som i

@@ -21,7 +21,8 @@
         android:theme="@style/Theme.Sophamtning">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -50,5 +51,23 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- Widgeten Nästa tömning på hemskärmen. -->
+        <receiver
+            android:name=".widget.NextPickupWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_pickup_widget" />
+        </receiver>
+
+        <!-- Widgeten byter dag vid midnatt i Stockholm. -->
+        <receiver
+            android:name=".widget.MidnightReceiver"
+            android:exported="false" />
     </application>
 </manifest>
