@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Befintlig tagg att ladda upp igen, till exempel v1.0.0. Lämna tomt för ett testbygge från grenen ovan."
+        description: "Befintlig tagg att ladda upp igen, till exempel ios-v1.4.0 eller v1.3.1. Lämna tomt för ett testbygge från grenen ovan."
         required: false
         default: ""
 
@@ -28,8 +28,8 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_created: ${{ steps.release.outputs['iOS--release_created'] }}
+      tag_name: ${{ steps.release.outputs['iOS--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
@@ -77,14 +77,16 @@ jobs:
       - name: Byggnummer
         run: echo "BUILD_NUMBER=$(( ${{ github.run_number }} * 100 + ${{ github.run_attempt }} ))" >> "$GITHUB_ENV"
 
-      # En release har taggens version. Ett testbygge får nästa patchversion efter version.txt, som bara sätts i bygget.
+      # En release har taggens version, från ios-vX.Y.Z eller en äldre vX.Y.Z. Ett testbygge får nästa patchversion efter
+      # iOS/version.txt, som bara sätts i bygget.
       - name: Version
         run: |
           if [ "$TEST_BUILD" = "true" ]; then
-            IFS=. read -r major minor patch < version.txt
+            IFS=. read -r major minor patch < iOS/version.txt
             version="$major.$minor.$((patch + 1))"
           else
-            version="${TAG#v}"
+            version="${TAG#ios-}"
+            version="${version#v}"
           fi
           echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
@@ -138,7 +140,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "$TEST_BUILD" = "true" ]; then
-            last_tag="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+            last_tag="$(git describe --tags --abbrev=0 --match 'ios-v*' --match 'v*' 2>/dev/null || true)"
             {
               echo "Testbygge från $GITHUB_REF_NAME ($(git rev-parse --short HEAD))"
               echo
