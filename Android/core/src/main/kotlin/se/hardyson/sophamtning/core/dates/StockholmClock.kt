@@ -15,6 +15,10 @@ object StockholmClock {
      * Ögonblicket då klockan är [minutes] minuter efter midnatt (väggklocka) svensk tid på dagen.
      * Räknas som klockslag, inte som förflutna minuter, så att omställningsdagar blir rätt.
      */
-    fun dateOn(day: DayDate, minutes: Int): Instant =
-        day.toLocalDate().atTime(LocalTime.of(minutes / 60, minutes % 60)).atZone(zone).toInstant()
+    fun dateOn(day: DayDate, minutes: Int): Instant {
+        // Minuter utanför dygnet rullar över till en annan dag, som `Calendar.date(from:)` på iOS.
+        val date = day.toLocalDate().plusDays(Math.floorDiv(minutes, 1440).toLong())
+        val clock = Math.floorMod(minutes, 1440)
+        return date.atTime(LocalTime.of(clock / 60, clock % 60)).atZone(zone).toInstant()
+    }
 }
