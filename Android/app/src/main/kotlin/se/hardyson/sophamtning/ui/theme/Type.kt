@@ -44,3 +44,19 @@ val SophamtningTypography = Typography(
 
 private fun TextStyle.brand() = copy(fontFamily = Fredoka, fontWeight = FontWeight.SemiBold)
 private fun TextStyle.ui(weight: FontWeight) = copy(fontFamily = Nunito, fontWeight = weight, letterSpacing = 0.sp)
+
+/**
+ * Gränssnittstext i Nunito, som `Font.ui` på iOS. Storleken är i sp och följer systemets textstorlek. 600 är semibold, 700
+ * bold, 800 heavy.
+ */
+fun uiText(size: Int, weight: Int = 700) = TextStyle(fontFamily = Nunito, fontWeight = FontWeight(weight), fontSize = size.sp, lineHeight = (size * 1.3).sp)
+
+/** Varumärke och rubriker i Fredoka (600), som `Font.brand` på iOS. */
+fun brandText(size: Int) = TextStyle(fontFamily = Fredoka, fontWeight = FontWeight.SemiBold, fontSize = size.sp, lineHeight = (size * 1.2).sp)
+
+/** Vikterna med iOS-namnen. */
+object Weight {
+    const val SEMIBOLD = 600
+    const val BOLD = 700
+    const val HEAVY = 800
+}

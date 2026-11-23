@@ -6,6 +6,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -65,7 +68,16 @@ fun sophamtningColors(dark: Boolean): ColorScheme {
     )
 }
 
+/** Om temat är mörkt, så att designens färger kan väljas direkt med [color]. */
+val LocalDarkTheme = staticCompositionLocalOf { false }
+
+/** Designens färg för det aktuella läget, som `Color.Theme.x` på iOS. */
+val ThemeToken.color: Color
+    @Composable @ReadOnlyComposable get() = color(LocalDarkTheme.current)
+
 @Composable
 fun SophamtningTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = sophamtningColors(darkTheme), typography = SophamtningTypography, content = content)
+    CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
+        MaterialTheme(colorScheme = sophamtningColors(darkTheme), typography = SophamtningTypography, content = content)
+    }
 }
