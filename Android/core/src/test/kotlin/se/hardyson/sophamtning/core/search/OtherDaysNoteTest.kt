@@ -16,6 +16,14 @@ import se.hardyson.sophamtning.core.api.AddressResponse
 import se.hardyson.sophamtning.core.api.ApiDecoding
 import se.hardyson.sophamtning.core.api.AreaDetails
 import se.hardyson.sophamtning.core.api.fixture
+import java.time.Instant
+import se.hardyson.sophamtning.core.dates.DayDate
+import se.hardyson.sophamtning.core.dates.StockholmClock
+import se.hardyson.sophamtning.core.home.AddressDetail
+import se.hardyson.sophamtning.core.storage.AddressKey
+import se.hardyson.sophamtning.core.storage.CachedSchedule
+import se.hardyson.sophamtning.core.storage.ReminderSettings
+import se.hardyson.sophamtning.core.storage.SavedAddress
 
 /** Adressvaret i `adress-avesta` med fältet `area` ersatt, satt till null eller ([omit]) borttaget. */
 private fun addressResponse(area: JsonElement?, omit: Boolean = false): AddressResponse {
@@ -83,5 +91,24 @@ class OtherDaysNoteTest {
         assertNull(OtherDaysNote.make(AreaDetails(day = "x", label = null, places = emptyList(), otherDays = emptyList())))
         assertNull(OtherDaysNote.make(AreaDetails(day = "x", label = null, places = emptyList(), otherDays = listOf(" ", ""))))
         assertNull(OtherDaysNote.make(null))
+    }
+
+    @Test
+    fun adressvynHarRutanFranSparatSchema() {
+        val key = AddressKey(source = "avesta", id = "trakt-7")
+        val saved = SavedAddress(
+            key = key, url = "https://sopor.hardyson.se/api/v1/adress/avesta/trakt-7", street = "Område 7", locality = "", kommun = "Avesta kommun",
+            detail = null, selection = "area", displayName = "Område 7", isPrimary = true, addedAt = Instant.EPOCH,
+        )
+        val now = StockholmClock.dateOn(DayDate.parse("2026-11-06")!!, 12 * 60)
+        fun make(response: AddressResponse?): AddressDetail {
+            val cached = response?.let { CachedSchedule(response = it, fetchedAt = now, lastAttemptAt = now, lastError = null) }
+            return AddressDetail.make(saved, cached, ReminderSettings(), sourceName = "Avesta", now = now)
+        }
+        assertEquals(listOf("En rad."), make(addressResponse(area(listOf("En rad.")))).otherDays?.rows)
+        assertNull(make(addressResponse(area(emptyList()))).otherDays)
+        assertNull(make(addressResponse(null)).otherDays)
+        assertNull(make(addressResponse(null, omit = true)).otherDays)
+        assertNull(make(null).otherDays)
     }
 }
