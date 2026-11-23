@@ -23,10 +23,10 @@ Appen Sophämtning finns i Play Console, med svenska som standardspråk och grat
 
 Uppladdningsnyckeln signerar varje AAB som laddas upp. Google signerar sedan appen med sin egen nyckel (appsignering via Play), så den här nyckeln går att byta via Play Console om den försvinner. Den ska ändå sparas säkert, och aldrig i repot. `*.jks` och `*.keystore` ignoreras av git.
 
-Använd `keytool` från JDK 21, samma som bygget. Byt `<alias>` mot ett eget namn, till exempel `upload`:
+Använd `keytool` från JDK 21, samma som bygget. Sökvägen anges direkt: `/usr/libexec/java_home -v 21` hittar inte JDK 21 från Homebrew, och svarar då med en annan version i stället för att ge ett fel. Byt `<alias>` mot ett eget namn, till exempel `upload`:
 
 ```zsh
-export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || echo /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home)
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 mkdir -p ~/Nycklar
 "$JAVA_HOME/bin/keytool" -genkeypair -v \
   -keystore ~/Nycklar/sophamtning-upload.jks \
@@ -46,7 +46,7 @@ API:t kan inte ladda upp till en app som aldrig har haft en version, så det fö
 
 ```zsh
 cd Android
-export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || echo /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home)
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export SOPHAMTNING_UPLOAD_KEYSTORE=~/Nycklar/sophamtning-upload.jks
 export SOPHAMTNING_UPLOAD_KEY_ALIAS=<alias>
 read -rs 'SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD?Lösenord för uppladdningsnyckeln: '; echo
