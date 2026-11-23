@@ -3,11 +3,15 @@ package se.hardyson.sophamtning.core.reminders
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import se.hardyson.sophamtning.core.dates.DayDate
 import se.hardyson.sophamtning.core.dates.StockholmClock
+import se.hardyson.sophamtning.core.api.FractionInfo
+import se.hardyson.sophamtning.core.api.PickupEvent
 import se.hardyson.sophamtning.core.home.AddressDetail
+import se.hardyson.sophamtning.core.home.HomeContent
 import se.hardyson.sophamtning.core.schedule.day
 import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.ReminderSettings
@@ -20,9 +24,24 @@ private val both = ReminderSettings(eveningOn = true, morningOn = true, reminder
 
 private fun at(day: String, hour: Int): Instant = StockholmClock.dateOn(DayDate.parse(day)!!, hour * 60)
 
+private val key = AddressKey(source = "kallor", id = "hem")
+
+private fun saved(notifications: Boolean) =
+    address(key, name = "Hemma", primary = true, notifications = notifications, street = "Storgatan 1", locality = "Krylbo", kommun = "Avesta kommun", addedAt = Instant.EPOCH)
+
+private fun schedule(events: List<PickupEvent>) = cached(
+    response(key, events, mapOf("rest" to FractionInfo(name = "Restavfall", short = "Rest", color = "#111111", icon = "trash")), street = "Storgatan 1", locality = "Krylbo", kommun = "Avesta kommun"),
+    fetchedAt = at("2026-11-06", 10),
+)
+
+private fun pending(start: Instant) = ExistingActivity(
+    id = "a", key = key, pickupDate = wednesday,
+    content = PickupActivityContent(addressName = "Hemma", dateText = "Onsdag 11 november", shortDateText = "Ons 11 nov", fractions = emptyList(), estimated = false, warning = null),
+    isPending = true, start = start,
+)
+
 /**
- * ReminderTimingTextsTests på iOS: texterna för valen, inställningarna och adressvyn. Testerna för hemskärmen
- * (`reglagetsNamn`, `fotenNotisFöreAktivitet` och `huvudkortetPåMorgonen`) står i HomeContentTest.
+ * ReminderTimingTextsTests på iOS: texterna för valen, inställningarna, adressvyn och huvudkortet.
  */
 class ReminderTimingTextsTest {
     @Test
@@ -109,6 +128,32 @@ class ReminderTimingTextsTest {
         // Morgonens notis står kvar som reserv efter bytet tillbaka till kvällen. Den gäller ändå onsdagens tömning.
         assertEquals("Onsdag kl. 06:00, samma dag som tömningen, om aktiviteten inte syns.", AddressDetail.reserveText(StockholmClock.dateOn(wednesday, 6 * 60)))
         assertEquals("Tisdag kl. 18:45 inför onsdagens tömning, om aktiviteten inte syns.", AddressDetail.reserveText(StockholmClock.dateOn(day("2026-11-10"), 18 * 60 + 45)))
+    }
+
+    @Test
+    fun reglagetsNamn() {
+        assertEquals("Påminn mig", HomeContent.reminderTitle())
+        assertEquals("Stäng av påminnelse", HomeContent.reminderActionTitle(isOn = true))
+        assertEquals("Slå på påminnelse", HomeContent.reminderActionTitle(isOn = false))
+    }
+
+    @Test
+    fun fotenNotisFöreAktivitet() {
+        val start = at("2026-11-11", 6)
+        val bothOn = ReminderSettings(eveningOn = true, morningOn = true, liveActivityTiming = ReminderTiming.SameMorning, liveActivityOn = true)
+        val content = HomeContent.make(listOf(saved(true)), mapOf(key to schedule(listOf(event(wednesday)))), bothOn, at("2026-11-10", 12), liveActivity = pending(start))
+        assertEquals("Notis tisdag kl. 18:00, notis och Live Update onsdag kl. 06:00", assertNotNull(content.primary?.reminder).detail)
+        val morningOnly = ReminderSettings(eveningOn = false, morningOn = true, liveActivityTiming = ReminderTiming.SameMorning, liveActivityOn = true)
+        val same = HomeContent.make(listOf(saved(true)), mapOf(key to schedule(listOf(event(wednesday)))), morningOnly, at("2026-11-10", 12), liveActivity = pending(start))
+        assertEquals("Notis och Live Update onsdag kl. 06:00", assertNotNull(same.primary?.reminder).detail)
+    }
+
+    @Test
+    fun huvudkortetPåMorgonen() {
+        val on = HomeContent.make(listOf(saved(true)), mapOf(key to schedule(listOf(event(wednesday)))), morning, at("2026-11-10", 20))
+        assertEquals("Onsdag kl. 06:00", assertNotNull(on.primary?.reminder).detail)
+        val off = HomeContent.make(listOf(saved(false)), mapOf(key to schedule(listOf(event(wednesday)))), morning, at("2026-11-10", 20))
+        assertEquals(HomeContent.PrimaryReminder(isOn = false, isDenied = false, title = "Påminn mig", detail = null), assertNotNull(off.primary?.reminder))
     }
 
     // MARK: Inställningarnas texter
