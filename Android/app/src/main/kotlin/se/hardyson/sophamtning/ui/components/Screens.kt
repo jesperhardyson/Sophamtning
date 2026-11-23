@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -22,7 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -32,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -63,10 +66,9 @@ fun ScreenScaffold(
     onLargeTitleTap: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    val scrollBehavior = if (large) {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    } else {
-        TopAppBarDefaults.pinnedScrollBehavior()
+    // Ett nytt beteende när [large] växlar, så att den stora rubriken inte ärver det lilla fältets tillstånd, eller tvärtom.
+    val scrollBehavior = key(large) {
+        if (large) TopAppBarDefaults.exitUntilCollapsedScrollBehavior() else TopAppBarDefaults.pinnedScrollBehavior()
     }
     val colors = TopAppBarDefaults.topAppBarColors(
         containerColor = ThemeToken.Bg.color,
@@ -115,29 +117,34 @@ fun ScreenScaffold(
                     }
                     COLLAPSED_HEIGHT + height.toDp() + EXPANDED_TITLE_PADDING * 2
                 }
-                LargeTopAppBar(
-                    title = {
-                        val small = LocalTextStyle.current.fontSize != largeStyle.fontSize
+                // Fältet säger själv vilken av de två rubrikplatserna som ritas. Att gissa det från textstorleken var skört,
+                // och kärlet bredvid rubriken kunde saknas direkt efter den första adressen.
+                TwoRowsTopAppBar(
+                    title = { expanded ->
                         val text: @Composable (Modifier) -> Unit = { textModifier ->
                             Text(
                                 title,
-                                maxLines = if (small) 1 else LARGE_TITLE_LINES,
+                                style = if (expanded) largeStyle else LocalTextStyle.current,
+                                maxLines = if (expanded) LARGE_TITLE_LINES else 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = textModifier.semantics { heading() },
                             )
                         }
-                        if (small || largeTitleLeading == null) {
+                        if (!expanded) {
                             text(Modifier)
+                        } else if (largeTitleLeading == null) {
+                            text(Modifier.padding(bottom = EXPANDED_TITLE_BOTTOM))
                         } else {
                             // Det som står före den stora rubriken, som kärlet på hemskärmen, står med botten på textens
                             // baslinje. Ett tryck på rubriken förblir en rubrik för TalkBack.
-                            Row(horizontalArrangement = Arrangement.spacedBy(LEADING_SPACING)) {
-                                Box(Modifier.alignBy { (it.measuredHeight * LEADING_BASELINE).toInt() }) { largeTitleLeading() }
+                            Row(Modifier.padding(bottom = EXPANDED_TITLE_BOTTOM), horizontalArrangement = Arrangement.spacedBy(LEADING_SPACING)) {
+                                Box(Modifier.alignBy { (it.measuredHeight * LEADING_BASELINE).toInt() }.testTag(ScreenTags.LARGE_TITLE_LEADING)) { largeTitleLeading() }
                                 val tap = onLargeTitleTap?.let { onTap -> Modifier.pointerInput(onTap) { detectTapGestures { onTap() } } } ?: Modifier
                                 text(Modifier.alignBy(LastBaseline).then(tap))
                             }
                         }
                     },
+                    collapsedHeight = COLLAPSED_HEIGHT,
                     expandedHeight = expandedHeight,
                     navigationIcon = navigation,
                     actions = actions,
@@ -158,6 +165,12 @@ fun ScreenScaffold(
     )
 }
 
+/** Testtaggar för skärmens delar. */
+object ScreenTags {
+    /** Det som står före den stora rubriken, som kärlet på hemskärmen. */
+    const val LARGE_TITLE_LEADING = "rubrikensFöre"
+}
+
 /** Kärlets kropp slutar vid y 441 i SVG:ns viewBox (360 × 560 från y -110), strax ovanför skuggan. */
 private const val LEADING_BASELINE = (441f + 110f) / 560f
 
@@ -173,3 +186,6 @@ private val COLLAPSED_HEIGHT = 64.dp
 
 /** Den stora rubriken står mitt i den utfällda delen av fältet, med så mycket luft ovanför och under, som på iOS. */
 private val EXPANDED_TITLE_PADDING = 8.dp
+
+/** Luften under den stora rubriken. Fältet lägger rubriken mot sin underkant, så luften ovanför blir [EXPANDED_TITLE_PADDING]. */
+private val EXPANDED_TITLE_BOTTOM = EXPANDED_TITLE_PADDING * 2

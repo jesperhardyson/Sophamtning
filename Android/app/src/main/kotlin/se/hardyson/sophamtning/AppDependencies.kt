@@ -6,6 +6,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.UUID
 import androidx.compose.runtime.staticCompositionLocalOf
 import java.time.Instant
+import android.util.Log
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.plus
 import se.hardyson.sophamtning.core.api.SoporApi
 import se.hardyson.sophamtning.core.app.AppModel
 import se.hardyson.sophamtning.core.bin.ShownOnce
@@ -28,8 +33,15 @@ class AppDependencies(
     val changelog: () -> String? = { null },
     /** Kärlen som redan har spelat sitt första varv i den här processen, så att det inte spelas igen vid retur. */
     val binFirstRounds: ShownOnce<String> = ShownOnce(),
+    /** Kalenderbladen som redan har bläddrats vid start i den här processen, så att det inte görs igen vid retur. */
+    val calendarOpenings: ShownOnce<String> = ShownOnce(),
     /** Frågan om notiser, som aktiviteten kopplar in. `null` i testerna, där ingen fråga ställs. */
     val notificationPermission: NotificationPermission? = null,
+    /**
+     * Arbete som ska bli klart även om det som startade det försvinner, som ett tryck i rutan i snabbinställningarna.
+     * Lever lika länge som processen. Ett fel loggas och kraschar inte appen.
+     */
+    val appScope: CoroutineScope = MainScope() + CoroutineExceptionHandler { _, error -> Log.w("Sophamtning", "Arbetet misslyckades", error) },
 )
 
 /**

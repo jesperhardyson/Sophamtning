@@ -76,38 +76,6 @@ val PageMargin = 24.dp
 @Composable
 fun isLargeText(): Boolean = LocalDensity.current.fontScale >= 1.6f
 
-// MARK: Kalenderbricka
-
-/**
- * Kalenderbricka: månaden i versaler överst, dagens nummer och veckodagen, som `CalendarTile` på iOS. TalkBack läser hela
- * datumet. Bladen som bläddras när datumet byts kommer i plan 4b.
- */
-@Composable
-fun CalendarTile(day: DayDate, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(16.dp)
-    // Brickan växer med textstorleken, som `@ScaledMetric` på iOS, men högst till dubbla bredden.
-    val width = 78.dp * LocalDensity.current.fontScale.coerceIn(1f, 2f)
-    Column(
-        modifier = modifier
-            .width(width)
-            .border(1.dp, ThemeToken.Border.color, shape)
-            .background(ThemeToken.Surface.color, shape)
-            .clearAndSetSemantics { contentDescription = SwedishFormat.longDate(day, capitalized = false) },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            Modifier.fillMaxWidth().background(ThemeToken.Primary.color, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).heightIn(min = 26.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(SwedishFormat.monthUppercased(day), style = uiText(12, 900), color = ThemeToken.OnPrimary.color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Column(Modifier.padding(horizontal = 4.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(SwedishFormat.dayNumber(day), style = brandText(38), color = ThemeToken.Text.color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(SwedishFormat.weekdayName(day), style = uiText(12, Weight.BOLD), color = ThemeToken.Text2.color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
 /** Den lilla datumbrickan i schemaraderna: "11" och "NOV". */
 @Composable
 fun DayBadge(dayNumber: String, month: String) {

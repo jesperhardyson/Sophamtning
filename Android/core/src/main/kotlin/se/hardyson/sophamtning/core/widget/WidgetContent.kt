@@ -10,6 +10,7 @@ import se.hardyson.sophamtning.core.home.HomeContent
 import se.hardyson.sophamtning.core.schedule.FractionPickup
 import se.hardyson.sophamtning.core.schedule.ScheduleEnding
 import se.hardyson.sophamtning.core.schedule.ScheduleLogic
+import se.hardyson.sophamtning.core.storage.AddressKey
 import se.hardyson.sophamtning.core.storage.CachedSchedule
 import se.hardyson.sophamtning.core.storage.LocalStore
 import se.hardyson.sophamtning.core.storage.PlacedOut
@@ -124,6 +125,10 @@ class WidgetData private constructor(
         data object Unavailable : Source
         data class Loaded(val addresses: List<SavedAddress>, val schedule: CachedSchedule?) : Source
     }
+
+    /** Huvudadressen, som ett tryck på widgeten öppnar, eller `null` utan adresser eller när filerna inte går att läsa. */
+    val primaryKey: AddressKey?
+        get() = (source as? Source.Loaded)?.addresses?.let { list -> (list.firstOrNull { it.isPrimary } ?: list.firstOrNull())?.key }
 
     /** Fraktionernas namn och ikoner ur det sparade schemat. Okända id:n får reservvärden av `ScheduleLogic.displayInfo`. */
     val fractionInfo: Map<String, FractionInfo>

@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.app.BackgroundRefreshRun
+import se.hardyson.sophamtning.widget.WidgetUpdates
 
 /**
  * Bakgrundshämtningen, som `BGAppRefreshTask` på iOS. Körs några gånger per dygn när nätet finns, och följer
@@ -23,6 +24,8 @@ class RefreshWorker(context: Context, parameters: WorkerParameters) : CoroutineW
         val model = (applicationContext as SophamtningApplication).dependencies.model
         // Modellen hör till huvudtråden, som på iOS.
         withContext(Dispatchers.Main) { BackgroundRefreshRun(model, startingActivities = true).run() }
+        // Widgetarna visar det nya schemat innan arbetet är klart och processen kan frysas.
+        WidgetUpdates.updateNow(applicationContext)
         return Result.success()
     }
 

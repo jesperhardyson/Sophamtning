@@ -189,4 +189,30 @@
         <item quantity="one">%d träff</item>
         <item quantity="other">%d träffar</item>
     </plurals>
+    <!-- Widgeten på hemskärmen, som NextPickupWidget.swift. -->
+    <string name="widget_name">Nästa tömning</string>
+    <string name="widget_description">Visar när soporna hämtas härnäst på din huvudadress.</string>
+    <string name="widget_no_address">Lägg till en adress i appen</string>
+    <string name="widget_unavailable">Kan inte visa schemat just nu</string>
+    <string name="widget_unavailable_detail">Widgeten uppdateras igen om en stund.</string>
+    <string name="widget_no_schedule">Schemat har inte hämtats än</string>
+    <string name="widget_no_schedule_detail">Öppna appen för att hämta det.</string>
+    <string name="widget_failed">Kunde inte hämta schemat</string>
+    <string name="widget_failed_detail">Öppna appen och försök igen.</string>
+    <string name="widget_not_found">Adressen hittas inte längre</string>
+    <string name="widget_not_found_detail">Öppna appen för att söka igen.</string>
+    <string name="widget_no_upcoming">Inga kommande hämtningar</string>
+    <string name="widget_more">+%1$d till</string>
+    <string name="widget_placed_out">Utställda</string>
+    <string name="widget_later">Senare: %1$s</string>
+    <string name="widget_place_out">Ställ ut kärlen</string>
+    <string name="widget_sample_name">Hemma</string>
+    <string name="widget_sample_relative">Om 3 dagar</string>
+    <string name="widget_sample_date">Mån 9 nov</string>
+
+    <!-- Rutan i snabbinställningarna och genvägarna på appikonen. -->
+    <string name="tile_label">Ställ ut kärlen</string>
+    <string name="shortcut_add_short">Lägg till adress</string>
+    <string name="shortcut_add_long">Lägg till en adress</string>
+    <string name="shortcut_primary_long">Öppna %1$s</string>
 </resources>

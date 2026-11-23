@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_surface">#14241A</color>
+    <color name="widget_text">#EDF2EE</color>
+    <color name="widget_text2">#A0B3A6</color>
+    <color name="widget_brand_text">#8FE0B2</color>
+    <color name="shortcut_background">#1A3D28</color>
+    <color name="shortcut_foreground">#8FE0B2</color>
+</resources>

@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -45,6 +46,16 @@ class AppNavigator(private val backStack: NavBackStack<NavKey>, private val mode
         scope.launch { model.refreshAll(manual = false) }
     }
 
+    /** Följer en länk från widgeten, rutan eller en genväg. Det som var öppet stängs, och bakåt leder till hemskärmen. */
+    fun follow(link: AppLink) {
+        home()
+        when (link) {
+            AppLink.Home -> {}
+            AppLink.AddAddress -> backStack.add(AddAddress())
+            is AppLink.OpenAddress -> if (model.state.value.address(link.key) != null) backStack.add(Address(link.key))
+        }
+    }
+
     /** Tillbaka till hemskärmen, till exempel när adressen har tagits bort. */
     fun home() {
         backStack.removeAll { it != Home }
@@ -58,9 +69,19 @@ class AppNavigator(private val backStack: NavBackStack<NavKey>, private val mode
  * högst en gång i timmen per adress, som på iOS vid `scenePhase == .active`.
  */
 @Composable
-fun AppNavigation(model: AppModel, backStack: NavBackStack<NavKey> = rememberNavBackStack(Home)) {
+fun AppNavigation(
+    model: AppModel,
+    backStack: NavBackStack<NavKey> = rememberNavBackStack(Home),
+    link: AppLink? = null,
+    onLinkHandled: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     val navigator = remember(backStack) { AppNavigator(backStack, model, scope) }
+    LaunchedEffect(link) {
+        if (link == null) return@LaunchedEffect
+        navigator.follow(link)
+        onLinkHandled()
+    }
     LifecycleResumeEffect(Unit) {
         model.applyReminders()
         scope.launch { model.refreshAll(manual = false) }

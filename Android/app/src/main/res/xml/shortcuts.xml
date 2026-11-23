@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Den fasta genvägen på appikonen. Genvägen till huvudadressen läggs in av appen (AppShortcuts). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutId="lagg_till_adress"
+        android:shortcutLongLabel="@string/shortcut_add_long"
+        android:shortcutShortLabel="@string/shortcut_add_short">
+        <!-- Åtgärden är AppLink.ACTION_ADD, som navigeringen läser. targetPackage måste vara samma som applicationId i
+             build.gradle.kts, utan tillägg: genvägar i XML kan inte läsa applicationId, och med ett annat paket öppnar
+             genvägen inte appen. -->
+        <intent
+            android:action="se.hardyson.sophamtning.action.LAGG_TILL"
+            android:targetClass="se.hardyson.sophamtning.MainActivity"
+            android:targetPackage="se.hardyson.sophamtning" />
+    </shortcut>
+</shortcuts>

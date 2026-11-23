@@ -16,6 +16,22 @@ Adressen är ett område i Avesta (trakt 2), med nästa tömning tisdag 1 decemb
 | Omstart (`adb reboot`) | Alarmen för nästa tömning (14 dec) finns kvar efter omstarten, utan att appen öppnas. |
 | Bakgrundsarbetet | Schemalagt med villkoret nät och en period på 3 timmar. Gick inte att tvinga fram efter flyttad klocka, eftersom WorkManager räknar om schemat vid omstart och tidsbyte. Logiken prövas i `RefreshWorkerTest`. |
 
+## 2026-11-23, plan 6, samma emulator
+
+Provat med en separat kopia av appen (`se.hardyson.sophamtning.prov`), så att data i den riktiga appen inte rördes.
+
+| Fall | Resultat |
+|---|---|
+| Liten widget (2×2) vid 100, 130 och 200 % text | Namnet, "I morgon", datumet och kärlen ryms, och inget klipps. |
+| Mellanstor widget (4×2) med Ställ ut kvällen före | Två kärl och knappen vid 100 %. Vid 130 och 200 % visas det första kärlet, knappen och "+1 till", och vid 200 % får veckodagen och namnet "…". |
+| Tryck på widgeten utanför knappen | Adressvyn öppnas. |
+| Förhandsvisning i widgetgalleriet | Visas. |
+| Genvägen Lägg till adress | Öppnar sökningen, också när appen redan är igång. |
+| Rutan i snabbinställningarna | Kan läggas till. Den är avstängd när tömningen är mer än en dag bort. |
+| Kalenderbladet | Bläddrar när appen startar. |
+
+Inte provat här: den mellanstora widgeten i sin lägsta storlek (240 × 100 dp), eftersom en widget på 4×2 i den här emulatorn är cirka 220 dp hög. Den storleken prövas i `WidgetLayoutTest`. Inte heller rutan efter tryck, eller widgeten när klockan går över midnatt.
+
 ## Kvar att pröva på en riktig telefon
 
 - En påminnelse som kommer av sig själv, utan flyttad klocka, med telefonen låst och i viloläge (Doze).
@@ -24,3 +40,4 @@ Adressen är ett område i Avesta (trakt 2), med nästa tömning tisdag 1 decemb
 - Bakgrundshämtningen efter några timmar, och notisen om ett nytt källmeddelande från bakgrunden.
 - Byte av tidszon i systemets inställningar.
 - Kontrast och TalkBack i hela appen.
+- Widgeten och rutan efter tvångsstopp och över midnatt, och rutan efter ett tryck.
