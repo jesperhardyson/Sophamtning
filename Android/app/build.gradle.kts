@@ -65,9 +65,33 @@ val copyFonts = tasks.register<CopyFonts>("copyFonts") {
     fonts.set(rootProject.layout.projectDirectory.dir("../iOS/Packages/SophamtningKit/Sources/SophamtningDesign/Resources/Fonts"))
 }
 
+// Nyheterna i appen läses från Android/CHANGELOG.md, som Release Please skriver. Filen finns först efter den första
+// releasen, och tills dess följer ingen fil med och sidan Nyheter visar en tom text.
+abstract class CopyChangelog : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val changelog: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val dir = output.get().asFile
+        dir.deleteRecursively()
+        dir.mkdirs()
+        changelog.files.filter { it.isFile }.forEach { it.copyTo(dir.resolve("CHANGELOG.md"), overwrite = true) }
+    }
+}
+
+val copyChangelog = tasks.register<CopyChangelog>("copyChangelog") {
+    changelog.from(rootProject.file("CHANGELOG.md"))
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.res?.addGeneratedSourceDirectory(copyFonts, CopyFonts::output)
+        variant.sources.assets?.addGeneratedSourceDirectory(copyChangelog, CopyChangelog::output)
     }
 }
 

@@ -1,7 +1,11 @@
 package se.hardyson.sophamtning.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -156,5 +160,91 @@ class HomeScreenTest {
         compose.onNode(androidx.compose.ui.test.hasText("Ta bort") and androidx.compose.ui.test.hasClickAction()).performClick()
         compose.waitForIdle()
         assertEquals(listOf("Testgatan 1", "Testgatan 4"), app.model.state.value.addresses.map { it.street })
+    }
+
+    // Snabbmenyn med ett långt tryck, som AddressQuickActions.swift.
+
+    private fun longPress(text: String) {
+        compose.onNode(shows(text, substring = true) and hasClickAction()).performScrollTo().performTouchInput { longClick() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun langtTryckOppnarMenyn() {
+        val app = TestApp()
+        start(app, testHit("Testgatan 1"), testHit("Testgatan 2"))
+        compose.waitForText("Fler adresser")
+        longPress("Testgatan 2,")
+        for (text in listOf("Byt namn", "Gör till huvudadress", "Påminn mig", "Ta bort")) compose.waitForText(text)
+        assertFalse(compose.isShowing("Live Update"))
+        // TalkBack får samma val som åtgärder på raden.
+        val row = compose.onNode(shows("Testgatan 2,", substring = true) and hasClickAction()).fetchSemanticsNode()
+        val actions = row.config[SemanticsActions.CustomActions].map { it.label }
+        assertEquals(listOf("Byt namn", "Gör till huvudadress", "Slå på påminnelse", "Ta bort"), actions)
+    }
+
+    @Test
+    fun huvudkortetsMenyHarLiveUpdateMenInteHuvudadress() {
+        val app = TestApp()
+        start(app, testHit("Testgatan 1"), testHit("Testgatan 2"))
+        compose.waitForText("Fler adresser")
+        longPress("Hemma")
+        compose.waitForText("Live Update")
+        // Menyn står på hemskärmen. Ett långt tryck öppnar inte adressvyn.
+        compose.waitForText("Byt namn")
+        assertTrue(compose.isShowing("Fler adresser"))
+        assertFalse(compose.isShowing("Gör till huvudadress"))
+    }
+
+    @Test
+    fun menynVisarInteParminnelserUtanPaminnelser() {
+        val app = TestApp(reminders = NoReminders)
+        start(app, testHit("Testgatan 1"))
+        compose.waitForText("Ons 11 nov", substring = true)
+        longPress("Hemma")
+        compose.waitForText("Byt namn")
+        assertFalse(compose.isShowing("Påminn mig"))
+        assertFalse(compose.isShowing("Live Update"))
+    }
+
+    @Test
+    fun gorTillHuvudadressFranMenyn() {
+        val app = TestApp()
+        start(app, testHit("Testgatan 1"), testHit("Testgatan 2"))
+        compose.waitForText("Fler adresser")
+        longPress("Testgatan 2,")
+        compose.onNodeWithText("Gör till huvudadress").performClick()
+        compose.waitForIdle()
+        assertEquals("Testgatan 2", app.model.state.value.primary?.street)
+    }
+
+    @Test
+    fun taBortFranMenynFragarForst() {
+        val app = TestApp()
+        start(app, testHit("Testgatan 1"), testHit("Testgatan 2"))
+        compose.waitForText("Fler adresser")
+        longPress("Testgatan 2,")
+        compose.onNode(hasText("Ta bort") and hasClickAction()).performClick()
+        compose.waitForText("Ta bort adressen?")
+        // Inget är borttaget förrän valet bekräftas.
+        assertEquals(2, app.model.state.value.addresses.size)
+        compose.onNode(hasText("Ta bort") and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Testgatan 1"), app.model.state.value.addresses.map { it.street })
+    }
+
+    @Test
+    fun angraPaRadenStangerSnackbaren() {
+        val app = TestApp(clock = TestClock(eveningBefore))
+        start(app, testHit("Testgatan 1"), notificationsOn = true)
+        compose.waitForText("Ställ ut kärlen")
+        compose.onNodeWithText("Ställ ut kärlen").performScrollTo().performClick()
+        // Snackbaren säger att kärlen är utställda, med sitt eget Ångra.
+        compose.waitForText("Kärlen är utställda")
+        assertEquals(2, compose.onAllNodes(hasText("Ångra") and hasClickAction()).fetchSemanticsNodes().size)
+        // Ångra på raden Utställt stänger snackbaren, som annars skulle ångra något som redan är ångrat.
+        compose.onAllNodes(shows("Ångra")).onFirst().performScrollTo().performClick()
+        compose.waitForText("Ställ ut kärlen")
+        assertFalse(compose.isShowing("Kärlen är utställda"))
     }
 }

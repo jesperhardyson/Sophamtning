@@ -31,6 +31,13 @@ class SophamtningApplication : Application() {
             scope = MainScope(),
             appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
         )
-        dependencies = AppDependencies(model, api, clock, placeIndex = { runCatching { PlaceIndex.load() }.getOrNull() })
+        dependencies = AppDependencies(
+            model,
+            api,
+            clock,
+            placeIndex = { runCatching { PlaceIndex.load() }.getOrNull() },
+            // Nyheterna följer med appen, så sidan fungerar utan nät och stämmer med versionen som är installerad.
+            changelog = { runCatching { assets.open("CHANGELOG.md").bufferedReader().use { it.readText() } }.getOrNull() },
+        )
     }
 }

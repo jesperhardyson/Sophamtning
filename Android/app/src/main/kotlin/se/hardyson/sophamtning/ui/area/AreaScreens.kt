@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -210,8 +209,10 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
     val vm: AreaFinderViewModel = viewModel { AreaFinderViewModel(dependencies, key.place) }
     val finder = vm.finder
     val snapshot by finder.snapshot.collectAsStateWithLifecycle()
-    // Öppen från början, eftersom användaren ska ange datumet själv.
-    var showCalendar by rememberSaveable { mutableStateOf(true) }
+    // Öppen från början, eftersom användaren ska ange datumet själv. Resultatet sparas inte när processen dödas, så utan
+    // resultat står kalendern och knappen alltid öppna, som när vyn visades första gången.
+    var calendarChosen by rememberSaveable { mutableStateOf(true) }
+    val showCalendar = calendarChosen || snapshot.state == AreaFinderState.Idle
     val latest = finder.latestSelectable.utcMillis()
     val pickerState = rememberDatePickerState(
         initialSelectedDateMillis = snapshot.draft.utcMillis(),
@@ -244,7 +245,7 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
                         .heightIn(min = 52.dp)
                         .background(ThemeToken.Surface.color, CircleShape)
                         .border(2.dp, ThemeToken.Primary.color, CircleShape)
-                        .clickable(role = Role.Button) { showCalendar = !showCalendar }
+                        .clickable(role = Role.Button) { calendarChosen = !showCalendar }
                         .semantics(mergeDescendants = true) {
                             contentDescription = dateLabel
                             stateDescription = changesDate
@@ -278,15 +279,16 @@ fun AreaFinderScreen(key: AreaFinder, navigator: AppNavigator) {
             // Den primära knappen för läget står fast längst ned.
             val primary: Pair<String, () -> Unit>? = when {
                 showCalendar -> stringResource(R.string.area_finder_title) to {
-                    showCalendar = false
+                    calendarChosen = false
                     finder.find()
                 }
                 snapshot.state is AreaFinderState.Match -> stringResource(R.string.area_finder_choose_this) to { choose((snapshot.state as AreaFinderState.Match).hit) }
                 snapshot.state == AreaFinderState.Failed && snapshot.retryable -> stringResource(R.string.action_retry) to { finder.retry() }
-                snapshot.state == AreaFinderState.Failed -> stringResource(R.string.area_finder_other_date) to { showCalendar = true }
+                snapshot.state == AreaFinderState.Failed -> stringResource(R.string.area_finder_other_date) to { calendarChosen = true }
                 else -> null
             }
-            primary?.let { (title, action) -> PrimaryButton(title, action, Modifier.padding(horizontal = PageMargin, vertical = 8.dp).navigationBarsPadding()) }
+            // Skärmens marginal mot gestfältet finns redan i `padding`.
+            primary?.let { (title, action) -> PrimaryButton(title, action, Modifier.padding(horizontal = PageMargin, vertical = 8.dp)) }
         }
     }
 }

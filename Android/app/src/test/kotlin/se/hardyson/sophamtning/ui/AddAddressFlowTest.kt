@@ -23,7 +23,13 @@ class AddAddressFlowTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val app = TestApp()
+    /** Trådarna som ortlistan har lästs på. */
+    private val placeIndexThreads = java.util.Collections.synchronizedList(mutableListOf<Thread>())
+
+    private val app = TestApp(placeIndex = {
+        placeIndexThreads += Thread.currentThread()
+        se.hardyson.sophamtning.core.kommun.PlaceIndex.load()
+    })
 
     private fun start() {
         compose.setContent { SophamtningApp(app.dependencies) }
@@ -95,5 +101,17 @@ class AddAddressFlowTest {
         compose.waitForText("Adressen hittades inte")
         compose.onNodeWithText("Finns min kommuns hämtningsschema?").performScrollTo().performClick()
         compose.waitForText("Skriv din kommun eller ort. Svaret kommer medan du skriver.")
+    }
+
+    @Test
+    fun ortlistanLasesUtanforHuvudtraden() {
+        start()
+        compose.onNodeWithText("Finns min kommuns hämtningsschema?").performScrollTo().performClick()
+        compose.waitForIdle()
+        type("Avesta")
+        compose.waitForText("Ja, Avesta kommun finns")
+        val main = android.os.Looper.getMainLooper().thread
+        assert(placeIndexThreads.isNotEmpty())
+        assertEquals(emptyList<Thread>(), placeIndexThreads.filter { it == main })
     }
 }

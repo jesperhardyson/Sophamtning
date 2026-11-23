@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import se.hardyson.sophamtning.AppDependencies
 import se.hardyson.sophamtning.core.api.AreaSource
 import se.hardyson.sophamtning.core.api.SearchHit
@@ -56,7 +58,8 @@ class KommunViewModel(private val dependencies: AppDependencies, private val han
         _ui.update { it.copy(updating = true) }
         // Väntar tills användaren slutat skriva. Ett nytt tangenttryck avbryter.
         delay(DEBOUNCE_MILLIS)
-        val index = dependencies.placeIndex()
+        // Ortlistan läses och avkodas första gången, och det får inte ske på huvudtråden.
+        val index = withContext(Dispatchers.Default) { dependencies.placeIndex() }
         if (index == null) {
             _ui.value = Ui(Result(KommunAnswer.Unavailable))
             return

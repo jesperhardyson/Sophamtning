@@ -4,8 +4,9 @@ import androidx.compose.ui.res.stringResource
 import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -28,12 +30,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import se.hardyson.sophamtning.core.home.HomeContent
+import se.hardyson.sophamtning.ui.bin.BinLoaderView
 import se.hardyson.sophamtning.ui.components.AddressPlaceLine
 import se.hardyson.sophamtning.ui.components.AppSymbols
 import se.hardyson.sophamtning.ui.components.CalendarTile
@@ -62,7 +67,14 @@ fun OthersTitle() {
  * och TalkBack läser det som en knapp. [below] är det som står under kortets knapp, till exempel Ställ ut kärlen.
  */
 @Composable
-fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier = Modifier, below: @Composable () -> Unit = {}) {
+fun PrimaryCard(
+    entry: HomeContent.Entry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null,
+    actions: List<CustomAccessibilityAction> = emptyList(),
+    below: @Composable () -> Unit = {},
+) {
     val foreground = ThemeToken.OnPrimary.color
     val reminder = entry.reminder.takeIf { entry.status is HomeContent.Status.Upcoming }
     val spoken = buildList {
@@ -82,8 +94,17 @@ fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier
         Column(
             Modifier
                 .fillMaxWidth()
-                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.home_open_address), onClick = onOpen)
-                .clearAndSetSemantics { contentDescription = spoken },
+                .combinedClickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.home_open_address),
+                    onLongClickLabel = stringResource(R.string.home_address_menu),
+                    onLongClick = onLongPress,
+                    onClick = onOpen,
+                )
+                .clearAndSetSemantics {
+                    contentDescription = spoken
+                    if (actions.isNotEmpty()) customActions = actions
+                },
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             CardHeader(entry, foreground)
@@ -99,7 +120,11 @@ fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier
                         }
                     }
                 }
-                HomeContent.Status.Loading -> Text(stringResource(R.string.loading_schedule), style = uiText(15, Weight.BOLD), color = foreground)
+                HomeContent.Status.Loading -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
+                    Box(Modifier.background(ThemeToken.Surface.color, CircleShape).padding(10.dp)) { BinLoaderView(width = 26.dp, showsText = false) }
+                    Text(stringResource(R.string.loading_schedule), style = uiText(15, Weight.BOLD), color = foreground)
+                }
                 HomeContent.Status.NoUpcoming, is HomeContent.Status.Failed ->
                     Text(entry.summary, style = uiText(20, Weight.HEAVY), color = foreground)
             }
@@ -164,7 +189,13 @@ private fun FooterLabel(text: String, icon: ImageVector, foreground: Color) {
  * fraktionernas hela namn.
  */
 @Composable
-fun AddressRow(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun AddressRow(
+    entry: HomeContent.Entry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null,
+    actions: List<CustomAccessibilityAction> = emptyList(),
+) {
     val shape = RoundedCornerShape(20.dp)
     val summaryColor = when (entry.summaryTone) {
         HomeContent.Entry.SummaryTone.Date -> ThemeToken.BrandText.color
@@ -177,8 +208,11 @@ fun AddressRow(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier 
             .fillMaxWidth()
             .background(ThemeToken.Surface.color, shape)
             .border(1.dp, ThemeToken.Border.color, shape)
-            .clickable(role = Role.Button, onClick = onOpen)
-            .clearAndSetSemantics { contentDescription = spoken }
+            .combinedClickable(role = Role.Button, onLongClickLabel = stringResource(R.string.home_address_menu), onLongClick = onLongPress, onClick = onOpen)
+            .clearAndSetSemantics {
+                contentDescription = spoken
+                if (actions.isNotEmpty()) customActions = actions
+            }
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -191,7 +225,12 @@ fun AddressRow(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier 
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             val status = entry.status
-            if (status is HomeContent.Status.Upcoming) ChipRow(status.pickup.fractions, Modifier.weight(1f), spacing = 6.dp) else Column(Modifier.weight(1f).height(0.dp)) {}
+            when (status) {
+                is HomeContent.Status.Upcoming -> ChipRow(status.pickup.fractions, Modifier.weight(1f), spacing = 6.dp)
+                // Ett litet kärl i stället för chipsen. Raden läses upp av sin egen beskrivning.
+                HomeContent.Status.Loading -> Box(Modifier.weight(1f)) { BinLoaderView(width = 48.dp, showsText = false) }
+                else -> Column(Modifier.weight(1f).height(0.dp)) {}
+            }
             Chevron()
         }
     }

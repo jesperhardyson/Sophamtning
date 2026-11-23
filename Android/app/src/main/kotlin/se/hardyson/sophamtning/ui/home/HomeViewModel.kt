@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import se.hardyson.sophamtning.AppDependencies
 import se.hardyson.sophamtning.core.app.AppState
+import se.hardyson.sophamtning.core.app.PermissionResult
 import se.hardyson.sophamtning.core.app.visibleSourceMessages
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.home.HomeContent
@@ -69,6 +70,24 @@ class HomeViewModel(private val dependencies: AppDependencies) : ViewModel() {
     fun remove(key: AddressKey) {
         model.clearStorageError()
         model.remove(key)
+    }
+
+    fun setPrimary(key: AddressKey) {
+        model.clearStorageError()
+        model.setPrimary(key)
+    }
+
+    /** Påminn mig i snabbmenyn, som reglaget i adressvyn. [onDenied] körs när systemet nekar notiser. */
+    fun setNotifications(on: Boolean, key: AddressKey, onDenied: () -> Unit) {
+        model.clearStorageError()
+        viewModelScope.launch {
+            if (model.setNotifications(on, key) == PermissionResult.Denied) onDenied()
+        }
+    }
+
+    fun setLiveActivity(on: Boolean) {
+        model.clearStorageError()
+        model.setLiveActivity(on)
     }
 
     fun dismissMessage(item: ActiveSourceMessage) = model.dismissSourceMessage(item)

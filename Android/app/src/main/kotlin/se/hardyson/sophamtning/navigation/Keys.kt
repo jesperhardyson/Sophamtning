@@ -48,3 +48,19 @@ val NavKey.isAddFlow: Boolean
 /** Byt namn på adressen, som en helskärmsdialog med fältet och Spara i appfältet. */
 @Serializable
 data class Rename(val key: AddressKey) : NavKey
+
+/** Inställningarna, från ikonen i hemskärmens appfält. */
+@Serializable
+data object Settings : NavKey
+
+/** Välj huvudadress, från Inställningar. */
+@Serializable
+data object PrimaryAddressChoice : NavKey
+
+/** Datakällorna, från Inställningar. */
+@Serializable
+data object DataSources : NavKey
+
+/** Nyheter, från raden Version i Inställningar. */
+@Serializable
+data object Changelog : NavKey

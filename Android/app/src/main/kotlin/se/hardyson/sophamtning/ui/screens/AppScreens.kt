@@ -18,6 +18,10 @@ import se.hardyson.sophamtning.ui.area.AreaPickerScreen
 import se.hardyson.sophamtning.ui.home.HomeScreen
 import se.hardyson.sophamtning.ui.kommun.KommunScreen
 import se.hardyson.sophamtning.ui.search.SearchScreen
+import se.hardyson.sophamtning.ui.settings.ChangelogScreen
+import se.hardyson.sophamtning.ui.settings.DataSourcesScreen
+import se.hardyson.sophamtning.ui.settings.PrimaryAddressScreen
+import se.hardyson.sophamtning.ui.settings.SettingsScreen
 
 /** Skärmen för varje nyckel i backstacken. */
 object AppScreens {
@@ -30,4 +34,8 @@ object AppScreens {
     @Composable fun Address(key: Address, navigator: AppNavigator) = AddressScreen(key.key, navigator)
     @Composable fun FullSchedule(key: FullSchedule, navigator: AppNavigator) = FullScheduleScreen(key.key, navigator)
     @Composable fun Rename(key: Rename, navigator: AppNavigator) = RenameScreen(key.key, navigator)
+    @Composable fun Settings(navigator: AppNavigator) = SettingsScreen(navigator)
+    @Composable fun PrimaryAddressChoice(navigator: AppNavigator) = PrimaryAddressScreen(navigator)
+    @Composable fun DataSources(navigator: AppNavigator) = DataSourcesScreen(navigator)
+    @Composable fun Changelog(navigator: AppNavigator) = ChangelogScreen(navigator)
 }

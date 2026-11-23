@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +36,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +63,13 @@ import se.hardyson.sophamtning.navigation.AddAddress
 import se.hardyson.sophamtning.navigation.Address
 import se.hardyson.sophamtning.navigation.AppNavigator
 import se.hardyson.sophamtning.navigation.KommunCheck
+import se.hardyson.sophamtning.navigation.Rename
+import se.hardyson.sophamtning.navigation.Settings as SettingsKey
+import se.hardyson.sophamtning.ui.bin.BIN_ASPECT
+import se.hardyson.sophamtning.ui.bin.BinRoundView
+import se.hardyson.sophamtning.ui.bin.scaledBinWidth
+import androidx.compose.ui.unit.DpSize
+import se.hardyson.sophamtning.ui.bin.BubbleTip
 import se.hardyson.sophamtning.ui.components.AppSymbols
 import se.hardyson.sophamtning.ui.components.MessageCard
 import se.hardyson.sophamtning.ui.components.MessageLink
@@ -88,6 +97,9 @@ fun HomeScreen(navigator: AppNavigator) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var refreshing by remember { mutableStateOf(false) }
+    // Ett tryck på rubriken räknas som ett tryck på kärlet bredvid.
+    var titleTaps by remember { mutableIntStateOf(0) }
+    val titleBinWidth = scaledBinWidth(TITLE_BIN_WIDTH, TITLE_BIN_MAX_WIDTH)
 
     // Hämtningen när appen kommer i förgrunden görs för hela appen, i AppNavigation. Här räknas bara dagen om.
     LifecycleResumeEffect(Unit) {
@@ -115,7 +127,14 @@ fun HomeScreen(navigator: AppNavigator) {
         onBack = null,
         large = filled,
         snackbarHostState = snackbar,
+        largeTitleLeading = { BinRoundView(width = TITLE_BIN_WIDTH, maxWidth = TITLE_BIN_MAX_WIDTH, bubbleTip = BubbleTip.Start, firstRound = "rubrik", tapTrigger = titleTaps) },
+        largeTitleLeadingSize = titleBinWidth.let { DpSize(it, it * BIN_ASPECT) },
+        onLargeTitleTap = { titleTaps += 1 },
         actions = {
+            // Vid lagringsfel finns inga knappar.
+            if (problem == null) {
+                IconButton(onClick = { navigator.open(SettingsKey) }) { Icon(Icons.Filled.SettingsIcon, contentDescription = stringResource(R.string.settings_title)) }
+            }
             if (filled) {
                 IconButton(onClick = { navigator.open(AddAddress()) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add)) }
             }
@@ -145,7 +164,11 @@ fun HomeScreen(navigator: AppNavigator) {
                 }
                 when {
                     problem != null -> StorageProblemView(problem, vm::retryStorage, vm::startOver)
-                    primary != null -> Filled(ui, primary, content.others, vm, navigator, placeOut)
+                    primary != null -> Filled(ui, primary, content.others, vm, navigator, placeOut, undo = { entry ->
+                        // Snackbaren med sitt eget Ångra stängs, så att den inte ångrar något som redan är ångrat.
+                        snackbar.currentSnackbarData?.dismiss()
+                        vm.undoPlaceOut(entry)
+                    })
                     else -> StartContent(onSearch = { navigator.open(AddAddress()) }, onKommun = { navigator.open(KommunCheck) })
                 }
                 Text(
@@ -167,6 +190,7 @@ private fun Filled(
     vm: HomeViewModel,
     navigator: AppNavigator,
     placeOut: (HomeContent.Entry) -> Unit,
+    undo: (HomeContent.Entry) -> Unit,
 ) {
     val context = LocalContext.current
     Column(Modifier.padding(top = 8.dp)) {
@@ -179,11 +203,13 @@ private fun Filled(
         // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
         key(primary.key) {
             SwipeToRemove(onRemove = { vm.remove(primary.key) }, cornerRadius = 28.dp) {
-                PrimaryCard(primary, onOpen = { navigator.open(Address(primary.key)) }) {
-                    val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
-                    if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
-                    primary.placedOut?.let { line ->
-                        PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { vm.undoPlaceOut(primary) })
+                AddressMenu(menuChoices(ui, primary, vm, navigator)) { onLongPress, actions ->
+                    PrimaryCard(primary, onOpen = { navigator.open(Address(primary.key)) }, onLongPress = onLongPress, actions = actions) {
+                        val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
+                        if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
+                        primary.placedOut?.let { line ->
+                            PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { undo(primary) })
+                        }
                     }
                 }
             }
@@ -194,12 +220,35 @@ private fun Filled(
                 // Varje rad behåller sitt svep och sin bekräftelse när en annan adress tas bort.
                 key(entry.key) {
                     SwipeToRemove(onRemove = { vm.remove(entry.key) }, cornerRadius = 20.dp, modifier = Modifier.padding(bottom = 12.dp)) {
-                        AddressRow(entry, onOpen = { navigator.open(Address(entry.key)) })
+                        AddressMenu(menuChoices(ui, entry, vm, navigator)) { onLongPress, actions ->
+                            AddressRow(entry, onOpen = { navigator.open(Address(entry.key)) }, onLongPress = onLongPress, actions = actions)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/** Det lilla kärlet bredvid rubriken, ungefär lika högt som texten, och som störst med största text. */
+private val TITLE_BIN_WIDTH = 30.dp
+private val TITLE_BIN_MAX_WIDTH = 56.dp
+
+/** Snabbmenyns val för en adress på hemskärmen. */
+private fun menuChoices(ui: HomeViewModel.Ui, entry: HomeContent.Entry, vm: HomeViewModel, navigator: AppNavigator): AddressMenuChoices {
+    val state = ui.state
+    val address = state.address(entry.key)
+    return AddressMenuChoices(
+        isPrimary = address?.isPrimary ?: false,
+        remindersAvailable = state.remindersAvailable,
+        remindersOn = address?.let(state::remindersOn) ?: false,
+        liveUpdateOn = state.settings.liveActivityOn,
+        onRename = { navigator.open(Rename(entry.key)) },
+        onMakePrimary = { vm.setPrimary(entry.key) },
+        onNotifications = { on, onDenied -> vm.setNotifications(on, entry.key, onDenied) },
+        onLiveUpdate = vm::setLiveActivity,
+        onRemove = { vm.remove(entry.key) },
+    )
 }
 
 /** Ett meddelande från källan, till exempel att hämtrutterna läggs om. Länken har samma ordval som på sajten. */

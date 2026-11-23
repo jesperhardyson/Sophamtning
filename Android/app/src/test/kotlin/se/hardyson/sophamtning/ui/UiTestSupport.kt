@@ -41,6 +41,11 @@ fun uiTestData(name: String): String =
 class FakeSoporApi : SoporApi {
     /** Ett fel som varje hämtning av ett schema ger, till exempel 502. */
     @Volatile var addressError: ApiError? = null
+
+    /** Håller kvar varje hämtning av ett schema tills den släpps, så att laddningen syns. */
+    @Volatile var addressGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+    /** Lägger till en källa med testdata i källistan, som appen inte ska visa. */
+    @Volatile var sourcesWithTestData = false
     val addressCalls = mutableListOf<String>()
     val searches = mutableListOf<String>()
 
@@ -60,6 +65,7 @@ class FakeSoporApi : SoporApi {
 
     override suspend fun address(url: String): AddressResponse {
         addressCalls += url
+        addressGate?.await()
         addressError?.let { throw it }
         if ("/adress/avesta/" in url) return ApiDecoding.addressResponse(uiTestData("uitest-adress-avesta"))
         if ("/testgatan-4_" in url) return ApiDecoding.addressResponse(uiTestData("uitest-adress-tom"))
@@ -68,6 +74,7 @@ class FakeSoporApi : SoporApi {
 
     override suspend fun sources(): SourcesResponse {
         val all = ApiDecoding.sourcesResponse(uiTestData("uitest-kallor"))
+        if (sourcesWithTestData) return all.copy(sources = all.sources + all.sources.first().copy(id = "testkalla", name = "Testkällan", testData = true))
         return all.copy(sources = all.sources.filter { !it.testData })
     }
 }
@@ -102,10 +109,14 @@ class TestApp(
     val clock: TestClock = TestClock(recordedNoon),
     val reminders: ReminderScheduling = AllowedReminders(),
     val dir: File = Files.createTempDirectory("sophamtning-ui-").toFile().also { it.deleteOnExit() },
+    /** Innehållet i `CHANGELOG.md`, eller `null` som i appen innan Android har släppts. */
+    val changelog: String? = null,
+    /** Ortlistan för kommunfrågan. */
+    val placeIndex: () -> PlaceIndex? = { PlaceIndex.load() },
 ) {
     val store = LocalStore(dir)
     val model by lazy { AppModel(api, store, reminders, { clock.now }, CoroutineScope(SupervisorJob() + Dispatchers.Main), appVersion = "test") }
-    val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = { PlaceIndex.load() }) }
+    val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = placeIndex, changelog = { changelog }) }
 }
 
 /** Låter väntetider i ViewModels, som sökningens fördröjning, gå klart. */
@@ -121,13 +132,20 @@ fun shows(text: String, substring: Boolean = false) = hasText(text, substring = 
 fun ComposeTestRule.isShowing(text: String, substring: Boolean = false) =
     onAllNodes(shows(text, substring), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
-/** Väntar tills en nod med texten finns, högst några sekunder. */
+/**
+ * Väntar tills en nod med texten finns. Tiden i testet flyttas 100 ms åt gången, och efter fem sekunder i testets tid får
+ * arbete på andra trådar, som ortlistan, också riktig tid, högst tio sekunder.
+ */
 fun ComposeTestRule.waitForText(text: String, substring: Boolean = false) {
-    for (i in 0 until 50) {
+    val deadline = System.nanoTime() + 10_000_000_000L
+    var steps = 0
+    while (true) {
         if (isShowing(text, substring)) return
+        if (steps >= 50 && System.nanoTime() > deadline) throw AssertionError("Texten \"$text\" visas inte")
         idleFor(100)
+        steps += 1
+        if (steps >= 50) Thread.sleep(20)
     }
-    throw AssertionError("Texten \"$text\" visas inte")
 }
 
 /** Sökträffarna i UITestData, som "Testgatan 1". */
