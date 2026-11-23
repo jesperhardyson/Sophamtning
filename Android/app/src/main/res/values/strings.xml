@@ -42,6 +42,7 @@
     <string name="home_others">Fler adresser</string>
     <string name="home_open_address">Öppnar adressen</string>
     <string name="loading_schedule">Hämtar schema</string>
+    <string name="loading_schedule_text">Hämtar schema…</string>
     <string name="home_refresh_failed">Kunde inte uppdatera schemat. Visar det senast hämtade.</string>
     <string name="next_pickup_caps">NÄSTA TÖMNING</string>
     <string name="start_title">När töms dina kärl?</string>

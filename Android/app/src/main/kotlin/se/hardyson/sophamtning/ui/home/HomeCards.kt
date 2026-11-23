@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -34,6 +36,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import se.hardyson.sophamtning.core.home.HomeContent
+import se.hardyson.sophamtning.ui.bin.BinLoaderView
 import se.hardyson.sophamtning.ui.components.AddressPlaceLine
 import se.hardyson.sophamtning.ui.components.AppSymbols
 import se.hardyson.sophamtning.ui.components.CalendarTile
@@ -99,7 +102,11 @@ fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier
                         }
                     }
                 }
-                HomeContent.Status.Loading -> Text(stringResource(R.string.loading_schedule), style = uiText(15, Weight.BOLD), color = foreground)
+                HomeContent.Status.Loading -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Kärlet är grönt och står på en ljus platta, så att det syns mot det gröna kortet.
+                    Box(Modifier.background(ThemeToken.Surface.color, CircleShape).padding(10.dp)) { BinLoaderView(width = 26.dp, showsText = false) }
+                    Text(stringResource(R.string.loading_schedule), style = uiText(15, Weight.BOLD), color = foreground)
+                }
                 HomeContent.Status.NoUpcoming, is HomeContent.Status.Failed ->
                     Text(entry.summary, style = uiText(20, Weight.HEAVY), color = foreground)
             }
@@ -191,7 +198,12 @@ fun AddressRow(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier 
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             val status = entry.status
-            if (status is HomeContent.Status.Upcoming) ChipRow(status.pickup.fractions, Modifier.weight(1f), spacing = 6.dp) else Column(Modifier.weight(1f).height(0.dp)) {}
+            when (status) {
+                is HomeContent.Status.Upcoming -> ChipRow(status.pickup.fractions, Modifier.weight(1f), spacing = 6.dp)
+                // Ett litet kärl i stället för chipsen. Raden läses upp av sin egen beskrivning.
+                HomeContent.Status.Loading -> Box(Modifier.weight(1f)) { BinLoaderView(width = 48.dp, showsText = false) }
+                else -> Column(Modifier.weight(1f).height(0.dp)) {}
+            }
             Chevron()
         }
     }

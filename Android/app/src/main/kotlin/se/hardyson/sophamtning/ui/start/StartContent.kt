@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import se.hardyson.sophamtning.ui.bin.BinRoundView
 import se.hardyson.sophamtning.ui.components.AppSymbols
 import se.hardyson.sophamtning.ui.components.Chevron
 import se.hardyson.sophamtning.ui.theme.ThemeToken
@@ -37,12 +38,16 @@ import se.hardyson.sophamtning.ui.theme.uiText
 
 /**
  * Startvyn utan sparade adresser, som det tomma läget i HomeView.swift: frågan, fältet som öppnar adressökningen och
- * kommunfrågan. Kärlet med pratbubblorna och introt kommer i plan 4b. Introt med logotypen ersätts av systemets startskärm.
+ * kommunfrågan. Kärlet ersätter logotypen: det spelar ett varv när tomläget visas, och säger något i en pratbubbla vid tryck.
+ * Introt med logotypen ersätts av systemets startskärm.
  */
 @Composable
 fun StartContent(onSearch: () -> Unit, onKommun: () -> Unit) {
     Column {
-        Text(stringResource(R.string.start_title), style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
+        // Ytan ovanför kärlet är till för fraktionen som faller, så kärlet står ungefär där logotypen stod. Pratbubblorna
+        // står under kärlet och växer nedåt över rubriken.
+        Box(Modifier.fillMaxWidth().padding(bottom = 33.dp), contentAlignment = Alignment.Center) { BinRoundView() }
+        Text(stringResource(R.string.start_title), style = brandText(34), color = ThemeToken.Text.color, modifier = Modifier.semantics { heading() })
         Text(
             stringResource(R.string.start_text),
             style = uiText(18, Weight.SEMIBOLD),

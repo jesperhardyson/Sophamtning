@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,7 +44,7 @@ import se.hardyson.sophamtning.ui.components.FractionChip
 import se.hardyson.sophamtning.ui.components.MessageCard
 import se.hardyson.sophamtning.ui.components.MessageStyle
 import se.hardyson.sophamtning.ui.components.PrimaryButton
-import se.hardyson.sophamtning.ui.components.SearchingRow
+import se.hardyson.sophamtning.ui.bin.BinLoaderView
 import se.hardyson.sophamtning.ui.components.SectionCard
 import se.hardyson.sophamtning.ui.components.SectionDivider
 import se.hardyson.sophamtning.ui.components.isLargeText
@@ -184,11 +185,11 @@ fun AddressNotice(notice: AddressDetail.Notice?, onRetry: () -> Unit, onSearchAg
 /** Schemat hämtas för första gången. */
 @Composable
 fun ScheduleLoadingCard(modifier: Modifier = Modifier) {
-    Row(
+    Box(
         modifier.fillMaxWidth().background(ThemeToken.Surface.color, RoundedCornerShape(20.dp)).padding(vertical = 24.dp),
-        horizontalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        SearchingRow(stringResource(R.string.loading_schedule))
+        BinLoaderView(textColor = ThemeToken.Text.color)
     }
 }
 

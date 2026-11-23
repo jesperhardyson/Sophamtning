@@ -35,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +62,8 @@ import se.hardyson.sophamtning.navigation.AddAddress
 import se.hardyson.sophamtning.navigation.Address
 import se.hardyson.sophamtning.navigation.AppNavigator
 import se.hardyson.sophamtning.navigation.KommunCheck
+import se.hardyson.sophamtning.ui.bin.BinRoundView
+import se.hardyson.sophamtning.ui.bin.BubbleTip
 import se.hardyson.sophamtning.ui.components.AppSymbols
 import se.hardyson.sophamtning.ui.components.MessageCard
 import se.hardyson.sophamtning.ui.components.MessageLink
@@ -88,6 +91,8 @@ fun HomeScreen(navigator: AppNavigator) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var refreshing by remember { mutableStateOf(false) }
+    // Ett tryck på rubriken räknas som ett tryck på kärlet bredvid.
+    var titleTaps by remember { mutableIntStateOf(0) }
 
     // Hämtningen när appen kommer i förgrunden görs för hela appen, i AppNavigation. Här räknas bara dagen om.
     LifecycleResumeEffect(Unit) {
@@ -115,6 +120,8 @@ fun HomeScreen(navigator: AppNavigator) {
         onBack = null,
         large = filled,
         snackbarHostState = snackbar,
+        largeTitleLeading = { BinRoundView(width = 30.dp, maxWidth = 56.dp, bubbleTip = BubbleTip.Start, tapTrigger = titleTaps) },
+        onLargeTitleTap = { titleTaps += 1 },
         actions = {
             if (filled) {
                 IconButton(onClick = { navigator.open(AddAddress()) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add)) }

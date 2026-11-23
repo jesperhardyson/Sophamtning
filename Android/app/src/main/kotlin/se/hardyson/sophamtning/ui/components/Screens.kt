@@ -2,7 +2,13 @@ package se.hardyson.sophamtning.ui.components
 
 import androidx.compose.ui.res.stringResource
 import se.hardyson.sophamtning.R
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -47,6 +53,8 @@ fun ScreenScaffold(
     large: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     actions: @Composable RowScope.() -> Unit = {},
+    largeTitleLeading: (@Composable () -> Unit)? = null,
+    onLargeTitleTap: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val scrollBehavior = if (large) {
@@ -83,12 +91,25 @@ fun ScreenScaffold(
                 LargeTopAppBar(
                     title = {
                         val small = LocalTextStyle.current.fontSize != largeStyle.fontSize
-                        Text(
-                            title,
-                            maxLines = if (small) 1 else LARGE_TITLE_LINES,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.semantics { heading() },
-                        )
+                        val text: @Composable (Modifier) -> Unit = { textModifier ->
+                            Text(
+                                title,
+                                maxLines = if (small) 1 else LARGE_TITLE_LINES,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = textModifier.semantics { heading() },
+                            )
+                        }
+                        if (small || largeTitleLeading == null) {
+                            text(Modifier)
+                        } else {
+                            // Det som står före den stora rubriken, som kärlet på hemskärmen, står med botten på textens
+                            // baslinje. Ett tryck på rubriken förblir en rubrik för TalkBack.
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(Modifier.alignBy { (it.measuredHeight * LEADING_BASELINE).toInt() }) { largeTitleLeading() }
+                                val tap = onLargeTitleTap?.let { onTap -> Modifier.pointerInput(onTap) { detectTapGestures { onTap() } } } ?: Modifier
+                                text(Modifier.alignBy(LastBaseline).then(tap))
+                            }
+                        }
                     },
                     expandedHeight = expandedHeight,
                     navigationIcon = navigation,
@@ -109,6 +130,9 @@ fun ScreenScaffold(
         content = content,
     )
 }
+
+/** Kärlets kropp slutar vid y 441 i SVG:ns viewBox (360 × 560 från y -110), strax ovanför skuggan. */
+private const val LEADING_BASELINE = (441f + 110f) / 560f
 
 /** Den stora rubriken visar högst så många rader, och kortas sedan med en ellips. */
 private const val LARGE_TITLE_LINES = 3
