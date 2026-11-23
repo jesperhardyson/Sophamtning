@@ -127,3 +127,18 @@ fun ComposeTestRule.waitForText(text: String, substring: Boolean = false) {
     }
     throw AssertionError("Texten \"$text\" visas inte")
 }
+
+/** Sökträffarna i UITestData, som "Testgatan 1". */
+fun testHit(street: String) = ApiDecoding.searchResponse(uiTestData("uitest-sok")).addresses.first { it.street == street }
+
+/** Områdena i Avesta, som "Askön, Nyhyttan m.fl.". */
+fun avestaArea(street: String) = ApiDecoding.searchResponse(uiTestData("uitest-omraden")).addresses.first { it.street == street }
+
+/** Låter tiden gå i både Compose och huvudtråden, till exempel så att minutbytet på hemskärmen hinner köras. */
+fun ComposeTestRule.advance(millis: Long) {
+    mainClock.advanceTimeBy(millis)
+    idleFor(millis)
+}
+
+/** En vanlig telefon, så att skärmarna får samma mått som i verkligheten. */
+const val PHONE = "w411dp-h891dp-xxhdpi"

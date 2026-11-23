@@ -15,6 +15,7 @@ import se.hardyson.sophamtning.core.app.visibleSourceMessages
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.core.home.HomeContent
 import se.hardyson.sophamtning.core.messages.ActiveSourceMessage
+import se.hardyson.sophamtning.core.storage.AddressKey
 
 /**
  * Hemskärmen, som HomeView.swift. Allt räknas från appens tillstånd och tiden [now], som räknas om när skärmen visas
@@ -58,6 +59,48 @@ class HomeViewModel(private val dependencies: AppDependencies) : ViewModel() {
             model.refreshAll(manual = false)
             tick()
         }
+    }
+
+    /** Ställer ut kärlen för nästa tömning, och svarar med om det gick. */
+    fun placeOut(entry: HomeContent.Entry, onDone: (Boolean) -> Unit = {}) {
+        val pickup = (entry.status as? HomeContent.Status.Upcoming)?.pickup ?: return
+        viewModelScope.launch {
+            model.clearStorageError()
+            model.markPlacedOut(entry.key, pickup.date)
+            onDone(model.state.value.lastStorageError == null)
+        }
+    }
+
+    fun undoPlaceOut(entry: HomeContent.Entry) {
+        val pickup = (entry.status as? HomeContent.Status.Upcoming)?.pickup ?: return
+        viewModelScope.launch {
+            model.clearStorageError()
+            model.undoPlacedOut(entry.key, pickup.date)
+        }
+    }
+
+    fun remove(key: AddressKey) {
+        model.clearStorageError()
+        model.remove(key)
+    }
+
+    fun dismissMessage(item: ActiveSourceMessage) = model.dismissSourceMessage(item)
+
+    /** "Påminn mig" i förslaget. Frågan om tillstånd ställs av modellen, bara när valet slås på. */
+    fun acceptReminderOffer(key: AddressKey) {
+        model.clearStorageError()
+        viewModelScope.launch { model.setNotifications(true, key) }
+    }
+
+    fun declineReminderOffer() = model.dismissReminderOffer()
+
+    fun clearStorageError() = model.clearStorageError()
+
+    fun retryStorage() = model.retryStorage()
+
+    fun startOver() {
+        model.clearStorageError()
+        viewModelScope.launch { model.startOver() }
     }
 
     /** Dra för att uppdatera. */

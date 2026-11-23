@@ -14,9 +14,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import se.hardyson.sophamtning.SophamtningApp
 
 @RunWith(AndroidJUnit4::class)
+@Config(qualifiers = PHONE)
 class AddAddressFlowTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
