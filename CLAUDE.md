@@ -9,7 +9,10 @@ Native-appar för iOS och Android som visar när sopkärlen töms. Här finns in
   - `iOS/SophamtningWidgets/`: widgetar och Live Activity
   - `iOS/SophamtningUITests/`: UI-tester
   - `iOS/Packages/SophamtningKit/`: paketet med `SophamtningKit` (logik) och `SophamtningDesign` (tema och komponenter)
-- `Android/`: Android-appen, senare
+- `Android/`: Android-appen i Kotlin och Jetpack Compose. Gradle med versionskatalogen `gradle/libs.versions.toml`. Spec: `docs/specs/2026-11-23-android-app.md`.
+  - `Android/core/`: ren Kotlin utan Android-API:er, med logik och API-klient, som `SophamtningKit`. Testerna körs på JVM.
+  - `Android/app/`: Compose-appen med tema och komponenter
+  - Fixturerna, ortlistan och typsnitten läses från `iOS/` och kopieras inte. En ändring i dem kör både iOS- och Android-testerna.
 - `docs/specs/`: nya specar läggs här
 - `docs/plans/`: nya planer läggs här
 - `docs/design/`: Pencil-designen, som är facit för utseendet. Läs den via Pencil MCP, aldrig med Read eller Grep, eftersom `.pen`-filer är krypterade.
@@ -31,21 +34,31 @@ xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination '
 
 # Tillgänglighetsgranskningen och största texten, före release
 xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Granskning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+
+# Android (JDK 21): kärnans tester, appens tester, lint och bygge
+cd Android && ./gradlew :core:test
+cd Android && ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+
+# Android: installera på en emulator eller telefon
+cd Android && ./gradlew :app:installDebug
+
+# Android: kontraktstesterna mot det riktiga API:t, för hand
+cd Android && ./gradlew :core:contractTest
 ```
 
 UI-testerna är bara några få kärnflöden och tar cirka 3 minuter som hel svit. Kör bara de UI-tester som rör det som ändrats under arbetet, och hela sviten en gång innan PR:en görs redo eller mergas. Paketets tester och bygget körs varje gång. Nya kontroller av vad som visas och vilken text skrivs som enhetstester i paketet, inte som UI-tester.
 
 ## Regler
 
-- Lägsta version är iOS 26. Bas-URL är `https://sopor.hardyson.se/api/v1`.
-- User-Agent är `Sophamtning-iOS/<version>`. Varje adress hämtas högst en gång i timmen.
+- Lägsta version är iOS 26 och Android 12 (API 31). Bas-URL är `https://sopor.hardyson.se/api/v1`.
+- User-Agent är `Sophamtning-iOS/<version>` och `Sophamtning-Android/<version>`. Varje adress hämtas högst en gång i timmen.
 - "I dag" och alla påminnelsetider räknas i `Europe/Stockholm`, oavsett telefonens tidszon.
 - Notiser och Live Activities är avstängda från början. Inget schemaläggs utan användarens val.
   - Undantag: Meddelanden från källan är på från början, men en sådan notis skickas bara när iOS redan tillåter notiser, och appen frågar aldrig om tillstånd för den.
 - Sparade `daysUntil`, `isToday`, `isTomorrow` och `text` visas aldrig. Adress-id tolkas och byggs aldrig om.
 - Fraktioner visas alltid med färg, ikon och text. `estimated: true` visas som "ca" överallt.
 - Tekniska fel får aldrig se ut som att en adress eller kommun saknas.
-- Bundle-id är `se.hardyson.sophamtning`, och App Group är `group.se.hardyson.sophamtning`.
+- Bundle-id är `se.hardyson.sophamtning`, och App Group är `group.se.hardyson.sophamtning`. På Android är `applicationId` `se.hardyson.sophamtning`.
 - All text i appen, alla kommentarer och alla commit-meddelanden är på svenska.
 - Commit-meddelanden och PR-titlar följer Conventional Commits och har inga AI-attributionsrader. Beskrivningen är på svenska.
   - `feat:` för ny funktion och `fix:` för rättning. Aldrig `feature:`.
@@ -61,7 +74,8 @@ Releaser sköts med Release Please (googleapis/release-please-action), med versi
 - Varje app är en egen komponent i Release Please, med egen version, changelog och tagg. iOS har `iOS/version.txt`, `iOS/CHANGELOG.md` och taggen `ios-vX.Y.Z`. Releaser före 1.3.2 har taggen `vX.Y.Z`. Spec: `docs/specs/2026-11-23-android-app.md`.
 - En commit räknas till den app vars filer den ändrar. En commit som bara ändrar `docs/`, `scripts/` eller roten ger ingen release.
 - Release Please håller en öppen release-PR per app med nästa version. När den mergas skapas appens tagg och en GitHub Release.
-- I `ios.yml` avgör jobbet `changes` om iOS har ändrats. Annars hoppas den obligatoriska kontrollen `test` över, vilket räknas som godkänt.
+- Android har `Android/version.txt`, `Android/CHANGELOG.md` och taggen `android-vX.Y.Z`. Android släpps inte förrän appen är klar, så Android-commits är `build:`, `ci:`, `test:` eller `docs:` tills dess.
+- I `ios.yml` och `android.yml` avgör jobbet `changes` om appen har ändrats. Annars hoppas den obligatoriska kontrollen (`test` för iOS, `android` för Android) över, vilket räknas som godkänt.
 - Innan release-PR:en mergas körs schemat `Granskning` (tillgänglighetsgranskningen och största texten, cirka 10 minuter). Det körs inte i den vanliga sviten.
 - När release-PR:en mergas startar jobbet TestFlight i samma körning. Det väntar på Jespers godkännande i miljön `testflight`, och laddar sedan upp till App Store Connect. App Store-inskickning görs bara efter hans godkännande. En uppladdning kan göras om med Actions > Release > Run workflow och taggen.
 - Ett testbygge görs med Actions > Release > Run workflow, med en gren vald och tomt taggfält. Det får nästa patchversion efter `iOS/version.txt` och ändrar ingen fil i repot.
