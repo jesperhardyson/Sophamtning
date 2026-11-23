@@ -46,3 +46,7 @@ data class FullSchedule(val key: AddressKey) : NavKey
 /** Skärmarna i flödet Lägg till adress, som tas bort från backstacken när en adress har sparats. */
 val NavKey.isAddFlow: Boolean
     get() = this is AddAddress || this is KommunCheck || this is AreaPicker || this is AreaFinder || this is AreaConfirm
+
+/** Byt namn på adressen, som en helskärmsdialog med fältet och Spara i appfältet. */
+@Serializable
+data class Rename(val key: AddressKey) : NavKey

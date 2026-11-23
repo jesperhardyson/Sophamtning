@@ -68,6 +68,7 @@ fun AppNavigation(model: AppModel) {
             entry<AreaConfirm> { AppScreens.AreaConfirm(it, navigator) }
             entry<Address> { AppScreens.Address(it, navigator) }
             entry<FullSchedule> { AppScreens.FullSchedule(it, navigator) }
+            entry<Rename> { AppScreens.Rename(it, navigator) }
         },
     )
 }
