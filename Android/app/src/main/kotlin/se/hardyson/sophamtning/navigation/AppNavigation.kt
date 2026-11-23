@@ -51,6 +51,7 @@ class AppNavigator(private val backStack: NavBackStack<NavKey>, private val mode
         home()
         when (link) {
             AppLink.Home -> {}
+            AppLink.AddAddress -> backStack.add(AddAddress())
             is AppLink.OpenAddress -> if (model.state.value.address(link.key) != null) backStack.add(Address(link.key))
         }
     }

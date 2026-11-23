@@ -5,4 +5,7 @@
     <color name="widget_text">#1B231F</color>
     <color name="widget_text2">#526158</color>
     <color name="widget_brand_text">#12673B</color>
+    <!-- Genvägarna på appikonen. -->
+    <color name="shortcut_background">#CFEBD8</color>
+    <color name="shortcut_foreground">#12673B</color>
 </resources>

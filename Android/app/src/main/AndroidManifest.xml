@@ -27,6 +27,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Genvägen Lägg till adress på appikonen. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Påminnelsernas alarm och knappen Utställt i notisen. -->
@@ -69,5 +73,17 @@
         <receiver
             android:name=".widget.MidnightReceiver"
             android:exported="false" />
+
+        <!-- Rutan Ställ ut kärlen i snabbinställningarna. -->
+        <service
+            android:name=".tile.PlaceOutTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_place_out"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

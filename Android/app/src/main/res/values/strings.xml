@@ -209,4 +209,10 @@
     <string name="widget_sample_name">Hemma</string>
     <string name="widget_sample_relative">Om 3 dagar</string>
     <string name="widget_sample_date">Mån 9 nov</string>
+
+    <!-- Rutan i snabbinställningarna och genvägarna på appikonen. -->
+    <string name="tile_label">Ställ ut kärlen</string>
+    <string name="shortcut_add_short">Lägg till adress</string>
+    <string name="shortcut_add_long">Lägg till en adress</string>
+    <string name="shortcut_primary_long">Öppna %1$s</string>
 </resources>

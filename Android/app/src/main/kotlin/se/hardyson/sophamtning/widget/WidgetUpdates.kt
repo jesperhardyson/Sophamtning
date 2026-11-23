@@ -26,9 +26,10 @@ import androidx.glance.appwidget.updateAll
 import se.hardyson.sophamtning.core.app.AppModel
 import se.hardyson.sophamtning.core.dates.StockholmClock
 import se.hardyson.sophamtning.reminders.ReceiverWork
+import se.hardyson.sophamtning.tile.PlaceOutTileService
 
 /**
- * När widgetarna ritas om: när schemat, Utställt eller huvudadressen ändras, och vid midnatt i Stockholm, så att "i morgon"
+ * När widgetarna och rutan i snabbinställningarna ritas om: när schemat, Utställt eller huvudadressen ändras, och vid midnatt i Stockholm, så att "i morgon"
  * blir "i dag" utan att appen öppnas.
  *
  * Midnatten är ett alarm och inte widgetens egen period (`updatePeriodMillis`), som går högst var 30:e minut och inte kan
@@ -56,6 +57,8 @@ object WidgetUpdates {
      */
     suspend fun updateNow(context: Context) {
         _version.update { it + 1 }
+        // Rutan i snabbinställningarna läser samma lagring.
+        PlaceOutTileService.requestUpdate(context.applicationContext)
         try {
             NextPickupWidget().updateAll(context.applicationContext)
         } catch (e: IllegalStateException) {

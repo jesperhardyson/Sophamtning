@@ -19,6 +19,7 @@ import se.hardyson.sophamtning.reminders.AndroidLiveUpdates
 import se.hardyson.sophamtning.reminders.AndroidNotifications
 import se.hardyson.sophamtning.reminders.NotificationChannels
 import se.hardyson.sophamtning.reminders.NotificationPermission
+import se.hardyson.sophamtning.shortcuts.AppShortcuts
 import se.hardyson.sophamtning.widget.WidgetUpdates
 
 /** Skapar nätet, lagringen och appens tillstånd en gång för hela processen. */
@@ -61,6 +62,8 @@ class SophamtningApplication : Application() {
         // Widgetarna ritas om när det de visar ändras, och förhandsvisningen läggs in i widgetgalleriet.
         WidgetUpdates.observe(model, this, widgetScope)
         WidgetUpdates.publishPreview(this, widgetScope, BuildConfig.VERSION_CODE)
+        // Genvägen på appikonen följer huvudadressen.
+        AppShortcuts.observe(model, this, widgetScope)
     }
 
     /** Omritningen av widgetarna, som pågår så länge processen lever. Ett fel loggas och kraschar inte appen. */
