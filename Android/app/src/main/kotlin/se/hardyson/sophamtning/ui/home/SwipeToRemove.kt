@@ -21,10 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -37,19 +34,16 @@ import se.hardyson.sophamtning.ui.theme.uiText
 
 /**
  * En adress på hemskärmen som går att svepa bort åt vänster, med en bekräftelse, som svepet på iOS. Avbryts bekräftelsen
- * glider kortet tillbaka. TalkBack får samma val som åtgärden "Ta bort".
+ * glider kortet tillbaka. TalkBack når borttagningen med åtgärden Ta bort i adressens snabbmeny ([AddressMenu]).
  */
 @Composable
 fun SwipeToRemove(onRemove: () -> Unit, cornerRadius: Dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val state = rememberSwipeToDismissBoxState()
     val scope = rememberCoroutineScope()
     var confirming by rememberSaveable { mutableStateOf(false) }
-    val removeLabel = stringResource(R.string.action_remove)
     SwipeToDismissBox(
         state = state,
-        modifier = modifier.semantics {
-            customActions = listOf(CustomAccessibilityAction(removeLabel) { confirming = true; true })
-        },
+        modifier = modifier,
         enableDismissFromStartToEnd = false,
         onDismiss = { confirming = true },
         backgroundContent = {

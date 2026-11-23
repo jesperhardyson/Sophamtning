@@ -63,6 +63,7 @@ import se.hardyson.sophamtning.navigation.AddAddress
 import se.hardyson.sophamtning.navigation.Address
 import se.hardyson.sophamtning.navigation.AppNavigator
 import se.hardyson.sophamtning.navigation.KommunCheck
+import se.hardyson.sophamtning.navigation.Rename
 import se.hardyson.sophamtning.navigation.Settings as SettingsKey
 import se.hardyson.sophamtning.ui.bin.BinRoundView
 import se.hardyson.sophamtning.ui.bin.BubbleTip
@@ -192,11 +193,13 @@ private fun Filled(
         // En ny huvudadress får ett eget svep, så att inget läge följer med från den borttagna.
         key(primary.key) {
             SwipeToRemove(onRemove = { vm.remove(primary.key) }, cornerRadius = 28.dp) {
-                PrimaryCard(primary, onOpen = { navigator.open(Address(primary.key)) }) {
-                    val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
-                    if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
-                    primary.placedOut?.let { line ->
-                        PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { vm.undoPlaceOut(primary) })
+                AddressMenu(menuChoices(ui, primary, vm, navigator)) { onLongPress, actions ->
+                    PrimaryCard(primary, onOpen = { navigator.open(Address(primary.key)) }, onLongPress = onLongPress, actions = actions) {
+                        val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
+                        if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
+                        primary.placedOut?.let { line ->
+                            PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { vm.undoPlaceOut(primary) })
+                        }
                     }
                 }
             }
@@ -207,12 +210,31 @@ private fun Filled(
                 // Varje rad behåller sitt svep och sin bekräftelse när en annan adress tas bort.
                 key(entry.key) {
                     SwipeToRemove(onRemove = { vm.remove(entry.key) }, cornerRadius = 20.dp, modifier = Modifier.padding(bottom = 12.dp)) {
-                        AddressRow(entry, onOpen = { navigator.open(Address(entry.key)) })
+                        AddressMenu(menuChoices(ui, entry, vm, navigator)) { onLongPress, actions ->
+                            AddressRow(entry, onOpen = { navigator.open(Address(entry.key)) }, onLongPress = onLongPress, actions = actions)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/** Snabbmenyns val för en adress på hemskärmen. */
+private fun menuChoices(ui: HomeViewModel.Ui, entry: HomeContent.Entry, vm: HomeViewModel, navigator: AppNavigator): AddressMenuChoices {
+    val state = ui.state
+    val address = state.address(entry.key)
+    return AddressMenuChoices(
+        isPrimary = address?.isPrimary ?: false,
+        remindersAvailable = state.remindersAvailable,
+        remindersOn = address?.let(state::remindersOn) ?: false,
+        liveUpdateOn = state.settings.liveActivityOn,
+        onRename = { navigator.open(Rename(entry.key)) },
+        onMakePrimary = { vm.setPrimary(entry.key) },
+        onNotifications = { on, onDenied -> vm.setNotifications(on, entry.key, onDenied) },
+        onLiveUpdate = vm::setLiveActivity,
+        onRemove = { vm.remove(entry.key) },
+    )
 }
 
 /** Ett meddelande från källan, till exempel att hämtrutterna läggs om. Länken har samma ordval som på sajten. */

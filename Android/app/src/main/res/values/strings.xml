@@ -117,6 +117,10 @@
     <string name="section_reminders">Påminnelser</string>
     <string name="reminder_missed">Påminnelsen har passerat</string>
     <string name="live_update">Live Update</string>
+    <string name="live_update_menu_text">Starten aviseras med ljud.</string>
+    <string name="live_update_turn_on">Slå på Live Update</string>
+    <string name="live_update_turn_off">Stäng av Live Update</string>
+    <string name="home_address_menu">Visar valen</string>
     <string name="remove_title">Ta bort adressen?</string>
     <string name="remove_text">Adressen, det sparade schemat och dess påminnelser tas bort från telefonen.</string>
     <string name="notice_saved_title">Visar senast hämtade schema</string>

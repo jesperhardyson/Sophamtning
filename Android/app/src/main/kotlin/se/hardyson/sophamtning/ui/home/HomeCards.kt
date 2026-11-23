@@ -4,7 +4,7 @@ import androidx.compose.ui.res.stringResource
 import se.hardyson.sophamtning.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +30,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -65,7 +67,14 @@ fun OthersTitle() {
  * och TalkBack läser det som en knapp. [below] är det som står under kortets knapp, till exempel Ställ ut kärlen.
  */
 @Composable
-fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier = Modifier, below: @Composable () -> Unit = {}) {
+fun PrimaryCard(
+    entry: HomeContent.Entry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null,
+    actions: List<CustomAccessibilityAction> = emptyList(),
+    below: @Composable () -> Unit = {},
+) {
     val foreground = ThemeToken.OnPrimary.color
     val reminder = entry.reminder.takeIf { entry.status is HomeContent.Status.Upcoming }
     val spoken = buildList {
@@ -85,8 +94,17 @@ fun PrimaryCard(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier
         Column(
             Modifier
                 .fillMaxWidth()
-                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.home_open_address), onClick = onOpen)
-                .clearAndSetSemantics { contentDescription = spoken },
+                .combinedClickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.home_open_address),
+                    onLongClickLabel = stringResource(R.string.home_address_menu),
+                    onLongClick = onLongPress,
+                    onClick = onOpen,
+                )
+                .clearAndSetSemantics {
+                    contentDescription = spoken
+                    if (actions.isNotEmpty()) customActions = actions
+                },
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             CardHeader(entry, foreground)
@@ -171,7 +189,13 @@ private fun FooterLabel(text: String, icon: ImageVector, foreground: Color) {
  * fraktionernas hela namn.
  */
 @Composable
-fun AddressRow(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun AddressRow(
+    entry: HomeContent.Entry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null,
+    actions: List<CustomAccessibilityAction> = emptyList(),
+) {
     val shape = RoundedCornerShape(20.dp)
     val summaryColor = when (entry.summaryTone) {
         HomeContent.Entry.SummaryTone.Date -> ThemeToken.BrandText.color
@@ -184,8 +208,11 @@ fun AddressRow(entry: HomeContent.Entry, onOpen: () -> Unit, modifier: Modifier 
             .fillMaxWidth()
             .background(ThemeToken.Surface.color, shape)
             .border(1.dp, ThemeToken.Border.color, shape)
-            .clickable(role = Role.Button, onClick = onOpen)
-            .clearAndSetSemantics { contentDescription = spoken }
+            .combinedClickable(role = Role.Button, onLongClickLabel = stringResource(R.string.home_address_menu), onLongClick = onLongPress, onClick = onOpen)
+            .clearAndSetSemantics {
+                contentDescription = spoken
+                if (actions.isNotEmpty()) customActions = actions
+            }
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
