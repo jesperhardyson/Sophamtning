@@ -36,7 +36,8 @@ jobs:
 
   test:
     needs: changes
-    if: needs.changes.outputs.ios == 'true'
+    # Hoppas bara över när changes säger nej. Fallerar changes körs testerna ändå, så att inget mergas otestat.
+    if: ${{ !cancelled() && needs.changes.outputs.ios != 'false' }}
     runs-on: macos-26
     timeout-minutes: 30
     steps:
