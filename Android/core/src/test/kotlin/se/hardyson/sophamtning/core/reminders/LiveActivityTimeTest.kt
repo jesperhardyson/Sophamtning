@@ -43,3 +43,25 @@ class LiveActivityTimeTest {
         assertEquals(StockholmClock.dateOn(day("2026-11-24"), 1260), ReminderTime.liveActivityStart(day("2026-11-25"), s))
     }
 }
+
+/** De två testerna i LiveActivityTimeTests på iOS som gäller texterna. */
+class LiveActivityTimeTextsTest {
+    @Test
+    fun textenVisarHelaTiden() {
+        assertEquals("Visas på låsskärmen kl. 21:00 dagen före till 09:00.", se.hardyson.sophamtning.core.home.AddressDetail.liveActivityText(ReminderSettings(liveActivityMinutes = 1260)))
+        assertEquals("Visas på låsskärmen kl. 15:00 dagen före till 03:00.", se.hardyson.sophamtning.core.home.AddressDetail.liveActivityText(ReminderSettings(liveActivityMinutes = 900)))
+        assertEquals(
+            "Visas på låsskärmen kl. 06:00–18:00 samma dag.",
+            se.hardyson.sophamtning.core.home.AddressDetail.liveActivityText(ReminderSettings(liveActivityTiming = ReminderTiming.SameMorning, liveActivityMinutes = 360)),
+        )
+    }
+
+    /** Android: systemet har ingen gräns som iOS, så det är appen som tar bort Live Updaten. Inget hushåll. */
+    @Test
+    fun tidslistansTextFörAktiviteten() {
+        assertEquals(
+            "Appen visar en Live Update i högst 12 timmar. Den försvinner tidigare när du trycker Klart eller sveper bort den.",
+            ReminderTiming.liveActivityTimesFooter,
+        )
+    }
+}
