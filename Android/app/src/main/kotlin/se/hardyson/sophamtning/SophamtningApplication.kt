@@ -59,6 +59,9 @@ class SophamtningApplication : Application() {
             notificationPermission = permission,
         )
         scheduleBackgroundRefresh()
+        // Systemet tar bort alarmen vid tvångsstopp. Widgetarnas midnatt läggs in igen varje gång processen startar, av
+        // appen, ett alarm eller bakgrundshämtningen. Utan widget görs inget.
+        runCatching { WidgetUpdates.armMidnight(this) }
         // Widgetarna ritas om när det de visar ändras, och förhandsvisningen läggs in i widgetgalleriet.
         WidgetUpdates.observe(model, this, widgetScope)
         WidgetUpdates.publishPreview(this, widgetScope, BuildConfig.VERSION_CODE)

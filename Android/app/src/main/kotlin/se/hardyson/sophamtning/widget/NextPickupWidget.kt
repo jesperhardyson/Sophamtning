@@ -184,13 +184,10 @@ fun PickupView(view: WidgetView) {
  * Texterna krymper hellre än att klippas, som `minimumScaleFactor` på iOS: widgeten kan inte mäta texten, så storleken
  * räknas fram från platsen och systemets textstorlek. Högst ner till [MIN_SCALE].
  */
-private const val MIN_SCALE = 0.6f
+private const val MIN_SCALE = WidgetLayout.MIN_SCALE
 
 /** Ungefärlig bredd per tecken i fet text, i förhållande till textstorleken. Hellre för bred än för smal. */
 private const val CHAR_WIDTH = 0.62f
-
-/** Radhöjden i förhållande till textstorleken. */
-private const val LINE_HEIGHT = 1.3f
 
 @Composable
 private fun fontScale(): Float = LocalContext.current.resources.configuration.fontScale
@@ -202,8 +199,6 @@ private fun fitted(text: String, size: Float, width: Dp, fontScale: Float, scale
     return (size * scale * factor).sp
 }
 
-/** Höjden en rad text tar, i dp. */
-private fun lineHeight(size: Float, fontScale: Float, scale: Float): Float = size * LINE_HEIGHT * fontScale * scale
 
 // MARK: Liten
 
@@ -216,30 +211,24 @@ private fun SmallPickup(view: WidgetView, content: WidgetContent.Pickup) {
     val width = size.width - 24.dp
     val inner = size.height.value - 24
     val shown = firstDay(content.fractions)
-    // Rubrikerna krymper först, så att kärlen alltid syns.
-    val texts = lineHeight(14f, fontScale, 1f) + lineHeight(28f, fontScale, 1f) + lineHeight(16f, fontScale, 1f)
-    val scale = ((inner - ICON_ROW) / texts).coerceIn(MIN_SCALE, 1f)
-    var left = inner - ICON_ROW - texts * scale
-    val placedOutLine = lineHeight(13f, fontScale, scale) + 6
-    val showsPlacedOut = view.placedOut && left >= placedOutLine
-    if (showsPlacedOut) left -= placedOutLine
-    val showsEnding = view.ending != null && left >= lineHeight(12f, fontScale, scale) + 6
+    // Kärlen syns alltid. Rubrikerna krymper, eller tas bort, så att inget klipps.
+    val layout = WidgetLayout.small(size.height.value - 24, fontScale, view.placedOut, view.ending != null)
+    val scale = layout.scale
     Column(
         GlanceModifier.fillMaxSize().semantics { contentDescription = spokenSummary(context, view, content, content.shortDate) },
     ) {
-        Text(content.name, maxLines = 1, style = TextStyle(WidgetTheme.text2, fitted(content.name, 14f, width, fontScale, scale), FontWeight.Bold))
+        if (layout.showsName) Text(content.name, maxLines = 1, style = TextStyle(WidgetTheme.text2, fitted(content.name, 14f, width, fontScale, scale), FontWeight.Bold))
         val relative = capitalized(content.relative)
         Text(relative, maxLines = 1, style = TextStyle(WidgetTheme.text, fitted(relative, 28f, width, fontScale, scale, min = 0.5f), FontWeight.Bold))
-        Text(content.shortDate, maxLines = 1, style = TextStyle(WidgetTheme.brandText, fitted(content.shortDate, 16f, width, fontScale, scale), FontWeight.Bold))
+        if (layout.showsDate) {
+            Text(content.shortDate, maxLines = 1, style = TextStyle(WidgetTheme.brandText, fitted(content.shortDate, 16f, width, fontScale, scale), FontWeight.Bold))
+        }
         Spacer(GlanceModifier.defaultWeight())
         SmallIcons(view, shown, width, fontScale)
-        if (showsPlacedOut) PlacedOutLine(13f, fontScale, scale, GlanceModifier.padding(top = 6.dp))
-        if (showsEnding) view.ending?.let { EndingLine(it.shortText, 12f, width, fontScale, scale, GlanceModifier.padding(top = 6.dp)) }
+        if (layout.showsPlacedOut) PlacedOutLine(13f, fontScale, scale, GlanceModifier.padding(top = 6.dp))
+        if (layout.showsEnding) view.ending?.let { EndingLine(it.shortText, 12f, width, fontScale, scale, GlanceModifier.padding(top = 6.dp)) }
     }
 }
-
-/** Ikonraden i den lilla widgeten, 40 dp hög. */
-private const val ICON_ROW = 46f
 
 @Composable
 private fun SmallIcons(view: WidgetView, shown: List<FractionPickup>, width: Dp, fontScale: Float) {
@@ -286,26 +275,14 @@ private fun MediumPickup(view: WidgetView, content: WidgetContent.Pickup) {
     val context = LocalContext.current
     val size = LocalSize.current
     val fontScale = fontScale()
-    val inner = size.height.value - 24
     val first = content.fractions.firstOrNull()
-    // Brickan och namnet under krymper så att de ryms på höjden.
-    val tile = TILE_HEADER + lineHeight(32f, fontScale, 1f) + lineHeight(12f, fontScale, 1f) + 8 + lineHeight(13f, fontScale, 1f)
-    val scale = (inner / tile).coerceIn(MIN_SCALE, 1f)
+    val sameDay = firstDay(content.fractions)
+    // Brickan, raderna och knappen ryms på höjden. Det som inte ryms blir "+N till" eller tas bort, och klipps aldrig.
+    val layout = WidgetLayout.medium(size.height.value - 24, fontScale, sameDay.size, view.placeOut != null, view.placedOut, view.ending != null)
+    val scale = layout.scale
     val rightWidth = size.width - 24.dp - TILE_WIDTH - 16.dp
     val relative = capitalized(content.relative)
     val relativeSize = fitted(relative, 24f, rightWidth, fontScale, scale, min = 0.5f)
-    // Så många rader som ryms, högst tre. Knappen tar den sista radens plats, och "+N till" står på en rad.
-    val button = if (view.placeOut != null) BUTTON_HEIGHT + 6 else 0f
-    val row = maxOf(28f, lineHeight(15f, fontScale, scale)) + ROW_SPACING
-    val room = inner - lineHeight(24f, fontScale, scale) - 6 - button
-    val most = if (view.placeOut == null) MAX_ROWS else MAX_ROWS - 1
-    val maxRows = (room / row).toInt().coerceIn(1, most)
-    val rows = WidgetContent.mediumRows(content.fractions, maxRows)
-    var left = room - (rows.rows.size + if (rows.hidden > 0) 1 else 0) * row
-    val placedOutLine = lineHeight(13f, fontScale, scale) + 6
-    val showsPlacedOut = view.placedOut && left >= placedOutLine
-    if (showsPlacedOut) left -= placedOutLine
-    val showsEnding = view.ending != null && left >= lineHeight(13f, fontScale, scale) + 6
     val spokenDate = first?.let { SwedishFormat.shortDate(it.date) } ?: ""
     Row(
         GlanceModifier.fillMaxSize().semantics { contentDescription = spokenSummary(context, view, content, spokenDate) },
@@ -325,9 +302,9 @@ private fun MediumPickup(view: WidgetView, content: WidgetContent.Pickup) {
         }
         Column(GlanceModifier.defaultWeight()) {
             Text(relative, maxLines = 1, style = TextStyle(WidgetTheme.text, relativeSize, FontWeight.Bold))
-            for (pickup in rows.rows) {
+            for (pickup in sameDay.take(layout.rows)) {
                 val style = FractionStyle(pickup.fraction, view.info(pickup.fraction))
-                Row(GlanceModifier.padding(top = ROW_SPACING.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(GlanceModifier.padding(top = WidgetLayout.ROW_SPACING.dp), verticalAlignment = Alignment.CenterVertically) {
                     FractionIcon(style, 28.dp)
                     Text(
                         style.name,
@@ -343,29 +320,26 @@ private fun MediumPickup(view: WidgetView, content: WidgetContent.Pickup) {
                 Button(
                     context.getString(R.string.widget_place_out),
                     onClick = actionRunCallback<PlaceOutAction>(PlaceOutAction.parameters(target)),
-                    modifier = GlanceModifier.padding(top = 6.dp).height(BUTTON_HEIGHT.dp).semantics { testTag = WidgetTags.PLACE_OUT },
+                    modifier = GlanceModifier.padding(top = WidgetLayout.BUTTON_SPACING.dp).height(WidgetLayout.BUTTON_HEIGHT.dp).semantics { testTag = WidgetTags.PLACE_OUT },
                     colors = ButtonDefaults.buttonColors(backgroundColor = WidgetTheme.primary, contentColor = WidgetTheme.onPrimary),
                     maxLines = 1,
                 )
             }
-            if (rows.hidden > 0) {
+            if (layout.hidden > 0) {
                 Text(
-                    context.getString(R.string.widget_more, rows.hidden),
+                    context.getString(R.string.widget_more, layout.hidden),
                     maxLines = 1,
                     modifier = GlanceModifier.padding(top = 6.dp),
                     style = TextStyle(WidgetTheme.text2, (13f * scale).sp, FontWeight.Bold),
                 )
             }
-            if (showsPlacedOut) PlacedOutLine(13f, fontScale, scale, GlanceModifier.padding(top = 6.dp))
-            if (showsEnding) view.ending?.let { EndingLine(it.shortText, 13f, rightWidth, fontScale, scale, GlanceModifier.padding(top = 6.dp)) }
+            if (layout.showsPlacedOut) PlacedOutLine(13f, fontScale, scale, GlanceModifier.padding(top = 6.dp))
+            if (layout.showsEnding) view.ending?.let { EndingLine(it.shortText, 13f, rightWidth, fontScale, scale, GlanceModifier.padding(top = 6.dp)) }
         }
     }
 }
 
-private const val MAX_ROWS = 3
-private const val ROW_SPACING = 4f
-private const val BUTTON_HEIGHT = 40f
-private const val TILE_HEADER = 24f
+private const val TILE_HEADER = WidgetLayout.TILE_HEADER
 private val TILE_WIDTH = 78.dp
 
 /** Kalenderbladet i den mellanstora widgeten, utan bläddring: widgeten byter blad vid midnatt. */

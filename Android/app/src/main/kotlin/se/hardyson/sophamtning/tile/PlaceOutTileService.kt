@@ -6,11 +6,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import java.time.Instant
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.plus
 import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.storage.LocalStore
 import se.hardyson.sophamtning.core.widget.PlaceOutTileContent
@@ -23,7 +19,7 @@ import se.hardyson.sophamtning.widget.PlaceOutAction
  * varje gång snabbinställningarna visas, och appen ber om en omritning när Utställt eller schemat ändras.
  */
 class PlaceOutTileService : TileService() {
-    private val scope = MainScope() + CoroutineExceptionHandler { _, error -> Log.w("Sophamtning", "Rutan kunde inte ställa ut kärlen", error) }
+    private var destroyed = false
 
     private fun content(): PlaceOutTileContent {
         val store = LocalStore(SophamtningApplication.storeDirectory(this))
@@ -40,14 +36,17 @@ class PlaceOutTileService : TileService() {
         super.onClick()
         // Bara när kärlen ska ställas ut. Utställt och avstängt gör inget, och bocken ångras i appen.
         val entry = content().entry ?: return
-        scope.launch {
-            PlaceOutAction.placeOut(this@PlaceOutTileService, entry)
-            render()
+        val dependencies = (application as SophamtningApplication).dependencies
+        // Arbetet körs i appens räckvidd och inte rutans: systemet tar bort rutans tjänst när snabbinställningarna stängs,
+        // och då får bocken inte bli sparad medan notiserna ligger kvar. Rutan ritas bara om medan den finns.
+        dependencies.appScope.launch {
+            PlaceOutAction.placeOut(applicationContext, entry)
+            if (!destroyed) render()
         }
     }
 
     override fun onDestroy() {
-        scope.cancel()
+        destroyed = true
         super.onDestroy()
     }
 

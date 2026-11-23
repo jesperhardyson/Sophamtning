@@ -68,7 +68,7 @@ class NextPickupWidgetTest {
         }
 
     @Test
-    fun litenVisarDagOchKarl() = show(WidgetData.read(store()), friday, NextPickupWidget.SMALL) {
+    fun litenVisarDagOchKarl() = show(WidgetData.read(store()), friday, NextPickupWidget.SMALL_LARGE) {
         onNode(hasText("Hemma")).assertExists()
         onNode(hasText("Om 5 dagar")).assertExists()
         onNode(hasText("Ons 11 nov")).assertExists()
@@ -76,6 +76,14 @@ class NextPickupWidgetTest {
         onNode(hasContentDescription("Hemma. Om 5 dagar, Ons 11 nov. Glas, Plastförpackningar. Senare: Matavfall tors 12 nov")).assertExists()
         // Ingen knapp i den lilla, som på iOS.
         onAllNodes(hasTestTag(WidgetTags.PLACE_OUT)).assertCountEquals(0)
+    }
+
+    @Test
+    fun minstaLitenVisarDagenOchKarlenUtanAttKlippa() = show(WidgetData.read(store()), friday, NextPickupWidget.SMALL) {
+        // På minsta storleken tas datumet och namnet bort hellre än att kärlen klipps. TalkBack läser fortfarande allt.
+        onNode(hasText("Om 5 dagar")).assertExists()
+        onAllNodes(hasText("Ons 11 nov")).assertCountEquals(0)
+        onNode(hasContentDescription("Hemma. Om 5 dagar, Ons 11 nov. Glas, Plastförpackningar.")).assertExists()
     }
 
     @Test
@@ -188,6 +196,17 @@ class NextPickupWidgetTest {
         val before = WidgetUpdates.version.value
         application.sendBroadcast(Intent(WidgetUpdates.ACTION_MIDNIGHT).setClass(application, MidnightReceiver::class.java))
         idleUntil { WidgetUpdates.version.value > before && midnightAlarms().isNotEmpty() }
+    }
+
+    @Test
+    fun midnattLaggsInVidStartEfterTvangsstopp() {
+        // En widget ligger på hemskärmen, men appen har tvångsstoppats och systemet har tagit bort alarmet.
+        shadowOf(AppWidgetManager.getInstance(application)).bindAppWidgetId(1, ComponentName(application, NextPickupWidgetReceiver::class.java))
+        application.getSystemService(android.app.AlarmManager::class.java).cancel(WidgetUpdates.midnightIntent(application))
+        assertTrue(midnightAlarms().isEmpty())
+        // Nästa gång processen startar, av appen, ett alarm eller bakgrundshämtningen, läggs midnatten in igen.
+        application.onCreate()
+        assertEquals(listOf(WidgetUpdates.nextMidnight(Instant.now()).toEpochMilli()), midnightAlarms())
     }
 
     private fun midnightAlarms() = alarms.scheduledAlarms

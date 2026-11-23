@@ -11,7 +11,12 @@ import org.robolectric.Robolectric
 import se.hardyson.sophamtning.SophamtningApplication
 import se.hardyson.sophamtning.core.api.ApiDecoding
 import se.hardyson.sophamtning.core.dates.StockholmClock
+import se.hardyson.sophamtning.core.reminders.NotificationAuthorization
+import se.hardyson.sophamtning.core.reminders.NotificationScheduling
+import se.hardyson.sophamtning.core.reminders.PendingNotification
+import se.hardyson.sophamtning.core.reminders.PlannedNotification
 import se.hardyson.sophamtning.core.storage.AddressKey
+import se.hardyson.sophamtning.core.storage.ReminderTiming
 import se.hardyson.sophamtning.core.storage.CachedSchedule
 import se.hardyson.sophamtning.core.storage.PlacedOut
 import se.hardyson.sophamtning.core.storage.SavedAddress
@@ -30,7 +35,7 @@ class PlaceOutTileTest {
     private val pickup = PlacedOut(key, day("2026-11-11"))
 
     /** Huvudadressen med schemat där nästa tömning är onsdag 11 november, och appen med klockan [now]. */
-    private fun install(now: Instant): TestApp {
+    private fun install(now: Instant, reminders: se.hardyson.sophamtning.core.reminders.NotificationScheduling = se.hardyson.sophamtning.ui.AllowedReminders()): TestApp {
         val store = appStore
         store.setAddresses(
             listOf(
@@ -41,7 +46,7 @@ class PlaceOutTileTest {
             ),
         )
         store.setSchedule(CachedSchedule(ApiDecoding.addressResponse(uiTestData("uitest-adress")), fetchedAt = now), key)
-        val app = TestApp(clock = TestClock(now), dir = SophamtningApplication.storeDirectory(application))
+        val app = TestApp(clock = TestClock(now), reminders = reminders, dir = SophamtningApplication.storeDirectory(application))
         application.dependencies = app.dependencies
         return app
     }
@@ -89,5 +94,36 @@ class PlaceOutTileTest {
         service.onClick()
         idleUntil { true }
         assertTrue(appStore.placedOut().isEmpty())
+    }
+
+    @Test
+    fun trycketGorKlartAvenNarRutanStangs() {
+        val reminders = RecordingReminders()
+        val evening = StockholmClock.dateOn(day("2026-11-10"), 19 * 60 + 42)
+        val app = install(evening, reminders)
+        val service = Robolectric.buildService(PlaceOutTileService::class.java).create().get()
+        service.onStartListening()
+        service.onClick()
+        // Snabbinställningarna stängs direkt, och systemet tar bort rutans tjänst.
+        service.onStopListening()
+        // Robolectric kan inte köra `TileService.onDestroy` till slut (skuggan går inte att omvandla), men rutans egen
+        // del körs före systemets.
+        runCatching { service.onDestroy() }
+        idleUntil { pickup in appStore.placedOut() && reminders.cancelled.size == ReminderTiming.entries.size }
+        assertTrue(pickup in app.model.state.value.ownPlacedOut)
+        assertEquals(ReminderTiming.entries.map { PlannedNotification.identifier(key, pickup.date, it) }.toSet(), reminders.cancelled.toSet())
+    }
+
+    /** Notiser som tillåts, och som minns vilka som tagits bort. */
+    private class RecordingReminders : NotificationScheduling {
+        val cancelled = java.util.Collections.synchronizedList(mutableListOf<String>())
+        override suspend fun authorization() = NotificationAuthorization.Authorized
+        override suspend fun requestAuthorization() = true
+        override suspend fun pending() = emptyList<PendingNotification>()
+        override suspend fun schedule(notifications: List<PlannedNotification>) = emptyList<String>()
+        override suspend fun cancel(identifiers: List<String>) {
+            cancelled += identifiers
+        }
+        override suspend fun deliverNow(identifier: String, title: String, body: String) {}
     }
 }
