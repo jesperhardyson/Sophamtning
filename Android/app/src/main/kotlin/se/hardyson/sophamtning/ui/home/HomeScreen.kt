@@ -65,7 +65,10 @@ import se.hardyson.sophamtning.navigation.AppNavigator
 import se.hardyson.sophamtning.navigation.KommunCheck
 import se.hardyson.sophamtning.navigation.Rename
 import se.hardyson.sophamtning.navigation.Settings as SettingsKey
+import se.hardyson.sophamtning.ui.bin.BIN_ASPECT
 import se.hardyson.sophamtning.ui.bin.BinRoundView
+import se.hardyson.sophamtning.ui.bin.scaledBinWidth
+import androidx.compose.ui.unit.DpSize
 import se.hardyson.sophamtning.ui.bin.BubbleTip
 import se.hardyson.sophamtning.ui.components.AppSymbols
 import se.hardyson.sophamtning.ui.components.MessageCard
@@ -96,6 +99,7 @@ fun HomeScreen(navigator: AppNavigator) {
     var refreshing by remember { mutableStateOf(false) }
     // Ett tryck på rubriken räknas som ett tryck på kärlet bredvid.
     var titleTaps by remember { mutableIntStateOf(0) }
+    val titleBinWidth = scaledBinWidth(TITLE_BIN_WIDTH, TITLE_BIN_MAX_WIDTH)
 
     // Hämtningen när appen kommer i förgrunden görs för hela appen, i AppNavigation. Här räknas bara dagen om.
     LifecycleResumeEffect(Unit) {
@@ -123,7 +127,8 @@ fun HomeScreen(navigator: AppNavigator) {
         onBack = null,
         large = filled,
         snackbarHostState = snackbar,
-        largeTitleLeading = { BinRoundView(width = 30.dp, maxWidth = 56.dp, bubbleTip = BubbleTip.Start, tapTrigger = titleTaps) },
+        largeTitleLeading = { BinRoundView(width = TITLE_BIN_WIDTH, maxWidth = TITLE_BIN_MAX_WIDTH, bubbleTip = BubbleTip.Start, tapTrigger = titleTaps) },
+        largeTitleLeadingSize = titleBinWidth.let { DpSize(it, it * BIN_ASPECT) },
         onLargeTitleTap = { titleTaps += 1 },
         actions = {
             // Vid lagringsfel finns inga knappar.
@@ -159,7 +164,11 @@ fun HomeScreen(navigator: AppNavigator) {
                 }
                 when {
                     problem != null -> StorageProblemView(problem, vm::retryStorage, vm::startOver)
-                    primary != null -> Filled(ui, primary, content.others, vm, navigator, placeOut)
+                    primary != null -> Filled(ui, primary, content.others, vm, navigator, placeOut, undo = { entry ->
+                        // Snackbaren med sitt eget Ångra stängs, så att den inte ångrar något som redan är ångrat.
+                        snackbar.currentSnackbarData?.dismiss()
+                        vm.undoPlaceOut(entry)
+                    })
                     else -> StartContent(onSearch = { navigator.open(AddAddress()) }, onKommun = { navigator.open(KommunCheck) })
                 }
                 Text(
@@ -181,6 +190,7 @@ private fun Filled(
     vm: HomeViewModel,
     navigator: AppNavigator,
     placeOut: (HomeContent.Entry) -> Unit,
+    undo: (HomeContent.Entry) -> Unit,
 ) {
     val context = LocalContext.current
     Column(Modifier.padding(top = 8.dp)) {
@@ -198,7 +208,7 @@ private fun Filled(
                         val reminder = primary.reminder.takeIf { primary.status is HomeContent.Status.Upcoming }
                         if (reminder?.showsDeniedNotice == true) DeniedReminderNotice { context.openNotificationSettings() }
                         primary.placedOut?.let { line ->
-                            PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { vm.undoPlaceOut(primary) })
+                            PlacedOutRow(line, onCard = true, onPlaceOut = { placeOut(primary) }, onUndo = { undo(primary) })
                         }
                     }
                 }
@@ -219,6 +229,10 @@ private fun Filled(
         }
     }
 }
+
+/** Det lilla kärlet bredvid rubriken, ungefär lika högt som texten, och som störst med största text. */
+private val TITLE_BIN_WIDTH = 30.dp
+private val TITLE_BIN_MAX_WIDTH = 56.dp
 
 /** Snabbmenyns val för en adress på hemskärmen. */
 private fun menuChoices(ui: HomeViewModel.Ui, entry: HomeContent.Entry, vm: HomeViewModel, navigator: AppNavigator): AddressMenuChoices {

@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LastBaseline
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -54,6 +58,7 @@ fun ScreenScaffold(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     actions: @Composable RowScope.() -> Unit = {},
     largeTitleLeading: (@Composable () -> Unit)? = null,
+    largeTitleLeadingSize: DpSize = DpSize.Zero,
     onLargeTitleTap: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -83,10 +88,27 @@ fun ScreenScaffold(
         topBar = {
             if (large) {
                 // Samma rubrik ritas två gånger: stor under raden med pilen, och liten bredvid pilen när fältet har krympt. Den
-                // lilla är en rad, och den stora högst tre. Fältets höjd växer med textstorleken, så att tre rader ryms.
+                // lilla är en rad, och den stora högst tre. Fältets utfällda höjd följer den stora rubrikens höjd, som på iOS:
+                // ingen tom yta ovanför en rubrik på en rad, och plats för tre rader med största text.
                 val largeStyle = MaterialTheme.typography.headlineMedium
+                val measurer = rememberTextMeasurer()
+                val windowWidth = LocalWindowInfo.current.containerSize.width
                 val expandedHeight = with(LocalDensity.current) {
-                    maxOf(TopAppBarDefaults.LargeAppBarExpandedHeight, COLLAPSED_HEIGHT + (largeStyle.lineHeight * LARGE_TITLE_LINES).toDp() + EXPANDED_BOTTOM_PADDING)
+                    val leadingWidth = if (largeTitleLeading != null) (largeTitleLeadingSize.width + LEADING_SPACING).roundToPx() else 0
+                    val width = (windowWidth - TITLE_HORIZONTAL_SPACE.roundToPx() - leadingWidth).coerceAtLeast(1)
+                    val layout = measurer.measure(
+                        title.ifEmpty { " " },
+                        largeStyle,
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = LARGE_TITLE_LINES,
+                        constraints = Constraints(maxWidth = width),
+                    )
+                    var height = layout.size.height.toFloat()
+                    if (largeTitleLeading != null) {
+                        // Det som står före rubriken står med botten på baslinjen och kan nå högre än texten.
+                        height = maxOf(height, largeTitleLeadingSize.height.toPx() * LEADING_BASELINE + layout.size.height - layout.firstBaseline)
+                    }
+                    COLLAPSED_HEIGHT + height.toDp() + EXPANDED_TITLE_PADDING * 2
                 }
                 LargeTopAppBar(
                     title = {
@@ -104,7 +126,7 @@ fun ScreenScaffold(
                         } else {
                             // Det som står före den stora rubriken, som kärlet på hemskärmen, står med botten på textens
                             // baslinje. Ett tryck på rubriken förblir en rubrik för TalkBack.
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(LEADING_SPACING)) {
                                 Box(Modifier.alignBy { (it.measuredHeight * LEADING_BASELINE).toInt() }) { largeTitleLeading() }
                                 val tap = onLargeTitleTap?.let { onTap -> Modifier.pointerInput(onTap) { detectTapGestures { onTap() } } } ?: Modifier
                                 text(Modifier.alignBy(LastBaseline).then(tap))
@@ -136,5 +158,13 @@ private const val LEADING_BASELINE = (441f + 110f) / 560f
 
 /** Den stora rubriken visar högst så många rader, och kortas sedan med en ellips. */
 private const val LARGE_TITLE_LINES = 3
+
+/** Luften mellan det som står före den stora rubriken och texten. */
+private val LEADING_SPACING = 6.dp
+
+/** Den stora rubrikens marginaler i fältet, 16 dp på var sida, och lite till så att höjden hellre räcker till en rad för mycket. */
+private val TITLE_HORIZONTAL_SPACE = 40.dp
 private val COLLAPSED_HEIGHT = 64.dp
-private val EXPANDED_BOTTOM_PADDING = 28.dp
+
+/** Den stora rubriken står mitt i den utfällda delen av fältet, med så mycket luft ovanför och under, som på iOS. */
+private val EXPANDED_TITLE_PADDING = 8.dp

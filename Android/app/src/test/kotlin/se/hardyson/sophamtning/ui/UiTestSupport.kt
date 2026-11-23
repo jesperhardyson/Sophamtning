@@ -107,10 +107,12 @@ class TestApp(
     val dir: File = Files.createTempDirectory("sophamtning-ui-").toFile().also { it.deleteOnExit() },
     /** Innehållet i `CHANGELOG.md`, eller `null` som i appen innan Android har släppts. */
     val changelog: String? = null,
+    /** Ortlistan för kommunfrågan. */
+    val placeIndex: () -> PlaceIndex? = { PlaceIndex.load() },
 ) {
     val store = LocalStore(dir)
     val model by lazy { AppModel(api, store, reminders, { clock.now }, CoroutineScope(SupervisorJob() + Dispatchers.Main), appVersion = "test") }
-    val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = { PlaceIndex.load() }, changelog = { changelog }) }
+    val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = placeIndex, changelog = { changelog }) }
 }
 
 /** Låter väntetider i ViewModels, som sökningens fördröjning, gå klart. */
@@ -126,13 +128,20 @@ fun shows(text: String, substring: Boolean = false) = hasText(text, substring = 
 fun ComposeTestRule.isShowing(text: String, substring: Boolean = false) =
     onAllNodes(shows(text, substring), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
-/** Väntar tills en nod med texten finns, högst några sekunder. */
+/**
+ * Väntar tills en nod med texten finns. Tiden i testet flyttas 100 ms åt gången, och efter fem sekunder i testets tid får
+ * arbete på andra trådar, som ortlistan, också riktig tid, högst tio sekunder.
+ */
 fun ComposeTestRule.waitForText(text: String, substring: Boolean = false) {
-    for (i in 0 until 50) {
+    val deadline = System.nanoTime() + 10_000_000_000L
+    var steps = 0
+    while (true) {
         if (isShowing(text, substring)) return
+        if (steps >= 50 && System.nanoTime() > deadline) throw AssertionError("Texten \"$text\" visas inte")
         idleFor(100)
+        steps += 1
+        if (steps >= 50) Thread.sleep(20)
     }
-    throw AssertionError("Texten \"$text\" visas inte")
 }
 
 /** Sökträffarna i UITestData, som "Testgatan 1". */

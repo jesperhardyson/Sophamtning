@@ -232,4 +232,19 @@ class HomeScreenTest {
         compose.waitForIdle()
         assertEquals(listOf("Testgatan 1"), app.model.state.value.addresses.map { it.street })
     }
+
+    @Test
+    fun angraPaRadenStangerSnackbaren() {
+        val app = TestApp(clock = TestClock(eveningBefore))
+        start(app, testHit("Testgatan 1"), notificationsOn = true)
+        compose.waitForText("Ställ ut kärlen")
+        compose.onNodeWithText("Ställ ut kärlen").performScrollTo().performClick()
+        // Snackbaren säger att kärlen är utställda, med sitt eget Ångra.
+        compose.waitForText("Kärlen är utställda")
+        assertEquals(2, compose.onAllNodes(hasText("Ångra") and hasClickAction()).fetchSemanticsNodes().size)
+        // Ångra på raden Utställt stänger snackbaren, som annars skulle ångra något som redan är ångrat.
+        compose.onAllNodes(shows("Ångra")).onFirst().performScrollTo().performClick()
+        compose.waitForText("Ställ ut kärlen")
+        assertFalse(compose.isShowing("Kärlen är utställda"))
+    }
 }
