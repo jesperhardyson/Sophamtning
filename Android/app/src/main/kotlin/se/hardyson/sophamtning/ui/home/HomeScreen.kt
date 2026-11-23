@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,6 +63,7 @@ import se.hardyson.sophamtning.navigation.AddAddress
 import se.hardyson.sophamtning.navigation.Address
 import se.hardyson.sophamtning.navigation.AppNavigator
 import se.hardyson.sophamtning.navigation.KommunCheck
+import se.hardyson.sophamtning.navigation.Settings as SettingsKey
 import se.hardyson.sophamtning.ui.bin.BinRoundView
 import se.hardyson.sophamtning.ui.bin.BubbleTip
 import se.hardyson.sophamtning.ui.components.AppSymbols
@@ -123,6 +125,10 @@ fun HomeScreen(navigator: AppNavigator) {
         largeTitleLeading = { BinRoundView(width = 30.dp, maxWidth = 56.dp, bubbleTip = BubbleTip.Start, tapTrigger = titleTaps) },
         onLargeTitleTap = { titleTaps += 1 },
         actions = {
+            // Vid lagringsfel finns inga knappar.
+            if (problem == null) {
+                IconButton(onClick = { navigator.open(SettingsKey) }) { Icon(Icons.Filled.SettingsIcon, contentDescription = stringResource(R.string.settings_title)) }
+            }
             if (filled) {
                 IconButton(onClick = { navigator.open(AddAddress()) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add)) }
             }

@@ -22,6 +22,8 @@ class AppDependencies(
     val placeIndex: () -> PlaceIndex?,
     /** Områdena som visas i områdesvalet, i minnet. Backstacken sparar bara deras id. */
     val heldAreas: HeldAreas = HeldAreas(),
+    /** Innehållet i `CHANGELOG.md` som följer med appen, eller `null` när filen inte finns, som före den första releasen. */
+    val changelog: () -> String? = { null },
 )
 
 /**

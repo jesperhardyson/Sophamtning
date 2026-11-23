@@ -236,7 +236,7 @@ fun SourceCard(source: String, sources: List<Source>?, detail: AddressDetail, mo
 
 /** En länk till källan, med ikon, som en rad i en lista. Telefonnumret står i accentfärg. */
 @Composable
-fun SourceLinkRow(link: SourceLink) {
+fun SourceLinkRow(link: SourceLink, source: String? = null) {
     val context = LocalContext.current
     Row(
         Modifier
@@ -246,7 +246,8 @@ fun SourceLinkRow(link: SourceLink) {
                 val web = link.webLink
                 if (web != null) context.openWebLink(web) else context.openExternal(link.url)
             }
-            .clearAndSetSemantics { contentDescription = link.accessibilityLabel }
+            // Källans namn i beskrivningen där flera källor står i samma lista, så att TalkBack säger vilken länken hör till.
+            .clearAndSetSemantics { contentDescription = source?.let { "${link.accessibilityLabel}, $it" } ?: link.accessibilityLabel }
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

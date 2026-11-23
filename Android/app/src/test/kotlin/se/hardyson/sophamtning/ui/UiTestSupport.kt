@@ -41,6 +41,8 @@ fun uiTestData(name: String): String =
 class FakeSoporApi : SoporApi {
     /** Ett fel som varje hämtning av ett schema ger, till exempel 502. */
     @Volatile var addressError: ApiError? = null
+    /** Lägger till en källa med testdata i källistan, som appen inte ska visa. */
+    @Volatile var sourcesWithTestData = false
     val addressCalls = mutableListOf<String>()
     val searches = mutableListOf<String>()
 
@@ -68,6 +70,7 @@ class FakeSoporApi : SoporApi {
 
     override suspend fun sources(): SourcesResponse {
         val all = ApiDecoding.sourcesResponse(uiTestData("uitest-kallor"))
+        if (sourcesWithTestData) return all.copy(sources = all.sources + all.sources.first().copy(id = "testkalla", name = "Testkällan", testData = true))
         return all.copy(sources = all.sources.filter { !it.testData })
     }
 }
@@ -102,10 +105,12 @@ class TestApp(
     val clock: TestClock = TestClock(recordedNoon),
     val reminders: ReminderScheduling = AllowedReminders(),
     val dir: File = Files.createTempDirectory("sophamtning-ui-").toFile().also { it.deleteOnExit() },
+    /** Innehållet i `CHANGELOG.md`, eller `null` som i appen innan Android har släppts. */
+    val changelog: String? = null,
 ) {
     val store = LocalStore(dir)
     val model by lazy { AppModel(api, store, reminders, { clock.now }, CoroutineScope(SupervisorJob() + Dispatchers.Main), appVersion = "test") }
-    val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = { PlaceIndex.load() }) }
+    val dependencies by lazy { AppDependencies(model, api, { clock.now }, placeIndex = { PlaceIndex.load() }, changelog = { changelog }) }
 }
 
 /** Låter väntetider i ViewModels, som sökningens fördröjning, gå klart. */

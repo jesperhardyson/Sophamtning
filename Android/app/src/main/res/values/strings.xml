@@ -131,6 +131,26 @@
     <string name="notice_storage_text">Det går inte att spara på telefonen just nu, och schemat visas först när det har sparats. Det betyder inte att adressen saknas.</string>
     <string name="source_card_title">Ansvarar för hämtningen</string>
 
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_notifications">Notiser</string>
+    <string name="settings_time">Tid</string>
+    <string name="settings_source_messages">Meddelanden från källan</string>
+    <string name="settings_primary">Huvudadress</string>
+    <string name="settings_about">Om appen</string>
+    <string name="settings_sources">Datakällor</string>
+    <string name="settings_privacy">Integritet</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_unofficial_title">Inofficiell app</string>
+    <string name="settings_unofficial_text">Sophämtning är inte kopplad till någon kommun eller något avfallsbolag. Vid avvikelser gäller alltid kommunens information.</string>
+    <string name="sources_wikidata">Wikidata (CC0)</string>
+    <string name="sources_wikidata_text">Ortlistan för kommunfrågan</string>
+    <string name="sources_loading">Hämtar källor…</string>
+    <string name="sources_failed_title">Kunde inte hämta källistan</string>
+    <string name="sources_failed_text">Försök igen om en stund.</string>
+    <string name="changelog_title">Nyheter</string>
+    <string name="changelog_empty_title">Inga nyheter att visa</string>
+    <string name="changelog_empty_text">Nyheterna följer med nästa version av appen.</string>
+
     <string name="error_tap_to_close">%1$s Tryck för att stänga.</string>
     <string name="message_read_more_at">Läs mer hos %1$s</string>
     <string name="search_partial_text">%1$s svarade inte just nu. Saknas din adress kan du försöka igen om en stund.</string>
@@ -144,6 +164,7 @@
     <string name="kommun_not_yet_text">%1$s finns inte med ännu. Sopor lägger till fler kommuner efter hand.</string>
     <string name="kommun_multiple">%1$s finns i flera kommuner</string>
     <string name="kommun_search_in">Sök adress i %1$s</string>
+    <string name="sources_count">Schemat hämtas från %1$d källor.</string>
 
     <plurals name="search_hits">
         <item quantity="one">%d träff</item>
