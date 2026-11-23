@@ -7,12 +7,14 @@ Körs av jobbet Google Play i release.yml. Se docs/specs/2026-11-08-release.md o
     python3 scripts/play_upload.py upload --aab app-release.aab --track internal --notes-file notes.md \\
         --package se.hardyson.sophamtning
 
-Tjänstkontots JSON-nyckel läses från filen i PLAY_SERVICE_ACCOUNT_PATH. Inga hemliga värden skrivs ut.
+Tjänstkontots JSON-nyckel läses från filen i PLAY_SERVICE_ACCOUNT_PATH. Inga hemliga värden skrivs ut. Med
+--status draft blir versionen ett utkast, som släpps för hand i Play Console.
 """
 
 import argparse
 import os
 import sys
+import time
 
 from release_notes import plain_notes
 
@@ -21,6 +23,7 @@ UPLOAD_API = "https://androidpublisher.googleapis.com/upload/androidpublisher/v3
 SCOPE = "https://www.googleapis.com/auth/androidpublisher"
 LANGUAGE = "sv-SE"
 MAX_LENGTH = 500  # Play Consoles gräns för "Vad är nytt" per språk.
+RETRY_DELAY = 10  # Sekunder före det andra försöket efter ett tillfälligt fel.
 
 
 class PlayError(Exception):
@@ -45,27 +48,57 @@ def play_notes(markdown: str) -> str:
     return "\n".join(kept + ["…"])
 
 
+def _path(url: str) -> str:
+    return url.split("?")[0].replace(API, "").replace(UPLOAD_API, "")
+
+
+def _hint(detail: str) -> str:
+    if "draft app" in detail:
+        return (
+            "\nAppen är fortfarande ett utkast i Play Console. Det första bygget laddas upp och släpps i intern "
+            "testning för hand, se docs/android-google-play.md."
+        )
+    if "changesNotSentForReview" in detail or "cannot be sent for review" in detail:
+        return (
+            "\nPlay Console har ändringar som måste skickas för granskning för hand. Öppna Publiceringsöversikt i "
+            "Play Console, skicka ändringarna för granskning och ladda upp igen med taggen, se "
+            "docs/android-google-play.md."
+        )
+    return ""
+
+
 def call(session, method: str, url: str, **kwargs):
-    """Ett anrop till API:t. Ett fel blir PlayError med metod, sökväg, status och Googles meddelande."""
-    response = session.request(method, url, timeout=300, **kwargs)
+    """Ett anrop till API:t. Ett tillfälligt fel (HTTP 5xx eller nätet) prövas en gång till. Ett fel blir PlayError med
+    metod, sökväg, status och Googles meddelande."""
+    for attempt in (1, 2):
+        try:
+            # requests.RequestException ärver OSError, så nätfel fångas utan att requests behöver laddas här.
+            response = session.request(method, url, timeout=300, **kwargs)
+        except OSError as error:
+            if attempt == 1:
+                print(f"{method} {_path(url)}: nätet svarade inte ({type(error).__name__}), försöker igen")
+                time.sleep(RETRY_DELAY)
+                continue
+            raise PlayError(
+                f"{method} {_path(url)}: nätet svarade inte två gånger: {type(error).__name__}: {error}"
+            ) from None
+        if response.status_code >= 500 and attempt == 1:
+            print(f"{method} {_path(url)}: HTTP {response.status_code}, försöker igen")
+            time.sleep(RETRY_DELAY)
+            continue
+        break
     if response.status_code >= 400:
         try:
             detail = response.json().get("error", {}).get("message") or response.text
         except ValueError:
             detail = response.text
-        path = url.split("?")[0].replace(API, "").replace(UPLOAD_API, "")
-        message = f"{method} {path}: HTTP {response.status_code}: {str(detail)[:500]}"
-        if "draft app" in str(detail):
-            message += (
-                "\nAppen är fortfarande ett utkast i Play Console. Det första bygget laddas upp och släpps i intern "
-                "testning för hand, se docs/android-google-play.md."
-            )
-        raise PlayError(message)
+        detail = str(detail)
+        raise PlayError(f"{method} {_path(url)}: HTTP {response.status_code}: {detail[:500]}" + _hint(detail))
     return response
 
 
-def upload(session, package: str, aab: str, track: str, notes: str) -> int:
-    """Gör hela uppladdningen och ger bundlens versionCode."""
+def upload(session, package: str, aab: str, track: str, notes: str, status: str = "completed") -> int:
+    """Gör hela uppladdningen och ger bundlens versionCode. [status] är completed, eller draft för ett utkast."""
     base = f"{API}/{package}/edits"
     edit = call(session, "POST", base).json()["id"]
     print("Edit skapad")
@@ -84,11 +117,11 @@ def upload(session, package: str, aab: str, track: str, notes: str) -> int:
     version_code = int(bundle["versionCode"])
     print(f"Bundlen uppladdad, versionCode {version_code}")
 
-    release = {"versionCodes": [str(version_code)], "status": "completed"}
+    release = {"versionCodes": [str(version_code)], "status": status}
     if notes:
         release["releaseNotes"] = [{"language": LANGUAGE, "text": notes}]
     call(session, "PUT", f"{base}/{edit}/tracks/{track}", json={"track": track, "releases": [release]})
-    print(f"Spåret {track} satt")
+    print(f"Spåret {track} satt, status {status}")
 
     call(session, "POST", f"{base}/{edit}:commit")
     print(f"Klart: versionCode {version_code} i spåret {track}")
@@ -121,6 +154,8 @@ def main() -> None:
     parser.add_argument("--track", default="internal", help="Spåret, till exempel internal")
     parser.add_argument("--notes-file", required=True, help="Versionens avsnitt ur changelogen, i Markdown")
     parser.add_argument("--package", required=True, help="Paketnamnet, se.hardyson.sophamtning")
+    parser.add_argument("--status", choices=["completed", "draft"], default="completed",
+                        help="completed släpps direkt i spåret, draft blir ett utkast som släpps i Play Console")
     args = parser.parse_args()
 
     with open(args.notes_file, encoding="utf-8") as f:
@@ -129,7 +164,7 @@ def main() -> None:
     from google.auth.exceptions import GoogleAuthError
 
     try:
-        upload(authorized_session(), args.package, args.aab, args.track, notes)
+        upload(authorized_session(), args.package, args.aab, args.track, notes, args.status)
     except PlayError as error:
         raise SystemExit(f"Uppladdningen till Google Play misslyckades: {error}") from None
     except GoogleAuthError as error:

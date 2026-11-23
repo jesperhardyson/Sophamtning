@@ -70,3 +70,8 @@ jobs:
 
       - name: Appens tester, lint och bygge
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+
+      # Release-bygget med R8 och lintVitalRelease, så att fel från krympningen syns i PR:en och inte först i releasen.
+      # Det signeras med debug-nyckeln, och inga secrets finns i jobbet.
+      - name: Release-bygget med R8
+        run: ./gradlew :app:assembleRelease -Psigning=debug --no-configuration-cache

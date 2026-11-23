@@ -151,6 +151,95 @@ class UploadTests(unittest.TestCase):
             upload(DraftSession(), "se.hardyson.sophamtning", self.aab, "internal", "Text")
         self.assertIn("docs/android-google-play.md", str(caught.exception))
 
+    def test_status_draft_ger_ett_utkast(self):
+        session = FakeSession()
+        upload(session, "se.hardyson.sophamtning", self.aab, "internal", "Text", status="draft")
+        self.assertEqual(session.calls[3][2]["json"]["releases"][0]["status"], "draft")
+
+    def test_andringar_som_inte_skickas_for_granskning_ger_en_ledtrad(self):
+        class ReviewSession(FakeSession):
+            def request(self, method, url, **kwargs):
+                if url.endswith(":commit"):
+                    self.calls.append((method, url, kwargs))
+                    return Response(400, {"error": {"message": "Changes cannot be sent for review automatically. "
+                                                               "Please set the query parameter changesNotSentForReview "
+                                                               "to true."}})
+                return super().request(method, url, **kwargs)
+
+        with self.assertRaises(PlayError) as caught:
+            upload(ReviewSession(), "se.hardyson.sophamtning", self.aab, "internal", "Text")
+        message = str(caught.exception)
+        self.assertIn("Publiceringsöversikt", message)
+        self.assertIn("docs/android-google-play.md", message)
+
+
+class RetryTests(unittest.TestCase):
+    """Ett tillfälligt fel (5xx eller nätet) prövas en gång till, med varje anrop för sig."""
+
+    def setUp(self):
+        handle, self.aab = tempfile.mkstemp(suffix=".aab")
+        os.write(handle, b"AAB")
+        os.close(handle)
+        patcher = mock.patch.object(play_upload, "RETRY_DELAY", 0)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def tearDown(self):
+        os.remove(self.aab)
+
+    def flaky(self, part, failures, error):
+        """Ett fejkat API där anrop med [part] i adressen fallerar [failures] gånger med [error]."""
+        outer = self
+
+        class Flaky(FakeSession):
+            left = failures
+
+            def request(self, method, url, **kwargs):
+                if part in url and self.left > 0:
+                    self.left -= 1
+                    self.calls.append((method, url, kwargs))
+                    if isinstance(error, Exception):
+                        raise error
+                    return Response(error, {"error": {"message": "Backend Error"}})
+                return super().request(method, url, **kwargs)
+
+        return Flaky()
+
+    def test_5xx_provas_en_gang_till(self):
+        session = self.flaky("/tracks/", 1, 503)
+        self.assertEqual(upload(session, "se.hardyson.sophamtning", self.aab, "internal", "Text"), 4201)
+        self.assertEqual(sum("/tracks/" in url for _, url, _ in session.calls), 2)
+
+    def test_natfel_provas_en_gang_till_ocksa_for_bundlen(self):
+        session = self.flaky("session-1", 1, ConnectionError("Connection reset by peer"))
+        self.assertEqual(upload(session, "se.hardyson.sophamtning", self.aab, "internal", "Text"), 4201)
+        puts = [kwargs for method, url, kwargs in session.calls if url == "https://upload.example/session-1"]
+        self.assertEqual([put["data"] for put in puts], [b"AAB", b"AAB"])
+
+    def test_5xx_tva_ganger_stoppar_med_tydligt_meddelande(self):
+        session = self.flaky(":commit", 2, 500)
+        with self.assertRaises(PlayError) as caught:
+            upload(session, "se.hardyson.sophamtning", self.aab, "internal", "Text")
+        self.assertIn("HTTP 500", str(caught.exception))
+        self.assertEqual(sum(url.endswith(":commit") for _, url, _ in session.calls), 2)
+
+    def test_natfel_tva_ganger_blir_playerror_utan_traceback(self):
+        session = self.flaky("/edits", 2, ConnectionError("Name or service not known"))
+        with self.assertRaises(PlayError) as caught:
+            upload(session, "se.hardyson.sophamtning", self.aab, "internal", "Text")
+        message = str(caught.exception)
+        self.assertIn("POST", message)
+        self.assertIn("nätet", message)
+        self.assertIn("Name or service not known", message)
+
+    def test_4xx_provas_inte_igen(self):
+        session = FakeSession(fail="/tracks/")
+        with self.assertRaises(PlayError):
+            upload(session, "se.hardyson.sophamtning", self.aab, "internal", "Text")
+        self.assertEqual(sum("/tracks/" in url for _, url, _ in session.calls), 1)
+
+
+class ServiceAccountTests(unittest.TestCase):
     def test_tjanstkontot_saknas_stoppar_tydligt(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(PlayError) as caught:
