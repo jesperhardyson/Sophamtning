@@ -30,7 +30,7 @@ data class SourceLink(
         /** Källans kontaktsida, i appens webbvy. */
         ContactPage,
 
-        /** Adressens schema i en kalender (`webcal://`). */
+        /** Adressens schema i Google Kalender, som prenumeration på `webcal://`-adressen. */
         Calendar,
     }
 
@@ -60,6 +60,9 @@ data class SourceLink(
         }
 
     companion object {
+        /** Raden i adressvyns eget kort Kalender, med länken från [CalendarLink]. */
+        fun calendar(url: String) = SourceLink(Kind.Calendar, CalendarLink.TITLE, url)
+
         /** Webbplats, kommunens information och kontakten, i den ordningen. [kommunInfo] saknas på Datakällor. */
         fun links(source: Source?, kommunInfo: String?): List<SourceLink> {
             val links = mutableListOf<SourceLink>()

@@ -672,7 +672,7 @@ class HomeContentTest {
         val ending = endingSchedule("2026-11-20")
         val content = HomeContent.make(listOf(primary, other), mapOf(primary.key to ending, other.key to ending), ReminderSettings(), now)
         assertNotNull(content.primary?.scheduleEnding)
-        assertEquals(true, content.primary?.accessibilityLabel?.contains("Schemat slutar"))
+        assertTrue(assertNotNull(content.primary).accessibilityLabel.contains("Schemat slutar"))
         assertNull(content.others[0].scheduleEnding)
         assertFalse(content.others[0].accessibilityLabel.contains("Schemat slutar"))
     }
