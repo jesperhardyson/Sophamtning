@@ -4,7 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Versionen skrivs av Release Please i Android/version.txt. versionCode sätts i releasejobbet.
+// Versionen skrivs av Release Please i Android/version.txt. versionCode sätts i releasejobbet, och ett testbygge får
+// sin version med -PversionName, så att ingen fil i repot ändras.
 val appVersion = rootProject.file("version.txt").readText().trim()
 
 // Uppladdningsnyckeln för Google Play läses från miljövariabler och finns aldrig i repot. SOPHAMTNING_UPLOAD_KEYSTORE är
@@ -34,7 +35,7 @@ android {
         minSdk = 31
         targetSdk = 37
         versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = appVersion
+        versionName = (findProperty("versionName") as String?) ?: appVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

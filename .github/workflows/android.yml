@@ -30,7 +30,7 @@ jobs:
           files=$(git diff --name-only "$BASE" HEAD)
           echo "$files"
           shared='iOS/Packages/SophamtningKit/Tests/SophamtningKitTests/Fixtures/|iOS/Sophamtning/UITestData/|iOS/Packages/SophamtningKit/Sources/SophamtningKit/Kommun/Resources/|iOS/Packages/SophamtningKit/Sources/SophamtningDesign/Resources/Fonts/'
-          if echo "$files" | grep -qE "^(Android/|scripts/|\.github/workflows/android\.yml$|release-please-config\.json$|\.release-please-manifest\.json$|$shared)"; then
+          if echo "$files" | grep -qE "^(Android/|scripts/|\.github/workflows/(android|release)\.yml$|release-please-config\.json$|\.release-please-manifest\.json$|$shared)"; then
             echo "android=true" >> "$GITHUB_OUTPUT"
           else
             echo "android=false" >> "$GITHUB_OUTPUT"

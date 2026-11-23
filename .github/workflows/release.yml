@@ -1,15 +1,38 @@
 name: Release
 
-# Release Please håller en release-PR med nästa version. När den mergas skapas taggen och en GitHub Release, och
-# TestFlight-jobbet väntar på Jespers godkännande i miljön testflight. Startas workflowen för hand utan tagg blir det ett
-# testbygge från den valda grenen. Se docs/specs/2026-11-08-release.md.
+# Release Please håller en release-PR per app med nästa version. När den mergas skapas appens tagg och en GitHub Release.
+# En iOS-release startar jobbet TestFlight, som väntar på Jespers godkännande i miljön testflight, och en Android-release
+# startar jobbet Google Play, som väntar i miljön googleplay. Startas workflowen för hand rörs bara den valda appen: med
+# en tagg görs uppladdningen om, och utan tagg blir det ett testbygge från den valda grenen.
+# Se docs/specs/2026-11-08-release.md och docs/android-google-play.md.
+#
+# Vilket jobb som körs:
+#
+# | Händelse                                  | TestFlight | Google Play |
+# |-------------------------------------------|------------|-------------|
+# | push till main utan release               | nej        | nej         |
+# | push, release-PR för ios mergad           | ja         | nej         |
+# | push, release-PR för android mergad       | nej        | ja          |
+# | push, båda mergade i samma push           | ja         | ja          |
+# | för hand, app ios, med tagg ios-v…        | ja (igen)  | nej         |
+# | för hand, app ios, utan tagg              | testbygge  | nej         |
+# | för hand, app android, med tagg android-v…| nej        | ja (igen)   |
+# | för hand, app android, utan tagg          | nej        | testbygge   |
+#
+# En tagg som inte hör till den valda appen stoppar jobbet i steget Version.
 on:
   push:
     branches: [main]
   workflow_dispatch:
     inputs:
+      app:
+        description: "Appen som byggs. Bara den rörs."
+        type: choice
+        options: [ios, android]
+        required: true
+        default: ios
       tag:
-        description: "Befintlig tagg att ladda upp igen, till exempel ios-v1.4.0 eller v1.3.1. Lämna tomt för ett testbygge från grenen ovan."
+        description: "Befintlig tagg att ladda upp igen, till exempel ios-v1.4.0, v1.3.1 eller android-v1.0.0. Lämna tomt för ett testbygge från grenen ovan."
         required: false
         default: ""
 
@@ -28,8 +51,10 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      release_created: ${{ steps.release.outputs['iOS--release_created'] }}
-      tag_name: ${{ steps.release.outputs['iOS--tag_name'] }}
+      ios_release_created: ${{ steps.release.outputs['iOS--release_created'] }}
+      ios_tag_name: ${{ steps.release.outputs['iOS--tag_name'] }}
+      android_release_created: ${{ steps.release.outputs['Android--release_created'] }}
+      android_tag_name: ${{ steps.release.outputs['Android--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
@@ -39,11 +64,12 @@ jobs:
 
   testflight:
     needs: release-please
-    # Körs bara när en release skapades, eller för hand: med en befintlig tagg, eller utan tagg för ett testbygge.
+    # Körs bara när en iOS-release skapades, eller för hand med appen ios: med en befintlig tagg, eller utan tagg för ett
+    # testbygge.
     if: >-
       !cancelled() && (
-        (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
-        github.event_name == 'workflow_dispatch'
+        (github.event_name == 'push' && needs.release-please.outputs.ios_release_created == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.app == 'ios')
       )
     runs-on: macos-26
     timeout-minutes: 75
@@ -51,7 +77,7 @@ jobs:
     permissions:
       contents: read
     env:
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.ios_tag_name }}
       TEST_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.tag == '' }}
     steps:
       # Testbygget tar grenens commit. Hela historiken och taggarna behövs för texten i TestFlight.
@@ -85,6 +111,10 @@ jobs:
             IFS=. read -r major minor patch < iOS/version.txt
             version="$major.$minor.$((patch + 1))"
           else
+            case "$TAG" in
+              ios-v*|v*) ;;
+              *) echo "::error::Taggen $TAG hör inte till iOS. Välj appen android för en android-v-tagg."; exit 1 ;;
+            esac
             version="${TAG#ios-}"
             version="${version#v}"
           fi
@@ -197,5 +227,142 @@ jobs:
         with:
           name: Sophamtning-${{ env.APP_VERSION }}-${{ env.BUILD_NUMBER }}
           path: ${{ runner.temp }}/Sophamtning.xcarchive
+          if-no-files-found: ignore
+          retention-days: 30
+
+  googleplay:
+    needs: release-please
+    # Körs bara när en Android-release skapades, eller för hand med appen android: med en befintlig tagg, eller utan tagg
+    # för ett testbygge.
+    if: >-
+      !cancelled() && (
+        (github.event_name == 'push' && needs.release-please.outputs.android_release_created == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.app == 'android')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: googleplay
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.android_tag_name }}
+      TEST_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.tag == '' }}
+    steps:
+      # Testbygget tar grenens commit. Hela historiken och taggarna behövs för "Vad är nytt".
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Cachen bara läses här, så att inget från ett jobb med nyckeln sparas till andra körningar.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+
+      # versionCode räknas som byggnumret på iOS, i samma workflow. Den ökar alltid, också när en körning görs om, och
+      # ett testbygge och en release får aldrig samma nummer. En release har taggens version, från android-vX.Y.Z. Ett
+      # testbygge får nästa patchversion efter Android/version.txt, som bara sätts i bygget.
+      - name: Version
+        run: |
+          if [ "$TEST_BUILD" = "true" ]; then
+            IFS=. read -r major minor patch < Android/version.txt
+            version="$major.$minor.$((patch + 1))"
+          else
+            case "$TAG" in
+              android-v*) ;;
+              *) echo "::error::Taggen $TAG hör inte till Android. Välj appen ios för en ios-v-tagg."; exit 1 ;;
+            esac
+            version="${TAG#android-v}"
+          fi
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$(( ${{ github.run_number }} * 100 + ${{ github.run_attempt }} ))" >> "$GITHUB_ENV"
+
+      # Fallerar testerna laddas inget upp. De körs innan nyckeln finns på runnern.
+      - name: Tester
+        working-directory: Android
+        run: ./gradlew :core:test :app:testDebugUnitTest
+
+      # Nyckeln och tjänstkontot läses från env och skrivs till filer som tas bort i ett av de sista stegen. De skrivs
+      # aldrig ut. Båda secrets är base64-kodade filer.
+      - name: Uppladdningsnyckel och tjänstkonto
+        env:
+          SOPHAMTNING_UPLOAD_KEYSTORE: ${{ secrets.SOPHAMTNING_UPLOAD_KEYSTORE }}
+          SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD }}
+          SOPHAMTNING_UPLOAD_KEY_ALIAS: ${{ secrets.SOPHAMTNING_UPLOAD_KEY_ALIAS }}
+          SOPHAMTNING_UPLOAD_KEY_PASSWORD: ${{ secrets.SOPHAMTNING_UPLOAD_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=""
+          for name in SOPHAMTNING_UPLOAD_KEYSTORE SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD SOPHAMTNING_UPLOAD_KEY_ALIAS \
+            SOPHAMTNING_UPLOAD_KEY_PASSWORD PLAY_SERVICE_ACCOUNT_JSON; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::De här secrets saknas i miljön googleplay:$missing. Se docs/android-google-play.md."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$SOPHAMTNING_UPLOAD_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" | base64 --decode > "$RUNNER_TEMP/play.json"
+
+      # Utan konfigurationscache, så att lösenorden inte sparas i Gradles cache på runnern.
+      - name: Bygg AAB
+        working-directory: Android
+        env:
+          SOPHAMTNING_UPLOAD_KEYSTORE: ${{ runner.temp }}/upload.jks
+          SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD }}
+          SOPHAMTNING_UPLOAD_KEY_ALIAS: ${{ secrets.SOPHAMTNING_UPLOAD_KEY_ALIAS }}
+          SOPHAMTNING_UPLOAD_KEY_PASSWORD: ${{ secrets.SOPHAMTNING_UPLOAD_KEY_PASSWORD }}
+        run: |
+          echo "Version $APP_VERSION, versionCode $VERSION_CODE, testbygge $TEST_BUILD"
+          ./gradlew --no-configuration-cache :app:bundleRelease \
+            -PversionCode="$VERSION_CODE" -PversionName="$APP_VERSION"
+
+      # Versionens avsnitt ur changelogen blir "Vad är nytt". Ett testbygge får grenen, commiten och commit-rubrikerna
+      # för Android sedan senaste android-v-taggen. play_upload.py gör texten ren och kortar den till 500 tecken.
+      - name: Vad är nytt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$TEST_BUILD" = "true" ]; then
+            last_tag="$(git describe --tags --abbrev=0 --match 'android-v*' 2>/dev/null || true)"
+            {
+              echo "Testbygge från $GITHUB_REF_NAME ($(git rev-parse --short HEAD))"
+              echo
+              git log --no-merges --format='* %s' ${last_tag:+"$last_tag..HEAD"} -- Android scripts | sed -E 's/ \(#[0-9]+\)$//'
+            } > "$RUNNER_TEMP/notes.md"
+          else
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"
+          fi
+
+      - name: Ladda upp till Google Play
+        env:
+          PLAY_SERVICE_ACCOUNT_PATH: ${{ runner.temp }}/play.json
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "google-auth==2.63.1" "requests==2.34.2"
+          "$RUNNER_TEMP/venv/bin/python" scripts/play_upload.py upload \
+            --aab Android/app/build/outputs/bundle/release/app-release.aab \
+            --track internal --notes-file "$RUNNER_TEMP/notes.md" --package se.hardyson.sophamtning
+
+      - name: Ta bort nyckeln och tjänstkontot
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/play.json"
+
+      # AAB:n och mapping-filen sparas för att kunna läsa kraschrapporter, också när uppladdningen fallerar.
+      - name: Spara AAB och mapping
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Sophamtning-Android-${{ env.APP_VERSION }}-${{ env.VERSION_CODE }}
+          path: |
+            Android/app/build/outputs/bundle/release/app-release.aab
+            Android/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: ignore
           retention-days: 30
