@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bara fönstret före Compose. Färgerna i appen kommer från SophamtningTheme. -->
+    <style name="Theme.Sophamtning" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+    </style>
+    <color name="bg">#E8F2EA</color>
+    <color name="icon_background">#E8F2EA</color>
+</resources>

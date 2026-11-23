@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "Sophamtning"
 
 include(":core")
+include(":app")
