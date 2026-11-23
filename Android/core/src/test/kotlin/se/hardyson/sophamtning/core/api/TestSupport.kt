@@ -14,7 +14,7 @@ fun fixture(name: String): String =
     requireNotNull(Stub::class.java.getResource("/$name.json")) { "Fixturen $name saknas" }.readText()
 
 /** Stubbat API: svarar med [status] och [body], eller kastar [error]. Sparar varje anrop. */
-class Stub(var status: Int = 200, var body: String = "", var error: IOException? = null) {
+class Stub(var status: Int = 200, var body: String = "", var error: Exception? = null) {
     val requests = mutableListOf<HttpRequestData>()
 
     val engine = MockEngine { request ->

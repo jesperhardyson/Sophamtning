@@ -84,6 +84,30 @@ class SoporClientTest {
     }
 
     @Test
+    fun tidsgransBlirNetwork() = runTest {
+        val error = assertFailsWith<ApiError> {
+            Stub(error = io.ktor.client.plugins.HttpRequestTimeoutException("https://x", 15_000)).client().sources()
+        }
+        assertEquals(ApiError.Network, error)
+    }
+
+    @Test
+    fun andraFelINatlagretBlirNetwork() = runTest {
+        // Till exempel en omdirigering i cirkel, som Ktor kastar som IllegalStateException.
+        val error = assertFailsWith<ApiError> { Stub(error = IllegalStateException("för många omdirigeringar")).client().sources() }
+        assertEquals(ApiError.Network, error)
+    }
+
+    @Test
+    fun heltalSomDecimaltalGarAttLasa() = runTest {
+        val body = fixture("adress-avvikelse").replace("\"sizeLiters\": 140", "\"sizeLiters\": 140.0")
+        check("140.0" in body) { "Fixturen ändrades inte" }
+        assertEquals(140, Stub(body = body).client().address(TEST_URL).bins[0].sizeLiters)
+        val half = fixture("adress-avvikelse").replace("\"sizeLiters\": 140", "\"sizeLiters\": 140.5")
+        assertEquals(ApiError.Unexpected(200), assertFailsWith<ApiError> { Stub(body = half).client().address(TEST_URL) })
+    }
+
+    @Test
     fun ogiltigtSvarBlirUnexpected() = runTest {
         val error = assertFailsWith<ApiError> { Stub(body = "inte json").client().address(TEST_URL) }
         assertEquals(ApiError.Unexpected(200), error)

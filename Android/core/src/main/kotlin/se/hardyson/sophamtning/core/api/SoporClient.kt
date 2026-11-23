@@ -67,6 +67,9 @@ class SoporClient(engine: HttpClientEngine, version: String) : SoporApi {
             throw e
         } catch (_: IOException) {
             throw ApiError.Network
+        } catch (_: Exception) {
+            // Andra fel i nätlagret, till exempel en omdirigering i cirkel, räknas också som nätfel.
+            throw ApiError.Network
         }
         val status = response.status.value
         when (status) {

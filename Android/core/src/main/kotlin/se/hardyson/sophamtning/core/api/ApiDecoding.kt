@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import se.hardyson.sophamtning.core.dates.DayDate
 
@@ -206,7 +207,13 @@ object ApiDecoding {
 
     private fun string(e: JsonElement) = (e as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail("Väntade text")
     private fun bool(e: JsonElement) = (e as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: fail("Väntade sant eller falskt")
-    private fun int(e: JsonElement) = (e as? JsonPrimitive)?.takeIf { !it.isString }?.intOrNull ?: fail("Väntade ett heltal")
+    /** Som `Int` i JSONDecoder: ett decimaltal utan decimaler (140.0) godtas, men inte 140.5. */
+    private fun int(e: JsonElement): Int {
+        val number = (e as? JsonPrimitive)?.takeIf { !it.isString } ?: fail("Väntade ett heltal")
+        number.intOrNull?.let { return it }
+        val value = number.doubleOrNull ?: fail("Väntade ett heltal")
+        return value.toInt().takeIf { it.toDouble() == value } ?: fail("Väntade ett heltal")
+    }
     private fun day(e: JsonElement) = DayDate.parse(string(e)) ?: fail("Ogiltigt datum")
 
     private fun JsonObject.string(key: String) = string(req(key))
