@@ -4,8 +4,24 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Versionen skrivs av Release Please i Android/version.txt. versionCode sätts i releasejobbet.
+// Versionen skrivs av Release Please i Android/version.txt. versionCode sätts i releasejobbet, och ett testbygge får
+// sin version med -PversionName, så att ingen fil i repot ändras.
 val appVersion = rootProject.file("version.txt").readText().trim()
+
+// Uppladdningsnyckeln för Google Play läses från miljövariabler och finns aldrig i repot. SOPHAMTNING_UPLOAD_KEYSTORE är
+// sökvägen till nyckelfilen. I releasejobbet skrivs filen från en secret och tas bort efteråt. Se docs/android-google-play.md.
+val uploadKeyVariables = listOf(
+    "SOPHAMTNING_UPLOAD_KEYSTORE",
+    "SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD",
+    "SOPHAMTNING_UPLOAD_KEY_ALIAS",
+    "SOPHAMTNING_UPLOAD_KEY_PASSWORD",
+)
+val uploadKey = uploadKeyVariables.associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
+val hasUploadKey = uploadKey.values.all { it != null }
+
+// Med -Psigning=debug signeras release-bygget med debug-nyckeln, bara för att prova R8-bygget i emulatorn. Ett sådant
+// bygge går inte att ladda upp till Play.
+val signWithDebugKey = providers.gradleProperty("signing").orNull == "debug"
 
 android {
     namespace = "se.hardyson.sophamtning"
@@ -19,8 +35,33 @@ android {
         minSdk = 31
         targetSdk = 37
         versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = appVersion
+        versionName = (findProperty("versionName") as String?) ?: appVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasUploadKey) {
+                storeFile = file(uploadKey.getValue("SOPHAMTNING_UPLOAD_KEYSTORE")!!)
+                storePassword = uploadKey.getValue("SOPHAMTNING_UPLOAD_KEYSTORE_PASSWORD")
+                keyAlias = uploadKey.getValue("SOPHAMTNING_UPLOAD_KEY_ALIAS")
+                keyPassword = uploadKey.getValue("SOPHAMTNING_UPLOAD_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Utan nyckel blir signeringen tom, och checkReleaseSigning stoppar bygget innan något paketeras.
+            signingConfig = when {
+                signWithDebugKey -> signingConfigs.getByName("debug")
+                hasUploadKey -> signingConfigs.getByName("release")
+                else -> null
+            }
+        }
     }
 
     buildFeatures {
@@ -86,6 +127,51 @@ abstract class CopyChangelog : DefaultTask() {
 
 val copyChangelog = tasks.register<CopyChangelog>("copyChangelog") {
     changelog.from(rootProject.file("CHANGELOG.md"))
+}
+
+// Stoppar release-bygget med ett tydligt fel när uppladdningsnyckeln saknas, så att ett osignerat bygge aldrig når Play.
+// Lösenorden är inte indata till uppgiften, bara vilka variabler som saknas och sökvägen till nyckelfilen.
+abstract class CheckReleaseSigning : DefaultTask() {
+    @get:Input
+    abstract val debugSigning: Property<Boolean>
+
+    @get:Input
+    abstract val missing: ListProperty<String>
+
+    @get:Input
+    @get:Optional
+    abstract val keystore: Property<String>
+
+    @TaskAction
+    fun check() {
+        if (debugSigning.get()) {
+            logger.warn("Release-bygget signeras med debug-nyckeln (-Psigning=debug). Det går bara att prova i en emulator.")
+            return
+        }
+        val missing = missing.get()
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Release-bygget behöver uppladdningsnyckeln, och de här miljövariablerna saknas: " +
+                    missing.joinToString() + ". Se docs/android-google-play.md. För att bara prova bygget i en emulator, " +
+                    "signera med debug-nyckeln: -Psigning=debug",
+            )
+        }
+        val file = File(keystore.get())
+        if (!file.isFile) throw GradleException("Nyckelfilen i SOPHAMTNING_UPLOAD_KEYSTORE finns inte: ${file.path}")
+    }
+}
+
+val checkReleaseSigning = tasks.register<CheckReleaseSigning>("checkReleaseSigning") {
+    debugSigning.set(signWithDebugKey)
+    missing.set(uploadKey.filterValues { it == null }.keys.toList())
+    keystore.set(uploadKey.getValue("SOPHAMTNING_UPLOAD_KEYSTORE")?.let { file(it).path })
+    // Körs alltid, eftersom miljön kan ha ändrats sedan förra bygget.
+    outputs.upToDateWhen { false }
+}
+
+// Både AAB:n och APK:n kontrolleras innan de paketeras.
+tasks.matching { it.name == "packageReleaseBundle" || it.name == "packageRelease" }.configureEach {
+    dependsOn(checkReleaseSigning)
 }
 
 androidComponents {

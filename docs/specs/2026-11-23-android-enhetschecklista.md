@@ -32,6 +32,22 @@ Provat med en separat kopia av appen (`se.hardyson.sophamtning.prov`), så att d
 
 Inte provat här: den mellanstora widgeten i sin lägsta storlek (240 × 100 dp), eftersom en widget på 4×2 i den här emulatorn är cirka 220 dp hög. Den storleken prövas i `WidgetLayoutTest`. Inte heller rutan efter tryck, eller widgeten när klockan går över midnatt.
 
+## 2026-11-23, plan 7, release-bygget efter R8, samma emulator
+
+Release-bygget (`assembleRelease -Psigning=debug`, med R8 och borttagna resurser) installerades som en separat kopia (`se.hardyson.sophamtning.prov`, via ett init-skript som inte committas), så att data i den riktiga appen inte rördes. Kopian avinstallerades efteråt. R8 krävde inga `-dontwarn`-regler.
+
+| Fall | Resultat |
+|---|---|
+| Sök adress ("Storgatan", "Kungsgatan") | Träffar, områden och felraden "Alla källor svarade inte" visas. Avkodningen fungerar. |
+| Spara en adress, med Påminn mig | Sparas och visas på hemskärmen med påminnelsen. Frågan om notiser kommer först efter Påminn mig. |
+| Adressvyn | Nästa tömning, Kommande, Per kärl, Påminnelser, Kalender och ansvarig visas. |
+| Ställ ut kärlen, Utställt och Ångra | Utställt med "av dig · kl. 15:58", Ångra tar bort det, och hemskärmen visar "Kärlen är utställda". |
+| Appen dödas i bakgrunden (`am kill`) och öppnas igen | Adressvyn återställs. Navigationens nycklar avkodas efter R8. |
+| Inställningarna | Notiser, Live Update, Huvudadress, Datakällor (53), Version och Nyheter öppnas. |
+| Widgeten, liten och mellan | Visas med huvudadressen. Knappen Ställ ut kärlen i den mellanstora widgeten ger "Utställda" (Glance skapar `PlaceOutAction` efter R8). |
+
+Inte provat här: rutan i snabbinställningarna, Live Update och påminnelser som kommer, eftersom de inte påverkas av R8 på annat sätt än det som provats ovan.
+
 ## Kvar att pröva på en riktig telefon
 
 - En påminnelse som kommer av sig själv, utan flyttad klocka, med telefonen låst och i viloläge (Doze).

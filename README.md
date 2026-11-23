@@ -35,6 +35,10 @@ cd iOS/Packages/SophamtningKit && swift test
 xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
+## Releaser
+
+Releaser görs med Release Please och GitHub Actions, en per app. iOS-appen laddas upp till TestFlight och Android-appen till intern testning i Google Play, efter godkännande. Se [`docs/specs/2026-11-08-release.md`](docs/specs/2026-11-08-release.md) och [`docs/android-google-play.md`](docs/android-google-play.md).
+
 ## Bidra
 
 Läs [`CONTRIBUTING.md`](CONTRIBUTING.md). Saknas din kommun, eller är schemat fel, görs det i [sopor](https://github.com/jesperhardyson/sopor), eftersom datan finns där. Säkerhetsbrister rapporteras enligt [`SECURITY.md`](SECURITY.md).
