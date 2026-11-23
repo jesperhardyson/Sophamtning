@@ -153,7 +153,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
       # Versionens avsnitt ur changelogen blir "Vad ska testas" i TestFlight. Ett testbygge får grenen, commiten och
-      # commit-rubrikerna sedan senaste taggen. Steget väntar tills Apple har bearbetat bygget. Misslyckas det är
+      # commit-rubrikerna för iOS sedan senaste taggen. Steget väntar tills Apple har bearbetat bygget. Misslyckas det är
       # uppladdningen ändå klar, och texten kan läggas in för hand.
       - name: Vad ska testas och Nyheter
         continue-on-error: true
@@ -168,7 +168,7 @@ jobs:
             {
               echo "Testbygge från $GITHUB_REF_NAME ($(git rev-parse --short HEAD))"
               echo
-              git log --no-merges --format='* %s' ${last_tag:+"$last_tag..HEAD"} | sed -E 's/ \(#[0-9]+\)$//'
+              git log --no-merges --format='* %s' ${last_tag:+"$last_tag..HEAD"} -- iOS scripts | sed -E 's/ \(#[0-9]+\)$//'
             } > "$RUNNER_TEMP/notes.md"
           else
             gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/notes.md"

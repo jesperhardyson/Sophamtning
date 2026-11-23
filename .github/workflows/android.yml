@@ -1,0 +1,68 @@
+name: Android
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Avgör om Android har ändrats, som i ios.yml. Filtret ligger inte i on:, så att den obligatoriska kontrollen android
+  # aldrig blir hängande: ett jobb som hoppas över med if räknas som godkänt. Fixturerna, ortlistan och typsnitten
+  # ligger under iOS/ men läses också av Android.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      android: ${{ steps.diff.outputs.android }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Ändrade filer
+        id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          files=$(git diff --name-only "$BASE" HEAD)
+          echo "$files"
+          shared='iOS/Packages/SophamtningKit/Tests/SophamtningKitTests/Fixtures/|iOS/Sophamtning/UITestData/|iOS/Packages/SophamtningKit/Sources/SophamtningKit/Kommun/Resources/|iOS/Packages/SophamtningKit/Sources/SophamtningDesign/Resources/Fonts/'
+          if echo "$files" | grep -qE "^(Android/|\.github/workflows/android\.yml$|release-please-config\.json$|\.release-please-manifest\.json$|$shared)"; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "android=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  android:
+    needs: changes
+    # Hoppas bara över när changes säger nej. Fallerar changes körs testerna ändå, så att inget mergas otestat.
+    if: ${{ !cancelled() && needs.changes.outputs.android != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: Android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Kärnans tester
+        run: ./gradlew :core:test
+
+      # Datumen får inte bero på telefonens tidszon.
+      - name: Kärnans tester i annan tidszon
+        run: TZ=America/New_York ./gradlew :core:test --rerun
+
+      - name: Appens tester, lint och bygge
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug

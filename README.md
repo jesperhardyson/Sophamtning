@@ -6,7 +6,7 @@ Sophämtning är **inofficiell** och inte kopplad till någon kommun eller någo
 
 ## Läge
 
-Projektet är i planeringsfasen. iOS byggs först och Android senare. Ingen app är publicerad än.
+iOS-appen byggdes först, och Android-appen byggs nu.
 
 ## Så hänger det ihop
 
@@ -15,7 +15,7 @@ Apparna bygger på det öppna [Sopor API v1](https://sopor.hardyson.se/api/v1/do
 | Katalog | Innehåll |
 |---|---|
 | `iOS/` | iOS-appen i Swift och SwiftUI |
-| `Android/` | Android-appen, senare |
+| `Android/` | Android-appen i Kotlin och Jetpack Compose, under arbete |
 | `docs/specs/` | Specifikationer |
 | `docs/plans/` | Implementationsplaner |
 | `docs/design/` | Design i Pencil |
