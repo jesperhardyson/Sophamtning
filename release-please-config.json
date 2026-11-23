@@ -20,6 +20,9 @@
       "extra-files": [
         { "type": "generic", "path": "Config/Version.xcconfig" }
       ]
+    },
+    "Android": {
+      "component": "android"
     }
   }
 }
