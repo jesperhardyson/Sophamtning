@@ -114,6 +114,8 @@ enum UITestSupport {
     /// `-uitest-hushall-synkar-inte` ger läget "Synkar inte just nu" strax efter starten, och `-uitest-hushall-vantar` ger min
     /// bock för testgatans nästa tömning som ännu inte har skickats, med klockan. `-uitest-hushall-tomt` ger en synk
     /// utan hushåll. `-uitest-hushall-ny-deltagare` låter Sofie gå med strax efter starten.
+    ///
+    /// `-uitest-hushall-lank <url>` öppnar en inbjudan strax efter starten.
     private static func has(_ argument: String) -> Bool { ProcessInfo.processInfo.arguments.contains(argument) }
 
     private static var withHousehold: Bool { has("-uitest-hushall") }
@@ -166,6 +168,18 @@ enum UITestSupport {
             }
         }
         return sync
+    }
+
+    /// Länken i `-uitest-hushall-lank`, som om den hade öppnats från ett meddelande.
+    @MainActor
+    static func openHouseholdLink() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard isActive, let index = arguments.firstIndex(of: "-uitest-hushall-lank"), arguments.indices.contains(index + 1),
+              let url = URL(string: arguments[index + 1]) else { return }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            HouseholdLinkAcceptance.shared.receive(url)
+        }
     }
 
     /// En lagring i en egen katalog, där inget delas med riktig data. Varje testkörning börjar från noll, utom med

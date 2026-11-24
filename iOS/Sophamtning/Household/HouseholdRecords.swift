@@ -13,6 +13,9 @@ enum HouseholdRecords {
     static let addressType = "HushallAdress"
     static let markType = "Utstallt"
     static let participantType = "HushallDeltagare"
+    /// Länken till brevlådan, som ägaren skriver när hushållet har flyttats dit.
+    static let migrationType = "HushallFlytt"
+    static let migrationName = "flytt"
     /// Rubriken som systemets delningsark visar för inbjudan.
     static let shareTitle = "Hushåll"
 
@@ -30,6 +33,7 @@ enum HouseholdRecords {
         static let by = "by"
         static let at = "at"
         static let name = "name"
+        static let link = "link"
     }
 
     /// Början av postnamnet för en deltagares namn. Resten är deltagarens användar-id.
@@ -130,6 +134,20 @@ enum HouseholdRecords {
             copy[key] = record[key]
         }
         return copy
+    }
+
+    // MARK: Flytten till brevlådan
+
+    static func migrationRecord(link: URL, at: Date) -> CKRecord {
+        let record = CKRecord(recordType: migrationType, recordID: CKRecord.ID(recordName: migrationName, zoneID: privateZoneID))
+        record[Field.link] = link.absoluteString as NSString
+        record[Field.at] = at as NSDate
+        return record
+    }
+
+    static func migrationLink(from record: CKRecord) -> URL? {
+        guard record.recordType == migrationType else { return nil }
+        return (record[Field.link] as? String).flatMap(URL.init(string:))
     }
 
     // MARK: Deltagare

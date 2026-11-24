@@ -62,8 +62,7 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
 
     /// Om telefonen hör till ett hushåll i brevlådan. Sant också när nycklarna inte går att läsa just nu men kopian finns.
     public var hasHousehold: Bool {
-        loadIfNeeded()
-        return inner.withLock { $0.credentials != nil || ($0.credentialsUnreadable && $0.cache != nil) }
+        inner.withLock { $0.credentials != nil || ($0.credentialsUnreadable && $0.cache != nil) }
     }
 
     public var managesMembers: Bool { true }
@@ -199,8 +198,7 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     }
 
     public func isCurrent(_ link: HouseholdInviteLink) -> Bool {
-        loadIfNeeded()
-        return inner.withLock { $0.credentials?.householdId ?? $0.cache?.householdId } == link.householdId
+        inner.withLock { $0.credentials?.householdId ?? $0.cache?.householdId } == link.householdId
     }
 
     // MARK: Flytten från iCloud

@@ -13,13 +13,15 @@ final class HouseholdShareAcceptance {
     private var awaitingAnswer: CKShare.Metadata?
 
     private var sync: CloudKitHouseholdSync?
+    private var routing: RoutingHouseholdSync?
     private var model: AppModel?
     /// En inbjudan som kom innan appen hade startat klart, till exempel när appen öppnades av länken.
     private var early: CKShare.Metadata?
     private let logger = Logger(subsystem: "se.hardyson.sophamtning", category: "Hushall")
 
-    func configure(sync: CloudKitHouseholdSync, model: AppModel) {
+    func configure(sync: CloudKitHouseholdSync, routing: RoutingHouseholdSync, model: AppModel) {
         self.sync = sync
+        self.routing = routing
         self.model = model
         if let early {
             self.early = nil
@@ -81,6 +83,8 @@ final class HouseholdShareAcceptance {
             model?.expectHouseholdWelcome(ownerName: HouseholdRecords.ownerName(of: metadata.share))
             do {
                 try await sync.accept(metadata)
+                // Ett hushåll hos någon med en gammal version ligger kvar i iCloud, och då gäller iCloud igen.
+                routing?.legacyInvitationAccepted()
             } catch {
                 model?.cancelHouseholdWelcome()
                 logger.error("Kunde inte gå med i hushållet: \(error.localizedDescription, privacy: .public)")
@@ -116,6 +120,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    /// Telefonens adress för tyst push från brevlådan. Den skickas dit när jag är med i ett hushåll.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        #if DEBUG
+        let environment = "sandbox"
+        #else
+        let environment = "production"
+        #endif
+        Task { await HouseholdServices.shared?.routing.registerDevice(token: token, environment: environment) }
+    }
+
+    /// Tyst push, från brevlådan eller iCloud: hushållets ändringar hämtas.
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        await HouseholdServices.shared?.model?.fetchHouseholdChanges()
+        return .newData
+    }
+
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         configuration.delegateClass = HouseholdSceneDelegate.self
@@ -123,11 +144,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-/// Inbjudningar kommer till scenen: när appen redan körs, och i `connectionOptions` när länken startade appen.
+/// Inbjudningar kommer till scenen, både via iCloud och som länkar till brevlådan: när appen redan körs, och i
+/// `connectionOptions` när länken startade appen.
 final class HouseholdSceneDelegate: NSObject, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        for activity in connectionOptions.userActivities { open(activity) }
         guard let metadata = connectionOptions.cloudKitShareMetadata else { return }
         Task { @MainActor in HouseholdShareAcceptance.shared.receive(metadata) }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        open(userActivity)
+    }
+
+    /// En länk till ett hushåll i brevlådan. Andra aktiviteter rörs inte.
+    private func open(_ activity: NSUserActivity) {
+        guard activity.activityType == NSUserActivityTypeBrowsingWeb, let url = activity.webpageURL else { return }
+        Task { @MainActor in HouseholdLinkAcceptance.shared.receive(url) }
     }
 
     func windowScene(_ windowScene: UIWindowScene, userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {

@@ -622,3 +622,7 @@ private func member(_ server: FakeRelayServer, of owner: RelayPhone, name: Strin
     let a = HouseholdCredentials(householdId: "a", householdKey: Data([1]), participantId: "p", participantSecret: "hemlig")
     #expect(!"\(a) \(String(reflecting: a))".contains("hemlig"))
 }
+
+@Test func vantetidenVaxerTillTrettioSekunder() {
+    #expect([0, 1, 2, 3, 4, 5, 6, 7, 1000].map(RelayBackoff.delay) == [1, 1, 2, 4, 8, 16, 30, 30, 30].map { .seconds($0) })
+}

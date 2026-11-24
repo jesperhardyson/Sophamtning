@@ -11,6 +11,8 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
     private struct Inner {
         var relayState: HouseholdState?
         var legacyState: HouseholdState?
+        /// Den som gällde senast. Vyerna läser den, så den räknas inte om varje gång.
+        var source: Source?
         var lastEmitted: HouseholdState?
         var continuations: [UUID: AsyncStream<HouseholdState>.Continuation] = [:]
         var tasks: [Task<Void, Never>] = []
@@ -60,6 +62,12 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
     // MARK: Valet
 
     private var source: Source {
+        let current = currentSource
+        inner.withLock { $0.source = current }
+        return current
+    }
+
+    private var currentSource: Source {
         guard legacy != nil else { return .relay }
         // Går filen inte att läsa vet appen inte var flytten är. Brevlådan gäller om den har ett hushåll.
         let progress = migration.current ?? HouseholdMigration()
@@ -126,7 +134,7 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
 
     // MARK: HouseholdMembership
 
-    public var managesMembers: Bool { source == .relay }
+    public var managesMembers: Bool { (inner.withLock { $0.source } ?? source) == .relay }
 
     private func requireRelay() throws -> RelayHouseholdSync {
         guard source == .relay else { throw HouseholdMembershipError.unsupported }
