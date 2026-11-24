@@ -1,6 +1,6 @@
 # Hushåll mellan iOS och Android
 
-Status: godkänd av Jesper 2026-11-23 för att skriva planen. Utökad 2026-11-24 med Android-appen och push via FCM, som Jesper valde samma dag. Ändringarna från 2026-11-24 väntar på hans godkännande.
+Status: godkänd av Jesper 2026-11-23 för att skriva planen. Utökad 2026-11-24 med Android-appen och push via FCM, som Jesper valde samma dag. Ändringarna godkändes av Jesper 2026-11-24.
 
 Bygger på `docs/specs/2026-11-09-hushall.md`. Allt där gäller fortfarande, utom det som den här specen ändrar. Där de säger olika gäller den här.
 
@@ -363,4 +363,4 @@ Tillagda 2026-11-24, med Android:
 
 ## Godkännande
 
-Jesper godkände specen 2026-11-23. Ändringarna från 2026-11-24 godkänns innan bygget börjar.
+Jesper godkände specen 2026-11-23. Ändringarna från 2026-11-24 godkände han samma dag.

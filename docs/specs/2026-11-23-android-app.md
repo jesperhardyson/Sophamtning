@@ -1,6 +1,6 @@
 # Sophämtning för Android
 
-Status: godkänd av Jesper 2026-11-23. Ändrad 2026-11-24: hushåll och FCM beskrivs i `2026-11-23-hushall-mellan-plattformar.md`, och regeln om beroenden har fått ett undantag. Ändringen väntar på Jespers godkännande.
+Status: godkänd av Jesper 2026-11-23. Ändrad 2026-11-24: hushåll och FCM beskrivs i `2026-11-23-hushall-mellan-plattformar.md`, och regeln om beroenden har fått ett undantag. Ändringen godkändes av Jesper 2026-11-24.
 
 ## Varför
 
