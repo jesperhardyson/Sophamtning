@@ -1,0 +1,51 @@
+{
+  "householdId": "oKGio6SlpqeoqaqrrK2urw",
+  "householdKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "records": [
+    {
+      "title": "adress med alla fält",
+      "kind": "address",
+      "logical": "01154b399a82288aa0c12bdc6814ecd86359c9da67f267d9c70647390f747a6f",
+      "name": "A60qp5ja8T8bVcPDh79YucUJBsgCQpzD2qgOR5-I79I",
+      "plaintext": "{\"address\":{\"key\":{\"source\":\"avesta-vatten\",\"id\":\"Övre Ågatan 3|12\"},\"url\":\"https:\\/\\/sopor.hardyson.se\\/api\\/v1\\/adresser\\/avesta-vatten\\/%C3%96vre%20%C3%85gatan%203%7C12\",\"street\":\"Övre Ågatan 3\",\"locality\":\"Avesta\",\"kommun\":\"Avesta\",\"detail\":\"Lägenhet\",\"selection\":\"address\",\"displayName\":\"Hemma\",\"isPrimary\":true,\"notificationsOn\":true,\"addedAt\":785000000.25}}",
+      "nonce": "AQEBAQEBAQEBAQEB",
+      "data": "AQEBAQEBAQEBAQEBxKyoVvfl_9Q3lYy4bBAynlOJYHO4qjO7Uk1bdPKa7_6VIi4mqoWZepHmIcRbdZJLAWpI_YYPCfBqiYIT6NMObwnCsjiPPN1VWm2X4TubVORtW5EwpKfXo95o9q9f10EJlmstr_hlfAxCS7QkId1KeLLL6oEdfPBkU3Gkw9K5XD61BFoSVRB4RqHVeDT6mYKh59lDeJPmXiOPvvU0mNNGk9VzfimAWd6VDDdip3KZxRgHrq1s9_hwVzC74DQwNvIadKFUNoStASOdtznQa329YbSmVQH-zVPgZn9yKhIxenLLS7WnR4xIt19jBHv4olNPMUjfOSIvlTMdPSJ0vDWuGGrsvagR4tFyO7RYyB46n9Hm8rAprU2xAAK_6r47bcSs7fRhC6iU3WLdF9JNZkhGHFNY4cDHkhmF172st7I_Vw92UlExii0Tpkd8LdFBYVN3oarHXyOV2-qaK_otZnibD9W9cEXtGHakaXrUFI7aQ5mkrzxe0q2i2JI9BZsvMg52kw"
+    },
+    {
+      "title": "adress utan detail och med okända fält",
+      "kind": "address",
+      "logical": "f23d0a5e0423ce8f5792c9ca17c269b3ebf448b9fe010ea0a37201d3f2b6db6f",
+      "name": "Ez0sII_VGeWraVsEWWqfOwtI_4LghKph9Ra-s5QAS3o",
+      "plaintext": "{\"address\":{\"addedAt\":785000000,\"displayName\":\"Stugan\",\"framtida\":1,\"id\":\"x\",\"isPrimary\":false,\"key\":{\"id\":\"77\",\"source\":\"vafab\"},\"kommun\":\"Sala\",\"locality\":\"\",\"notificationsOn\":false,\"selection\":\"area\",\"street\":\"Stugbyn\",\"url\":\"https:\\/\\/sopor.hardyson.se\\/api\\/v1\\/adresser\\/vafab\\/77\"},\"framtida\":{\"a\":[1]}}",
+      "nonce": "AgICAgICAgICAgIC",
+      "data": "AgICAgICAgICAgICZWyCQ-FSvP_UTQntyHkB-poZG0xcSWK_-VnnnvWXACYvGA0cXXQgZ6c6DWZCmawZ_LvYPq3M17JBOO2o4LZ36iEOUqH0DD4aaHBREsEjLfifMx0zVQcCTdM_vLGjKUIq0WJeRO2D-VWvipm13VOlYfJpDrt6GUcgkJGSEU65fhYUcdeELVLFMR-lNUUItazugOFaXspCdqLbW1VATVQNPbsJpdmwEmLbZJK9LGrl05zPGuqOU4ME3yN9CMEd6PqSMqLqNc1VH-4LyKRquYio9ILc8bmlmFYf-mB4-sbjLlMXWc1AdQvqggMh6wGcXtRbh6BCjpbG75YJTuLNkOuLFWIzfPlkce5NN-NmaqjcW_Wt_wTA67NZtDD1riWpZomdMFU0XB7i-KirDqc0PFdi-c1IwWdM9lsa69fM5lD9olzEXa0fM5o"
+    },
+    {
+      "title": "bock",
+      "kind": "mark",
+      "logical": "01154b399a82288aa0c12bdc6814ecd86359c9da67f267d9c70647390f747a6f-2026-11-27",
+      "name": "rRfmTFnYo_MDxuhuux2CmgNY6YTcosAC8e7QpUYs__o",
+      "plaintext": "{\"source\":\"avesta-vatten\",\"id\":\"Övre Ågatan 3|12\",\"date\":\"2026-11-27\"}",
+      "nonce": "AwMDAwMDAwMDAwMD",
+      "data": "AwMDAwMDAwMDAwMDi92dDrMe9m6tVrPe00_j1_9-SAhK6-pUW7qBxbyW6wCTpUm-a3CrMDlkm8gWsiFxgwbZBMX5IJbSCoqREqnodE82Yc9t5AXGpln3l4n6_rmU6m8gmMR4jg"
+    },
+    {
+      "title": "flyttad bock",
+      "kind": "mark",
+      "logical": "f23d0a5e0423ce8f5792c9ca17c269b3ebf448b9fe010ea0a37201d3f2b6db6f-2026-11-30",
+      "name": "6br9-S4PIZjEQ9wJd-6J6jLr_pdXDjmCfXBUefMIo1A",
+      "plaintext": "{\"source\":\"vafab\",\"id\":\"77\",\"date\":\"2026-11-30\",\"legacy\":{\"by\":\"_0123456789abcdef\",\"at\":\"2026-11-23T18:42:07Z\"}}",
+      "nonce": "BAQEBAQEBAQEBAQE",
+      "data": "BAQEBAQEBAQEBAQEvFZBEuJr66HALMun6hPEkC0gq-KvpOe50uIAfNL6fl5nWMUT8FbltvdtJxyWtNDLK7vEvtkdkoMi5IXLzNDrF4oDLfO2u6uF9nw1RQXYrqLDnMwn4erOifcTu3iXbYeUuSfxqR0whRgveSRQXyUAPCbN7i1JJXq3HWKPtVgTLAg"
+    }
+  ],
+  "names": [
+    {
+      "title": "namn med legacyIds",
+      "participantId": "EBESExQVFhcYGRobHB0eHw",
+      "plaintext": "{\"name\":\"Åsa\",\"legacyIds\":[\"_0123456789abcdef\"]}",
+      "nonce": "BQUFBQUFBQUFBQUF",
+      "data": "BQUFBQUFBQUFBQUF5LmQPCGaVKJ3IdQ2DXjAMg_0GpIJPDZhrK0rIdaBhx4QbJD-PxdXgCeGofvTeD0yHNrB7vN0Vhj7dpmzv-6Y8sg"
+    }
+  ]
+}
