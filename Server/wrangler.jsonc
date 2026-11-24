@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Brevlådan för hushåll. Se docs/specs/2026-11-23-hushall-mellan-plattformar.md.
+  "name": "sophamtning-hushall",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "hushall.sopor.hardyson.se", "custom_domain": true }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "HOUSEHOLD", "class_name": "Household" },
+      { "name": "LIMITER", "class_name": "CreationLimiter" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Household", "CreationLimiter"] }],
+  // Flytten från iCloud slås på med "on". Se Flytten från CloudKit i specen.
+  "vars": { "MIGRATION": "off" }
+}
