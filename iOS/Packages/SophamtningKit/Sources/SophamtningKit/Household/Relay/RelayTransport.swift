@@ -61,12 +61,25 @@ extension HouseholdCredentials: CustomStringConvertible, CustomDebugStringConver
 public protocol HouseholdCredentialStore: Sendable {
     func load() throws -> HouseholdCredentials?
     func save(_ credentials: HouseholdCredentials) throws
+    /// Sparar bara på den här telefonen, och rör inte det som synkas till mina andra enheter.
+    func saveLocally(_ credentials: HouseholdCredentials) throws
     func delete() throws
+    /// Tar bort nycklarna, men inte om de nu hör till ett annat hushåll eller en annan deltagare.
+    func delete(_ credentials: HouseholdCredentials) throws
+}
+
+extension HouseholdCredentialStore {
+    public func saveLocally(_ credentials: HouseholdCredentials) throws { try save(credentials) }
+
+    public func delete(_ credentials: HouseholdCredentials) throws {
+        if try load() == credentials { try delete() }
+    }
 }
 
 /// Nycklarna i iCloud-nyckelringen och en kopia på den här telefonen.
 ///
-/// Försvinner de synkade, för att jag har lämnat på en annan telefon eller stängt av iCloud-nyckelringen, används kopian.
+/// Kopian på telefonen går först i samma hushåll. Annars skulle en annan av mina enheter, som hunnit gå med som en egen
+/// deltagare innan nycklarna kom, kunna göra ägaren till medlem. Försvinner de synkade, för att jag har lämnat på en annan telefon eller stängt av iCloud-nyckelringen, används kopian.
 /// Då är det serverns svar som avgör om jag fortfarande är med, aldrig att en post saknas.
 public final class LayeredCredentialStore: HouseholdCredentialStore {
     private let synced: any HouseholdCredentialStore
@@ -81,17 +94,30 @@ public final class LayeredCredentialStore: HouseholdCredentialStore {
         let mine = try local.load()
         // Går den synkade inte att läsa gäller kopian. Finns ingen kopia vet appen inte, och felet går vidare.
         guard let shared = mine == nil ? try synced.load() : try? synced.load() else { return mine }
-        if shared != mine { try? local.save(shared) }
+        if let mine, mine.householdId == shared.householdId { return mine }
+        // Ett annat hushåll: jag har bytt på en annan av mina enheter.
+        try? local.save(shared)
         return shared
     }
 
+    /// Den synkade kopian är bästa försök, eftersom iCloud-nyckelringen kan vara avstängd.
     public func save(_ credentials: HouseholdCredentials) throws {
         try local.save(credentials)
-        try synced.save(credentials)
+        if let existing = try? synced.load(), existing.householdId == credentials.householdId { return }
+        try? synced.save(credentials)
+    }
+
+    public func saveLocally(_ credentials: HouseholdCredentials) throws {
+        try local.save(credentials)
     }
 
     public func delete() throws {
-        try synced.delete()
         try local.delete()
+        try? synced.delete()
+    }
+
+    public func delete(_ credentials: HouseholdCredentials) throws {
+        try local.delete()
+        try? synced.delete(credentials)
     }
 }

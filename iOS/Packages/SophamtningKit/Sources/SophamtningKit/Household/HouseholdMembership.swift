@@ -23,7 +23,8 @@ public protocol HouseholdMembership: AnyObject, Sendable {
     func invite() async throws -> URL
     /// Gör alla inbjudningar ogiltiga.
     func revokeInvites() async throws
-    func join(_ link: HouseholdInviteLink, myName: String?) async throws
+    /// - Parameter replacing: lämnar hushållet jag är med i, men först när inbjudan har godtagits. Går något fel är jag kvar.
+    func join(_ link: HouseholdInviteLink, myName: String?, replacing: Bool) async throws
     func remove(participantId: String) async throws
     func end() async throws
     /// Telefonens push-token, som skickas till hushållet när det finns ett.
@@ -32,4 +33,10 @@ public protocol HouseholdMembership: AnyObject, Sendable {
     func isCurrent(_ link: HouseholdInviteLink) -> Bool
     /// Om medlemmarna hanteras med det här gränssnittet. Falskt för ett hushåll som ligger kvar i iCloud.
     var managesMembers: Bool { get }
+}
+
+extension HouseholdMembership {
+    public func join(_ link: HouseholdInviteLink, myName: String?) async throws {
+        try await join(link, myName: myName, replacing: false)
+    }
 }

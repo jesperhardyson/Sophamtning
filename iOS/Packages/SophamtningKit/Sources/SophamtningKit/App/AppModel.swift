@@ -86,6 +86,8 @@ public final class AppModel {
     public internal(set) var pendingInvite: HouseholdInviteLink?
     /// Deltagare som jag själv just har tagit bort, så att jag inte får en rad om att de inte längre är med.
     @ObservationIgnored var removedByMe: Set<String> = []
+    /// Namnet som senast skickades av sig självt i den här körningen. Ett namn som nekas skickas inte om och om igen.
+    @ObservationIgnored var resentName: String?
     @ObservationIgnored let householdSync: any HouseholdSync
     /// Vilka som är med i hushållet. `nil` när synken inte hanterar det.
     @ObservationIgnored let membership: (any HouseholdMembership)?

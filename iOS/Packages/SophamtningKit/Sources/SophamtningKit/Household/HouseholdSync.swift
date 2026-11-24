@@ -144,7 +144,7 @@ public final class InMemoryHouseholdSync: HouseholdSync, HouseholdMembership {
 
     public func revokeInvites() async throws {}
 
-    public func join(_ link: HouseholdInviteLink, myName: String?) async throws {
+    public func join(_ link: HouseholdInviteLink, myName: String?, replacing: Bool) async throws {
         inner.withLock { $0.householdId = link.householdId }
         update { state in
             let owner = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: true)

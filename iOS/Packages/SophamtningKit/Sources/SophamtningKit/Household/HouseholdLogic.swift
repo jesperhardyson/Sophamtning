@@ -23,7 +23,20 @@ public enum HouseholdLogic {
     /// hämtar hushållet på nytt, är ingen ny. Jag själv är aldrig ny, och inte heller den som bara har flyttats från iCloud.
     public static func newParticipants(_ participants: [HouseholdParticipant], known: Set<String>?, myId: String?) -> [HouseholdParticipant] {
         guard let known else { return [] }
-        return participants.filter { $0.id != myId && !isKnown($0, known: known) }
+        return participants.filter { $0.id != myId && !isKnown($0, known: known) && isPresented($0) }
+    }
+
+    /// I brevlådan kommer namnet strax efter att någon har gått med. Till dess räknas personen inte som ny, så att ingen
+    /// rad säger "Någon" och den som bara har flyttats från iCloud hinner visa det.
+    private static func isPresented(_ participant: HouseholdParticipant) -> Bool {
+        !isRelayId(participant.id) || participant.name != HouseholdTexts.unknownName || !participant.legacyIds.isEmpty
+    }
+
+    /// Mitt namn så som det sparas: utan mellanslag runt om, och så kort att det ryms hos brevlådan.
+    public static func validName(_ name: String) -> String {
+        var result = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        while let encoded = try? JSONEncoder().encode(result), encoded.count > 200 { result.removeLast() }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Om deltagaren är känd, med sitt id eller med det som personen hade i iCloud.
@@ -45,7 +58,8 @@ public enum HouseholdLogic {
     public static func knownAfter(_ participants: [HouseholdParticipant], known: Set<String>?, myId: String?) -> Set<String> {
         let current = Set(participants.map(\.id))
         guard let known, let myId, isRelayId(myId) else { return current }
-        return current.union(known.filter { !isRelayId($0) })
+        let presented = participants.filter { isPresented($0) || known.contains($0.id) || $0.id == myId }.map(\.id)
+        return Set(presented).union(known.filter { !isRelayId($0) })
     }
 
     /// Deltagarens id i brevlådan är 16 byte som base64url. I iCloud ser id:t annorlunda ut.

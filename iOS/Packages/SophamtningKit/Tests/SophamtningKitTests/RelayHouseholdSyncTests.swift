@@ -626,3 +626,195 @@ private func member(_ server: FakeRelayServer, of owner: RelayPhone, name: Strin
 @Test func vantetidenVaxerTillTrettioSekunder() {
     #expect([0, 1, 2, 3, 4, 5, 6, 7, 1000].map(RelayBackoff.delay) == [1, 1, 2, 4, 8, 16, 30, 30, 30].map { .seconds($0) })
 }
+
+// MARK: Nycklarna på flera enheter
+
+/// En telefon med en egen kopia av nycklarna och en iCloud-nyckelring som delas med andra.
+private func layered(_ synced: InMemoryCredentialStore, _ local: InMemoryCredentialStore = InMemoryCredentialStore()) -> LayeredCredentialStore {
+    LayeredCredentialStore(synced: synced, local: local)
+}
+
+@Test func annanDeltagareISammaHushallBytsInteIn() throws {
+    let mine = HouseholdCredentials(householdId: "h", householdKey: Data([1]), participantId: "agare", participantSecret: "s")
+    let other = HouseholdCredentials(householdId: "h", householdKey: Data([1]), participantId: "medlem", participantSecret: "t")
+    let synced = InMemoryCredentialStore(), local = InMemoryCredentialStore()
+    let store = layered(synced, local)
+    try store.save(mine)
+    // En annan av mina enheter gick med som en ny deltagare, och dess nycklar vann i iCloud-nyckelringen.
+    try synced.save(other)
+    #expect(try store.load() == mine)
+    #expect(try local.load() == mine)
+}
+
+@Test func synkadeNycklarSkrivsInteOverISammaHushall() throws {
+    let mine = HouseholdCredentials(householdId: "h", householdKey: Data([1]), participantId: "agare", participantSecret: "s")
+    let other = HouseholdCredentials(householdId: "h", householdKey: Data([1]), participantId: "medlem", participantSecret: "t")
+    let synced = InMemoryCredentialStore(mine)
+    let local = InMemoryCredentialStore()
+    try layered(synced, local).save(other)
+    #expect(try synced.load() == mine)
+    #expect(try local.load() == other)
+    // Bara lokalt rör aldrig iCloud-nyckelringen.
+    let empty = InMemoryCredentialStore()
+    try layered(empty, local).saveLocally(mine)
+    #expect(try empty.load() == nil)
+}
+
+@Test func iCloudNyckelringenBehoverInteFungera() throws {
+    let a = HouseholdCredentials(householdId: "a", householdKey: Data([1]), participantId: "p", participantSecret: "s")
+    let synced = InMemoryCredentialStore(), local = InMemoryCredentialStore()
+    synced.failing = true
+    let store = layered(synced, local)
+    try store.save(a)
+    #expect(try store.load() == a)
+    try store.delete(a)
+    #expect(try local.load() == nil)
+}
+
+@Test func borttagningRorInteNycklarTillEttAnnatHushall() throws {
+    let a = HouseholdCredentials(householdId: "a", householdKey: Data([1]), participantId: "p", participantSecret: "s")
+    let b = HouseholdCredentials(householdId: "b", householdKey: Data([2]), participantId: "q", participantSecret: "t")
+    let synced = InMemoryCredentialStore(b), local = InMemoryCredentialStore(a)
+    try layered(synced, local).delete(a)
+    #expect(try synced.load() == b)
+    #expect(try local.load() == nil)
+}
+
+/// Fokus 5 i planen: en ny iPhone som återställs från en säkerhetskopia innan nycklarna har kommit.
+@Test func aterstalldUtanNycklarHarInteLamnat() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    try await jesper.sync.share(saved())
+    server.mode = .offline
+    try await jesper.sync.mark(entry)
+    server.mode = .normal
+    let keys = try jesper.keys()
+    let empty = InMemoryCredentialStore()
+    let restored = RelayPhone(server, credentials: empty, directory: jesper.directory, deviceId: "ny")
+    #expect(await restored.state()?.status == .failed)
+    await restored.sync.fetchChanges()
+    let state = try #require(await restored.state())
+    #expect(state.status == .failed)
+    #expect(state.role == .owner)
+    #expect(state.addresses.count == 1)
+    #expect(restored.sync.hasHousehold)
+    #expect(restored.sync.pendingCount == 1)
+    // När nycklarna kommer är allt kvar, också det som väntade.
+    try empty.save(keys)
+    await restored.sync.fetchChanges()
+    #expect(await restored.state()?.status == .synced)
+    #expect(await restored.state()?.marks.map(\.isPending) == [false])
+}
+
+@Test func utanNycklarGarDetAttLamnaPaTelefonen() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    try await jesper.sync.share(saved())
+    let restored = RelayPhone(server, credentials: InMemoryCredentialStore(), directory: jesper.directory)
+    try await restored.sync.leave()
+    #expect(await restored.state() == .empty)
+    #expect(!restored.sync.hasHousehold)
+    // Hushållet rörs inte på servern.
+    #expect(server.household(try jesper.keys().householdId)?.ended == false)
+}
+
+@Test func nyaNycklarISammaHushallBehallerKon() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    let sofie = try await member(server, of: jesper)
+    server.mode = .offline
+    try await sofie.sync.mark(entry)
+    server.mode = .normal
+    var seen: [HouseholdState] = []
+    try sofie.credentials.save(try jesper.keys())
+    await sofie.sync.fetchChanges()
+    if let state = await sofie.state() { seen.append(state) }
+    #expect(seen.last?.marks.map(\.placedOut) == [entry])
+    #expect(sofie.sync.pendingCount == 0)
+}
+
+@Test func nyaNycklarRegistrerarEnheten() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    let kim = try await owner(server, name: "Kim")
+    await jesper.sync.registerDevice(token: "aa", environment: "production")
+    try jesper.credentials.save(try kim.keys())
+    await jesper.sync.fetchChanges()
+    #expect(server.household(try kim.keys().householdId)?.devices.count == 1)
+}
+
+// MARK: Byta hushåll
+
+@Test func ogiltigLankBehallerDetGamlaHushallet() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    try await jesper.sync.share(saved())
+    let kim = try await owner(server, name: "Kim")
+    let link = try #require(HouseholdInviteLink(url: try await kim.sync.invite()))
+    try await kim.sync.revokeInvites()
+    await #expect(throws: HouseholdMembershipError.inviteInvalid) { try await jesper.sync.join(link, myName: "Jesper", replacing: true) }
+    #expect(await jesper.state()?.role == .owner)
+    #expect(server.household(try jesper.keys().householdId)?.ended == false)
+}
+
+@Test func bytetLamnarDetGamlaForstNarDetNyaFinns() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    let sofie = try await member(server, of: jesper)
+    let kim = try await owner(server, name: "Kim")
+    let link = try #require(HouseholdInviteLink(url: try await kim.sync.invite()))
+    // Det gamla går inte att lämna: jag är kvar där, och inte med i det nya.
+    server.change { $0.failing["DELETE /households/\(try! jesper.keys().householdId)/participants"] = 500 }
+    await #expect(throws: HouseholdMembershipError.failed) { try await sofie.sync.join(link, myName: "Sofie", replacing: true) }
+    #expect(sofie.sync.isCurrent(link) == false)
+    #expect(await sofie.state()?.role == .member)
+    let kimId = try kim.keys().householdId
+    #expect(server.household(kimId)?.participants.filter { !$0.removed }.count == 1)
+    server.change { $0.failing = [:] }
+    try await sofie.sync.join(link, myName: "Sofie", replacing: true)
+    #expect(await sofie.state()?.participants.map(\.name) == ["Kim", "Sofie"])
+    #expect(server.household(try jesper.keys().householdId)?.participants.filter { !$0.removed }.count == 1)
+}
+
+// MARK: Svar som inte är som väntat
+
+@Test func konstigtSvarTarInteBortPosten() async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    try await jesper.sync.share(saved())
+    server.change { $0.failing["PUT"] = 200 }
+    try await jesper.sync.mark(entry)
+    server.change { $0.failing = [:] }
+    // Svaret var inte en post, så bocken är inte bekräftad utan väntar.
+    #expect(await jesper.state()?.marks.map(\.isPending) == [true])
+    #expect(await jesper.state()?.addresses.count == 1)
+    await jesper.sync.fetchChanges()
+    #expect(await jesper.state()?.marks.map(\.isPending) == [false])
+}
+
+/// Nycklarna läses långsamt medan hushållet skapas.
+private final class SlowStore: HouseholdCredentialStore {
+    private let base = InMemoryCredentialStore()
+    func load() throws -> HouseholdCredentials? {
+        let value = try base.load()
+        usleep(UInt32.random(in: 0...2000))
+        return value
+    }
+    func save(_ credentials: HouseholdCredentials) throws { try base.save(credentials) }
+    func delete() throws { try base.delete() }
+}
+
+@Test func gammalLasningAvNycklarnaSkriverInteOver() async throws {
+    for _ in 0..<25 {
+        let server = FakeRelayServer()
+        let store = LocalStore(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+        let sync = RelayHouseholdSync(transport: server, credentials: SlowStore(), store: store, deviceId: { "e" })
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { try? await sync.create(myName: "Jesper") }
+            for _ in 0..<6 { group.addTask { try? await sync.mark(entry) } }
+        }
+        await sync.fetchChanges()
+        #expect(sync.lastState?.myName == "Jesper")
+        #expect(sync.lastState?.role == .owner)
+    }
+}

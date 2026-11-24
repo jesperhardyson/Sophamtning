@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Synchronization
 
 /// Hushållets synk mot brevlådan på Cloudflare. Innehållet krypteras här och servern kan inte läsa det.
@@ -12,6 +13,11 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         var credentials: HouseholdCredentials?
         /// Nycklarna gick inte att läsa, till exempel innan telefonen har låsts upp.
         var credentialsUnreadable = false
+        /// Kopian finns men inga nycklar, som på en ny telefon där iCloud-nyckelringen inte har hunnit. Det är aldrig att
+        /// jag har lämnat: då tas kopian bort samtidigt som nycklarna.
+        var credentialsMissing = false
+        /// Ökar när nycklarna byts här, så att en läsning som började innan dess inte skriver över dem.
+        var generation = 0
         var cache: RelayCache?
         var queue: RelayPendingQueue?
         var status: HouseholdStatus = .synced
@@ -21,6 +27,9 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         var deviceSent = false
         var wantsSignals = false
         var signals: (authorization: String, task: Task<Void, Never>)?
+
+        /// Appen vet inte om nycklarna finns, och då gäller kopian.
+        var unknownCredentials: Bool { credentialsUnreadable || credentialsMissing }
     }
 
     private struct Device {
@@ -43,6 +52,7 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     private let now: @Sendable () -> Date
     private let inner = Mutex(Inner())
     private let serial = RelaySerial()
+    private let logger = Logger(subsystem: "se.hardyson.sophamtning", category: "Hushall")
 
     public init(
         transport: any RelayTransport,
@@ -62,7 +72,12 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
 
     /// Om telefonen hör till ett hushåll i brevlådan. Sant också när nycklarna inte går att läsa just nu men kopian finns.
     public var hasHousehold: Bool {
-        inner.withLock { $0.credentials != nil || ($0.credentialsUnreadable && $0.cache != nil) }
+        inner.withLock { $0.credentials != nil || ($0.unknownCredentials && $0.cache != nil) }
+    }
+
+    /// Hushållet i brevlådan som telefonen hör till.
+    public var householdId: String? {
+        inner.withLock { $0.credentials?.householdId ?? ($0.unknownCredentials ? $0.cache?.householdId : nil) }
     }
 
     public var managesMembers: Bool { true }
@@ -139,20 +154,36 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         }
     }
 
-    public func join(_ link: HouseholdInviteLink, myName: String?) async throws {
-        try await join(link, myName: myName, legacyId: nil)
+    public func join(_ link: HouseholdInviteLink, myName: String?, replacing: Bool) async throws {
+        try await join(link, myName: myName, legacyId: nil, replacing: replacing)
     }
 
-    /// - Parameter legacyId: mitt id i iCloud, när hushållet flyttas därifrån.
-    func join(_ link: HouseholdInviteLink, myName: String?, legacyId: String?) async throws {
+    /// Går med i det nya hushållet innan det gamla lämnas, så att en ogiltig inbjudan aldrig kostar någon hushållet.
+    /// - Parameters:
+    ///   - legacyId: mitt id i iCloud, när hushållet flyttas därifrån.
+    ///   - replacing: lämnar hushållet jag är med i, när inbjudan har godtagits.
+    ///   - locally: nycklarna sparas bara på den här telefonen.
+    ///   - leaving: lämnar ett hushåll utanför brevlådan.
+    func join(_ link: HouseholdInviteLink, myName: String?, legacyId: String?, replacing: Bool = false, locally: Bool = false, leaving: (@Sendable () async throws -> Void)? = nil) async throws {
         try await serial.run {
-            try self.requireNoHousehold()
+            self.loadIfNeeded()
+            if self.inner.withLock({ $0.credentialsUnreadable }) { throw HouseholdMembershipError.failed }
+            let hasOld = self.hasHousehold
+            if hasOld, !replacing { throw HouseholdMembershipError.alreadyMember }
             let joined: JoinedWire = try await self.request("POST", "/households/\(link.householdId)/join", body: ["inviteToken": link.inviteToken])
             let credentials = HouseholdCredentials(
                 householdId: link.householdId, householdKey: link.householdKey,
                 participantId: joined.participantId, participantSecret: joined.participantSecret
             )
-            try self.adopt(credentials, cache: RelayCache(householdId: link.householdId, myId: joined.participantId), name: myName, legacyId: legacyId)
+            do {
+                if hasOld { try await self.leaveNow() }
+                try await leaving?()
+                try self.adopt(credentials, cache: RelayCache(householdId: link.householdId, myId: joined.participantId), name: myName, legacyId: legacyId, locally: locally)
+            } catch {
+                // Det gamla hushållet gäller fortfarande, och då ska jag inte stå som deltagare i det nya.
+                try? await self.perform("DELETE", "/households/\(link.householdId)/participants/\(joined.participantId)", as: credentials, mine: false)
+                throw HouseholdMembershipError.failed
+            }
             await self.synchronize()
         }
     }
@@ -251,7 +282,6 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     private func synchronize() async {
         loadIfNeeded()
         guard let credentials = credentials() else {
-            if inner.withLock({ $0.credentialsUnreadable }) { setStatus(.failed) }
             emit()
             return
         }
@@ -274,6 +304,11 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
             switch await outcome(request) {
             case .ok(let body):
                 let wire = try? JSONDecoder().decode(RecordWire.self, from: body)
+                if wire == nil, item.change.isRecord {
+                    // Svaret bekräftar inte posten, så den väntar.
+                    setStatus(.failed)
+                    return false
+                }
                 finish(item) { cache in
                     if let wire {
                         cache.store(wire, crypto: crypto)
@@ -295,6 +330,7 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
                 }
             case .error(let status, _, _) where [400, 413, 428].contains(status):
                 // Servern kommer aldrig att ta emot den, och den får inte stoppa resten.
+                logger.error("Brevlådan nekade en ändring: \(status)")
                 finish(item)
             case .gone:
                 adoptGone()
@@ -341,6 +377,8 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         loadIfNeeded()
         guard let credentials = credentials() else {
             if inner.withLock({ $0.credentialsUnreadable }) { throw HouseholdMembershipError.failed }
+            // Utan nycklar går det inte att säga till servern. Hushållet lämnas på den här telefonen.
+            if inner.withLock({ $0.credentialsMissing }) { try clear(status: .synced) }
             return
         }
         // Utan kopia vet appen inte om jag är ägare, och ett hushåll får aldrig avslutas av misstag.
@@ -414,6 +452,7 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     private func outcome(_ request: RelayRequest) async -> Outcome {
         guard let response = try? await transport.send(request) else { return .unreachable }
         if (200..<300).contains(response.status) { return .ok(response.body) }
+        if response.status == 401 { logger.error("Brevlådan godtog inte telefonens nycklar") }
         let code = (try? JSONDecoder().decode(ErrorWire.self, from: response.body)).flatMap { RelayErrorCode(rawValue: $0.error) }
         // Koden måste höra ihop med sin status, så att ett svar från något annat än brevlådan aldrig tar bort hushållet.
         switch (response.status, code) {
@@ -430,13 +469,13 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     }
 
     @discardableResult
-    private func perform(_ method: String, _ path: String, body: [String: String]? = nil, as credentials: HouseholdCredentials? = nil) async throws -> Data {
+    private func perform(_ method: String, _ path: String, body: [String: String]? = nil, as credentials: HouseholdCredentials? = nil, mine: Bool = true) async throws -> Data {
         let headers = credentials.map(Self.headers) ?? ["Content-Type": "application/json"]
         switch await outcome(RelayRequest(method: method, path: path, headers: headers, body: body.map(Self.json))) {
         case .ok(let data):
             return data
         case .gone:
-            if credentials != nil { adoptGone() }
+            if credentials != nil, mine { adoptGone() }
             throw HouseholdMembershipError.failed
         case .error(404, .inviteInvalid, _):
             throw HouseholdMembershipError.inviteInvalid
@@ -501,26 +540,28 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         loadIfNeeded()
         // Går nycklarna inte att läsa vet appen inte om jag redan är med.
         if inner.withLock({ $0.credentialsUnreadable }) { throw HouseholdMembershipError.failed }
-        if credentials() != nil { throw HouseholdMembershipError.alreadyMember }
+        if hasHousehold { throw HouseholdMembershipError.alreadyMember }
     }
 
     private func requireCredentials() throws -> HouseholdCredentials {
         loadIfNeeded()
         guard let credentials = credentials() else {
-            throw inner.withLock { $0.credentialsUnreadable } ? HouseholdMembershipError.failed : .noHousehold
+            throw inner.withLock { $0.unknownCredentials } ? HouseholdMembershipError.failed : .noHousehold
         }
         return credentials
     }
 
-    private func adopt(_ credentials: HouseholdCredentials, cache: RelayCache, name: String?, legacyId: String? = nil) throws {
+    private func adopt(_ credentials: HouseholdCredentials, cache: RelayCache, name: String?, legacyId: String? = nil, locally: Bool = false) throws {
         do {
-            try credentialStore.save(credentials)
+            if locally { try credentialStore.saveLocally(credentials) } else { try credentialStore.save(credentials) }
         } catch {
             throw HouseholdMembershipError.failed
         }
         mutate { inner in
+            inner.generation += 1
             inner.credentials = credentials
             inner.credentialsUnreadable = false
+            inner.credentialsMissing = false
             inner.cache = cache
             inner.queue = RelayPendingQueue(householdId: credentials.householdId)
             if let name { inner.queue?.append(.name(name, legacyId: legacyId)) }
@@ -537,9 +578,11 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     }
 
     private func clear(status: HouseholdStatus) throws {
-        try credentialStore.delete()
+        if let credentials = credentials() { try credentialStore.delete(credentials) }
         mutate { inner in
+            inner.generation += 1
             inner.credentials = nil
+            inner.credentialsMissing = false
             inner.cache = nil
             inner.queue = nil
             inner.status = status
@@ -558,11 +601,14 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     /// Läser nycklarna, kopian och kön. Det som inte går att läsa nu, till exempel innan telefonen har låsts upp, läses igen
     /// vid nästa tillfälle. Nycklarna läses varje gång, eftersom en annan av mina enheter kan ha bytt hushåll.
     private func loadIfNeeded() {
+        let generation = inner.withLock { $0.generation }
         let stored = Result { try credentialStore.load() }
         let cache = inner.withLock { $0.loaded } ? nil : store.rawData(named: RelayCache.fileName)
         let queue = inner.withLock { $0.loaded } ? nil : store.rawData(named: RelayPendingQueue.fileName)
         var switched = false
         inner.withLock { inner in
+            // Nycklarna byttes medan de lästes. Det som gäller nu är nyare.
+            guard inner.generation == generation else { return }
             if !inner.loaded, let cache, let queue {
                 if case .value(let data) = cache { inner.cache = try? JSONDecoder().decode(RelayCache.self, from: data) }
                 if case .value(let data) = queue { inner.queue = try? JSONDecoder().decode(RelayPendingQueue.self, from: data) }
@@ -571,24 +617,29 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
             switch stored {
             case .failure:
                 inner.credentialsUnreadable = true
+                inner.credentialsMissing = false
                 inner.credentials = nil
-            case .success(let credentials):
+            case .success(nil):
                 inner.credentialsUnreadable = false
+                inner.credentialsMissing = inner.cache != nil
+                inner.credentials = nil
+            case .success(let credentials?):
+                inner.credentialsUnreadable = false
+                inner.credentialsMissing = false
+                if inner.credentials != credentials { inner.deviceSent = false }
                 inner.credentials = credentials
-                // En kopia från ett annat hushåll gäller inte.
-                if let cache = inner.cache, cache.householdId != credentials?.householdId || cache.myId != credentials?.participantId {
+                if let cache = inner.cache, cache.householdId != credentials.householdId || cache.myId != credentials.participantId {
+                    // Ett annat hushåll är ett byte på en annan enhet. I samma hushåll hämtas bara allt igen.
+                    switched = cache.householdId != credentials.householdId
                     inner.cache = nil
-                    switched = true
                 }
-                if let queue = inner.queue, queue.householdId != credentials?.householdId { inner.queue = nil }
-                if inner.cache == nil, let credentials { inner.cache = RelayCache(householdId: credentials.householdId, myId: credentials.participantId) }
-                if let credentials {
-                    inner.cache?.rereadUnreadable(crypto: HouseholdCrypto(householdId: credentials.householdId, householdKey: credentials.householdKey))
-                }
+                if let queue = inner.queue, queue.householdId != credentials.householdId { inner.queue = nil }
+                if inner.cache == nil { inner.cache = RelayCache(householdId: credentials.householdId, myId: credentials.participantId) }
+                inner.cache?.rereadUnreadable(crypto: HouseholdCrypto(householdId: credentials.householdId, householdKey: credentials.householdKey))
             }
         }
         // Det förra hushållet är lämnat på en annan enhet. Adresserna därifrån blir kvar som egna.
-        if switched { yield(.empty) }
+        if switched { inner.withLock { Self.yield(.empty, &$0) } }
     }
 
     private func setStatus(_ status: HouseholdStatus) {
@@ -615,30 +666,31 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         }
     }
 
+    /// Skickar läget till alla som lyssnar, men bara om det har ändrats. Allt görs med låset, så att ett äldre läge aldrig
+    /// skickas efter ett nyare.
     private func emit() {
-        let state = inner.withLock { inner -> HouseholdState? in
-            let pending = inner.queue?.items.map(\.change) ?? []
-            let status: HouseholdStatus = inner.credentialsUnreadable ? .failed : inner.status
-            guard inner.credentials != nil || inner.credentialsUnreadable else {
-                return HouseholdState(role: .none, myId: nil, participants: [], addresses: [], marks: [], status: status)
-            }
-            guard let cache = inner.cache, cache.complete else {
-                // Utan en komplett kopia skickas bara lägen med fel, och de utan innehåll.
-                guard status != .synced else { return nil }
-                return HouseholdState(role: .none, myId: inner.cache?.myId, participants: [], addresses: [], marks: [], status: status)
-            }
-            return cache.state(pending: pending, status: status)
+        inner.withLock { inner in
+            if let state = Self.state(of: inner) { Self.yield(state, &inner) }
         }
-        if let state { yield(state) }
     }
 
-    /// Skickar läget till alla som lyssnar, men bara om det har ändrats.
-    private func yield(_ state: HouseholdState) {
-        inner.withLock { inner in
-            guard state != inner.lastEmitted else { return }
-            inner.lastEmitted = state
-            for continuation in inner.continuations.values { continuation.yield(state) }
+    private static func state(of inner: Inner) -> HouseholdState? {
+        let status: HouseholdStatus = inner.unknownCredentials ? .failed : inner.status
+        guard inner.credentials != nil || inner.unknownCredentials else {
+            return HouseholdState(role: .none, myId: nil, participants: [], addresses: [], marks: [], status: status)
         }
+        guard let cache = inner.cache, cache.complete else {
+            // Utan en komplett kopia skickas bara lägen med fel, och de utan innehåll.
+            guard status != .synced else { return nil }
+            return HouseholdState(role: .none, myId: inner.cache?.myId, participants: [], addresses: [], marks: [], status: status)
+        }
+        return cache.state(pending: inner.queue?.items.map(\.change) ?? [], status: status)
+    }
+
+    private static func yield(_ state: HouseholdState, _ inner: inout Inner) {
+        guard state != inner.lastEmitted else { return }
+        inner.lastEmitted = state
+        for continuation in inner.continuations.values { continuation.yield(state) }
     }
 }
 

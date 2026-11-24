@@ -146,7 +146,12 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
     public func revokeInvites() async throws { try await requireRelay().revokeInvites() }
     public func remove(participantId: String) async throws { try await requireRelay().remove(participantId: participantId) }
     public func end() async throws { try await requireRelay().end() }
-    public func join(_ link: HouseholdInviteLink, myName: String?) async throws { try await requireRelay().join(link, myName: myName) }
+    public func join(_ link: HouseholdInviteLink, myName: String?, replacing: Bool) async throws {
+        guard source == .legacy, let legacy else { return try await relay.join(link, myName: myName, replacing: replacing) }
+        guard replacing else { throw HouseholdMembershipError.unsupported }
+        try await relay.join(link, myName: myName, legacyId: nil, leaving: { try await legacy.leave() })
+        emit()
+    }
     public func registerDevice(token: String, environment: String) async { await relay.registerDevice(token: token, environment: environment) }
     public func isCurrent(_ link: HouseholdInviteLink) -> Bool { source == .relay && relay.isCurrent(link) }
 

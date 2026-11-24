@@ -81,7 +81,7 @@ extension AppModel {
     /// går det inte att skicka nu skickas det vid nästa synkade läge.
     @discardableResult
     public func setHouseholdName(_ name: String) async -> Bool {
-        let cleaned = Self.trimmed(name)
+        let cleaned = HouseholdLogic.validName(name)
         guard !cleaned.isEmpty else { return false }
         if householdPreferences.myName != cleaned {
             householdPreferences.myName = cleaned
@@ -97,15 +97,22 @@ extension AppModel {
     }
 
     private static func trimmed(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
+        HouseholdLogic.validName(name)
     }
 
     /// Mitt sparade namn skickas till hushållet tills det står där. Har jag inget sparat men hushållet har ett, från en
     /// annan av mina enheter, används det.
     private func syncMyName(in state: HouseholdState) async {
         guard Self.isMember(state) else { return }
-        if let wanted = householdPreferences.myName {
-            if state.myName != wanted { try? await householdSync.setMyName(wanted) }
+        if let saved = householdPreferences.myName {
+            let wanted = HouseholdLogic.validName(saved)
+            guard state.myName != wanted, resentName != wanted else { return }
+            resentName = wanted
+            do {
+                try await householdSync.setMyName(wanted)
+            } catch {
+                resentName = nil
+            }
         } else if let existing = state.myName, !Self.trimmed(existing).isEmpty {
             householdPreferences.myName = existing
             saveHouseholdPreferences()
@@ -191,6 +198,18 @@ extension AppModel {
             }
         }
 
+        // Hushållet har flyttats, och jag har ett nytt id. Det som saknas har inte tagits bort av någon.
+        let moved = reliable && Self.isMember(previous) && Self.isMember(effective) && previous.myId != nil && previous.myId != effective.myId
+        if moved {
+            sentHouseholdMarks = []
+            // En mottagen adress som inte följde med blir min egen.
+            let shared = Set(effective.addresses.map(\.address.key))
+            if !householdPreferences.receivedKeys.isSubset(of: shared) {
+                householdPreferences.receivedKeys.formIntersection(shared)
+                saveHouseholdPreferences()
+            }
+        }
+
         // Utan läsbar cache vet appen inte vilka adresser som delades, så ett läge med fel ändrar inga adresser.
         var addedKeys: Set<AddressKey> = []
         var addressesChanged = false
@@ -207,7 +226,7 @@ extension AppModel {
 
         // Bara ett synkat läge går att lita på för att skicka, ta bort eller visa något.
         if reliable {
-            if Self.isMember(previous), Self.isMember(effective) {
+            if Self.isMember(previous), Self.isMember(effective), !moved {
                 adoptRemoteUndo(previous: previous, current: effective, today: today)
             }
             await sendPendingMarks(in: effective, today: today)
@@ -291,6 +310,7 @@ extension AppModel {
             householdCacheKnown = true
         }
         sentHouseholdMarks = []
+        resentName = nil
         if !householdPreferences.receivedKeys.isEmpty || householdPreferences.knownParticipants != nil || !householdPreferences.joinedNames.isEmpty || !householdPreferences.leftNames.isEmpty {
             householdPreferences.receivedKeys = []
             // Ett nytt hushåll börjar utan kända deltagare, så att ingen räknas som ny när jag går med.
@@ -578,26 +598,30 @@ extension AppModel {
         }
     }
 
-    /// Svaret på frågan om att lämna först. Ja lämnar det nuvarande hushållet och går sedan med.
+    /// Svaret på frågan om att lämna först. Ja går med, och lämnar det nuvarande hushållet när inbjudan har godtagits.
     public func answerInvite(leaveFirst: Bool) async {
         guard let link = pendingInvite else { return }
         pendingInvite = nil
         guard leaveFirst else { return }
-        await leaveHousehold()
-        // Gick det inte att lämna står felet i arket, och inbjudan används inte.
-        guard household.role == .none else { return }
-        await join(link)
+        await join(link, replacing: true)
     }
 
-    private func join(_ link: HouseholdInviteLink) async {
+    private func join(_ link: HouseholdInviteLink, replacing: Bool = false) async {
         guard let membership else { return }
         householdNotice = nil
+        let before = householdPreferences
         expectHouseholdWelcome(ownerName: "")
         let name = Self.trimmed(householdName)
         do {
-            try await membership.join(link, myName: name.isEmpty ? nil : name)
+            try await membership.join(link, myName: name.isEmpty ? nil : name, replacing: replacing)
         } catch {
             cancelHouseholdWelcome()
+            if inHousehold {
+                // Jag är kvar i mitt hushåll, och de kända deltagarna är fortfarande kända.
+                householdPreferences.knownParticipants = before.knownParticipants
+                householdPreferences.participantNames = before.participantNames
+                saveHouseholdPreferences()
+            }
             householdNotice = switch error as? HouseholdMembershipError {
             case .inviteInvalid: HouseholdTexts.inviteInvalid
             case .full: HouseholdTexts.householdFull

@@ -165,6 +165,7 @@ final class FakeRelayServer: RelayTransport {
             household.deletions.append((rest[0], household.seq))
             return RelayResponse(status: 204)
         case "PUT participants" where rest == ["me", "name"]:
+            guard (body["data"] as? String ?? "").utf8.count <= 512 else { return error(413, "too_large") }
             household.participants[index].name = body["data"] as? String
             household.seq += 1
             return RelayResponse(status: 204)
@@ -176,6 +177,7 @@ final class FakeRelayServer: RelayTransport {
             if me.isOwner, rest[0] == me.id { return error(409, "owner_cannot_leave") }
             if let target = household.participants.firstIndex(where: { $0.id == rest[0] && !$0.removed }) {
                 household.participants[target].removed = true
+                if rest[0] != me.id { household.invites = [:] }
                 household.seq += 1
             }
             return RelayResponse(status: 204)

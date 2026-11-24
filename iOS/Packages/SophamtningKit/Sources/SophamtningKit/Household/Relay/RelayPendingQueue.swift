@@ -20,6 +20,16 @@ enum RelayPendingChange: Hashable, Codable, Sendable {
     }
 }
 
+extension RelayPendingChange {
+    /// En ny post, som servern svarar på med posten.
+    var isRecord: Bool {
+        switch self {
+        case .share, .mark: true
+        case .unshare, .unmark, .name: false
+        }
+    }
+}
+
 extension AddressKey {
     var relayLogicalName: String { fileName }
 }

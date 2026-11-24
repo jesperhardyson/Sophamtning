@@ -113,7 +113,17 @@ public enum HouseholdTexts {
     public static let notify = "Notiser från hushållet"
     public static let deliveryNote = "Fungerar när telefonen tillåter det. Ibland syns det först när du öppnar appen."
     public static let leftNote = "Du är inte längre med i hushållet. Adresserna finns kvar som dina egna."
-    public static let leaveFirst = "Du är redan med i ett hushåll. Lämna det för att gå med i det här?"
+    /// Frågan när jag öppnar en inbjudan men redan är med i ett hushåll.
+    public static func leaveFirst(isOwner: Bool) -> String {
+        isOwner
+            ? "Du äger redan ett hushåll. Går du med i det här avslutas ditt för alla."
+            : "Du är redan med i ett hushåll. Lämna det för att gå med i det här?"
+    }
+
+    public static func leaveFirstAction(isOwner: Bool) -> String {
+        isOwner ? "Avsluta och gå med" : "Lämna och gå med"
+    }
+
 
     // MARK: Inbjudan och medlemmar
 

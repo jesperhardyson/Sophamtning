@@ -238,3 +238,74 @@ private struct NoAPI: SoporAPI {
     try await sync.join(other, myName: "Alex")
     #expect(sync.isCurrent(other))
 }
+
+// MARK: Efter granskningen
+
+@Test @MainActor func utgangenLankGorInteAttJagForlorarHushallet() async throws {
+    let server = FakeRelayServer()
+    let jesper = await Person(server, name: "Jesper")
+    let kim = await Person(server, name: "Kim")
+    _ = await jesper.model.inviteURL()
+    await jesper.until { jesper.model.canManageMembers }
+    let link = try #require(await kim.model.inviteURL().flatMap { HouseholdInviteLink(url: $0) })
+    await kim.until { kim.model.canManageMembers }
+    #expect(await kim.model.revokeInvites())
+    await jesper.model.receiveInvite(link)
+    #expect(jesper.model.pendingInvite != nil)
+    await jesper.model.answerInvite(leaveFirst: true)
+    await jesper.settle()
+    #expect(jesper.model.householdNotice == HouseholdTexts.inviteInvalid)
+    #expect(jesper.model.canManageMembers)
+    #expect(server.inner.withLock { $0.households.values.allSatisfy { !$0.ended } })
+}
+
+@Test @MainActor func fraganSagerAttAgarensHushallAvslutas() {
+    #expect(HouseholdTexts.leaveFirst(isOwner: false) == "Du är redan med i ett hushåll. Lämna det för att gå med i det här?")
+    #expect(HouseholdTexts.leaveFirst(isOwner: true) == "Du äger redan ett hushåll. Går du med i det här avslutas ditt för alla.")
+    #expect(HouseholdTexts.leaveFirstAction(isOwner: false) == "Lämna och gå med")
+    #expect(HouseholdTexts.leaveFirstAction(isOwner: true) == "Avsluta och gå med")
+}
+
+@Test @MainActor func nyDeltagareAnmalsForstMedNamn() async throws {
+    let server = FakeRelayServer()
+    let jesper = await Person(server, name: "Jesper")
+    let sofie = await Person(server, name: "Sofie")
+    let link = try #require(await jesper.model.inviteURL().flatMap { HouseholdInviteLink(url: $0) })
+    await jesper.until { jesper.model.canManageMembers }
+    // Namnet kommer i ett eget anrop, som här inte kommer fram direkt.
+    server.change { $0.failing["PUT"] = 500 }
+    await sofie.model.receiveInvite(link)
+    await jesper.model.fetchHouseholdChanges()
+    await jesper.until { jesper.model.household.participants.count == 2 }
+    await jesper.settle()
+    #expect(jesper.model.householdMembersText == nil)
+    server.change { $0.failing = [:] }
+    await sofie.model.fetchHouseholdChanges()
+    await jesper.model.fetchHouseholdChanges()
+    await jesper.until { jesper.model.householdMembersText == "Sofie gick med i hushållet" }
+}
+
+@Test @MainActor func langtNamnKortasOchSkickasEnGang() async throws {
+    let server = FakeRelayServer()
+    let long = String(repeating: "Å\"", count: 300)
+    let jesper = await Person(server, name: long)
+    _ = await jesper.model.inviteURL()
+    await jesper.until { jesper.model.inHousehold }
+    for _ in 0..<5 { await jesper.model.fetchHouseholdChanges() }
+    await jesper.settle()
+    #expect(jesper.model.householdName.count <= 40)
+    #expect(jesper.model.household.myName == jesper.model.householdName)
+    #expect(server.requests.filter { $0.contains("/name") }.count == 1)
+}
+
+@Test @MainActor func nekatNamnSkickasInteOmOchOm() async throws {
+    let server = FakeRelayServer()
+    let jesper = await Person(server, name: "Jesper")
+    _ = await jesper.model.inviteURL()
+    await jesper.until { jesper.model.inHousehold }
+    server.change { $0.failing["/name"] = 413 }
+    _ = await jesper.model.setHouseholdName("Jeppe")
+    for _ in 0..<5 { await jesper.model.fetchHouseholdChanges() }
+    await jesper.settle()
+    #expect(server.requests.filter { $0.contains("/name") }.count <= 3)
+}
