@@ -792,29 +792,52 @@ private func layered(_ synced: InMemoryCredentialStore, _ local: InMemoryCredent
     #expect(await jesper.state()?.marks.map(\.isPending) == [false])
 }
 
-/// Nycklarna läses långsamt medan hushållet skapas.
-private final class SlowStore: HouseholdCredentialStore {
+/// En läsning av nycklarna som kan hållas kvar mitt i.
+private final class HeldStore: HouseholdCredentialStore {
     private let base = InMemoryCredentialStore()
+    private let holding = Mutex(false)
+    private let reached = Mutex(false)
+    var isHeld: Bool { reached.withLock { $0 } }
+    let release = DispatchSemaphore(value: 0)
+
+    func holdNext() { holding.withLock { $0 = true } }
+
     func load() throws -> HouseholdCredentials? {
         let value = try base.load()
-        usleep(UInt32.random(in: 0...2000))
+        let hold = holding.withLock { holding in
+            defer { holding = false }
+            return holding
+        }
+        if hold {
+            reached.withLock { $0 = true }
+            release.wait()
+        }
         return value
     }
+
     func save(_ credentials: HouseholdCredentials) throws { try base.save(credentials) }
     func delete() throws { try base.delete() }
 }
 
 @Test func gammalLasningAvNycklarnaSkriverInteOver() async throws {
-    for _ in 0..<25 {
-        let server = FakeRelayServer()
-        let store = LocalStore(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
-        let sync = RelayHouseholdSync(transport: server, credentials: SlowStore(), store: store, deviceId: { "e" })
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { try? await sync.create(myName: "Jesper") }
-            for _ in 0..<6 { group.addTask { try? await sync.mark(entry) } }
-        }
-        await sync.fetchChanges()
-        #expect(sync.lastState?.myName == "Jesper")
-        #expect(sync.lastState?.role == .owner)
-    }
+    let server = FakeRelayServer()
+    let kim = try await owner(server, name: "Kim")
+    let link = try #require(HouseholdInviteLink(url: try await kim.sync.invite()))
+    let held = HeldStore()
+    let sync = RelayHouseholdSync(transport: server, credentials: held, store: LocalStore(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)), deviceId: { "e" })
+    try await sync.create(myName: "Jesper")
+
+    // Ett tryck börjar läsa nycklarna till det gamla hushållet, och under tiden byter jag till ett nytt.
+    held.holdNext()
+    let tap = Task.detached { try? await sync.mark(entry) }
+    while !held.isHeld { try await Task.sleep(for: .milliseconds(5)) }
+    server.change { $0.failing["PUT"] = 500 }
+    try await sync.join(link, myName: "Jesper", replacing: true)
+    held.release.signal()
+    _ = await tap.value
+    #expect(sync.isCurrent(link))
+    #expect(sync.pendingCount >= 1)
+    server.change { $0.failing = [:] }
+    await sync.fetchChanges()
+    #expect(sync.lastState?.participants.map(\.name) == ["Kim", "Jesper"])
 }

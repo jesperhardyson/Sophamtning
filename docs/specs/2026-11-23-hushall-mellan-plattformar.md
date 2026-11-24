@@ -361,6 +361,19 @@ Tillagda 2026-11-24, med Android:
 - En deltagare tas bort från radens meny på Android, och hushållet är en skärm i stället för ett ark.
 - Texten i det tomma arket, som i dag säger "Hushållet sparas i ert iCloud.", ändras på båda plattformarna till "Hushållet krypteras på era telefoner, och bara ni kan läsa det.".
 
+Tillagda 2026-11-24, efter kodgranskningen av servern och iOS-delen. Jesper godkänner dem genom att merga PR:erna:
+
+- **Borttagning:** när ägaren tar bort någon blir alla inbjudningar ogiltiga, också den för flytten. Ägarens app skriver en ny länk i iCloud och tar bort personen ur delningen, så att de som inte har flyttat än fortfarande kan gå med men inte den som togs bort.
+- **Lämna:** den som lämnar ett flyttat hushåll lämnar också delningen i iCloud. När hushållet har avslutats tas delningen bort direkt, men bara på serverns eller användarens ord, aldrig för att nycklar saknas.
+- **Byta hushåll:** inbjudan godtas först, och sedan lämnas det gamla hushållet. Ägaren får frågan "Du äger redan ett hushåll. Går du med i det här avslutas ditt för alla." med knappen **Avsluta och gå med**.
+- **Nycklarna på iOS:** en kopia sparas också bara på telefonen, och den går först i samma hushåll. Saknas nycklar men kopian av hushållet finns, som på en ny telefon, är läget `failed` och aldrig att man har lämnat. Nycklarna delas inte med widgetarna, som bara läser `household.json`.
+- **Ägarens andra enhet** väntar i ett dygn på nycklarna från iCloud-nyckelringen innan den går med som en egen deltagare, med nycklar som stannar på den enheten.
+- **Ny deltagare:** raden och notisen om att någon gick med kommer när personens namn har kommit.
+- **Namn** får vara högst 40 tecken.
+- **Gränser:** högst 20 inbjudningar och 4 enheter per deltagare. Nya hushåll räknas per /64-nät för IPv6.
+- **Flyttinbjudan** kan bara skapas en gång. Går den förlorad används en vanlig inbjudan som förnyas.
+- Hämtningen var 15:e sekund finns kvar för hushåll som ligger kvar i iCloud.
+
 ## Godkännande
 
 Jesper godkände specen 2026-11-23. Ändringarna från 2026-11-24 godkände han samma dag.

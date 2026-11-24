@@ -242,6 +242,10 @@ Kräver att brevlådan är driftsatt och att länkarna på sopor.hardyson.se fin
 - [ ] **H44. Flytten avbruten.** Slå på flygplansläge mitt i flytten: hushållet i iCloud gäller. Med nät och omstart blir flytten klar, med allt innehåll.
 - [ ] **H45. Avslutat efter flytten.** Ägaren avslutar ett flyttat hushåll. Det kommer inte tillbaka från iCloud hos någon.
 
+- [ ] **H46. Två egna enheter.** Ägaren har en iPhone och en iPad med samma Apple-konto. Flytta på iPhone och öppna sedan iPad: båda är ägare, och ägaren står bara en gång bland deltagarna.
+- [ ] **H47. Borttagen efter flytten.** Ägaren tar bort en medlem i ett flyttat hushåll. Medlemmen tar bort appen och installerar den igen: den kommer inte med. En medlem som inte har flyttat än går fortfarande med när den uppdaterar.
+- [ ] **H48. Byta hushåll.** Den som är med i ett hushåll öppnar en ogiltig länk och svarar ja: hushållet är kvar. Med en giltig länk lämnas det gamla.
+
 ## När listan är körd
 
 Bocka av steg 8 i uppgift 14 i `docs/plans/2026-11-06-ios-app.md` (**Kontrollera på riktig telefon**) när testet är gjort. Ändrar utfallet något i `docs/specs/2026-11-06-ios-app.md` (till exempel att iOS frågar om liveaktiviteter, eller att skärmen inte tänds) ska specen ändras, och ändringen godkännas av Jesper innan bygget fortsätter.

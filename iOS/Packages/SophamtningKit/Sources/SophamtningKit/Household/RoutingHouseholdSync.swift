@@ -22,14 +22,20 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
     private let legacy: (any LegacyHousehold)?
     private let migration: HouseholdMigrationStore
     private let store: LocalStore
+    private let now: @Sendable () -> Date
     private let inner = Mutex(Inner())
 
-    public init(relay: RelayHouseholdSync, legacy: (any LegacyHousehold)?, migration: HouseholdMigrationStore, store: LocalStore) {
+    public init(relay: RelayHouseholdSync, legacy: (any LegacyHousehold)?, migration: HouseholdMigrationStore, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.now = now
         self.relay = relay
         self.legacy = legacy
         self.migration = migration
         self.store = store
-        listen(to: relay.states()) { $0.relayState = $1 }
+        listen(to: relay.states()) { inner, state in
+            inner.relayState = state
+            // Servern har sagt att hushållet är slut. Då ska delningen i iCloud också tas bort av ägaren.
+            if state.status == .removed { migration.update { if $0.moved, $0.linkWritten { $0.ended = true } } }
+        }
         if let legacy { listen(to: legacy.states()) { $0.legacyState = $1 } }
     }
 
@@ -55,7 +61,8 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
 
     /// Jag har gått med i ett hushåll i iCloud, hos någon med en gammal version. Då gäller iCloud igen.
     public func legacyInvitationAccepted() {
-        migration.reset()
+        // Är en flytt avbruten gäller iCloud redan, och det halva hushållet i brevlådan ska inte börja gälla.
+        if migration.current?.inProgress != true { migration.reset() }
         emit()
     }
 
@@ -75,16 +82,18 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
         if relay.hasHousehold || progress.moved { return .relay }
         let state = inner.withLock { $0.legacyState }
         if let state, state.role != .none { return .legacy }
-        // iCloud har inget hushåll att visa. Var jag med i ett är det iCloud som vet vad som har hänt.
-        return savedAsMember ? .legacy : .relay
+        // iCloud har inget hushåll att visa. Var jag med i ett där är det iCloud som vet vad som har hänt.
+        return legacyMayKnow(state) ? .legacy : .relay
     }
 
-    /// Om appen senast visade ett hushåll. En fil som inte går att läsa kan vara det.
-    private var savedAsMember: Bool {
+    /// Om appen senast visade ett hushåll i iCloud. Deltagarnas id i brevlådan ser annorlunda ut, och ett hushåll därifrån
+    /// vet iCloud inget om. En fil som inte går att läsa kan vara ett hushåll i iCloud tills iCloud har svarat.
+    private func legacyMayKnow(_ state: HouseholdState?) -> Bool {
         switch store.householdState() {
-        case .value(let saved): AppModel.isMember(saved)
+        case .value(let saved): AppModel.isMember(saved) && !(saved.myId.map(HouseholdLogic.isRelayId) ?? false)
         case .missing: false
-        case .unavailable, .unreadable: true
+        case .unavailable: true
+        case .unreadable: state?.status != .synced
         }
     }
 
@@ -121,7 +130,23 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
     public func unshare(_ key: AddressKey) async throws { try await active.unshare(key) }
     public func mark(_ placedOut: PlacedOut) async throws { try await active.mark(placedOut) }
     public func unmark(_ placedOut: PlacedOut) async throws { try await active.unmark(placedOut) }
-    public func leave() async throws { try await active.leave() }
+    public func leave() async throws {
+        guard source == .relay else { return try await active.leave() }
+        let role = relay.lastState?.role
+        try await relay.leave()
+        await left(as: role)
+    }
+
+    /// Ett flyttat hushåll finns också kvar i iCloud. Ägarens delning tas bort, och en medlem lämnar den, så att hushållet
+    /// inte kommer tillbaka när appen installeras om.
+    private func left(as role: HouseholdRole?) async {
+        guard let legacy, migration.current?.moved == true else { return }
+        if role == .owner {
+            migration.update { if $0.linkWritten { $0.ended = true } }
+        } else if await legacy.legacySnapshot()?.role == .member {
+            try? await legacy.leave()
+        }
+    }
     public func removeExpired(today: DayDate) async { await active.removeExpired(today: today) }
     public func setMyName(_ name: String) async throws { try await active.setMyName(name) }
 
@@ -144,10 +169,32 @@ public final class RoutingHouseholdSync: HouseholdSync, HouseholdMembership {
     public func create(myName: String) async throws { try await requireRelay().create(myName: myName) }
     public func invite() async throws -> URL { try await requireRelay().invite() }
     public func revokeInvites() async throws { try await requireRelay().revokeInvites() }
-    public func remove(participantId: String) async throws { try await requireRelay().remove(participantId: participantId) }
-    public func end() async throws { try await requireRelay().end() }
+
+    public func remove(participantId: String) async throws {
+        let relay = try requireRelay()
+        let legacyIds = relay.lastState?.participants.first { $0.id == participantId }?.legacyIds ?? []
+        try await relay.remove(participantId: participantId)
+        guard let legacy, migration.current?.moved == true else { return }
+        // Servern har gjort alla inbjudningar ogiltiga. Länken i iCloud görs om, och den borttagna får inte läsa den.
+        migration.update {
+            $0.linkNeedsRenewal = true
+            $0.removedLegacyIds += legacyIds
+        }
+        await HouseholdMigrator.renewLink(relay: relay, legacy: legacy, migration: migration, now: now())
+    }
+
+    public func end() async throws {
+        try await requireRelay().end()
+        await left(as: .owner)
+    }
+
     public func join(_ link: HouseholdInviteLink, myName: String?, replacing: Bool) async throws {
-        guard source == .legacy, let legacy else { return try await relay.join(link, myName: myName, replacing: replacing) }
+        guard source == .legacy, let legacy else {
+            let role = relay.lastState?.role
+            try await relay.join(link, myName: myName, replacing: replacing)
+            if replacing { await left(as: role) }
+            return
+        }
         guard replacing else { throw HouseholdMembershipError.unsupported }
         try await relay.join(link, myName: myName, legacyId: nil, leaving: { try await legacy.leave() })
         emit()

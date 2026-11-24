@@ -100,6 +100,8 @@ public final class AppModel {
     @ObservationIgnored var lastRemoveExpiredDay: DayDate?
     /// Hur många lägen från hushållet som är behandlade. Testerna väntar på den.
     @ObservationIgnored var handledHouseholdStates = 0
+    /// Hur många lägen från hushållet som behandlas just nu.
+    @ObservationIgnored var householdStatesInProgress = 0
 
     public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}, appVersion: String? = nil, household: any HouseholdSync = DisabledHousehold()) {
         self.appVersion = appVersion

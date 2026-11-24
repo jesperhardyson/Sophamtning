@@ -27,6 +27,17 @@ extension AppModel {
         await sendPendingMarks(in: household, today: StockholmClock.today(now: now()))
     }
 
+    /// Som `fetchHouseholdChanges`, men väntar också på att det som kom har behandlats, så att notiserna hinner visas innan
+    /// systemet stannar appen efter en tyst push. Högst några sekunder.
+    public func fetchHouseholdChangesAndSettle() async {
+        await fetchHouseholdChanges()
+        // Läget går via en ström, så det kan dröja ett ögonblick innan det börjar behandlas.
+        for _ in 0..<60 {
+            try? await Task.sleep(for: .milliseconds(50))
+            if householdStatesInProgress == 0 { return }
+        }
+    }
+
     /// Knappen Utställt i Live Activity har sparat en bock i `placed-out.json`. För en delad adress skickas den till hushållet
     /// direkt, medan appen körs i bakgrunden, och inte först när appen öppnas.
     public func sendLiveActivityMarks() async {
@@ -171,7 +182,11 @@ extension AppModel {
 
     /// Behandlar ett läge från synken: sparar det, slår ihop adresserna, skickar egna bockar, visar notiser och planerar om.
     func receiveHousehold(_ incoming: HouseholdState) async {
-        defer { handledHouseholdStates += 1 }
+        householdStatesInProgress += 1
+        defer {
+            householdStatesInProgress -= 1
+            handledHouseholdStates += 1
+        }
         let today = StockholmClock.today(now: now())
         rereadHouseholdCacheIfNeeded()
         let previous = household

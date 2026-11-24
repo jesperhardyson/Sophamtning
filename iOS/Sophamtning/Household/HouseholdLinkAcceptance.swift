@@ -39,9 +39,10 @@ final class HouseholdLinkAcceptance {
 
     /// Frågan visas som en dialog från UIKit ovanpå det som visas, även när Inställningar eller Hushåll är öppet.
     private func ask(_ model: AppModel) {
-        let alert = UIAlertController(title: HouseholdTexts.leaveFirst, message: nil, preferredStyle: .alert)
+        let isOwner = model.household.role == .owner
+        let alert = UIAlertController(title: HouseholdTexts.leaveFirst(isOwner: isOwner), message: nil, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Avbryt", style: .cancel) { _ in Task { await model.answerInvite(leaveFirst: false) } })
-        alert.addAction(UIAlertAction(title: "Lämna och gå med", style: .destructive) { _ in Task { await model.answerInvite(leaveFirst: true) } })
+        alert.addAction(UIAlertAction(title: HouseholdTexts.leaveFirstAction(isOwner: isOwner), style: .destructive) { _ in Task { await model.answerInvite(leaveFirst: true) } })
         guard let top = UIApplication.shared.topViewController else { return }
         if let shown = top as? UIAlertController, let below = shown.presentingViewController {
             // En obesvarad fråga byts mot den nya.

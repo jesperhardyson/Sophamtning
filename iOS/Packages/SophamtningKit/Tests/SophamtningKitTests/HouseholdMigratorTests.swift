@@ -22,6 +22,8 @@ final class FakeLegacyHousehold: LegacyHousehold {
     let base: InMemoryHouseholdSync
     let cloud: Cloud
     private let failing = Mutex(false)
+    private let removals = Mutex<[String]>([])
+    private let linkHook = Mutex<(@Sendable () -> Void)?>(nil)
     private let current: Mutex<HouseholdState>
 
     /// Det som delas mellan telefonerna i samma zon.
@@ -40,6 +42,15 @@ final class FakeLegacyHousehold: LegacyHousehold {
         get { failing.withLock { $0 } }
         set { failing.withLock { $0 = newValue } }
     }
+
+    var removedIds: [String] { removals.withLock { $0 } }
+    var afterLink: (@Sendable () -> Void)? {
+        get { linkHook.withLock { $0 } }
+        set { linkHook.withLock { $0 = newValue } }
+    }
+
+    var isReliablyEmpty: Bool { current.withLock { $0.role == .none && $0.status == .synced } }
+    func removeParticipants(_ ids: [String]) async throws { removals.withLock { $0 += ids } }
 
     func set(_ state: HouseholdState) {
         current.withLock { $0 = state }
@@ -65,6 +76,7 @@ final class FakeLegacyHousehold: LegacyHousehold {
     func writeMigrationLink(_ url: URL) async throws {
         if linkFails { throw URLError(.notConnectedToInternet) }
         cloud.link.withLock { $0 = url }
+        afterLink?()
     }
     func removeShare() async throws {
         cloud.removed.withLock { $0 = true }
@@ -98,13 +110,19 @@ private final class MigratingPhone: Sendable {
     let migrator: HouseholdMigrator
     let routing: RoutingHouseholdSync
     let store: LocalStore
+    let migration: HouseholdMigrationStore
     let clock = TestTime()
 
-    init(_ server: FakeRelayServer, _ state: HouseholdState, cloud: FakeLegacyHousehold.Cloud) {
-        store = LocalStore(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
-        relay = RelayHouseholdSync(transport: server, credentials: InMemoryCredentialStore(), store: store, deviceId: { "enhet" }, now: { start })
+    let directory: URL
+    let credentials: any HouseholdCredentialStore
+
+    init(_ server: FakeRelayServer, _ state: HouseholdState, cloud: FakeLegacyHousehold.Cloud, credentials: any HouseholdCredentialStore = InMemoryCredentialStore(), directory: URL? = nil) {
+        self.directory = directory ?? FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        self.credentials = credentials
+        store = LocalStore(directory: self.directory)
+        relay = RelayHouseholdSync(transport: server, credentials: credentials, store: store, deviceId: { "enhet" }, now: { start })
         legacy = FakeLegacyHousehold(state, cloud: cloud)
-        let migration = HouseholdMigrationStore(store: store)
+        migration = HouseholdMigrationStore(store: store)
         routing = RoutingHouseholdSync(relay: relay, legacy: legacy, migration: migration, store: store)
         migrator = HouseholdMigrator(relay: relay, legacy: legacy, transport: server, migration: migration, now: { [clock] in clock.now }, onChange: { [routing] in routing.migrationDidChange() })
     }
@@ -260,13 +278,38 @@ private func pair(_ server: FakeRelayServer = FakeRelayServer(), migration: Bool
     #expect(state.marks.map(\.by) == [state.myId])
 }
 
-@Test func agarensAndraEnhetSkaparIngetNytt() async throws {
+@Test func agarensAndraEnhetVantarPaNycklarna() async throws {
     let (server, jesper, _, cloud) = pair()
+    let synced = InMemoryCredentialStore()
     await jesper.migrator.run()
-    let other = MigratingPhone(server, legacyState(me: "_jesper", owner: true, name: "Jesper"), cloud: cloud)
+    let keys = try #require(try jesper.credentials.load())
+    let other = MigratingPhone(server, legacyState(me: "_jesper", owner: true, name: "Jesper"), cloud: cloud, credentials: LayeredCredentialStore(synced: synced, local: InMemoryCredentialStore()))
     await other.migrator.run()
+    // Den går inte med som en ny deltagare, och inget nytt hushåll skapas.
+    #expect(server.household(keys.householdId)?.participants.count == 1)
     #expect(server.inner.withLock { $0.households.count } == 1)
-    #expect(try await other.state().addresses.count == 2)
+    #expect(try await other.state().myId == "_jesper")
+    // När iCloud-nyckelringen har hunnit är det samma ägare.
+    try synced.save(keys)
+    await other.routing.fetchChanges()
+    await other.migrator.run()
+    let state = try await other.state()
+    #expect(state.role == .owner)
+    #expect(state.addresses.count == 2)
+    #expect(other.routing.managesMembers)
+}
+
+@Test func agarensAndraEnhetUtanNyckelringGarMedEfterEttDygn() async throws {
+    let (server, jesper, _, cloud) = pair()
+    let synced = InMemoryCredentialStore()
+    await jesper.migrator.run()
+    let other = MigratingPhone(server, legacyState(me: "_jesper", owner: true, name: "Jesper"), cloud: cloud, credentials: LayeredCredentialStore(synced: synced, local: InMemoryCredentialStore()))
+    await other.migrator.run()
+    other.clock.set { $0 = start.addingTimeInterval(25 * 3600) }
+    await other.migrator.run()
+    #expect(try await other.state().role == .member)
+    // Nycklarna stannar på den telefonen, så att ägarens egna aldrig skrivs över.
+    #expect(try synced.load() == nil)
 }
 
 @Test func osakertLageFlyttasInte() async throws {
@@ -384,4 +427,204 @@ private func pair(_ server: FakeRelayServer = FakeRelayServer(), migration: Bool
     sofie.routing.legacyInvitationAccepted()
     sofie.legacy.set(legacyState(me: "_sofie", owner: false))
     #expect(try await sofie.state().role == .member)
+}
+
+// MARK: Efter granskningen
+
+@Test func aterstalldUtanNycklarTarInteBortDelningen() async throws {
+    let (server, jesper, _, cloud) = pair()
+    await jesper.migrator.run()
+    _ = try await jesper.state()
+    // En ny iPhone från en säkerhetskopia: allt utom nycklarna.
+    let restored = MigratingPhone(server, legacyState(me: "_jesper", owner: true), cloud: cloud, directory: jesper.directory)
+    await restored.migrator.run()
+    #expect(!cloud.removed.withLock { $0 })
+    #expect(try await restored.state().status == .failed)
+    #expect(try await restored.state().addresses.count == 2)
+}
+
+@Test func avslutatPaEnAnnanEnhetTarBortDelningen() async throws {
+    let (server, jesper, _, cloud) = pair()
+    await jesper.migrator.run()
+    let keys = try #require(try jesper.credentials.load())
+    let other = RelayPhone(server, credentials: InMemoryCredentialStore(keys))
+    await other.sync.fetchChanges()
+    try await other.sync.end()
+    await jesper.routing.fetchChanges()
+    _ = try await jesper.state()
+    await jesper.migrator.run()
+    #expect(cloud.removed.withLock { $0 })
+}
+
+@Test func borttagenSynsAvenNarICloudInteFungerar() async throws {
+    for status in [HouseholdStatus.notSignedIn, .failed] {
+        let server = FakeRelayServer()
+        var broken = HouseholdState.empty
+        broken.status = status
+        let phone = MigratingPhone(server, broken, cloud: .init())
+        let owner = RelayPhone(server)
+        try await owner.sync.create(myName: "Kim")
+        let link = try #require(HouseholdInviteLink(url: try await owner.sync.invite()))
+        try await phone.routing.join(link, myName: "Jag")
+        let state = try await phone.state()
+        #expect(state.role == .member)
+        // Appens modell sparar läget.
+        try phone.store.setHouseholdState(state)
+        try await owner.sync.remove(participantId: try #require(state.myId))
+        await phone.routing.fetchChanges()
+        #expect(try await phone.state().status == .removed, "\(status)")
+    }
+}
+
+@Test func borttagenMedlemKommerInteTillbakaMedFlyttlanken() async throws {
+    let (server, jesper, sofie, cloud) = pair()
+    await jesper.migrator.run()
+    await sofie.migrator.run()
+    let old = try #require(cloud.link.withLock { $0 })
+    let id = try #require(try await sofie.state().myId)
+    await jesper.routing.fetchChanges()
+    try await jesper.routing.remove(participantId: id)
+    #expect(jesper.legacy.removedIds == ["_sofie"])
+    // Länken i zonen är ny, och den gamla fungerar inte, så att de som inte har flyttat fortfarande kan gå med.
+    let new = try #require(cloud.link.withLock { $0 })
+    #expect(new != old)
+    let again = MigratingPhone(server, legacyState(me: "_sofie", owner: false), cloud: .init())
+    again.legacy.cloud.link.withLock { $0 = old }
+    await again.migrator.run()
+    #expect(!again.relay.hasHousehold)
+    let kim = MigratingPhone(server, legacyState(me: "_kim", owner: false, name: "Kim"), cloud: cloud)
+    await kim.migrator.run()
+    #expect(try await kim.state().role == .member)
+}
+
+@Test func flyttlankenGorsOmNarDetInteGickDirekt() async throws {
+    let (server, jesper, sofie, cloud) = pair()
+    await jesper.migrator.run()
+    await sofie.migrator.run()
+    let old = try #require(cloud.link.withLock { $0 })
+    await jesper.routing.fetchChanges()
+    jesper.legacy.linkFails = true
+    try await jesper.routing.remove(participantId: try #require(try await sofie.state().myId))
+    #expect(cloud.link.withLock { $0 } == old)
+    jesper.legacy.linkFails = false
+    await jesper.migrator.run()
+    let new = try #require(cloud.link.withLock { $0 }.flatMap { HouseholdInviteLink(url: $0) })
+    #expect(server.household(new.householdId)?.invites[new.inviteToken] != nil)
+}
+
+@Test func denSomLamnarLamnarOcksaDelningenIICloud() async throws {
+    let (server, jesper, sofie, cloud) = pair()
+    await jesper.migrator.run()
+    await sofie.migrator.run()
+    _ = try await sofie.state()
+    try await sofie.routing.leave()
+    #expect(await sofie.legacy.legacySnapshot() == nil)
+    _ = (server, cloud)
+}
+
+@Test func angradBockKommerInteTillbakaEfterAvbrottet() async throws {
+    let (server, jesper, _, cloud) = pair()
+    jesper.legacy.linkFails = true
+    await jesper.migrator.run()
+    // Under tiden ångras bocken, och en adress slutar delas i iCloud.
+    var state = legacyState(me: "_jesper", owner: true, name: "Jesper")
+    state.marks = []
+    state.addresses.removeAll { $0.address.key == cabinKey }
+    jesper.legacy.set(state)
+    jesper.legacy.linkFails = false
+    await jesper.migrator.run()
+    let moved = try await jesper.state()
+    #expect(moved.marks.isEmpty)
+    #expect(moved.addresses.map(\.address.key) == [homeKey])
+    let id = try #require(cloud.link.withLock { $0 }.flatMap { HouseholdInviteLink(url: $0) }).householdId
+    #expect(server.household(id)?.records.count == 1)
+}
+
+@Test func avslutatUnderFlyttenLaserInteUteNagon() async throws {
+    let (server, jesper, _, _) = pair()
+    jesper.legacy.linkFails = true
+    await jesper.migrator.run()
+    jesper.legacy.set(.empty)
+    try jesper.store.setHouseholdState(.empty)
+    await jesper.migrator.run()
+    let half = try #require(server.inner.withLock { $0.households.values.first })
+    #expect(half.ended)
+    #expect(!jesper.relay.hasHousehold)
+    try await jesper.routing.create(myName: "Jesper")
+    #expect(try await jesper.state().addresses.isEmpty)
+    #expect(try await jesper.state().role == .owner)
+}
+
+@Test func halvtHushallVisasInteEfterEnInbjudanViaICloud() async throws {
+    let (_, jesper, _, _) = pair()
+    jesper.legacy.linkFails = true
+    await jesper.migrator.run()
+    jesper.routing.legacyInvitationAccepted()
+    jesper.legacy.set(legacyState(me: "_jesper", owner: false))
+    #expect(try await jesper.state().role == .member)
+    #expect(try await jesper.state().myId == "_jesper")
+    await jesper.migrator.run()
+    #expect(!jesper.relay.hasHousehold)
+    #expect(try await jesper.state().role == .member)
+}
+
+@Test func lankenSparasInteILasbarText() async throws {
+    let (_, jesper, _, cloud) = pair()
+    jesper.legacy.linkFails = true
+    await jesper.migrator.run()
+    func text() throws -> String {
+        try FileManager.default.contentsOfDirectory(at: jesper.directory, includingPropertiesForKeys: nil).map { (try? String(contentsOf: $0, encoding: .utf8)) ?? "" }.joined()
+    }
+    let key = try #require(try jesper.credentials.load()).householdKey.base64URL
+    #expect(try !text().contains(key))
+    jesper.legacy.linkFails = false
+    await jesper.migrator.run()
+    #expect(cloud.link.withLock { $0 } != nil)
+    #expect(try !text().contains(key))
+}
+
+@Test func ettAnnatHushallIBrevladanRaknasInteSomFlyttat() async throws {
+    let (server, _, _, cloud) = pair()
+    let phone = MigratingPhone(server, .empty, cloud: cloud)
+    _ = try await phone.state()
+    try await phone.routing.create(myName: "Jesper")
+    // iCloud svarar först nu: jag äger ett hushåll där, som andra är med i.
+    phone.legacy.set(legacyState(me: "_jesper", owner: true))
+    await phone.migrator.run()
+    #expect(phone.migration.current?.moved == false)
+    // När det nya avslutas syns det i iCloud igen.
+    try await phone.routing.leave()
+    #expect(try await phone.state().addresses.count == 2)
+}
+
+@Test func skrivenLankGorFlyttenKlarAvenOmDenStangsAv() async throws {
+    let (server, jesper, sofie, _) = pair()
+    // Avbrott precis efter att länken skrevs.
+    jesper.legacy.afterLink = { server.mode = .offline }
+    await jesper.migrator.run()
+    server.mode = .normal
+    server.change { $0.migration = false }
+    jesper.legacy.afterLink = nil
+    await sofie.migrator.run()
+    await jesper.migrator.run()
+    await jesper.routing.fetchChanges()
+    #expect(jesper.routing.managesMembers)
+    #expect(try await jesper.state().participants.count == 2)
+}
+
+@Test func byteAvHushallEfterFlyttenLamnarInteKvarDelningen() async throws {
+    let (server, jesper, sofie, cloud) = pair()
+    await jesper.migrator.run()
+    await sofie.migrator.run()
+    let kim = RelayPhone(server)
+    try await kim.sync.create(myName: "Kim")
+    let link = try #require(HouseholdInviteLink(url: try await kim.sync.invite()))
+    _ = try await sofie.state()
+    try await sofie.routing.join(link, myName: "Sofie", replacing: true)
+    #expect(await sofie.legacy.legacySnapshot() == nil)
+    _ = try await jesper.state()
+    try await jesper.routing.join(link, myName: "Jesper", replacing: true)
+    await jesper.migrator.run()
+    #expect(cloud.removed.withLock { $0 })
+    #expect(try await jesper.state().participants.map(\.name).contains("Kim"))
 }

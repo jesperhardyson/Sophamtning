@@ -243,6 +243,17 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
         try await enqueue(.mark(mark, at: at, legacy: LegacyOrigin(by: legacyBy, at: at)), mustSend: true)
     }
 
+    /// Tar bort det som inte finns i hushållet i iCloud.
+    /// - Parameter among: ta bara bort det som fanns här, när andra redan kan ha gått med.
+    func removeRecords(notIn wanted: HouseholdState, among: HouseholdState? = nil) async throws {
+        await fetchChanges()
+        guard let current = lastState, current.status == .synced else { throw HouseholdMembershipError.failed }
+        let source = among ?? current
+        let addresses = Set(wanted.addresses.map(\.address.key)), marks = Set(wanted.marks.map(\.placedOut))
+        for item in source.addresses where !addresses.contains(item.address.key) { try await enqueue(.unshare(item.address.key), mustSend: true) }
+        for mark in source.marks where !marks.contains(mark.placedOut) { try await enqueue(.unmark(mark.placedOut), mustSend: true) }
+    }
+
     func setMyName(_ name: String, legacyId: String?) async throws {
         try await enqueue(.name(name, legacyId: legacyId), mustSend: legacyId != nil)
     }

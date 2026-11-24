@@ -19,6 +19,22 @@ extension CloudKitHouseholdSync: LegacyHousehold {
         }
     }
 
+    var isReliablyEmpty: Bool {
+        inner.withLock { $0.signedIn && $0.trust.complete && $0.status != .failed && Self.role(of: $0) == .none }
+    }
+
+    func removeParticipants(_ ids: [String]) async throws {
+        let id = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: HouseholdRecords.privateZoneID)
+        guard let share = try await container.privateCloudDatabase.record(for: id) as? CKShare else { throw HouseholdSyncError.shareMissing }
+        let removed = share.participants.filter { participant in
+            participant.role != .owner && participant.userIdentity.userRecordID.map { ids.contains($0.recordName) } == true
+        }
+        guard !removed.isEmpty else { return }
+        for participant in removed { share.removeParticipant(participant) }
+        let results = try await container.privateCloudDatabase.modifyRecords(saving: [share], deleting: [])
+        for result in results.saveResults.values { _ = try result.get() }
+    }
+
     func migrationLink() async -> URL? {
         inner.withLock { inner in
             switch Self.role(of: inner) {

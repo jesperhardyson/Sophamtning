@@ -51,9 +51,10 @@ final class HouseholdShareAcceptance {
     private func ask(_ metadata: CKShare.Metadata) {
         // En ny inbjudan ersätter en obesvarad.
         awaitingAnswer = metadata
-        let alert = UIAlertController(title: HouseholdTexts.leaveFirst, message: nil, preferredStyle: .alert)
+        let isOwner = model?.household.role == .owner
+        let alert = UIAlertController(title: HouseholdTexts.leaveFirst(isOwner: isOwner), message: nil, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Avbryt", style: .cancel) { _ in self.answer(leaveFirst: false) })
-        alert.addAction(UIAlertAction(title: "Lämna och gå med", style: .destructive) { _ in self.answer(leaveFirst: true) })
+        alert.addAction(UIAlertAction(title: HouseholdTexts.leaveFirstAction(isOwner: isOwner), style: .destructive) { _ in self.answer(leaveFirst: true) })
         guard let top = UIApplication.shared.topViewController else { return }
         if let shown = top as? UIAlertController, let below = shown.presentingViewController {
             // En obesvarad fråga byts mot den nya.
@@ -133,7 +134,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     /// Tyst push, från brevlådan eller iCloud: hushållets ändringar hämtas.
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
-        await HouseholdServices.shared?.model?.fetchHouseholdChanges()
+        await HouseholdServices.shared?.model?.fetchHouseholdChangesAndSettle()
         return .newData
     }
 
