@@ -1,6 +1,6 @@
 # Sophämtning
 
-Native-appar för iOS och Android som visar när sopkärlen töms. Här finns ingen egen backend. Appen använder bara Sopor API v1.
+Native-appar för iOS och Android som visar när sopkärlen töms. Apparna använder Sopor API v1. Hushållen har en egen liten server, brevlådan i `Server/`, som bara ser krypterade uppgifter.
 
 ## Repots delar
 
@@ -13,6 +13,8 @@ Native-appar för iOS och Android som visar när sopkärlen töms. Här finns in
   - `Android/core/`: ren Kotlin utan Android-API:er, med logik och API-klient, som `SophamtningKit`. Testerna körs på JVM.
   - `Android/app/`: Compose-appen med tema och komponenter
   - Fixturerna, ortlistan och typsnitten läses från `iOS/` och kopieras inte. En ändring i dem kör både iOS- och Android-testerna.
+- `Server/`: brevlådan för hushåll, en Cloudflare Worker i TypeScript med ett Durable Object per hushåll. Spec: `docs/specs/2026-11-23-hushall-mellan-plattformar.md`. Den ger ingen release av någon app, och driftsätts från `main` av `.github/workflows/server.yml`.
+  - `Server/test/vectors.json` är formatet för krypteringen. En kopia ligger i iOS-paketets `Fixtures` och läses också av Android. CI stoppar om de skiljer sig.
 - `docs/specs/`: nya specar läggs här
 - `docs/plans/`: nya planer läggs här
 - `docs/design/`: Pencil-designen, som är facit för utseendet. Läs den via Pencil MCP, aldrig med Read eller Grep, eftersom `.pen`-filer är krypterade.
@@ -34,6 +36,13 @@ xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Sophamtning -destination '
 
 # Tillgänglighetsgranskningen och största texten, före release
 xcodebuild -project iOS/Sophamtning.xcodeproj -scheme Granskning -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+
+# Servern (Node 22): tester, och kontroll av bygget utan att driftsätta
+cd Server && npm ci --ignore-scripts && npm test && npx wrangler deploy --dry-run
+
+# Hushållets synk mot den riktiga servern, lokalt
+cd Server && npx wrangler dev --port 8799 --var LOCAL_ONLY_NO_JURISDICTION:1
+cd iOS/Packages/SophamtningKit && HUSHALL_LOCAL=http://localhost:8799/v1 swift test --filter HouseholdServerTests
 
 # Android (JDK 21): kärnans tester, appens tester, lint och bygge
 cd Android && ./gradlew :core:test
@@ -58,6 +67,7 @@ UI-testerna är bara några få kärnflöden och tar cirka 3 minuter som hel svi
 - Sparade `daysUntil`, `isToday`, `isTomorrow` och `text` visas aldrig. Adress-id tolkas och byggs aldrig om.
 - Fraktioner visas alltid med färg, ikon och text. `estimated: true` visas som "ca" överallt.
 - Tekniska fel får aldrig se ut som att en adress eller kommun saknas.
+- Hushåll: bara brevlådans svar `removed` och `ended` tar bort ett hushåll i appen. Nycklar, inbjudningslänkar och namn loggas aldrig, och skickas aldrig okrypterade. Brevlådan har bas-URL `https://hushall.sopor.hardyson.se/v1`.
 - Bundle-id är `se.hardyson.sophamtning`, och App Group är `group.se.hardyson.sophamtning`. På Android är `applicationId` `se.hardyson.sophamtning`.
 - All text i appen, alla kommentarer och alla commit-meddelanden är på svenska.
 - Commit-meddelanden och PR-titlar följer Conventional Commits och har inga AI-attributionsrader. Beskrivningen är på svenska.
