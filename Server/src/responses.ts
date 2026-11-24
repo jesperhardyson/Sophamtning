@@ -12,16 +12,16 @@ export function noContent(): Response {
   return new Response(null, { status: 204 });
 }
 
-/** Kroppen som ett JSON-objekt, eller `null` när den inte är det eller är för stor. */
-export async function readObject(request: Request): Promise<Record<string, unknown> | null> {
-  if (Number(request.headers.get("Content-Length") ?? 0) > MAX_BODY) return null;
+/** Kroppen som ett JSON-objekt, eller svaret när den inte är det eller är för stor. */
+export async function readObject(request: Request): Promise<Record<string, unknown> | Response> {
+  if (Number(request.headers.get("Content-Length") ?? 0) > MAX_BODY) return error(413, "too_large");
   const text = await request.text();
-  if (text.length > MAX_BODY) return null;
+  if (text.length > MAX_BODY) return error(413, "too_large");
   try {
     const value: unknown = JSON.parse(text);
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : error(400, "bad_request");
   } catch {
-    return null;
+    return error(400, "bad_request");
   }
 }
 
