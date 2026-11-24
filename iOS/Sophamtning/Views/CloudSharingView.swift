@@ -1,35 +1,11 @@
 import CloudKit
-import CoreTransferable
 import SophamtningKit
 import SwiftUI
 import UIKit
 
 extension EnvironmentValues {
-    /// Hushållets synk med CloudKit, för inbjudan och medlemmarna. `nil` under UI-testerna, där hushållet finns i minnet.
+    /// Hushållets synk med CloudKit, för medlemmarna i ett hushåll som ligger kvar där. `nil` under UI-testerna, där hushållet finns i minnet.
     @Entry var cloudHousehold: CloudKitHouseholdSync?
-}
-
-/// Inbjudan till hushållet för `ShareLink`. Systemets delningsark med CloudKit-samarbete anropar `prepare` när personen
-/// väljer hur inbjudan ska skickas, och då skapas zonen och delningen, eller används den som redan finns.
-struct HouseholdInvitation: Transferable {
-    let container: CKContainer
-    let prepare: @Sendable () async throws -> CKShare
-
-    static var transferRepresentation: some TransferRepresentation {
-        CKShareTransferRepresentation { invitation in
-            .prepareShare(container: invitation.container) {
-                try await invitation.prepare()
-            }
-        }
-    }
-}
-
-/// Håller kvar inbjudan i arket medan systemets delningsark är öppet. När delningen skapas blir jag ägare, och utan
-/// spärren skulle arket byta till deltagarna och ta bort `ShareLink` mitt i delningen.
-@MainActor
-@Observable
-final class InvitationInProgress {
-    var active = false
 }
 
 /// **Hantera medlemmar**: systemets `UICloudSharingController`, presenterad modalt från UIKit ovanpå det som visas.

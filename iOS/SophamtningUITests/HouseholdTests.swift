@@ -66,7 +66,66 @@ final class HouseholdTests: XCTestCase {
         XCTAssertTrue(app.buttons["Ångra"].exists)
     }
 
+    func testAgarenTarBortDeltagare() {
+        launchAgain(with: ["-uitest-hushall-agare"])
+        openHousehold()
+        let kim = app.staticTexts["Kim"]
+        XCTAssertTrue(kim.waitForExistence(timeout: 20))
+        kim.swipeLeft()
+        let remove = app.buttons["svep-ta-bort"].firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 20), "Svepet ska visa Ta bort")
+        if !app.buttons["Ta bort ur hushållet"].exists { remove.tap() }
+        let confirm = app.buttons["Ta bort ur hushållet"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 20), "Borttagningen ska bekräftas")
+        confirm.tap()
+        XCTAssertTrue(kim.waitForNonExistence(timeout: 20), "Kim ska försvinna ur listan")
+        XCTAssertTrue(app.staticTexts["Alex (du)"].exists)
+    }
+
+    func testGorInbjudningarOgiltiga() {
+        launchAgain(with: ["-uitest-hushall-agare"])
+        openHousehold()
+        XCTAssertTrue(app.buttons["Bjud in fler"].waitForExistence(timeout: 20))
+        let revoke = app.buttons["Gör inbjudningar ogiltiga"]
+        XCTAssertTrue(revoke.exists)
+        XCTAssertTrue(app.staticTexts["Länkar du har skickat gäller i 7 dagar."].exists)
+        XCTAssertFalse(app.buttons["Hantera medlemmar"].exists)
+        XCTAssertFalse(app.staticTexts["Väntar på svar"].exists)
+    }
+
+    func testLankTillSammaHushallFragarInte() {
+        launchAgain(with: ["-uitest-hushall-lank", Self.link(household: "AAAAAAAAAAAAAAAAAAAAAA")])
+        XCTAssertTrue(homeCard.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["Lämna och gå med"].waitForExistence(timeout: 5), "Ingen fråga för hushållet jag redan är med i")
+    }
+
+    func testLankTillAnnatHushallFragarForst() {
+        launchAgain(with: ["-uitest-hushall-lank", Self.link(household: "BBBBBBBBBBBBBBBBBBBBBA")])
+        let join = app.buttons["Lämna och gå med"]
+        XCTAssertTrue(join.waitForExistence(timeout: 20), "Den som redan är med ska få frågan först")
+        join.tap()
+        XCTAssertTrue(app.staticTexts["Du är med i Sofies hushåll. Adresser som delas visas på hemskärmen."].waitForExistence(timeout: 20))
+    }
+
     // MARK: Hjälpare
+
+    private static func link(household: String) -> String {
+        "https://sopor.hardyson.se/hushall#1.\(household).\(String(repeating: "A", count: 43)).\(String(repeating: "A", count: 43))"
+    }
+
+    private func launchAgain(with arguments: [String]) {
+        app.terminate()
+        app.launchArguments += arguments
+        app.launch()
+    }
+
+    private func openHousehold() {
+        XCTAssertTrue(homeCard.waitForExistence(timeout: 20))
+        open("Inställningar")
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hushåll")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        row.tap()
+    }
 
     private var homeCard: XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Testgatan 1")).firstMatch
