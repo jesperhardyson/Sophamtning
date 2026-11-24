@@ -18,11 +18,27 @@ public struct HouseholdParticipant: Hashable, Codable, Sendable {
     public var id: String
     public var name: String
     public var isOwner: Bool
+    /// Personens id i iCloud, för den som var med innan hushållet flyttades. Tom för alla andra.
+    public var legacyIds: [String]
 
-    public init(id: String, name: String, isOwner: Bool) {
+    public init(id: String, name: String, isOwner: Bool, legacyIds: [String] = []) {
         self.id = id
         self.name = name
         self.isOwner = isOwner
+        self.legacyIds = legacyIds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, isOwner, legacyIds
+    }
+
+    /// En fil från en äldre version saknar `legacyIds`.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        isOwner = try container.decode(Bool.self, forKey: .isOwner)
+        legacyIds = try container.decodeIfPresent([String].self, forKey: .legacyIds) ?? []
     }
 }
 

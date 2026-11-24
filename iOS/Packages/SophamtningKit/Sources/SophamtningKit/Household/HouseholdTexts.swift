@@ -67,6 +67,9 @@ public enum HouseholdTexts {
         "\(list(names)) är inte längre med i hushållet"
     }
 
+    /// En deltagare som inte har skrivit sitt namn.
+    public static let unknownName = "Någon"
+
     /// Rubriken på notisen om att någon annan har ställt ut kärlen.
     public static let placedOutNotificationTitle = "Kärlen är utställda"
     /// Rubriken på notiserna om vem som är med i hushållet.
