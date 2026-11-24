@@ -5,6 +5,7 @@ public enum RelayErrorCode: String, Codable, Sendable {
     case removed, ended, full, conflict
     case inviteInvalid = "invite_invalid"
     case notFound = "not_found"
+    case migrationUnavailable = "migration_unavailable"
 }
 
 // MARK: Klartext

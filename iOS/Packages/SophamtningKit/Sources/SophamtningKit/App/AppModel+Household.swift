@@ -38,7 +38,7 @@ extension AppModel {
     }
 
     /// Med i ett hushåll: en roll, och inte borttagen.
-    static func isMember(_ state: HouseholdState) -> Bool {
+    nonisolated static func isMember(_ state: HouseholdState) -> Bool {
         state.role != .none && state.status != .removed
     }
 
@@ -353,7 +353,7 @@ extension AppModel {
             let addressName = addresses.first { $0.key == mark.placedOut.key }?.displayName
                 ?? state.addresses.first { $0.address.key == mark.placedOut.key }?.address.displayName
             guard allowed, let addressName else { continue }
-            let name = state.participants.first { $0.id == mark.by }?.name ?? "Någon"
+            let name = state.participants.first { $0.id == mark.by }?.name ?? HouseholdTexts.unknownName
             await scheduler.deliverNow(
                 identifier: Self.householdNotificationId(mark.placedOut),
                 title: HouseholdTexts.placedOutNotificationTitle,
@@ -373,9 +373,9 @@ extension AppModel {
         let departed = HouseholdLogic.departedParticipants(state.participants, known: known, myId: state.myId)
         // Saknar listan mig är delningen inte hämtad. Då står de kända deltagarna kvar, så att ingen räknas som ny sedan.
         guard state.participants.contains(where: { $0.id == state.myId }) else { return }
-        let ids = Set(state.participants.map(\.id))
+        let ids = HouseholdLogic.knownAfter(state.participants, known: known, myId: state.myId)
         let names = Dictionary(state.participants.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-        let departedNames = departed.map { householdPreferences.participantNames[$0] ?? "Någon" }
+        let departedNames = departed.map { householdPreferences.participantNames[$0] ?? HouseholdTexts.unknownName }
         guard known != ids || !fresh.isEmpty || householdPreferences.participantNames != names else { return }
         householdPreferences.knownParticipants = ids
         householdPreferences.participantNames = names

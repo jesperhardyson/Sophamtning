@@ -120,6 +120,11 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
     // MARK: HouseholdMembership
 
     public func create(myName: String) async throws {
+        try await create(myName: myName, legacyId: nil)
+    }
+
+    /// - Parameter legacyId: mitt id i iCloud, när hushållet flyttas därifrån.
+    func create(myName: String, legacyId: String?) async throws {
         try await serial.run {
             try self.requireNoHousehold()
             let created: CreatedWire = try await self.request("POST", "/households")
@@ -130,7 +135,7 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
             // Hushållet är nytt och tomt, så kopian är komplett från början.
             var cache = RelayCache(householdId: created.householdId, myId: created.participantId, complete: true)
             cache.participants = [HouseholdParticipant(id: created.participantId, name: HouseholdTexts.unknownName, isOwner: true)]
-            try self.adopt(credentials, cache: cache, name: myName)
+            try self.adopt(credentials, cache: cache, name: myName, legacyId: legacyId)
             await self.synchronize()
         }
     }
@@ -439,6 +444,8 @@ public final class RelayHouseholdSync: HouseholdSync, HouseholdMembership {
             throw HouseholdMembershipError.inviteInvalid
         case .error(409, .full, _):
             throw HouseholdMembershipError.full
+        case .error(409, .migrationUnavailable, _):
+            throw HouseholdMembershipError.migrationUnavailable
         case .error, .unreachable:
             throw HouseholdMembershipError.failed
         }

@@ -252,3 +252,33 @@ struct HouseholdLogicTests {
         #expect(!line.isShared)
     }
 }
+
+// MARK: Flyttade deltagare
+
+/// Id:n från brevlådan är 22 tecken base64url, och från iCloud något annat.
+private let relayA = Data(repeating: 1, count: 16).base64URL
+private let relayB = Data(repeating: 2, count: 16).base64URL
+private let relayC = Data(repeating: 3, count: 16).base64URL
+
+@Test func flyttadDeltagareArKand() {
+    let moved = HouseholdParticipant(id: relayB, name: "Sofie", isOwner: false, legacyIds: ["_sofie"])
+    let me = HouseholdParticipant(id: relayA, name: "Jag", isOwner: true, legacyIds: ["_jag"])
+    let new = HouseholdParticipant(id: relayC, name: "Kim", isOwner: false)
+    let known: Set<String> = ["_jag", "_sofie"]
+    #expect(HouseholdLogic.isKnown(moved, known: known))
+    #expect(!HouseholdLogic.isKnown(new, known: known))
+    #expect(HouseholdLogic.newParticipants([me, moved, new], known: known, myId: relayA).map(\.name) == ["Kim"])
+    #expect(HouseholdLogic.departedParticipants([me, moved, new], known: known, myId: relayA) == [])
+}
+
+@Test func denSomInteFlyttatAnHarInteLamnat() {
+    let me = HouseholdParticipant(id: relayA, name: "Jag", isOwner: true, legacyIds: ["_jag"])
+    let known: Set<String> = ["_jag", "_sofie", relayB]
+    // Sofie har inte öppnat appen än. Den som fanns i brevlådan och är borta har däremot lämnat.
+    #expect(HouseholdLogic.departedParticipants([me], known: known, myId: relayA) == [relayB])
+    #expect(HouseholdLogic.knownAfter([me], known: known, myId: relayA) == [relayA, "_jag", "_sofie"])
+    #expect(HouseholdLogic.knownAfter([me], known: nil, myId: relayA) == [relayA])
+    // I iCloud räknas alla som förut.
+    let legacyMe = HouseholdParticipant(id: "_jag", name: "Jag", isOwner: true)
+    #expect(HouseholdLogic.knownAfter([legacyMe], known: ["_jag", "_sofie"], myId: "_jag") == ["_jag"])
+}

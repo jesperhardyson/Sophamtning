@@ -10,6 +10,8 @@ public enum HouseholdMembershipError: Error, Equatable, Sendable {
     case alreadyMember
     /// Det finns inget hushåll.
     case noHousehold
+    /// Inbjudan för flytten från iCloud har redan skapats, eller så är det för sent.
+    case migrationUnavailable
     /// Allt annat: inget nät, serverfel eller nycklar som inte går att spara.
     case failed
 }
