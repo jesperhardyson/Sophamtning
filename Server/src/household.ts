@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { randomB64url, sha256B64url } from "./encoding";
+import { sendApns, sendFcm, type PushResult } from "./push";
 import { error, noContent, readObject } from "./responses";
 
 const HOUR = 60 * 60 * 1000;
@@ -8,12 +9,17 @@ const MAX_PARTICIPANTS = 10;
 const MAX_RECORDS = 200;
 const MAX_DATA = 8 * 1024;
 const MAX_NAME = 512;
+/** Med tio deltagare ryms då alla push inom de 50 anrop som en körning får göra. */
+const MAX_DEVICES = 4;
 const DELETION_LIFETIME = 30 * DAY;
 const INACTIVE_LIFETIME = 400 * DAY;
 const INVITE_LIFETIME = { invite: 7 * DAY, migration: 90 * DAY };
 
 type Purpose = keyof typeof INVITE_LIFETIME;
 
+const DEVICE_ID = /^[A-Za-z0-9_-]{22}$/;
+const APNS_TOKEN = /^[0-9a-fA-F]{64,200}$/;
+const FCM_ID = /^[A-Za-z0-9_:-]{1,256}$/;
 const RECORD_NAME = /^[A-Za-z0-9_-]{43}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
@@ -25,6 +31,17 @@ interface RecordRow extends Record<string, SqlStorageValue> {
   at: string;
   expiresAt: string | null;
 }
+
+interface DeviceRow extends Record<string, SqlStorageValue> {
+  deviceId: string;
+  platform: "apns" | "fcm";
+  token: string;
+  environment: "production" | "sandbox" | null;
+  urgent: number;
+}
+
+/** Händelser som ger push. `urgent` är de som appen visar en notis för. */
+type PushEvent = "urgent" | "quiet";
 
 interface Participant {
   id: string;
@@ -49,6 +66,7 @@ export class Household extends DurableObject<Env> {
         CREATE TABLE participants(id TEXT PRIMARY KEY, secretHash TEXT NOT NULL, isOwner INTEGER NOT NULL, joinedAt TEXT NOT NULL, removedAt TEXT, nameData TEXT);
         CREATE TABLE invites(tokenHash TEXT PRIMARY KEY, purpose TEXT NOT NULL, expiresAt TEXT NOT NULL);
         CREATE TABLE records(name TEXT PRIMARY KEY, kind TEXT NOT NULL, data TEXT NOT NULL, by TEXT NOT NULL, at TEXT NOT NULL, expiresAt TEXT, seq INTEGER NOT NULL);
+        CREATE TABLE devices(deviceId TEXT PRIMARY KEY, participantId TEXT NOT NULL, platform TEXT NOT NULL, token TEXT NOT NULL, environment TEXT, urgent INTEGER NOT NULL);
         CREATE TABLE deletions(name TEXT PRIMARY KEY, seq INTEGER NOT NULL, at TEXT NOT NULL);
       `);
       this.set("householdId", householdId);
@@ -98,18 +116,28 @@ export class Household extends DurableObject<Env> {
         case "GET changes":
           if (!id) return this.changes(request);
           break;
+        case "GET socket":
+          if (!id) return this.openSocket(me, request);
+          break;
         case "PUT records":
           if (RECORD_NAME.test(id)) return this.putRecord(me, id, request.headers.get("If-None-Match"), body);
           break;
         case "DELETE records":
-          if (RECORD_NAME.test(id)) return this.deleteRecord(id);
+          if (RECORD_NAME.test(id)) return this.deleteRecord(me, id);
           break;
         case "DELETE participants":
           if (id) return this.removeParticipant(me, id);
           break;
       }
     }
-    if (route === "PUT participants" && id === "me" && rest.length === 1 && rest[0] === "name") return this.setName(me, body.data);
+    if (id === "me") {
+      if (route === "PUT participants" && rest.length === 1 && rest[0] === "name") return this.setName(me, body.data);
+      const [kind, deviceId = ""] = rest;
+      if (kind === "devices" && rest.length === 2 && DEVICE_ID.test(deviceId)) {
+        if (route === "PUT participants") return this.putDevice(me, deviceId, body);
+        if (route === "DELETE participants") return this.deleteDevice(me, deviceId);
+      }
+    }
     return error(404, "not_found");
   }
 
@@ -172,6 +200,7 @@ export class Household extends DurableObject<Env> {
       this.sql.exec("INSERT INTO participants(id, secretHash, isOwner, joinedAt) VALUES (?, ?, 0, ?)", participantId, secretHash, now());
       this.bump();
     });
+    this.announce(participantId, "urgent");
     return Response.json({ participantId, participantSecret: secret }, { status: 201 });
   }
 
@@ -180,10 +209,17 @@ export class Household extends DurableObject<Env> {
   private removeParticipant(me: Participant, id: string): Response {
     if (!me.isOwner && id !== me.id) return error(403, "forbidden");
     if (me.isOwner && id === me.id) return error(409, "owner_cannot_leave");
-    this.ctx.storage.transactionSync(() => {
+    const removed = this.ctx.storage.transactionSync(() => {
       const removed = this.sql.exec("UPDATE participants SET removedAt = ?, nameData = NULL WHERE id = ? AND removedAt IS NULL", now(), id).rowsWritten > 0;
-      if (removed) this.bump();
+      if (!removed) return false;
+      this.sql.exec("DELETE FROM devices WHERE participantId = ?", id);
+      this.bump();
+      return true;
     });
+    if (removed) {
+      for (const socket of this.ctx.getWebSockets(id)) socket.close(4403, "removed");
+      this.announce(me.id, "urgent");
+    }
     return noContent();
   }
 
@@ -197,11 +233,12 @@ export class Household extends DurableObject<Env> {
   private bury(reason: "ended" | "inactive"): void {
     this.ctx.storage.transactionSync(() => {
       const householdId = this.get("householdId")!;
-      this.sql.exec("DELETE FROM participants; DELETE FROM invites; DELETE FROM records; DELETE FROM deletions; DELETE FROM meta;");
+      this.sql.exec("DELETE FROM participants; DELETE FROM invites; DELETE FROM records; DELETE FROM deletions; DELETE FROM devices; DELETE FROM meta;");
       this.set("householdId", householdId);
       this.set("endedAt", now());
       this.set("endedReason", reason);
     });
+    for (const socket of this.ctx.getWebSockets()) socket.close(4410, "ended");
   }
 
   private setName(me: Participant, data: unknown): Response {
@@ -211,7 +248,71 @@ export class Household extends DurableObject<Env> {
       const changed = this.sql.exec("UPDATE participants SET nameData = ? WHERE id = ? AND removedAt IS NULL", data, me.id).rowsWritten > 0;
       if (changed) this.bump();
     });
+    this.announce(me.id, null);
     return noContent();
+  }
+
+  // MARK: Enheter
+
+  private putDevice(me: Participant, deviceId: string, body: Record<string, unknown>): Response {
+    const { platform, token, environment, urgent = false } = body;
+    if (typeof token !== "string" || typeof urgent !== "boolean") return error(400, "bad_request");
+    const valid = platform === "apns"
+      ? APNS_TOKEN.test(token) && (environment === "production" || environment === "sandbox")
+      : platform === "fcm" && FCM_ID.test(token);
+    if (!valid) return error(400, "bad_request");
+    this.ctx.storage.transactionSync(() => {
+      // Samma push-adress kan bara höra till en enhet, så att ingen får två push.
+      this.sql.exec("DELETE FROM devices WHERE deviceId = ? OR token = ?", deviceId, token);
+      this.sql.exec(
+        "INSERT INTO devices(deviceId, participantId, platform, token, environment, urgent) VALUES (?, ?, ?, ?, ?, ?)",
+        deviceId, me.id, platform as string, token, platform === "apns" ? (environment as string) : null, urgent ? 1 : 0,
+      );
+      this.sql.exec("DELETE FROM devices WHERE participantId = ?1 AND rowid NOT IN (SELECT rowid FROM devices WHERE participantId = ?1 ORDER BY rowid DESC LIMIT ?2)", me.id, MAX_DEVICES);
+    });
+    return noContent();
+  }
+
+  private deleteDevice(me: Participant, deviceId: string): Response {
+    this.sql.exec("DELETE FROM devices WHERE deviceId = ? AND participantId = ?", deviceId, me.id);
+    return noContent();
+  }
+
+  // MARK: Signaler och push
+
+  private openSocket(me: Participant, request: Request): Response {
+    if (request.headers.get("Upgrade") !== "websocket") return new Response(null, { status: 426 });
+    const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
+    this.ctx.acceptWebSocket(server, [me.id]);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Appen skickar ingenting. Det som ändå kommer ignoreras. */
+  override webSocketMessage(): void {}
+
+  override webSocketError(): void {}
+
+  /** Säger till öppna appar att något har ändrats, och skickar push till de andras enheter. */
+  private announce(by: string | null, push: PushEvent | null): void {
+    const seq = Number(this.get("seq"));
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(JSON.stringify({ seq }));
+      } catch {
+        // Uppkopplingen är på väg att stängas. Appen hämtar när den kopplar upp igen.
+      }
+    }
+    if (push === null) return;
+    const devices = this.sql.exec<DeviceRow>("SELECT deviceId, platform, token, environment, urgent FROM devices WHERE participantId IS NOT ?", by).toArray();
+    if (devices.length === 0) return;
+    const payload = { h: this.get("householdId")!, seq };
+    this.ctx.waitUntil(Promise.all(devices.map(async (device) => {
+      const result: PushResult = device.platform === "apns"
+        ? await sendApns(this.env, device.token, device.environment ?? "production", payload)
+        : await sendFcm(this.env, device.token, push === "urgent" && device.urgent === 1 ? "high" : "normal", payload);
+      // Enheten kan ha fått ett nytt token medan push skickades.
+      if (result === "invalid") this.sql.exec("DELETE FROM devices WHERE deviceId = ? AND token = ?", device.deviceId, device.token);
+    })));
   }
 
   // MARK: Poster
@@ -238,19 +339,22 @@ export class Household extends DurableObject<Env> {
         name, kind as string, data, me.id, now(), expiresAt === null ? null : new Date(expiresAt).toISOString(), this.bump(),
       );
     });
+    this.announce(me.id, isMark ? "urgent" : null);
     return Response.json(this.record(name), { status: 201 });
   }
 
-  private deleteRecord(name: string): Response {
+  private deleteRecord(me: Participant, name: string): Response {
+    const kind = this.record(name)?.kind;
+    if (kind === undefined) return noContent();
     this.ctx.storage.transactionSync(() => this.forget(name));
+    this.announce(me.id, kind === "mark" ? "quiet" : null);
     return noContent();
   }
 
-  /** Tar bort posten och minns det i 30 dagar, så att de andra får veta det. En post som inte finns ändrar inget. */
-  private forget(name: string): boolean {
-    if (this.sql.exec("DELETE FROM records WHERE name = ? RETURNING name", name).toArray().length === 0) return false;
+  /** Tar bort posten och minns det i 30 dagar, så att de andra får veta det. */
+  private forget(name: string): void {
+    this.sql.exec("DELETE FROM records WHERE name = ?", name);
     this.sql.exec("INSERT INTO deletions(name, seq, at) VALUES (?, ?, ?)", name, this.bump(), now());
-    return true;
   }
 
   private record(name: string): RecordRow | null {
@@ -284,6 +388,7 @@ export class Household extends DurableObject<Env> {
     if (Date.parse(this.get("lastActivity")!) + INACTIVE_LIFETIME <= Date.now()) {
       this.bury("inactive");
     } else {
+      const before = this.get("seq");
       this.ctx.storage.transactionSync(() => {
         const expired = this.sql.exec<{ name: string }>("SELECT name FROM records WHERE expiresAt <= ?", now()).toArray();
         for (const { name } of expired) this.forget(name);
@@ -294,6 +399,7 @@ export class Household extends DurableObject<Env> {
           this.set("prunedSeq", String(Math.max(pruned, Number(this.get("prunedSeq")))));
         }
       });
+      if (this.get("seq") !== before) this.announce(null, null);
     }
     await this.scheduleAlarm();
   }

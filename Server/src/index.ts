@@ -10,6 +10,9 @@ const ID = /^[A-Za-z0-9_-]{22}$/;
 export default {
   async fetch(request, env): Promise<Response> {
     const [, version, collection = "", householdId = ""] = new URL(request.url).pathname.split("/");
+    if (version === "v1" && collection === "config" && !householdId && request.method === "GET") {
+      return Response.json({ migration: (env.MIGRATION as string) === "on" });
+    }
     if (version !== "v1" || collection !== "households") return error(404, "not_found");
     if (!householdId) return request.method === "POST" ? createHousehold(request, env) : error(404, "not_found");
     if (!ID.test(householdId)) return error(404, "not_found");
