@@ -82,7 +82,13 @@ public final class AppModel {
     public internal(set) var householdSheetRequested = false
     /// Ägarens namn från en accepterad inbjudan, tills hushållet har kommit som synkat läge.
     @ObservationIgnored var pendingWelcomeOwner: String?
+    /// En inbjudan som väntar på svar om att lämna det nuvarande hushållet först. Bara i minnet, eftersom länken är hemlig.
+    public internal(set) var pendingInvite: HouseholdInviteLink?
+    /// Deltagare som jag själv just har tagit bort, så att jag inte får en rad om att de inte längre är med.
+    @ObservationIgnored var removedByMe: Set<String> = []
     @ObservationIgnored let householdSync: any HouseholdSync
+    /// Vilka som är med i hushållet. `nil` när synken inte hanterar det.
+    @ObservationIgnored let membership: (any HouseholdMembership)?
     @ObservationIgnored var householdTask: Task<Void, Never>?
     /// Om `household.json` gick att läsa vid start. Annars får ett läge med fel aldrig ta bort några adresser.
     @ObservationIgnored var householdCacheKnown: Bool
@@ -96,6 +102,7 @@ public final class AppModel {
     public init(api: any SoporAPI, store: LocalStore, now: @escaping @Sendable () -> Date = { Date() }, scheduler: any NotificationScheduling = DisabledNotifications(), activities: any LiveActivityScheduling = DisabledLiveActivities(), widgetReloader: @escaping @MainActor () -> Void = {}, appVersion: String? = nil, household: any HouseholdSync = DisabledHousehold()) {
         self.appVersion = appVersion
         householdSync = household
+        membership = household as? any HouseholdMembership
         self.scheduler = scheduler
         self.activities = activities
         self.widgetReloader = widgetReloader

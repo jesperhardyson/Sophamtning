@@ -216,7 +216,9 @@ extension AppModel {
             await syncMyName(in: effective)
             if let owner = pendingWelcomeOwner, Self.isMember(effective) {
                 pendingWelcomeOwner = nil
-                householdNotice = HouseholdTexts.welcome(ownerName: owner)
+                // En inbjudan via länk säger inte vem ägaren är. Det syns först när hushållet har hämtats.
+                let name = owner.isEmpty ? effective.participants.first(where: \.isOwner)?.name ?? HouseholdTexts.unknownName : owner
+                householdNotice = HouseholdTexts.welcome(ownerName: name)
                 householdSheetRequested = true
             }
         }
@@ -370,7 +372,7 @@ extension AppModel {
         guard Self.isMember(state) else { return }
         let known = householdPreferences.knownParticipants
         let fresh = HouseholdLogic.newParticipants(state.participants, known: known, myId: state.myId)
-        let departed = HouseholdLogic.departedParticipants(state.participants, known: known, myId: state.myId)
+        let departed = HouseholdLogic.departedParticipants(state.participants, known: known, myId: state.myId).filter { !removedByMe.contains($0) }
         // Saknar listan mig är delningen inte hämtad. Då står de kända deltagarna kvar, så att ingen räknas som ny sedan.
         guard state.participants.contains(where: { $0.id == state.myId }) else { return }
         let ids = HouseholdLogic.knownAfter(state.participants, known: known, myId: state.myId)
@@ -509,6 +511,100 @@ extension AppModel {
         }
         // Läget från synken kan komma före eller efter. Raden visas ändå bara en gång.
         adoptLeft(status: .synced, wasMember: wasMember && inHousehold)
+    }
+
+    // MARK: Inbjudan och medlemmar
+
+    /// Om inbjudningar är länkar. Falskt för ett hushåll som ligger kvar i iCloud.
+    public var invitesWithLink: Bool { membership?.managesMembers == true }
+
+    /// Ägaren bjuder in och tar bort deltagare här, när hushållet finns i brevlådan.
+    public var canManageMembers: Bool { invitesWithLink && inHousehold && household.role == .owner }
+
+    /// En ny inbjudan. Finns inget hushåll skapas det först, och då måste mitt namn vara sparat. `nil` när det inte gick.
+    public func inviteURL() async -> URL? {
+        guard let membership, invitesWithLink, !inHousehold || canManageMembers else { return nil }
+        let name = Self.trimmed(householdName)
+        guard !name.isEmpty else { return nil }
+        do {
+            if !inHousehold {
+                do {
+                    try await membership.create(myName: name)
+                } catch HouseholdMembershipError.alreadyMember {
+                    // Hushållet finns redan, men läget har inte kommit hit än.
+                }
+            }
+            return try await membership.invite()
+        } catch {
+            householdNotice = HouseholdTexts.status(.failed)
+            return nil
+        }
+    }
+
+    /// Gör alla länkar som har skickats ogiltiga.
+    public func revokeInvites() async -> Bool {
+        guard let membership, canManageMembers else { return false }
+        return await attempt { try await membership.revokeInvites() }
+    }
+
+    public func removeParticipant(_ id: String) async -> Bool {
+        guard let membership, canManageMembers, id != household.myId else { return false }
+        removedByMe.insert(id)
+        let removed = await attempt { try await membership.remove(participantId: id) }
+        if !removed { removedByMe.remove(id) }
+        return removed
+    }
+
+    private func attempt(_ work: () async throws -> Void) async -> Bool {
+        do {
+            try await work()
+            return true
+        } catch {
+            householdNotice = HouseholdTexts.status(.failed)
+            return false
+        }
+    }
+
+    /// En länk har öppnats. Den som redan är med i ett annat hushåll får först frågan om att lämna det.
+    public func receiveInvite(_ link: HouseholdInviteLink) async {
+        guard let membership else { return }
+        if membership.isCurrent(link) {
+            await fetchHouseholdChanges()
+        } else if inHousehold {
+            // En ny inbjudan ersätter en obesvarad.
+            pendingInvite = link
+        } else {
+            await join(link)
+        }
+    }
+
+    /// Svaret på frågan om att lämna först. Ja lämnar det nuvarande hushållet och går sedan med.
+    public func answerInvite(leaveFirst: Bool) async {
+        guard let link = pendingInvite else { return }
+        pendingInvite = nil
+        guard leaveFirst else { return }
+        await leaveHousehold()
+        // Gick det inte att lämna står felet i arket, och inbjudan används inte.
+        guard household.role == .none else { return }
+        await join(link)
+    }
+
+    private func join(_ link: HouseholdInviteLink) async {
+        guard let membership else { return }
+        householdNotice = nil
+        expectHouseholdWelcome(ownerName: "")
+        let name = Self.trimmed(householdName)
+        do {
+            try await membership.join(link, myName: name.isEmpty ? nil : name)
+        } catch {
+            cancelHouseholdWelcome()
+            householdNotice = switch error as? HouseholdMembershipError {
+            case .inviteInvalid: HouseholdTexts.inviteInvalid
+            case .full: HouseholdTexts.householdFull
+            default: HouseholdTexts.status(.failed)
+            }
+            householdSheetRequested = true
+        }
     }
 
     // MARK: Val
