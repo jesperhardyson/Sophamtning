@@ -24,7 +24,13 @@ export async function sendApns(env: Env, token: string, environment: "production
   if (!APNS_KEY || !APNS_KEY_ID || !APNS_TEAM_ID) return "error";
   try {
     if (!apnsToken || apnsToken.keyId !== APNS_KEY_ID || apnsToken.expires <= Date.now()) {
-      apnsToken = { keyId: APNS_KEY_ID, value: signApns(APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID), expires: Date.now() + APNS_TOKEN_LIFETIME };
+      const value = signApns(APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID);
+      const created = { keyId: APNS_KEY_ID, value, expires: Date.now() + APNS_TOKEN_LIFETIME };
+      apnsToken = created;
+      // En nyckel som inte går att signera med sparas inte.
+      value.catch(() => {
+        if (apnsToken === created) apnsToken = null;
+      });
     }
     const response = await fetch(`https://${APNS_HOST[environment]}/3/device/${token}`, {
       method: "POST",
@@ -43,7 +49,7 @@ export async function sendApns(env: Env, token: string, environment: "production
     if (response.status === 403) apnsToken = null;
     console.warn(`APNs svarade ${response.status} ${reason ?? ""}`);
   } catch (e) {
-    apnsToken = null;
+    // Ett nätfel gör inte nyckeln ogiltig, och APNs nekar den som skapar nya för ofta.
     console.warn(`APNs kunde inte nås: ${e instanceof Error ? e.message : "okänt fel"}`);
   }
   return "error";

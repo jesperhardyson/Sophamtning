@@ -28,10 +28,20 @@ function household(env: Env, householdId: string) {
 
 async function createHousehold(request: Request, env: Env): Promise<Response> {
   const limiters = inEU(env.LIMITER, env);
-  const ip = request.headers.get("CF-Connecting-IP") ?? "okänd";
+  const ip = network(request.headers.get("CF-Connecting-IP") ?? "okänd");
   const limiter = limiters.get(limiters.idFromName(await sha256B64url(`${ip}.${new Date().toISOString().slice(0, 10)}`)));
   if (!(await limiter.allow())) return error(429, "too_many");
   const householdId = randomB64url(16);
   const owner = await household(env, householdId).create(householdId);
   return Response.json({ householdId, ...owner }, { status: 201 });
+}
+
+/** IPv4-adressen, eller nätet (/64) i en IPv6-adress, eftersom en anslutning där har många adresser. */
+function network(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  const [head = "", tail] = ip.split("::");
+  const groups = head === "" ? [] : head.split(":");
+  const last = tail === undefined || tail === "" ? [] : tail.split(":");
+  const filled = tail === undefined ? groups : [...groups, ...Array<string>(Math.max(0, 8 - groups.length - last.length)).fill("0"), ...last];
+  return filled.slice(0, 4).map((group) => parseInt(group, 16).toString(16)).join(":");
 }

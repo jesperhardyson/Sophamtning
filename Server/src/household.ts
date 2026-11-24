@@ -6,6 +6,7 @@ import { error, noContent, readObject } from "./responses";
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 const MAX_PARTICIPANTS = 10;
+const MAX_INVITES = 20;
 const MAX_RECORDS = 200;
 const MAX_DATA = 8 * 1024;
 const MAX_NAME = 512;
@@ -172,6 +173,7 @@ export class Household extends DurableObject<Env> {
     const expiresAt = new Date(Date.now() + INVITE_LIFETIME[purpose as Purpose]).toISOString();
     this.sql.exec("DELETE FROM invites WHERE expiresAt <= ?", now());
     this.sql.exec("INSERT INTO invites(tokenHash, purpose, expiresAt) VALUES (?, ?, ?)", hash, purpose, expiresAt);
+    this.sql.exec("DELETE FROM invites WHERE purpose = 'invite' AND rowid NOT IN (SELECT rowid FROM invites WHERE purpose = 'invite' ORDER BY rowid DESC LIMIT ?)", MAX_INVITES);
     return Response.json({ inviteToken: token, expiresAt }, { status: 201 });
   }
 
@@ -213,6 +215,8 @@ export class Household extends DurableObject<Env> {
       const removed = this.sql.exec("UPDATE participants SET removedAt = ?, nameData = NULL WHERE id = ? AND removedAt IS NULL", now(), id).rowsWritten > 0;
       if (!removed) return false;
       this.sql.exec("DELETE FROM devices WHERE participantId = ?", id);
+      // Den som tas bort kan ha kvar en länk. Alla inbjudningar blir ogiltiga, också den för flytten, som ägarens app gör om.
+      if (id !== me.id) this.sql.exec("DELETE FROM invites");
       this.bump();
       return true;
     });

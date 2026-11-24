@@ -134,7 +134,7 @@ describe("Hushåll och deltagare", () => {
     expect(await json(response)).toEqual({ error: "full" });
     // Den som tas bort räknas inte längre.
     await call("DELETE", `/households/${owner.householdId}/participants/${last}`, { as: owner });
-    expect((await join(owner.householdId, token)).status).toBe(201);
+    expect((await join(owner.householdId, await invite(owner))).status).toBe(201);
   });
 
   it("borttagenDeltagareGerRemoved", async () => {
@@ -224,5 +224,41 @@ describe("Hushåll och deltagare", () => {
     const seq = (await changes(owner)).seq;
     await addMember(owner);
     expect((await changes(owner)).seq).toBe(seq + 1);
+  });
+
+  it("borttagningGorAllaInbjudningarOgiltiga", async () => {
+    const owner = await createHousehold();
+    const [removed, leaving] = [await addMember(owner), await addMember(owner)];
+    const [ordinary, migration] = [await invite(owner), await invite(owner, "migration")];
+    // Den som lämnar själv rör inga inbjudningar.
+    await call("DELETE", `/households/${owner.householdId}/participants/${leaving.participantId}`, { as: leaving });
+    expect((await join(owner.householdId, ordinary)).status).toBe(201);
+    // Den som tas bort ska inte kunna gå med igen med en länk som redan är skickad.
+    await call("DELETE", `/households/${owner.householdId}/participants/${removed.participantId}`, { as: owner });
+    expect((await join(owner.householdId, ordinary)).status).toBe(404);
+    expect((await join(owner.householdId, migration)).status).toBe(404);
+    expect((await join(owner.householdId, await invite(owner))).status).toBe(201);
+  });
+
+  it("hogstTjugoInbjudningar", async () => {
+    const owner = await createHousehold();
+    const first = await invite(owner);
+    for (let i = 0; i < 20; i++) await invite(owner);
+    expect((await join(owner.householdId, first)).status).toBe(404);
+    expect((await join(owner.householdId, await invite(owner))).status).toBe(201);
+  });
+
+  it("flyttinbjudanTrangsInteUtAvVanliga", async () => {
+    const owner = await createHousehold();
+    const migration = await invite(owner, "migration");
+    for (let i = 0; i < 25; i++) await invite(owner);
+    expect((await join(owner.householdId, migration)).status).toBe(201);
+  });
+
+  it("sammaIPv6NatRaknasSomEn", async () => {
+    for (let i = 0; i < 5; i++) await createHousehold(`2001:db8:1:2::${i}`);
+    const response = await call("POST", "/households", { headers: { "CF-Connecting-IP": "2001:0db8:0001:0002:ffff::1" } });
+    expect(response.status).toBe(429);
+    await createHousehold("2001:db8:1:3::1");
   });
 });

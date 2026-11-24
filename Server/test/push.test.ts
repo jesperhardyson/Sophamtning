@@ -276,4 +276,16 @@ describe("Push", () => {
     expect(await response.json()).toEqual({ migration: false });
     expect((await call("POST", "/config")).status).toBe(404);
   });
+
+  it("natfelBehallerApnsNyckeln", async () => {
+    await sendApns(env as Env, APNS, "production", { h: "h", seq: 1 });
+    reply = () => {
+      throw new Error("nätet");
+    };
+    expect(await sendApns(env as Env, APNS, "production", { h: "h", seq: 2 })).toBe("error");
+    reply = () => new Response(null, { status: 200 });
+    await sendApns(env as Env, APNS, "production", { h: "h", seq: 3 });
+    const tokens = pushes().map((p) => p.headers.get("authorization"));
+    expect(new Set(tokens).size).toBe(1);
+  });
 });
