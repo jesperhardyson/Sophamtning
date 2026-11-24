@@ -1,6 +1,6 @@
 # Sophämtning för Android
 
-Status: godkänd av Jesper 2026-11-23.
+Status: godkänd av Jesper 2026-11-23. Ändrad 2026-11-24: hushåll och FCM beskrivs i `2026-11-23-hushall-mellan-plattformar.md`, och regeln om beroenden har fått ett undantag. Ändringen väntar på Jespers godkännande.
 
 ## Varför
 
@@ -36,15 +36,15 @@ Beteendet följer iOS-specarna, som är facit där inget annat står här: `2026
 | Meddelanden från källan | Samma regler, kort och reglage |
 | Version öppnar Nyheter | Samma, från Androids egen changelog |
 | Datakällor, inofficiell-text, integritet | Samma |
-| Hushåll | Utgår, och kommer senare |
+| Hushåll | Inte i den första planen. Byggs enligt `2026-11-23-hushall-mellan-plattformar.md` |
 
 ## Inte med
 
-- Hushåll och allt som rör CloudKit. `core` ska inte förutsätta att hushåll aldrig kommer, men ingen delning byggs.
+- Hushåll ingår inte i den här specen. De beskrivs i `2026-11-23-hushall-mellan-plattformar.md`, utan CloudKit.
 - Widgetar på låsskärmen, röststyrning med Google Assistant eller Gemini, Wear OS och anpassad layout för surfplattor. Appen ska fungera på en surfplatta och i liggande läge, men utan egen layout.
 - Andra språk än svenska.
 - Play-sidan: texter, skärmbilder och formuläret om datasäkerhet. De får en egen spec, som `2026-11-06-app-store.md` för iOS.
-- Backend, konton, push och analys.
+- Konton och analys. Den enda servern och den enda pushen är hushållens, i `2026-11-23-hushall-mellan-plattformar.md`.
 
 ## Får inte hända
 
@@ -71,7 +71,7 @@ Beteendet följer iOS-specarna, som är facit där inget annat står här: `2026
 | Språk | Kotlin, med coroutines och `Flow` |
 | UI | Jetpack Compose med Material 3 och appens egna färger, typsnitt och former. Inga dynamiska färger |
 | Lägsta version | Android 12 (API 31). Senaste stabila API som mål |
-| Beroenden | Bara AndroidX, Jetpack och JetBrains bibliotek (`kotlinx.serialization`, `kotlinx.coroutines`, Ktor eller OkHttp för nätet). Inget DI-ramverk |
+| Beroenden | Bara AndroidX, Jetpack och JetBrains bibliotek (`kotlinx.serialization`, `kotlinx.coroutines`, Ktor eller OkHttp för nätet). Inget DI-ramverk. Undantag: `firebase-messaging`, bara i `app` och bara för hushållens push (Jesper valde FCM 2026-11-24) |
 | Lagring | JSON-filer i appens egen katalog, skrivna atomiskt, med samma format som iOS |
 | Bakgrund | WorkManager för hämtningen, `AlarmManager` för påminnelserna |
 | Widgetar | Jetpack Glance |
