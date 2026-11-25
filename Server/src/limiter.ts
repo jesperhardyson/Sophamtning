@@ -1,11 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 
 const HOUR = 60 * 60 * 1000;
-const LIMIT = 5;
+const LIMIT = 20;
 
 /** Räknar nya hushåll från en IP-adress. Objektet nås med en hash av adressen och dagens datum, så adressen sparas aldrig. */
 export class CreationLimiter extends DurableObject<Env> {
-  /** Sant högst fem gånger i timmen. */
+  /** Sant högst tjugo gånger i timmen. */
   async allow(): Promise<boolean> {
     const now = Date.now();
     const recent = ((await this.ctx.storage.get<number[]>("created")) ?? []).filter((at) => at > now - HOUR);
