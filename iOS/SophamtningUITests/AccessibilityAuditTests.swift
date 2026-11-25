@@ -9,6 +9,8 @@ final class AccessibilityAuditTests: XCTestCase {
     private var app: XCUIApplication!
     private var mode = ""
     private var checksClipping = true
+    /// Läget som testet har begärt. Nollställs när första skärmen har visat att det gäller.
+    private var appearanceToCheck: XCUIDevice.Appearance?
 
     private let largestText = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
 
@@ -51,7 +53,7 @@ final class AccessibilityAuditTests: XCTestCase {
         continueAfterFailure = true
         self.mode = mode
         self.checksClipping = checksClipping
-        XCUIDevice.shared.appearance = appearance
+        setAppearance(appearance)
         app = XCUIApplication()
         app.launchArguments = ["-uitest", "-AppleLanguages", "(sv)", "-AppleLocale", "sv_SE"] + arguments
         app.launch()
@@ -125,7 +127,7 @@ final class AccessibilityAuditTests: XCTestCase {
         continueAfterFailure = true
         self.mode = mode
         self.checksClipping = checksClipping
-        XCUIDevice.shared.appearance = appearance
+        setAppearance(appearance)
         launch(["-uitest-hushall"] + arguments)
 
         let placeOut = app.buttons["Ställ ut kärlen"]
@@ -183,6 +185,11 @@ final class AccessibilityAuditTests: XCTestCase {
         audit("hushall-ark-tomt")
     }
 
+    private func setAppearance(_ appearance: XCUIDevice.Appearance) {
+        XCUIDevice.shared.appearance = appearance
+        appearanceToCheck = appearance
+    }
+
     private func launch(_ extra: [String]) {
         app = XCUIApplication()
         app.launchArguments = ["-uitest", "-AppleLanguages", "(sv)", "-AppleLocale", "sv_SE"] + extra
@@ -236,12 +243,55 @@ final class AccessibilityAuditTests: XCTestCase {
         sleep(2)
     }
 
+    /// Kontrollerar på första skärmen att appen verkligen visas i läget som begärdes. På en nyskapad
+    /// simulator finns inget sparat läge. Då ändrar `XCUIDevice.shared.appearance` ingenting i den sessionen, men läser
+    /// ändå tillbaka det begärda läget. Därför mäts skärmen. Körningen sparar läget, så efter en omstart fungerar bytet.
+    /// Ett fel stoppar testet, eftersom resten av genomgången då inte säger något om läget.
+    private func checkAppearance(in screenshot: XCUIScreenshot, screen: String) {
+        guard let expected = appearanceToCheck else { return }
+        appearanceToCheck = nil
+        guard let brightness = edgeBrightness(of: screenshot) else {
+            continueAfterFailure = false
+            return XCTFail("Ljusstyrkan i skärmdumpen av \(screen) i läget \(mode) gick inte att mäta")
+        }
+        let isDark = brightness < 0.5
+        guard isDark != (expected == .dark) else { return }
+        continueAfterFailure = false
+        let (wanted, shown) = expected == .dark ? ("mörkt", "ljust") : ("ljust", "mörkt")
+        XCTFail("""
+            Läget \(mode) skulle visas i \(wanted) läge, men \(screen) visas i \(shown) (ljusstyrka \(brightness) i kanten, \
+            gränsen är 0,5). En nyskapad simulator byter inte läge under sin första körning: starta om \
+            simulatorn och kör testet igen.
+            """)
+    }
+
+    /// Medelljusstyrkan (0–1) i en smal remsa längs vänsterkanten, mitt på skärmens höjd. Där syns bara bakgrunden, så
+    /// kortens färger och textstorleken påverkar inte: 0,94 i ljust läge och 0,09 i mörkt.
+    private func edgeBrightness(of screenshot: XCUIScreenshot) -> Double? {
+        guard let image = screenshot.image.cgImage else { return nil }
+        let strip = CGRect(x: 0, y: image.height / 4, width: image.width / 50, height: image.height / 2)
+        guard let edge = image.cropping(to: strip) else { return nil }
+        var pixels = [UInt8](repeating: 0, count: edge.width * edge.height)
+        let drawn = pixels.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: edge.width, height: edge.height, bitsPerComponent: 8,
+                bytesPerRow: edge.width, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue
+            ) else { return false }
+            context.draw(edge, in: CGRect(x: 0, y: 0, width: edge.width, height: edge.height))
+            return true
+        }
+        guard drawn, !pixels.isEmpty else { return nil }
+        return Double(pixels.reduce(0) { $0 + Int($1) }) / Double(pixels.count) / 255
+    }
+
     private func audit(_ screen: String) {
         sleep(1)
-        let shot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = app.screenshot()
+        let shot = XCTAttachment(screenshot: screenshot)
         shot.name = "\(mode)__\(screen)"
         shot.lifetime = .keepAlways
         add(shot)
+        checkAppearance(in: screenshot, screen: screen)
         let mode = mode
         let checksClipping = checksClipping
         // Tangentbordets ram plus raden med ordförslag, som ligger strax ovanför själva tangenterna.
