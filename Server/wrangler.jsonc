@@ -14,6 +14,8 @@
     ]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Household", "CreationLimiter"] }],
+  // Anropen loggas inte, som integritetspolicyn säger. Fel syns tillfälligt med `npx wrangler tail`.
+  "observability": { "enabled": false },
   // Flytten från iCloud slås på med "on". Se Flytten från CloudKit i specen.
   "vars": { "MIGRATION": "off" }
 }

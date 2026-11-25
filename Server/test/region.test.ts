@@ -12,3 +12,7 @@ it("hushallenLiggerIEU", () => {
 it("driftenStangerAldrigAvLaset", () => {
   expect(wrangler).not.toContain("LOCAL_ONLY_NO_JURISDICTION");
 });
+
+it("anropenLoggasInte", () => {
+  expect(wrangler).toContain('"observability": { "enabled": false }');
+});
