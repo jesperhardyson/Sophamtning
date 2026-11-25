@@ -541,6 +541,38 @@ private func member(_ server: FakeRelayServer, of owner: RelayPhone, name: Strin
     #expect(await sofie.state()?.addresses.count == 1)
 }
 
+@Test(arguments: [true, false]) func oppenAppMarkerAttHushalletArBorta(ended: Bool) async throws {
+    let server = FakeRelayServer()
+    let jesper = try await owner(server)
+    let sofie = try await member(server, of: jesper)
+    try await jesper.sync.share(saved())
+    sofie.sync.startSignals()
+    defer { sofie.sync.stopSignals() }
+    for _ in 0..<200 where await sofie.state()?.addresses.isEmpty != false { try await Task.sleep(for: .milliseconds(10)) }
+    if ended {
+        try await jesper.sync.end()
+    } else {
+        let me = try #require(await jesper.state()?.participants.first { !$0.isOwner })
+        try await jesper.sync.remove(participantId: me.id)
+    }
+    // Servern stänger uppkopplingen, och transporten säger då till.
+    server.inner.withLock { inner in for listener in inner.listeners { listener.continuation.yield(0) } }
+    for _ in 0..<200 where await sofie.state()?.status == .synced { try await Task.sleep(for: .milliseconds(10)) }
+    #expect(await sofie.state()?.status == .removed)
+}
+
+@Test func stangdUppkopplingGerHamtningBaraNarHushalletArBorta() {
+    // Servern stängde: borttagen eller avslutat.
+    #expect(RelayClose.mayHaveLostHousehold(closeCode: 4403, status: 101))
+    #expect(RelayClose.mayHaveLostHousehold(closeCode: 4410, status: 101))
+    // Servern nekade en ny uppkoppling.
+    #expect(RelayClose.mayHaveLostHousehold(closeCode: 0, status: 403))
+    #expect(RelayClose.mayHaveLostHousehold(closeCode: 0, status: 410))
+    // Nätet försvann, servern startade om eller svarade med ett tekniskt fel.
+    for code in [0, 1000, 1001, 1006, 1011, 4400] { #expect(!RelayClose.mayHaveLostHousehold(closeCode: code, status: 101)) }
+    for status in [nil, 401, 404, 429, 500, 503] { #expect(!RelayClose.mayHaveLostHousehold(closeCode: 0, status: status)) }
+}
+
 @Test func signalerBorjarNarHushalletFinns() async throws {
     let server = FakeRelayServer()
     let jesper = try await owner(server)

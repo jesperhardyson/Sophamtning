@@ -60,6 +60,7 @@ struct URLSessionRelayTransport: RelayTransport {
         socket.resume()
         return await withTaskCancellationHandler {
             guard await ping(socket) else {
+                reportLoss(of: socket, to: continuation)
                 socket.cancel()
                 return false
             }
@@ -84,11 +85,18 @@ struct URLSessionRelayTransport: RelayTransport {
                 if let data, let signal = try? JSONDecoder().decode(Signal.self, from: data) { continuation.yield(signal.seq) }
             }
             pinging.cancel()
+            reportLoss(of: socket, to: continuation)
             socket.cancel()
             return true
         } onCancel: {
             socket.cancel(with: .goingAway, reason: nil)
         }
+    }
+
+    /// Säger till när servern stängde för att hushållet är borta, så att appen hämtar i stället för att bara koppla upp igen.
+    private func reportLoss(of socket: URLSessionWebSocketTask, to continuation: AsyncStream<Int>.Continuation) {
+        let status = (socket.response as? HTTPURLResponse)?.statusCode
+        if RelayClose.mayHaveLostHousehold(closeCode: socket.closeCode.rawValue, status: status) { continuation.yield(0) }
     }
 
     private func ping(_ socket: URLSessionWebSocketTask) async -> Bool {
