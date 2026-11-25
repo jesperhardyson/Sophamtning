@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/jesperhardyson/Sophamtning/compare/ios-v1.3.1...ios-v1.4.0) (2026-11-25)
+
+
+### Nytt
+
+* Hushåll utan iCloud, med inbjudan som länk ([#96](https://github.com/jesperhardyson/Sophamtning/issues/96)) ([49adf2c](https://github.com/jesperhardyson/Sophamtning/commit/49adf2c1549df12c0bd1c246e1a7700b5e8d7834))
+
+
+### Rättat
+
+* Appen kunde krascha vid start ([#99](https://github.com/jesperhardyson/Sophamtning/issues/99)) ([45496c4](https://github.com/jesperhardyson/Sophamtning/commit/45496c4e9dcd87dba34898e709bad4569904129d))
+* Öppen app märker direkt att hushållet har avslutats ([#100](https://github.com/jesperhardyson/Sophamtning/issues/100)) ([612211b](https://github.com/jesperhardyson/Sophamtning/commit/612211bda441f12a65289e14c5d7bea44770dc02))
+
 ## [1.3.1](https://github.com/jesperhardyson/Sophamtning/compare/v1.3.0...v1.3.1) (2026-11-18)
 
 
