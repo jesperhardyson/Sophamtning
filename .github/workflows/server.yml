@@ -38,6 +38,10 @@ jobs:
 
       - run: npm test
 
+      # Apparna testas mot en kopia av samma vektorer. Skiljer de sig har formatet ändrats på bara ett ställe.
+      - name: Samma testvektorer som i apparna
+        run: cmp test/vectors.json ../iOS/Packages/SophamtningKit/Tests/SophamtningKitTests/Fixtures/hushall-vectors.json
+
       - name: Driftsätt
         if: github.event_name == 'push'
         env:

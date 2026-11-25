@@ -4,15 +4,24 @@ import SwiftUI
 import UIKit
 
 /// Arket Hushåll från Inställningar. Utan hushåll: en förklaring och **Bjud in till hushållet**. Med hushåll: deltagarna,
-/// **Hantera medlemmar** för ägaren, valen för notiser och **Lämna hushållet** eller **Avsluta hushållet**.
-/// **Bjud in till hushållet** är en `ShareLink` med CloudKit-samarbete, och **Hantera medlemmar** visar
-/// `UICloudSharingController` modalt ovanpå arket. Utan synk med CloudKit (UI-testerna) gör knapparna ingenting.
+/// valen för notiser och **Lämna hushållet** eller **Avsluta hushållet**.
+///
+/// Ägaren bjuder in med en länk, som skapas när knappen trycks, och tar bort en deltagare med ett svep. Ett hushåll som
+/// ligger kvar i iCloud har i stället **Hantera medlemmar**, som visar `UICloudSharingController` modalt ovanpå arket.
 struct HouseholdSheet: View {
     let model: AppModel
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.cloudHousehold) private var cloud
-    @State private var invitation = InvitationInProgress()
+    /// Inbjudan skapas. Knappen visar det, och arket byter inte innehåll under tiden.
+    @State private var inviting = false
+    /// Inbjudan skapades när det inte fanns något hushåll.
+    @State private var startedInviting = false
+    /// Raden som står öppen efter ett svep, och deltagaren som ska tas bort när det bekräftas.
+    @State private var openRow: String?
+    @State private var removing: HouseholdParticipant?
+    @State private var revokes = 0
     @State private var confirmingLeave = false
     @State private var notifyPulse = 0
     /// Valet för notisen medan frågan om tillstånd pågår, så att reglaget inte hoppar tillbaka under tiden.
@@ -24,8 +33,8 @@ struct HouseholdSheet: View {
 
     private var household: HouseholdState { model.household }
     private var isMember: Bool { household.role != .none && household.status != .removed }
-    /// Inbjudan står kvar medan delningsarket är öppet, även när jag just blivit ägare.
-    private var showsMember: Bool { isMember && !invitation.active }
+    /// Förklaringen står kvar tills länken finns, även när jag just blivit ägare.
+    private var showsMember: Bool { isMember && !(inviting && startedInviting) }
     private var isOwner: Bool { household.role == .owner }
 
     var body: some View {
@@ -58,9 +67,7 @@ struct HouseholdSheet: View {
             .onChange(of: nameFocused) { _, focused in
                 if !focused { saveName() }
             }
-            .onChange(of: invitation.active) { _, active in
-                if !active { Task { await model.fetchHouseholdChanges() } }
-            }
+            .closesOpenSwipeRow($openRow)
             .background(Color.Theme.bg.ignoresSafeArea())
             .navigationTitle(HouseholdTexts.title)
             .navigationBarTitleDisplayMode(.large)
@@ -77,12 +84,26 @@ struct HouseholdSheet: View {
             } message: {
                 Text(isOwner ? HouseholdTexts.endConfirmMessage : HouseholdTexts.leaveConfirmMessage)
             }
+            .confirmationDialog(
+                removing.map { HouseholdTexts.removeConfirm(name: $0.name) } ?? "",
+                isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                titleVisibility: .visible,
+                presenting: removing
+            ) { participant in
+                Button(HouseholdTexts.removeParticipant, role: .destructive) {
+                    openRow = nil
+                    Task { await model.removeParticipant(participant.id) }
+                }
+                Button("Avbryt", role: .cancel) { openRow = nil }
+            } message: { participant in
+                Text(HouseholdTexts.removeConfirmMessage(name: participant.name))
+            }
+            .sensoryFeedback(.success, trigger: revokes)
             // Raden om att man lämnat visas en gång. Nästa gång arket öppnas visas deltagarna.
             .onDisappear {
                 saveName()
                 model.clearHouseholdNotice()
                 model.clearMembersNotice()
-                invitation.active = false
             }
         }
     }
@@ -171,31 +192,14 @@ struct HouseholdSheet: View {
         .padding(.top, 16)
     }
 
-    @ViewBuilder
     private var inviteButton: some View {
         let hasName = !nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        Group {
-            if let cloud {
-                let invitation = invitation
-                let name = nameDraft
-                ShareLink(
-                    item: HouseholdInvitation(container: cloud.container) {
-                        await MainActor.run { invitation.active = true }
-                        // Namnet sparas först och skickas till hushållet när det har skapats.
-                        _ = await model.setHouseholdName(name)
-                        return try await cloud.makeShare()
-                    },
-                    preview: SharePreview(HouseholdTexts.title)
-                ) {
-                    PrimaryButtonLabel(title: HouseholdTexts.invite)
-                }
-            } else {
-                Button { Task { await model.setHouseholdName(nameDraft) } } label: { PrimaryButtonLabel(title: HouseholdTexts.invite) }
-            }
+        return Button { invitePeople() } label: {
+            PrimaryButtonLabel(title: HouseholdTexts.invite)
         }
         .buttonStyle(.pressable)
-        .disabled(!hasName)
-        .opacity(hasName ? 1 : 0.5)
+        .disabled(!hasName || inviting)
+        .opacity(hasName && !inviting ? 1 : 0.5)
     }
 
     // MARK: Med hushåll
@@ -206,20 +210,16 @@ struct HouseholdSheet: View {
             VStack(spacing: 0) {
                 ForEach(Array(household.participants.enumerated()), id: \.element.id) { index, participant in
                     if index > 0 { ResultDivider() }
-                    HStack(spacing: 12) {
-                        Text(HouseholdTexts.participantName(participant, myId: household.myId))
-                            .font(.ui(19, weight: .heavy, relativeTo: .headline))
-                            .foregroundStyle(Color.Theme.text)
-                        Spacer(minLength: 8)
-                        if participant.isOwner {
-                            Text(HouseholdTexts.owner)
-                                .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
-                                .foregroundStyle(Color.Theme.text2)
+                    if model.canManageMembers, !participant.isOwner {
+                        SwipeToDeleteRow(id: participant.id, openRow: $openRow, onDelete: { removing = participant }) {
+                            participantRow(participant)
+                                .accessibilityAction(named: HouseholdTexts.removeParticipant) { removing = participant }
                         }
+                        // Luft mellan Ta bort och ytans kant.
+                        .padding(.trailing, 8)
+                    } else {
+                        participantRow(participant)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(minHeight: 56)
-                    .accessibilityElement(children: .combine)
                 }
                 // De som har bjudits in men inte svarat än. Bara ägaren får dem.
                 ForEach(Array(household.invited.enumerated()), id: \.offset) { _, invitee in
@@ -237,21 +237,66 @@ struct HouseholdSheet: View {
                     .frame(minHeight: 56)
                     .accessibilityElement(children: .combine)
                 }
-                if isOwner {
+                if model.canManageMembers {
                     ResultDivider()
-                    Button { manageMembers() } label: {
-                        Label(HouseholdTexts.manage, systemImage: "person.badge.plus")
-                            .font(.ui(18, weight: .heavy, relativeTo: .headline))
-                            .foregroundStyle(Color.Theme.primary)
-                            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.pressable)
+                    memberButton(HouseholdTexts.inviteMore, symbol: "person.badge.plus") { invitePeople() }
+                        .disabled(inviting)
+                    ResultDivider()
+                    memberButton(HouseholdTexts.revokeInvites, symbol: "link") { revokeInvites() }
+                } else if isOwner, !model.invitesWithLink {
+                    ResultDivider()
+                    memberButton(HouseholdTexts.manage, symbol: "person.badge.plus") { manageMembers() }
                 }
             }
+            // Raden som sveps får inte synas utanför ytan.
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .modifier(SurfaceCard())
+            if model.canManageMembers {
+                Text(HouseholdTexts.revokeInvitesFooter)
+                    .font(.ui(16, weight: .semibold, relativeTo: .footnote))
+                    .foregroundStyle(Color.Theme.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 12)
+            }
         }
+    }
+
+    private func participantRow(_ participant: HouseholdParticipant) -> some View {
+        HStack(spacing: 12) {
+            Text(HouseholdTexts.participantName(participant, myId: household.myId))
+                .font(.ui(19, weight: .heavy, relativeTo: .headline))
+                .foregroundStyle(Color.Theme.text)
+            Spacer(minLength: 8)
+            if participant.isOwner {
+                Text(HouseholdTexts.owner)
+                    .font(.ui(16, weight: .semibold, relativeTo: .subheadline))
+                    .foregroundStyle(Color.Theme.text2)
+            }
+        }
+        .padding(.horizontal, 20)
+        .frame(minHeight: 56)
+        .background(Color.Theme.surface)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func memberButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            // Med största text står ikonen över texten, så att inget ord bryts mitt i.
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 8))
+            layout {
+                Image(systemName: symbol)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .multilineTextAlignment(.leading)
+            }
+            .font(.ui(18, weight: .heavy, relativeTo: .headline))
+            .foregroundStyle(Color.Theme.primary)
+            .padding(.vertical, typeSize.isAccessibilitySize ? 12 : 0)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .padding(.horizontal, 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressable)
     }
 
     /// Ditt namn, som de andra i hushållet ser. Saknas det står en uppmaning över fältet.
@@ -385,7 +430,27 @@ struct HouseholdSheet: View {
         }
     }
 
-    /// Systemets vy för deltagarna, modalt ovanpå arket. Utan CloudKit (UI-testerna) gör knappen ingenting.
+    /// Skapar en inbjudan, och hushållet om det inte finns, och öppnar delningsarket med länken. Namnet sparas först, så
+    /// att de andra aldrig ser "Någon".
+    private func invitePeople() {
+        guard !inviting else { return }
+        startedInviting = !isMember
+        inviting = true
+        Task {
+            if startedInviting { await model.setHouseholdName(nameDraft) }
+            let url = await model.inviteURL()
+            inviting = false
+            if let url { InvitePresenter.present(url) }
+        }
+    }
+
+    private func revokeInvites() {
+        Task {
+            if await model.revokeInvites() { revokes += 1 }
+        }
+    }
+
+    /// Systemets vy för deltagarna i iCloud, modalt ovanpå arket. Utan CloudKit (UI-testerna) gör knappen ingenting.
     private func manageMembers() {
         guard let cloud, let share = cloud.share else { return }
         CloudSharingPresenter.present(share: share, sync: cloud)
@@ -394,6 +459,16 @@ struct HouseholdSheet: View {
     private func openAppSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         Task { await UIApplication.shared.open(url) }
+    }
+}
+
+/// Systemets delningsark med inbjudan. Länken skapas när knappen trycks, så arket öppnas från UIKit när den finns.
+@MainActor
+private enum InvitePresenter {
+    static func present(_ url: URL) {
+        guard let presenter = UIApplication.shared.topViewController else { return }
+        let controller = UIActivityViewController(activityItems: [HouseholdTexts.inviteMessage, url], applicationActivities: nil)
+        presenter.present(controller, animated: true)
     }
 }
 

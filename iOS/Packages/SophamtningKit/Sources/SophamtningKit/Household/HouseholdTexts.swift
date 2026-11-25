@@ -67,6 +67,9 @@ public enum HouseholdTexts {
         "\(list(names)) är inte längre med i hushållet"
     }
 
+    /// En deltagare som inte har skrivit sitt namn.
+    public static let unknownName = "Någon"
+
     /// Rubriken på notisen om att någon annan har ställt ut kärlen.
     public static let placedOutNotificationTitle = "Kärlen är utställda"
     /// Rubriken på notiserna om vem som är med i hushållet.
@@ -74,7 +77,8 @@ public enum HouseholdTexts {
 
     /// Raden i arket Hushåll när jag just har gått med via en inbjudan.
     public static func welcome(ownerName: String) -> String {
-        "Du är med i \(genitive(ownerName)) hushåll. Adresser som delas visas på hemskärmen."
+        guard ownerName != unknownName else { return "Du är med i hushållet. Adresser som delas visas på hemskärmen." }
+        return "Du är med i \(genitive(ownerName)) hushåll. Adresser som delas visas på hemskärmen."
     }
 
     /// Texten för hushållets läge, eller `nil` när allt fungerar.
@@ -109,7 +113,36 @@ public enum HouseholdTexts {
     public static let notify = "Notiser från hushållet"
     public static let deliveryNote = "Fungerar när telefonen tillåter det. Ibland syns det först när du öppnar appen."
     public static let leftNote = "Du är inte längre med i hushållet. Adresserna finns kvar som dina egna."
-    public static let leaveFirst = "Du är redan med i ett hushåll. Lämna det för att gå med i det här?"
+    /// Frågan när jag öppnar en inbjudan men redan är med i ett hushåll.
+    public static func leaveFirst(isOwner: Bool) -> String {
+        isOwner
+            ? "Du äger redan ett hushåll. Går du med i det här avslutas ditt för alla."
+            : "Du är redan med i ett hushåll. Lämna det för att gå med i det här?"
+    }
+
+    public static func leaveFirstAction(isOwner: Bool) -> String {
+        isOwner ? "Avsluta och gå med" : "Lämna och gå med"
+    }
+
+
+    // MARK: Inbjudan och medlemmar
+
+    /// Texten som skickas med länken.
+    public static let inviteMessage = "Gå med i mitt hushåll i Sophämtning"
+    public static let inviteMore = "Bjud in fler"
+    public static let revokeInvites = "Gör inbjudningar ogiltiga"
+    public static let revokeInvitesFooter = "Länkar du har skickat gäller i 7 dagar."
+    public static let removeParticipant = "Ta bort ur hushållet"
+    public static let inviteInvalid = "Inbjudan gäller inte längre. Be om en ny."
+    public static let householdFull = "Hushållet är fullt."
+
+    public static func removeConfirm(name: String) -> String {
+        "Ta bort \(name) ur hushållet?"
+    }
+
+    public static func removeConfirmMessage(name: String) -> String {
+        "\(name) behåller adresserna som egna."
+    }
 
     // MARK: Arket och vyerna
 
@@ -122,7 +155,7 @@ public enum HouseholdTexts {
     public static let nameNote = "Så ser de andra i hushållet dig."
     /// Uppmaningen när jag är med i ett hushåll men inte har skrivit mitt namn.
     public static let nameMissing = "Skriv ditt namn, så att de andra i hushållet ser vem du är."
-    public static let intro = "Dela adresser med dem du bor med. Ni ser samma schema, och när någon ställer ut kärlen syns det för alla. Hushållet sparas i ert iCloud."
+    public static let intro = "Dela adresser med dem du bor med. Ni ser samma schema, och när någon ställer ut kärlen syns det för alla. Hushållet krypteras på era telefoner, och bara ni kan läsa det."
     public static let participants = "Deltagare"
     public static let owner = "Ägare"
     public static let waitingForAnswer = "Väntar på svar"

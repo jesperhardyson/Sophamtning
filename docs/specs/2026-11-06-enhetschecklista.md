@@ -222,6 +222,30 @@ Kräver en andra person eller en andra telefon med ett annat Apple-konto. A bjud
 - [ ] **H29. Någon är inte längre med.** B lämnar hushållet. A ser raden **{B} är inte längre med i hushållet** på hemskärmen och i arket, och får en notis med rubriken **Hushållet** om **Notiser från hushållet** är på. B själv får ingen sådan rad.
 - [ ] **H30. Notisernas rubriker.** Notisen om utställda kärl har rubriken **Kärlen är utställda**, och notisen om att någon gick med har rubriken **Hushållet**.
 
+### Brevlådan
+
+Kräver att brevlådan är driftsatt och att länkarna på sopor.hardyson.se finns. H3, H4 och H26 gäller bara hushåll som ligger kvar i iCloud. H12–H25 och H27–H30 görs om i ett hushåll i brevlådan, där tyst push och signaler ersätter de 15 sekunderna.
+
+- [ ] **H31. Bjud in med länk.** A utan hushåll skriver sitt namn och trycker **Bjud in till hushållet**. Delningsarket öppnas med texten och länken. B öppnar länken med appen igång, och sedan med appen avslutad: B blir medlem utan fråga, och arket öppnas med raden om vems hushåll det är.
+- [ ] **H32. Länk utan appen.** Öppna länken på en telefon utan appen: sidan på sopor.hardyson.se visas. Installera appen och öppna länken igen: B blir medlem.
+- [ ] **H33. Ogiltig länk.** A trycker **Gör inbjudningar ogiltiga**. Den gamla länken ger **Inbjudan gäller inte längre. Be om en ny.**
+- [ ] **H34. Ta bort en deltagare.** A sveper på B, väljer **Ta bort ur hushållet** och bekräftar. B får raden om att inte längre vara med, och adresserna blir kvar.
+- [ ] **H35. Push.** B har appen i bakgrunden och **Notiser från hushållet** på. A ställer ut: notisen kommer hos B utan att B öppnar appen. Prova också i TestFlight-bygget, som använder en annan push-miljö än utvecklingsbygget.
+- [ ] **H36. Signaler.** Båda har appen öppen. A trycker **Ställ ut kärlen**: bocken syns hos B inom någon sekund. Slå av och på nätet hos B och gör om.
+- [ ] **H37. Flygplansläge.** Ställ ut utan nät: klockan och **skickas när nätet finns** visas. Starta om appen, fortfarande utan nät: bocken står kvar. Med nät skickas den.
+- [ ] **H38. Låst telefon.** Starta om telefonen och lås inte upp den. Hushållet försvinner inte när den sedan låses upp.
+- [ ] **H39. Ny iPhone.** Återställ en ny iPhone med iCloud-nyckelringen på: den är samma deltagare, och båda telefonerna får push.
+- [ ] **H40. Lämna på en annan enhet.** Lämna hushållet på den ena av två iPhones med samma Apple-konto. Den andra visar att man inte längre är med när den har hämtat.
+- [ ] **H41. Flytten, ägaren.** Med flytten på (`MIGRATION`) öppnar ägaren av ett hushåll i iCloud appen. Adresser och bockar står kvar, och **Hantera medlemmar** byts mot **Bjud in fler**. Ingen rad om vem som gått med eller lämnat visas.
+- [ ] **H42. Flytten, medlemmen.** Medlemmen öppnar appen: den går med utan fråga, och namn och bockar stämmer hos båda.
+- [ ] **H43. Flytten, gammal version.** En medlem med förra versionen ser hushållet som det var vid flytten. Efter uppdatering går den med.
+- [ ] **H44. Flytten avbruten.** Slå på flygplansläge mitt i flytten: hushållet i iCloud gäller. Med nät och omstart blir flytten klar, med allt innehåll.
+- [ ] **H45. Avslutat efter flytten.** Ägaren avslutar ett flyttat hushåll. Det kommer inte tillbaka från iCloud hos någon.
+
+- [ ] **H46. Två egna enheter.** Ägaren har en iPhone och en iPad med samma Apple-konto. Flytta på iPhone och öppna sedan iPad: båda är ägare, och ägaren står bara en gång bland deltagarna.
+- [ ] **H47. Borttagen efter flytten.** Ägaren tar bort en medlem i ett flyttat hushåll. Medlemmen tar bort appen och installerar den igen: den kommer inte med. En medlem som inte har flyttat än går fortfarande med när den uppdaterar.
+- [ ] **H48. Byta hushåll.** Den som är med i ett hushåll öppnar en ogiltig länk och svarar ja: hushållet är kvar. Med en giltig länk lämnas det gamla.
+
 ## När listan är körd
 
 Bocka av steg 8 i uppgift 14 i `docs/plans/2026-11-06-ios-app.md` (**Kontrollera på riktig telefon**) när testet är gjort. Ändrar utfallet något i `docs/specs/2026-11-06-ios-app.md` (till exempel att iOS frågar om liveaktiviteter, eller att skärmen inte tänds) ska specen ändras, och ändringen godkännas av Jesper innan bygget fortsätter.

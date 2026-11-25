@@ -1,4 +1,3 @@
-import CloudKit
 import SophamtningDesign
 import SophamtningKit
 import SwiftUI
@@ -9,8 +8,9 @@ struct SophamtningApp: App {
     /// Tyst push, och scenens delegat som tar emot inbjudningar till ett hushåll.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model: AppModel
-    /// Hushållets synk med CloudKit. `nil` under UI-testerna.
-    private let cloudHousehold: CloudKitHouseholdSync?
+    /// Hushållets synk med brevlådan och iCloud. `nil` under UI-testerna.
+    private let services: HouseholdServices?
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showsIntro: Bool
     @State private var entrance: StartEntrance
 
@@ -26,11 +26,17 @@ struct SophamtningApp: App {
         SophamtningShortcuts.updateAppShortcutParameters()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? SophamtningKitInfo.version
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
-        let (model, cloudHousehold) = Self.makeModel(version: version, build: build)
-        self.cloudHousehold = cloudHousehold
-        if let cloudHousehold {
-            HouseholdShareAcceptance.shared.configure(sync: cloudHousehold, model: model)
+        let (model, services) = Self.makeModel(version: version, build: build)
+        self.services = services
+        services?.model = model
+        HouseholdServices.shared = services
+        if let services {
+            HouseholdShareAcceptance.shared.configure(sync: services.cloud, routing: services.routing, model: model)
         }
+        HouseholdLinkAcceptance.shared.configure(model: model)
+        #if DEBUG
+        UITestSupport.openHouseholdLink()
+        #endif
         // Hushållets lägen tas emot från start. Utan hushåll gör lyssnaren ingenting.
         model.startHousehold()
         // Knappen Utställt i Live Activity körs i appens process och skickar bocken till hushållet direkt.
@@ -40,7 +46,7 @@ struct SophamtningApp: App {
         _model = State(initialValue: model)
     }
 
-    private static func makeModel(version: String, build: String) -> (AppModel, CloudKitHouseholdSync?) {
+    private static func makeModel(version: String, build: String) -> (AppModel, HouseholdServices?) {
         #if DEBUG
         if UITestSupport.isActive {
             // UI-testerna får en stubb, en tom lagring, inga notiser (eller notiser i minnet) och ett hushåll i minnet. Ingen CloudKit-kod körs, och
@@ -49,16 +55,17 @@ struct SophamtningApp: App {
         }
         #endif
         let store = LocalStore.shared()
-        let household = CloudKitHouseholdSync(container: CKContainer(identifier: HouseholdRecords.containerIdentifier), stateStore: store)
-        let model = AppModel(api: SoporClient(version: version), store: store, scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() }, appVersion: "\(version) (\(build))", household: household)
-        return (model, household)
+        let services = HouseholdServices(version: version, store: store)
+        let model = AppModel(api: SoporClient(version: version), store: store, scheduler: NotificationScheduler(), activities: LiveActivityScheduler(), widgetReloader: { WidgetReload.reloadAll() }, appVersion: "\(version) (\(build))", household: services.routing)
+        return (model, services)
     }
 
     var body: some Scene {
         WindowGroup {
             HomeView(model: model, entrance: entrance, onEntranceFinished: { entrance.finish() })
                 .environment(\.entranceEnabled, !StartIntroState.skipsIntro)
-                .environment(\.cloudHousehold, cloudHousehold)
+                .environment(\.cloudHousehold, services?.cloud)
+                .onChange(of: scenePhase, initial: true) { _, phase in services?.sceneDidChange(to: phase) }
                 .overlay {
                     if showsIntro {
                         StartIntroView(

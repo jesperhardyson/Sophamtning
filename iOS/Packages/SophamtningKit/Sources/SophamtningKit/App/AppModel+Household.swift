@@ -27,6 +27,17 @@ extension AppModel {
         await sendPendingMarks(in: household, today: StockholmClock.today(now: now()))
     }
 
+    /// Som `fetchHouseholdChanges`, men väntar också på att det som kom har behandlats, så att notiserna hinner visas innan
+    /// systemet stannar appen efter en tyst push. Högst några sekunder.
+    public func fetchHouseholdChangesAndSettle() async {
+        await fetchHouseholdChanges()
+        // Läget går via en ström, så det kan dröja ett ögonblick innan det börjar behandlas.
+        for _ in 0..<60 {
+            try? await Task.sleep(for: .milliseconds(50))
+            if householdStatesInProgress == 0 { return }
+        }
+    }
+
     /// Knappen Utställt i Live Activity har sparat en bock i `placed-out.json`. För en delad adress skickas den till hushållet
     /// direkt, medan appen körs i bakgrunden, och inte först när appen öppnas.
     public func sendLiveActivityMarks() async {
@@ -38,7 +49,7 @@ extension AppModel {
     }
 
     /// Med i ett hushåll: en roll, och inte borttagen.
-    static func isMember(_ state: HouseholdState) -> Bool {
+    nonisolated static func isMember(_ state: HouseholdState) -> Bool {
         state.role != .none && state.status != .removed
     }
 
@@ -81,7 +92,7 @@ extension AppModel {
     /// går det inte att skicka nu skickas det vid nästa synkade läge.
     @discardableResult
     public func setHouseholdName(_ name: String) async -> Bool {
-        let cleaned = Self.trimmed(name)
+        let cleaned = HouseholdLogic.validName(name)
         guard !cleaned.isEmpty else { return false }
         if householdPreferences.myName != cleaned {
             householdPreferences.myName = cleaned
@@ -97,15 +108,22 @@ extension AppModel {
     }
 
     private static func trimmed(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
+        HouseholdLogic.validName(name)
     }
 
     /// Mitt sparade namn skickas till hushållet tills det står där. Har jag inget sparat men hushållet har ett, från en
     /// annan av mina enheter, används det.
     private func syncMyName(in state: HouseholdState) async {
         guard Self.isMember(state) else { return }
-        if let wanted = householdPreferences.myName {
-            if state.myName != wanted { try? await householdSync.setMyName(wanted) }
+        if let saved = householdPreferences.myName {
+            let wanted = HouseholdLogic.validName(saved)
+            guard state.myName != wanted, resentName != wanted else { return }
+            resentName = wanted
+            do {
+                try await householdSync.setMyName(wanted)
+            } catch {
+                resentName = nil
+            }
         } else if let existing = state.myName, !Self.trimmed(existing).isEmpty {
             householdPreferences.myName = existing
             saveHouseholdPreferences()
@@ -164,7 +182,11 @@ extension AppModel {
 
     /// Behandlar ett läge från synken: sparar det, slår ihop adresserna, skickar egna bockar, visar notiser och planerar om.
     func receiveHousehold(_ incoming: HouseholdState) async {
-        defer { handledHouseholdStates += 1 }
+        householdStatesInProgress += 1
+        defer {
+            householdStatesInProgress -= 1
+            handledHouseholdStates += 1
+        }
         let today = StockholmClock.today(now: now())
         rereadHouseholdCacheIfNeeded()
         let previous = household
@@ -191,6 +213,18 @@ extension AppModel {
             }
         }
 
+        // Hushållet har flyttats, och jag har ett nytt id. Det som saknas har inte tagits bort av någon.
+        let moved = reliable && Self.isMember(previous) && Self.isMember(effective) && previous.myId != nil && previous.myId != effective.myId
+        if moved {
+            sentHouseholdMarks = []
+            // En mottagen adress som inte följde med blir min egen.
+            let shared = Set(effective.addresses.map(\.address.key))
+            if !householdPreferences.receivedKeys.isSubset(of: shared) {
+                householdPreferences.receivedKeys.formIntersection(shared)
+                saveHouseholdPreferences()
+            }
+        }
+
         // Utan läsbar cache vet appen inte vilka adresser som delades, så ett läge med fel ändrar inga adresser.
         var addedKeys: Set<AddressKey> = []
         var addressesChanged = false
@@ -207,7 +241,7 @@ extension AppModel {
 
         // Bara ett synkat läge går att lita på för att skicka, ta bort eller visa något.
         if reliable {
-            if Self.isMember(previous), Self.isMember(effective) {
+            if Self.isMember(previous), Self.isMember(effective), !moved {
                 adoptRemoteUndo(previous: previous, current: effective, today: today)
             }
             await sendPendingMarks(in: effective, today: today)
@@ -216,7 +250,9 @@ extension AppModel {
             await syncMyName(in: effective)
             if let owner = pendingWelcomeOwner, Self.isMember(effective) {
                 pendingWelcomeOwner = nil
-                householdNotice = HouseholdTexts.welcome(ownerName: owner)
+                // En inbjudan via länk säger inte vem ägaren är. Det syns först när hushållet har hämtats.
+                let name = owner.isEmpty ? effective.participants.first(where: \.isOwner)?.name ?? HouseholdTexts.unknownName : owner
+                householdNotice = HouseholdTexts.welcome(ownerName: name)
                 householdSheetRequested = true
             }
         }
@@ -289,6 +325,7 @@ extension AppModel {
             householdCacheKnown = true
         }
         sentHouseholdMarks = []
+        resentName = nil
         if !householdPreferences.receivedKeys.isEmpty || householdPreferences.knownParticipants != nil || !householdPreferences.joinedNames.isEmpty || !householdPreferences.leftNames.isEmpty {
             householdPreferences.receivedKeys = []
             // Ett nytt hushåll börjar utan kända deltagare, så att ingen räknas som ny när jag går med.
@@ -353,7 +390,7 @@ extension AppModel {
             let addressName = addresses.first { $0.key == mark.placedOut.key }?.displayName
                 ?? state.addresses.first { $0.address.key == mark.placedOut.key }?.address.displayName
             guard allowed, let addressName else { continue }
-            let name = state.participants.first { $0.id == mark.by }?.name ?? "Någon"
+            let name = state.participants.first { $0.id == mark.by }?.name ?? HouseholdTexts.unknownName
             await scheduler.deliverNow(
                 identifier: Self.householdNotificationId(mark.placedOut),
                 title: HouseholdTexts.placedOutNotificationTitle,
@@ -370,12 +407,12 @@ extension AppModel {
         guard Self.isMember(state) else { return }
         let known = householdPreferences.knownParticipants
         let fresh = HouseholdLogic.newParticipants(state.participants, known: known, myId: state.myId)
-        let departed = HouseholdLogic.departedParticipants(state.participants, known: known, myId: state.myId)
+        let departed = HouseholdLogic.departedParticipants(state.participants, known: known, myId: state.myId).filter { !removedByMe.contains($0) }
         // Saknar listan mig är delningen inte hämtad. Då står de kända deltagarna kvar, så att ingen räknas som ny sedan.
         guard state.participants.contains(where: { $0.id == state.myId }) else { return }
-        let ids = Set(state.participants.map(\.id))
+        let ids = HouseholdLogic.knownAfter(state.participants, known: known, myId: state.myId)
         let names = Dictionary(state.participants.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-        let departedNames = departed.map { householdPreferences.participantNames[$0] ?? "Någon" }
+        let departedNames = departed.map { householdPreferences.participantNames[$0] ?? HouseholdTexts.unknownName }
         guard known != ids || !fresh.isEmpty || householdPreferences.participantNames != names else { return }
         householdPreferences.knownParticipants = ids
         householdPreferences.participantNames = names
@@ -509,6 +546,104 @@ extension AppModel {
         }
         // Läget från synken kan komma före eller efter. Raden visas ändå bara en gång.
         adoptLeft(status: .synced, wasMember: wasMember && inHousehold)
+    }
+
+    // MARK: Inbjudan och medlemmar
+
+    /// Om inbjudningar är länkar. Falskt för ett hushåll som ligger kvar i iCloud.
+    public var invitesWithLink: Bool { membership?.managesMembers == true }
+
+    /// Ägaren bjuder in och tar bort deltagare här, när hushållet finns i brevlådan.
+    public var canManageMembers: Bool { invitesWithLink && inHousehold && household.role == .owner }
+
+    /// En ny inbjudan. Finns inget hushåll skapas det först, och då måste mitt namn vara sparat. `nil` när det inte gick.
+    public func inviteURL() async -> URL? {
+        guard let membership, invitesWithLink, !inHousehold || canManageMembers else { return nil }
+        let name = Self.trimmed(householdName)
+        guard !name.isEmpty else { return nil }
+        do {
+            if !inHousehold {
+                do {
+                    try await membership.create(myName: name)
+                } catch HouseholdMembershipError.alreadyMember {
+                    // Hushållet finns redan, men läget har inte kommit hit än.
+                }
+            }
+            return try await membership.invite()
+        } catch {
+            householdNotice = HouseholdTexts.status(.failed)
+            return nil
+        }
+    }
+
+    /// Gör alla länkar som har skickats ogiltiga.
+    public func revokeInvites() async -> Bool {
+        guard let membership, canManageMembers else { return false }
+        return await attempt { try await membership.revokeInvites() }
+    }
+
+    public func removeParticipant(_ id: String) async -> Bool {
+        guard let membership, canManageMembers, id != household.myId else { return false }
+        removedByMe.insert(id)
+        let removed = await attempt { try await membership.remove(participantId: id) }
+        if !removed { removedByMe.remove(id) }
+        return removed
+    }
+
+    private func attempt(_ work: () async throws -> Void) async -> Bool {
+        do {
+            try await work()
+            return true
+        } catch {
+            householdNotice = HouseholdTexts.status(.failed)
+            return false
+        }
+    }
+
+    /// En länk har öppnats. Den som redan är med i ett annat hushåll får först frågan om att lämna det.
+    public func receiveInvite(_ link: HouseholdInviteLink) async {
+        guard let membership else { return }
+        if membership.isCurrent(link) {
+            await fetchHouseholdChanges()
+        } else if inHousehold {
+            // En ny inbjudan ersätter en obesvarad.
+            pendingInvite = link
+        } else {
+            await join(link)
+        }
+    }
+
+    /// Svaret på frågan om att lämna först. Ja går med, och lämnar det nuvarande hushållet när inbjudan har godtagits.
+    public func answerInvite(leaveFirst: Bool) async {
+        guard let link = pendingInvite else { return }
+        pendingInvite = nil
+        guard leaveFirst else { return }
+        await join(link, replacing: true)
+    }
+
+    private func join(_ link: HouseholdInviteLink, replacing: Bool = false) async {
+        guard let membership else { return }
+        householdNotice = nil
+        let before = householdPreferences
+        expectHouseholdWelcome(ownerName: "")
+        let name = Self.trimmed(householdName)
+        do {
+            try await membership.join(link, myName: name.isEmpty ? nil : name, replacing: replacing)
+        } catch {
+            cancelHouseholdWelcome()
+            if inHousehold {
+                // Jag är kvar i mitt hushåll, och de kända deltagarna är fortfarande kända.
+                householdPreferences.knownParticipants = before.knownParticipants
+                householdPreferences.participantNames = before.participantNames
+                saveHouseholdPreferences()
+            }
+            householdNotice = switch error as? HouseholdMembershipError {
+            case .inviteInvalid: HouseholdTexts.inviteInvalid
+            case .full: HouseholdTexts.householdFull
+            default: HouseholdTexts.status(.failed)
+            }
+            householdSheetRequested = true
+        }
     }
 
     // MARK: Val

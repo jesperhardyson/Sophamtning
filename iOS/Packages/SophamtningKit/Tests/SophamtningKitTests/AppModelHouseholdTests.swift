@@ -886,3 +886,73 @@ private let sofie = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: fa
     #expect(model.householdPreferences.leftNames.isEmpty)
 }
 
+
+// MARK: Flytten från iCloud
+
+@Test @MainActor func ingenRadForFlyttadDeltagare() async throws {
+    let temp = TempDir()
+    let scheduler = FakeScheduler()
+    let sync = InMemoryHouseholdSync(state: householdState())
+    let model = try await makeModel(sync, scheduler: scheduler, clock: TestClock(noon), directory: temp.url)
+    #expect(await model.setNotifyWhenOthersPlaceOut(true) == .granted)
+    await settle(model) { model.startHousehold() }
+
+    // Hushållet flyttas. Först har bara ägaren flyttat, sedan jag.
+    let me = Data(repeating: 1, count: 16).base64URL, kim = Data(repeating: 2, count: 16).base64URL, new = Data(repeating: 3, count: 16).base64URL
+    let movedMe = HouseholdParticipant(id: me, name: "Jesper", isOwner: false, legacyIds: ["jag"])
+    await settle(model) { sync.simulateRemote { $0.myId = me; $0.participants = [movedMe] } }
+    await settle(model) { sync.simulateRemote { $0.participants = [movedMe, HouseholdParticipant(id: kim, name: "Kim", isOwner: true, legacyIds: ["kim"])] } }
+    #expect(model.householdMembersText == nil)
+    #expect(scheduler.delivered.isEmpty)
+
+    // Den som går med efteråt är ny, och den som lämnar har lämnat.
+    await settle(model) { sync.simulateRemote { $0.participants.append(HouseholdParticipant(id: new, name: "Alex", isOwner: false)) } }
+    #expect(model.householdMembersText == "Alex gick med i hushållet")
+    model.clearMembersNotice()
+    await settle(model) { sync.simulateRemote { $0.participants.removeAll { $0.id == new } } }
+    #expect(model.householdMembersText == "Alex är inte längre med i hushållet")
+}
+
+@Test @MainActor func egenBockFoljerMedNarHushalletFlyttas() async throws {
+    let temp = TempDir()
+    let shared = HouseholdAddress(address: address(home, name: "Hemma"), addedBy: "kim")
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [shared]))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    await settle(model) { await model.placeOut(home) }
+    let entry = PlacedOut(key: home, date: tomorrow)
+    #expect(LocalStore(directory: temp.url).placedOut() == [entry])
+
+    // Ägaren flyttade innan bocken fanns. I brevlådan saknas den, men ingen har ångrat den.
+    let me = Data(repeating: 1, count: 16).base64URL
+    await settle(model) {
+        sync.simulateRemote { state in
+            state.myId = me
+            state.participants = [HouseholdParticipant(id: me, name: "Jesper", isOwner: false, legacyIds: ["jag"])]
+            state.marks = []
+        }
+    }
+    #expect(LocalStore(directory: temp.url).placedOut() == [entry])
+    #expect(await currentState(sync).marks.map(\.placedOut) == [entry])
+    #expect(await currentState(sync).marks.map(\.by) == [me])
+}
+
+@Test @MainActor func mottagenAdressSomInteFoljdeMedBlirMin() async throws {
+    let temp = TempDir()
+    let cabin = AddressKey(source: "vafab", id: "77")
+    let sync = InMemoryHouseholdSync(state: householdState(addresses: [HouseholdAddress(address: address(cabin, name: "Stugan"), addedBy: "kim")]))
+    let model = try await makeModel(sync, scheduler: FakeScheduler(), clock: TestClock(noon), directory: temp.url)
+    await settle(model) { model.startHousehold() }
+    #expect(model.addresses.contains { $0.key == cabin })
+    let me = Data(repeating: 1, count: 16).base64URL
+    for _ in 0..<2 {
+        await settle(model) {
+            sync.simulateRemote { state in
+                state.myId = me
+                state.participants = [HouseholdParticipant(id: me, name: "Jesper", isOwner: false, legacyIds: ["jag"])]
+                state.addresses = []
+            }
+        }
+    }
+    #expect(model.addresses.contains { $0.key == cabin })
+}

@@ -14,45 +14,6 @@ extension CloudKitHouseholdSync {
         }
     }
 
-    /// Skapar zonen `Hushall` och en delning av hela zonen, eller ger den som redan finns.
-    func makeShare() async throws -> CKShare {
-        if inner.withLock({ $0.hasPrivateZone }), let existing = share { return existing }
-        _ = try await requireMyId()
-        let database = container.privateCloudDatabase
-        let zoneID = HouseholdRecords.privateZoneID
-        let zones = try await database.modifyRecordZones(saving: [CKRecordZone(zoneID: zoneID)], deleting: [])
-        for result in zones.saveResults.values { _ = try result.get() }
-
-        let newShare = CKShare(recordZoneID: zoneID)
-        newShare[CKShare.SystemFieldKey.title] = HouseholdRecords.shareTitle as NSString
-        newShare.publicPermission = .none
-        let saved: CKShare
-        var reused = false
-        do {
-            let results = try await database.modifyRecords(saving: [newShare], deleting: [])
-            guard let result = results.saveResults.values.first, let share = try result.get() as? CKShare else {
-                throw HouseholdSyncError.shareMissing
-            }
-            saved = share
-        } catch let error as CKError where error.code == .serverRecordChanged {
-            // En annan av mina enheter hann skapa delningen först. Den gäller.
-            guard let server = error.serverRecord as? CKShare else { throw error }
-            saved = server
-            reused = true
-        }
-        mutate { inner in
-            inner.hasPrivateZone = true
-            inner.privateRecords[saved.recordID.recordName] = saved
-            inner.status = .synced
-            // En delning som en annan av mina enheter skapade kan ha poster som inte hämtats än.
-            if reused { inner.trust.restarted() }
-        }
-        emit()
-        // Är kopian inte komplett, eller fanns delningen redan, syns hushållet först efter en hämtning.
-        if reused || !inner.withLock({ $0.trust.complete }) { Task { await fetchChanges() } }
-        return saved
-    }
-
     /// Delningen ändrades i `UICloudSharingController`, till exempel en ny deltagare.
     func shareDidChange(_ share: CKShare) {
         mutate { inner in

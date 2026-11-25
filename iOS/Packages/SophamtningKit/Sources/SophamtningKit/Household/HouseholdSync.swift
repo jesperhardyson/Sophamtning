@@ -39,9 +39,13 @@ public final class DisabledHousehold: HouseholdSync {
 }
 
 /// Hushållet i minnet, för tester och UI-tester.
-public final class InMemoryHouseholdSync: HouseholdSync {
+public final class InMemoryHouseholdSync: HouseholdSync, HouseholdMembership {
+    /// Hushållet som inbjudningarna gäller, tills jag går med i ett annat.
+    public static let householdId = "AAAAAAAAAAAAAAAAAAAAAA"
+
     private struct Inner {
         var state: HouseholdState
+        var householdId = InMemoryHouseholdSync.householdId
         var continuations: [UUID: AsyncStream<HouseholdState>.Continuation] = [:]
     }
 
@@ -120,6 +124,44 @@ public final class InMemoryHouseholdSync: HouseholdSync {
     /// Inget att hämta i minnet, men prenumeranterna får läget igen, om inte `resendsUnchanged` är falskt.
     public func fetchChanges() async {
         update { _ in }
+    }
+
+    // MARK: HouseholdMembership
+
+    public var managesMembers: Bool { true }
+
+    public func create(myName: String) async throws {
+        update { state in
+            let me = HouseholdParticipant(id: "jag", name: myName, isOwner: true)
+            state = HouseholdState(role: .owner, myId: me.id, participants: [me], addresses: [], marks: [], status: .synced, myName: myName)
+        }
+    }
+
+    public func invite() async throws -> URL {
+        let id = inner.withLock { $0.householdId }
+        return HouseholdInviteLink(householdId: id, inviteToken: Data(repeating: 1, count: 32).base64URL, householdKey: Data(repeating: 2, count: 32)).url
+    }
+
+    public func revokeInvites() async throws {}
+
+    public func join(_ link: HouseholdInviteLink, myName: String?, replacing: Bool) async throws {
+        inner.withLock { $0.householdId = link.householdId }
+        update { state in
+            let owner = HouseholdParticipant(id: "sofie", name: "Sofie", isOwner: true)
+            let me = HouseholdParticipant(id: "jag", name: myName ?? HouseholdTexts.unknownName, isOwner: false)
+            state = HouseholdState(role: .member, myId: me.id, participants: [owner, me], addresses: [], marks: [], status: .synced, myName: myName)
+        }
+    }
+
+    public func remove(participantId: String) async throws {
+        update { $0.participants.removeAll { $0.id == participantId } }
+    }
+
+    public func end() async throws { try await leave() }
+    public func registerDevice(token: String, environment: String) async {}
+
+    public func isCurrent(_ link: HouseholdInviteLink) -> Bool {
+        inner.withLock { $0.state.role != .none && $0.householdId == link.householdId }
     }
 
     private func update(_ change: (inout HouseholdState) -> Void) {

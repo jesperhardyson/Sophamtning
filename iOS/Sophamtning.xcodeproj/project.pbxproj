@@ -36,6 +36,7 @@
 		61A3B4731B2A8CBF0DF5964A /* uitest-adress.json in Resources */ = {isa = PBXBuildFile; fileRef = 8E9D6D1E5D975FA6247DDC60 /* uitest-adress.json */; };
 		62958CA40C493F407CA2254F /* SophamtningDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1A5547E5D15A1CA6E1A86564 /* SophamtningDesign */; };
 		6309A2EBEB0B6F32C74E2AF3 /* BackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D218A12D3B519487A19ACBF5 /* BackgroundRefresh.swift */; };
+		66E3CD80CCC1384BE4CF2854 /* CloudKitHouseholdSync+Legacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43800405B34D1CFF60599619 /* CloudKitHouseholdSync+Legacy.swift */; };
 		6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04B4ADB30D4E5275157E481 /* KommunCheckView.swift */; };
 		6CB0D518EF158C1E56685627 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */; };
 		6F697F63EA7791EE046A7B30 /* AddressEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */; };
@@ -45,6 +46,7 @@
 		76428CC19A4B1E2F47A1C164 /* AddressQuickActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */; };
 		90F54F736E6C0C91FDCF3553 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F307C543EEA02E99659E697 /* NotificationPresenter.swift */; };
 		920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83C77BCFF8F5F3C97D1E11A /* UITestAPI.swift */; };
+		936E4AE8CE67AE17C8A350BA /* KeychainCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997C2947574D0799DA331E61 /* KeychainCredentialStore.swift */; };
 		9392F46D1606F5A50029A130 /* MarkPlacedOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */; };
 		983061495ACBF138AB793997 /* CloudKitHouseholdSync+Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554E93E40F1B0AA35A1DE35E /* CloudKitHouseholdSync+Engine.swift */; };
 		9CF16D5EFB70314F259BF636 /* SourceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E3AF68D874F45D17C1DE93 /* SourceCard.swift */; };
@@ -53,8 +55,10 @@
 		AC45BCF0D2AEDE3ECFA6A102 /* SophamtningKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50F0A16DC6B86080E49E69F0 /* SophamtningKit */; };
 		B68A2D16B04B4C6B70CC2904 /* SophamtningWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C69348837E37C2E78073FA37 /* SophamtningWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B6E7E523807050F2DA357FBD /* CloudKitHouseholdSync+Sharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66D004D8D9DDB5EBF3F0DBF /* CloudKitHouseholdSync+Sharing.swift */; };
+		BF551144C52E2958A1E6AFD4 /* HouseholdLinkAcceptance.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69DC44C76EBC1606C489530 /* HouseholdLinkAcceptance.swift */; };
 		C68E547DE6E4F289AE1BBB8C /* LockScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9FBA4BACF91A649CA75104 /* LockScreenWidget.swift */; };
 		C8BE2D70D0EEE336EEB56A9F /* SiriIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85131DFABD9EB4FB83515CD2 /* SiriIntents.swift */; };
+		CC4115958DAF0E2CBFA410CC /* HouseholdServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91A3320AA343A8DB3FC14653 /* HouseholdServices.swift */; };
 		D01633A87E9152E1F066C2B5 /* SophamtningWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BD930D3B215E058D6F6AF1 /* SophamtningWidgetBundle.swift */; };
 		D0253C8AD586F6F9BF6A4C8F /* LargestTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D9A30BF0E402DC46212E29 /* LargestTextTests.swift */; };
 		D7CED481ACFED9008E352189 /* uitest-omraden.json in Resources */ = {isa = PBXBuildFile; fileRef = 34165008B4CCC5D5E4AF60E8 /* uitest-omraden.json */; };
@@ -71,6 +75,7 @@
 		F47926D875185CAAF6E327B2 /* MarkPlacedOutIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */; };
 		F7B7CF78FE22AA473CF4AD66 /* SophamtningApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */; };
 		F8921A1F875FBFB8DA7BDB31 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */; };
+		FDD0D5D391BF7E7359C0C390 /* URLSessionRelayTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6B79C0DE874260BCA86973 /* URLSessionRelayTransport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,6 +124,7 @@
 		3A35AF0613A14CB87706AFBF /* MarkPlacedOutIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkPlacedOutIntent.swift; sourceTree = "<group>"; };
 		3F0D4BB96881209C2ACA88F8 /* HouseholdShareAcceptance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdShareAcceptance.swift; sourceTree = "<group>"; };
 		431E60FE0486D9B1CBB6A6C2 /* SophamtningApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SophamtningApp.swift; sourceTree = "<group>"; };
+		43800405B34D1CFF60599619 /* CloudKitHouseholdSync+Legacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKitHouseholdSync+Legacy.swift"; sourceTree = "<group>"; };
 		456CA478F3DAA6359F968AE6 /* LiveActivityScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityScheduler.swift; sourceTree = "<group>"; };
 		49713674AF12521818193251 /* AreaFinderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaFinderSheet.swift; sourceTree = "<group>"; };
 		4C69BADC93FF3EA0266C618A /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
@@ -142,6 +148,9 @@
 		8CB5FDC260BB5A5B92506D26 /* StartIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartIntroView.swift; sourceTree = "<group>"; };
 		8D5D48B4AB1C6CD1FB0FABE8 /* AddressQuickActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressQuickActions.swift; sourceTree = "<group>"; };
 		8E9D6D1E5D975FA6247DDC60 /* uitest-adress.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "uitest-adress.json"; sourceTree = "<group>"; };
+		91A3320AA343A8DB3FC14653 /* HouseholdServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdServices.swift; sourceTree = "<group>"; };
+		997C2947574D0799DA331E61 /* KeychainCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainCredentialStore.swift; sourceTree = "<group>"; };
+		9E6B79C0DE874260BCA86973 /* URLSessionRelayTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionRelayTransport.swift; sourceTree = "<group>"; };
 		A32B37BFB62FD4EB8B113434 /* ReminderToggleRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderToggleRow.swift; sourceTree = "<group>"; };
 		A8AF412C35614825019257CF /* NextPickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPickupWidget.swift; sourceTree = "<group>"; };
 		A9662238FFEB7754E74086AF /* PrimaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryCard.swift; sourceTree = "<group>"; };
@@ -166,6 +175,7 @@
 		E84FE27AF7781C32C7F5967A /* HouseholdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdTests.swift; sourceTree = "<group>"; };
 		EBDA7B430B3959E87B85D257 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F1A81C18EE5398F719CEC9B2 /* PlaceOutIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceOutIntent.swift; sourceTree = "<group>"; };
+		F69DC44C76EBC1606C489530 /* HouseholdLinkAcceptance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdLinkAcceptance.swift; sourceTree = "<group>"; };
 		F6E97966D4E1386A76326E42 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F9D38C5B0F1B229E819DFA89 /* AreaPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerView.swift; sourceTree = "<group>"; };
 		FC43FD72F1E54258DAD390E6 /* AddressEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressEntity.swift; sourceTree = "<group>"; };
@@ -246,10 +256,15 @@
 			children = (
 				B140E1079F041786369A7F2B /* CloudKitHouseholdSync.swift */,
 				554E93E40F1B0AA35A1DE35E /* CloudKitHouseholdSync+Engine.swift */,
+				43800405B34D1CFF60599619 /* CloudKitHouseholdSync+Legacy.swift */,
 				B66D004D8D9DDB5EBF3F0DBF /* CloudKitHouseholdSync+Sharing.swift */,
 				5B08DC8B3A8F3843B4340103 /* CloudKitHouseholdSync+Storage.swift */,
+				F69DC44C76EBC1606C489530 /* HouseholdLinkAcceptance.swift */,
 				7E6733ABFC375276FA8FB421 /* HouseholdRecords.swift */,
+				91A3320AA343A8DB3FC14653 /* HouseholdServices.swift */,
 				3F0D4BB96881209C2ACA88F8 /* HouseholdShareAcceptance.swift */,
+				997C2947574D0799DA331E61 /* KeychainCredentialStore.swift */,
+				9E6B79C0DE874260BCA86973 /* URLSessionRelayTransport.swift */,
 			);
 			path = Household;
 			sourceTree = "<group>";
@@ -520,17 +535,21 @@
 				6309A2EBEB0B6F32C74E2AF3 /* BackgroundRefresh.swift in Sources */,
 				1FDE7A63431C123F8AAABD0A /* ChangelogSheet.swift in Sources */,
 				983061495ACBF138AB793997 /* CloudKitHouseholdSync+Engine.swift in Sources */,
+				66E3CD80CCC1384BE4CF2854 /* CloudKitHouseholdSync+Legacy.swift in Sources */,
 				B6E7E523807050F2DA357FBD /* CloudKitHouseholdSync+Sharing.swift in Sources */,
 				16E94D6EB51F6A40327DCC49 /* CloudKitHouseholdSync+Storage.swift in Sources */,
 				5BC5A2016F8EB7A3EFE2BB8E /* CloudKitHouseholdSync.swift in Sources */,
 				EDE500B40C9C08F10DB512D3 /* CloudSharingView.swift in Sources */,
 				A6BAB45D43B67C51916D662B /* FlowComponents.swift in Sources */,
 				33943D3D10E96911C582FCCD /* HomeView.swift in Sources */,
+				BF551144C52E2958A1E6AFD4 /* HouseholdLinkAcceptance.swift in Sources */,
 				1B2DD25F69CF68CA48C96F60 /* HouseholdPlaceOutRow.swift in Sources */,
 				22986F3CDF217739154F8363 /* HouseholdRecords.swift in Sources */,
+				CC4115958DAF0E2CBFA410CC /* HouseholdServices.swift in Sources */,
 				571BE1C6E47E58D38F1F494D /* HouseholdShareAcceptance.swift in Sources */,
 				2F9E50FF90E1F2454F9BFF1E /* HouseholdSheet.swift in Sources */,
 				70D62287D693A86FE4D97A29 /* InAppBrowser.swift in Sources */,
+				936E4AE8CE67AE17C8A350BA /* KeychainCredentialStore.swift in Sources */,
 				6C36F2C98C806A8A6D4022EB /* KommunCheckView.swift in Sources */,
 				40CA8A61C89A6CF1A6D268C5 /* LiveActivityScheduler.swift in Sources */,
 				F47926D875185CAAF6E327B2 /* MarkPlacedOutIntent.swift in Sources */,
@@ -548,6 +567,7 @@
 				9CF16D5EFB70314F259BF636 /* SourceCard.swift in Sources */,
 				0AA3EB83CCFCC30166C7C718 /* StartIntroView.swift in Sources */,
 				920D4A55937DE51523ED285F /* UITestAPI.swift in Sources */,
+				FDD0D5D391BF7E7359C0C390 /* URLSessionRelayTransport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

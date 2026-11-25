@@ -90,9 +90,9 @@ struct HomeView: View {
         }
         // En öppen rad stängs när en adress öppnas eller stängs, och när appen byter läge.
         .onChange(of: path) { openRow = nil }
-        // Medan appen är öppen och jag är med i ett hushåll hämtas ändringarna regelbundet, som reserv för tyst push.
-        .task(id: scenePhase == .active && model.inHousehold) {
-            guard scenePhase == .active, model.inHousehold else { return }
+        // Ett hushåll i iCloud hämtas regelbundet medan appen är öppen, som reserv för tyst push. Brevlådan säger själv till.
+        .task(id: scenePhase == .active && model.inHousehold && !model.invitesWithLink) {
+            guard scenePhase == .active, model.inHousehold, !model.invitesWithLink else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(for: HouseholdLogic.liveFetchInterval)
                 guard !Task.isCancelled else { return }
