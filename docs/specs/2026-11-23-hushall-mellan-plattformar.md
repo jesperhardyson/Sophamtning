@@ -183,7 +183,7 @@ Ett hushåll som avslutas eller raderas efter 400 dagar utan aktivitet blir kvar
 ### Gränser i servern
 
 - Högst 10 deltagare och 200 poster per hushåll, högst 8 kB per post och 512 byte för ett namn.
-- Högst 5 nya hushåll per IP-adress och timme. Räknas av ett eget Durable Object per IP-adress, med nyckeln SHA-256 av adressen och dagens datum, så att adressen inte sparas. Cloudflares inbyggda Rate Limiting räknar bara per 10 eller 60 sekunder.
+- Högst 20 nya hushåll per IP-adress och timme. Många mobilkunder delar IP-adress, så gränsen kan inte vara lägre. Räknas av ett eget Durable Object per IP-adress, med nyckeln SHA-256 av adressen och dagens datum, så att adressen inte sparas. Cloudflares inbyggda Rate Limiting räknar bara per 10 eller 60 sekunder.
 - Bockar raderas av servern när `expiresAt` har passerat (med ett alarm i objektet). Appens `removeExpired` blir kvar, men behövs bara för den lokala kopian.
 - Ett hushåll där ingen har gjort något anrop på 400 dagar raderas.
 - Servern loggar inga IP-adresser och inga poster utöver det Cloudflare själv loggar.

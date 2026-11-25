@@ -24,7 +24,7 @@
 - HKDF-SHA256 utan salt från `householdKey`: `contentKey` med info `sophamtning-hushall-innehall-v1`, `nameKey` med info `sophamtning-hushall-postnamn-v1`. Postnamn = base64url(HMAC-SHA256(`nameKey`, logiskt namn)).
 - Allt base64url är utan utfyllnad.
 - Länk: `https://sopor.hardyson.se/hushall#1.<householdId>.<inviteToken>.<householdKey>`.
-- Gränser: 10 deltagare, 200 poster, 8 kB per post, 512 byte per namn, 5 nya hushåll per IP-adress och timme. Vanlig inbjudan gäller 7 dagar, inbjudan för flytten 90 dagar. Borttagningar sparas i 30 dagar. Ett hushåll utan anrop på 400 dagar raderas.
+- Gränser: 10 deltagare, 200 poster, 8 kB per post, 512 byte per namn, 20 nya hushåll per IP-adress och timme. Vanlig inbjudan gäller 7 dagar, inbjudan för flytten 90 dagar. Borttagningar sparas i 30 dagar. Ett hushåll utan anrop på 400 dagar raderas.
 - Bara felkoderna `removed` och `ended` får ta bort hushållet i appen. Allt annat är `HouseholdStatus.failed` med kopian kvar.
 - "I dag", hämtdatum och `expiresAt` räknas i `Europe/Stockholm` (`StockholmClock`, `DayDate`).
 - Adress-id tolkas och byggs aldrig om. `SavedAddress.url` krypteras och används oförändrad.
@@ -48,7 +48,7 @@
 | `Server/wrangler.jsonc` | Workern, bindningarna `HOUSEHOLD` och `LIMITER`, Custom Domain, SQLite-migrering |
 | `Server/src/index.ts` | Routning, behörighet, vidarebefordran till rätt objekt |
 | `Server/src/household.ts` | `class Household extends DurableObject`: tabeller, anrop, seq, alarm, WebSocket |
-| `Server/src/limiter.ts` | `class CreationLimiter extends DurableObject`: 5 nya hushåll per IP och timme |
+| `Server/src/limiter.ts` | `class CreationLimiter extends DurableObject`: 20 nya hushåll per IP och timme |
 | `Server/src/push.ts` | APNs med JWT och FCM HTTP v1 |
 | `Server/src/encoding.ts` | base64url, slumpade byte, SHA-256 |
 | `Server/test/*.test.ts` | Serverns tester |

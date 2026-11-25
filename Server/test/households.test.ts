@@ -208,9 +208,9 @@ describe("Hushåll och deltagare", () => {
     }
   });
 
-  it("sexteHushalletFranSammaIpNekas", async () => {
+  it("tjugoforstaHushalletFranSammaIpNekas", async () => {
     const ip = "203.0.113.7";
-    for (let i = 0; i < 5; i++) await createHousehold(ip);
+    for (let i = 0; i < 20; i++) await createHousehold(ip);
     const response = await call("POST", "/households", { headers: { "CF-Connecting-IP": ip } });
     expect(response.status).toBe(429);
     expect(await json(response)).toEqual({ error: "too_many" });
@@ -256,7 +256,7 @@ describe("Hushåll och deltagare", () => {
   });
 
   it("sammaIPv6NatRaknasSomEn", async () => {
-    for (let i = 0; i < 5; i++) await createHousehold(`2001:db8:1:2::${i}`);
+    for (let i = 0; i < 20; i++) await createHousehold(`2001:db8:1:2::${i}`);
     const response = await call("POST", "/households", { headers: { "CF-Connecting-IP": "2001:0db8:0001:0002:ffff::1" } });
     expect(response.status).toBe(429);
     await createHousehold("2001:db8:1:3::1");
