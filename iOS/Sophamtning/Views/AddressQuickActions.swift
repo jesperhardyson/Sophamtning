@@ -320,8 +320,7 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
 ///
 /// Bredden räknas av `trackedOffset + jump`. Bara `jump` animeras, så att en ny rörelse med fingret, som ändrar
 /// `trackedOffset` utan animation, inte avbryter språngets fjäder.
-// `@preconcurrency`: SwiftUI läser `animatableData` på huvudtråden, som vyn i övrigt.
-private struct SwipeDeleteCapsule: View, @preconcurrency Animatable {
+private struct SwipeDeleteCapsule: View, Animatable {
     let trackedOffset: CGFloat
     var jump: CGFloat
     let width: CGFloat
@@ -332,7 +331,9 @@ private struct SwipeDeleteCapsule: View, @preconcurrency Animatable {
     @Binding var labelWidth: CGFloat
     let onDelete: () -> Void
 
-    var animatableData: CGFloat {
+    /// SwiftUI läser den också utanför huvudtråden när vyn ritas om i bakgrunden, så den får inte höra till huvudtråden.
+    /// Annars stoppas appen.
+    nonisolated var animatableData: CGFloat {
         get { jump }
         set { jump = newValue }
     }
