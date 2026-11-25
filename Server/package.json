@@ -1,0 +1,16 @@
+{
+  "name": "sophamtning-hushall",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "types": "wrangler types > /dev/null",
+    "test": "npm run types && tsc --noEmit && vitest run",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.9.2",
+    "typescript": "7.0.2",
+    "vitest": "5.1.1",
+    "wrangler": "4.168.0"
+  }
+}
