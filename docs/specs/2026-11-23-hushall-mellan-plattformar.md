@@ -299,7 +299,7 @@ Länken i `HushallFlytt` innehåller hushållsnyckeln och ligger i iCloud så l�
 ## Integritet
 
 - Integritetspolicyn på https://sopor.hardyson.se/integritet får ett nytt stycke om hushåll: att innehållet krypteras på telefonen och lagras hos Cloudflare i EU, att servern inte kan läsa det, och vilka uppgifter servern ser (se Säkerhet). Cloudflare nämns som personuppgiftsbiträde, och Google (FCM) för push till Android. Jesper publicerar det innan releasen.
-- App Privacy: innehållet räknas troligen inte som insamlat, eftersom Jesper inte kan läsa det. Push-token och deltagar-id sparas däremot läsbart. Jesper avgör före releasen om de ska anges, och `docs/specs/2026-11-06-app-store.md` uppdateras med beslutet.
+- App Privacy: innehållet räknas troligen inte som insamlat, eftersom Jesper inte kan läsa det. Push-token och deltagar-id sparas däremot läsbart och anges som Enhets-ID och Användar-ID, enligt Jespers beslut 2026-11-25. Svaren står i `docs/specs/2026-11-06-app-store.md`.
 - Formuläret om datasäkerhet i Google Play: Firebase Installation ID och det som `firebase-messaging` samlar in av sig självt anges, enligt Googles lista för SDK:t. Jesper fyller i det innan en version med hushåll släpps.
 
 ## Drift
