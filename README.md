@@ -1,6 +1,6 @@
 # Sophämtning
 
-Native-appar för iOS och Android som visar när sopkärlen töms och påminner dig om att ställa ut dem. Inget konto behövs, och dina adresser sparas bara i telefonen.
+Native-appar för iOS och Android som visar när sopkärlen töms och påminner dig om att ställa ut dem. Inget konto behövs, och dina adresser sparas i telefonen. Det du själv delar med ett hushåll kan bara deltagarna läsa.
 
 Sophämtning är **inofficiell** och inte kopplad till någon kommun eller något avfallsbolag. Vid avvikelser gäller alltid kommunens information.
 
@@ -10,12 +10,13 @@ iOS-appen byggdes först, och Android-appen byggs nu.
 
 ## Så hänger det ihop
 
-Apparna bygger på det öppna [Sopor API v1](https://sopor.hardyson.se/api/v1/docs) från projektet [sopor](https://github.com/jesperhardyson/sopor). API:t är appens enda kontrakt mot Sopor, och här finns ingen egen backend.
+Apparna bygger på det öppna [Sopor API v1](https://sopor.hardyson.se/api/v1/docs) från projektet [sopor](https://github.com/jesperhardyson/sopor). API:t är appens enda kontrakt mot Sopor. Hushållen använder en liten egen server, `Server/`, som lagrar krypterat innehåll som den inte kan läsa.
 
 | Katalog | Innehåll |
 |---|---|
 | `iOS/` | iOS-appen i Swift och SwiftUI |
 | `Android/` | Android-appen i Kotlin och Jetpack Compose, under arbete |
+| `Server/` | Brevlådan för hushåll, på Cloudflare Workers |
 | `docs/specs/` | Specifikationer |
 | `docs/plans/` | Implementationsplaner |
 | `docs/design/` | Design i Pencil |
